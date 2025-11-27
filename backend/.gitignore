@@ -1,0 +1,128 @@
+# =============================================
+# QuickVerdicts Backend - Git Ignore File
+# =============================================
+
+# ============================================
+# ENVIRONMENT & SECRETS (CRITICAL!)
+# ============================================
+# NEVER commit these files - they contain sensitive credentials
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+.env.test
+
+# Keep .env.example for documentation
+!.env.example
+
+# Azure/AWS secrets
+*.pem
+*.key
+*.cert
+*.p12
+*.pfx
+
+# ============================================
+# NODE.JS DEPENDENCIES
+# ============================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Package manager lock files (optional - consider committing these)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# ============================================
+# LOGS
+# ============================================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ============================================
+# BUILD ARTIFACTS
+# ============================================
+dist/
+build/
+coverage/
+.nyc_output/
+
+# ============================================
+# TESTING
+# ============================================
+coverage/
+.coverage
+*.coveragerc
+htmlcov/
+.tox/
+
+# ============================================
+# OS FILES
+# ============================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ============================================
+# IDE / EDITOR FILES
+# ============================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+*~
+.project
+.classpath
+.settings/
+nbproject/
+*.sublime-project
+*.sublime-workspace
+
+# ============================================
+# TEMPORARY FILES
+# ============================================
+tmp/
+temp/
+*.tmp
+*.bak
+*.backup
+
+# ============================================
+# DATABASE DUMPS & BACKUPS
+# ============================================
+*.sql
+*.sqlite
+*.sqlite3
+*.db
+dumps/
+backups/
+
+# ============================================
+# DEPLOYMENT FILES (if generated)
+# ============================================
+deploy.sh
+
+# ============================================
+# MISC
+# ============================================
+.cache/
+.eslintcache
+.npm/
+.yarn-integrity
+.pnp.*

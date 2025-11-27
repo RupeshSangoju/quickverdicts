@@ -1,0 +1,82 @@
+# =============================================
+# QuickVerdicts - Root Git Ignore File
+# =============================================
+
+# ============================================
+# ENVIRONMENT & SECRETS (CRITICAL!)
+# ============================================
+# NEVER commit these files - they contain production secrets
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+.env.test
+
+# Keep .env.example files for documentation
+!.env.example
+!**/.env.example
+
+# Azure/AWS credentials
+*.pem
+*.key
+*.cert
+*.p12
+*.pfx
+
+# ============================================
+# NODE.JS
+# ============================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ============================================
+# LOGS
+# ============================================
+logs/
+*.log
+
+# ============================================
+# OS FILES
+# ============================================
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+desktop.ini
+
+# ============================================
+# IDE / EDITOR
+# ============================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ============================================
+# BUILD ARTIFACTS
+# ============================================
+dist/
+build/
+coverage/
+
+# ============================================
+# TEMPORARY FILES
+# ============================================
+tmp/
+temp/
+*.tmp
+*.bak
+
+# ============================================
+# DATABASE DUMPS
+# ============================================
+*.sql
+*.sqlite
+*.db
+dumps/
+backups/
