@@ -370,23 +370,6 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleAdminJoinTrial = async (caseId: number) => {
-    try {
-      const response = await fetchWithAuth(`${API_BASE}/api/trial/admin-join/${caseId}`, {
-        method: 'POST',
-      });
-
-      if (response.ok) {
-        window.open(`/admin/trial/${caseId}`, '_blank');
-      } else {
-        alert('Failed to join trial');
-      }
-    } catch (error) {
-      console.error('Error joining trial:', error);
-      alert('Failed to join trial');
-    }
-  };
-
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
@@ -1787,20 +1770,6 @@ export default function AdminDashboard() {
                   </div>
                 )}
               </div>
-
-              {selectedCase.canJoin && selectedCase.RoomId && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-semibold text-green-900">Trial Meeting Ready</h4>
-                      <p className="text-sm text-green-700">Click to join and monitor this trial</p>
-                    </div>
-                    <button onClick={() => handleAdminJoinTrial(selectedCase.CaseId)} className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium">
-                      <Video className="h-5 w-5" />Join Trial
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
 
             <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 flex justify-end">

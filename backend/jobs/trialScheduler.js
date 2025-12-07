@@ -13,7 +13,7 @@ const { sendNotificationEmail } = require("../utils/email");
 
 const SCHEDULER_INTERVAL = 60 * 1000; // Run every 60 seconds
 const WAR_ROOM_ACCESS_MINUTES = 60; // Open war room 1 hour before trial
-const NOTIFICATION_MINUTES = 15; // Send notifications 15 minutes before trial
+const NOTIFICATION_MINUTES = 30; // Send notifications 30 minutes before trial
 
 let schedulerInterval = null;
 let isRunning = false;
@@ -72,7 +72,7 @@ async function checkAndTransitionTrials() {
               ' ',
               CONVERT(VARCHAR(8), c.ScheduledTime, 108)
             ) AS DATETIME)
-          ) > ${NOTIFICATION_MINUTES}  -- Only before notification time
+          ) >= 0  -- Don't open war room for trials that have already started
     `);
 
     if (casesForWarRoomAccess.recordset.length > 0) {
