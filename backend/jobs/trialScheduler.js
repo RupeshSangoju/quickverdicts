@@ -72,7 +72,7 @@ async function checkAndTransitionTrials() {
               ' ',
               CONVERT(VARCHAR(8), c.ScheduledTime, 108)
             ) AS DATETIME)
-          ) > ${NOTIFICATION_MINUTES}  -- Only before notification time
+          ) >= 0  -- Don't open war room for trials that have already started
     `);
 
     if (casesForWarRoomAccess.recordset.length > 0) {
