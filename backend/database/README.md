@@ -28,6 +28,15 @@ Creates the `dbo.Payments` table with all necessary columns and indexes.
 **Tables created:**
 - `dbo.Payments` - Stores all payment transactions
 
+### 002_create_jury_charge_tables.sql
+Creates the jury charge question and response tables for the verdict system.
+
+**Required for:** Jury Charge Builder in war room, juror verdict submission
+
+**Tables created:**
+- `dbo.JuryChargeQuestions` - Stores custom verdict questions created by attorneys
+- `dbo.JuryChargeResponses` - Stores juror responses/verdicts
+
 ## ⚠️ IMPORTANT
 
 Before running migrations, ensure your `.env` file in the backend directory contains:
@@ -42,13 +51,15 @@ DB_PORT=1433
 
 ## 🔍 Verify Migration Success
 
-After running migrations, verify the Payments table exists:
+After running migrations, verify all tables exist:
 
 ```sql
-SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'Payments';
+-- Check all migrated tables
+SELECT * FROM INFORMATION_SCHEMA.TABLES
+WHERE TABLE_NAME IN ('Payments', 'JuryChargeQuestions', 'JuryChargeResponses');
 ```
 
-Expected columns:
+### Payments Table Columns:
 - PaymentId (INT, PRIMARY KEY)
 - CaseId (INT)
 - UserId (INT)
@@ -60,6 +71,27 @@ Expected columns:
 - TransactionId (NVARCHAR)
 - Description (NVARCHAR)
 - CreatedAt (DATETIME2)
+- UpdatedAt (DATETIME2)
+
+### JuryChargeQuestions Table Columns:
+- QuestionId (INT, PRIMARY KEY)
+- CaseId (INT, FOREIGN KEY)
+- QuestionText (NVARCHAR(1000))
+- QuestionType (NVARCHAR(50))
+- Options (NVARCHAR(MAX))
+- OrderIndex (INT)
+- IsRequired (BIT)
+- MinValue (INT, NULL)
+- MaxValue (INT, NULL)
+- CreatedAt (DATETIME2)
+- UpdatedAt (DATETIME2)
+
+### JuryChargeResponses Table Columns:
+- ResponseId (INT, PRIMARY KEY)
+- QuestionId (INT, FOREIGN KEY)
+- JurorId (INT, FOREIGN KEY)
+- Response (NVARCHAR(MAX))
+- SubmittedAt (DATETIME2)
 - UpdatedAt (DATETIME2)
 
 ## 🐛 Troubleshooting
