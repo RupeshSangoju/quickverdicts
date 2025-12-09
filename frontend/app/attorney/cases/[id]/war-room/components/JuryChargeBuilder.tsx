@@ -197,7 +197,10 @@ export default function JuryChargeBuilder({
             successCount++;
           } else {
             failCount++;
-            console.error(`Failed to add question: ${question.QuestionText}`);
+            const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+            const errorMsg = errorData.message || errorData.error || 'Unknown error';
+            console.error(`Failed to add question: ${question.QuestionText}`, errorMsg);
+            toast.error(`Failed to add question: ${errorMsg}`);
           }
         } catch (err) {
           failCount++;
