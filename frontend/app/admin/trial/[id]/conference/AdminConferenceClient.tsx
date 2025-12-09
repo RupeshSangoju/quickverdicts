@@ -764,7 +764,7 @@ export default function AdminConferenceClient() {
         setJuryChargeQuestions(data.questions || []);
 
         // Check if already released
-        const lockResponse = await fetch(`${API_BASE}/api/jury-charge/check-locked/${caseId}`, {
+        const lockResponse = await fetch(`${API_BASE}/api/jury-charge/status/${caseId}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (lockResponse.ok) {
