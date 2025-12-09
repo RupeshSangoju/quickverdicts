@@ -818,7 +818,7 @@ export default function TrialConferenceClient() {
         payload.options = newQuestionData.Options.split('\n').map((o: string) => o.trim()).filter(Boolean);
       }
 
-      const response = await fetch(`${API_BASE}/api/jury-charge/add-question`, {
+      const response = await fetch(`${API_BASE}/api/jury-charge/questions`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -837,7 +837,10 @@ export default function TrialConferenceClient() {
           IsRequired: true,
         });
       } else {
-        alert('Failed to add question');
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+        const errorMsg = errorData.message || errorData.error || 'Failed to add question';
+        console.error('Failed to add question:', errorMsg);
+        alert(`Failed to add question: ${errorMsg}`);
       }
     } catch (err) {
       console.error('Error adding question:', err);
