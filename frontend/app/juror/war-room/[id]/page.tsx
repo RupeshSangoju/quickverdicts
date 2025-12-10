@@ -32,6 +32,13 @@ type Document = {
   FileUrl: string;
 };
 
+type Witness = {
+  WitnessId: number;
+  WitnessName: string;
+  Side: string;
+  Description: string;
+};
+
 type TeamMember = {
   Name: string;
   Role: string;
@@ -62,6 +69,7 @@ export default function JurorWarRoomPage() {
 
   const [caseData, setCaseData] = useState<CaseData | null>(null);
   const [documents, setDocuments] = useState<Document[]>([]);
+  const [witnesses, setWitnesses] = useState<Witness[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -159,6 +167,22 @@ export default function JurorWarRoomPage() {
         } else {
           console.warn(`Documents fetch failed: ${docsRes.status}`);
           setDocuments([]);
+        }
+
+        // Fetch witnesses
+        const witnessesRes = await fetch(`${API_BASE}/api/case/cases/${caseId}/witnesses`, { headers });
+        if (witnessesRes.ok) {
+          const witnessesContentType = witnessesRes.headers.get("content-type");
+          if (witnessesContentType && witnessesContentType.includes("application/json")) {
+            const witnessesJson = await witnessesRes.json();
+            setWitnesses(Array.isArray(witnessesJson) ? witnessesJson : (witnessesJson?.witnesses || []));
+          } else {
+            console.warn("Witnesses response is not JSON, skipping");
+            setWitnesses([]);
+          }
+        } else {
+          console.warn(`Witnesses fetch failed: ${witnessesRes.status}`);
+          setWitnesses([]);
         }
 
         // Fetch team members
@@ -371,6 +395,85 @@ export default function JurorWarRoomPage() {
                   <p className="text-sm text-[#455A7C]">{member.Email}</p>
                 </div>
               ))}
+            </div>
+          )}
+        </div>
+
+        <div className="bg-white rounded-lg shadow border border-[#C6CDD9] p-6 mb-6">
+          <h2 className="text-xl font-bold text-[#0A2342] mb-4">Witnesses</h2>
+          {witnesses.length === 0 ? (
+            <p className="text-[#455A7C]">No witnesses listed</p>
+          ) : (
+            <div className="space-y-4">
+              {/* Plaintiff Witnesses */}
+              {witnesses.filter(w => w.Side === 'Plaintiff').length > 0 && (
+                <div>
+                  <h3 className="text-md font-semibold text-[#0A2342] mb-3 flex items-center gap-2">
+                    <span className="inline-block w-1 h-5 bg-[#16305B] rounded-full"></span>
+                    Plaintiff Witnesses
+                    <span className="px-2 py-0.5 bg-[#FAF9F6] text-[#455A7C] rounded text-xs font-semibold">
+                      {witnesses.filter(w => w.Side === 'Plaintiff').length}
+                    </span>
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {witnesses.filter(w => w.Side === 'Plaintiff').map((witness) => (
+                      <div key={witness.WitnessId} className="p-4 bg-[#FAF9F6] rounded-lg border border-[#C6CDD9]/30">
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 p-2 bg-[#16305B]/10 rounded">
+                            <svg className="w-5 h-5 text-[#16305B]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-[#0A2342] mb-1">{witness.WitnessName}</p>
+                            <span className="inline-block px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-semibold mb-2">
+                              Plaintiff
+                            </span>
+                            {witness.Description && (
+                              <p className="text-sm text-[#455A7C] mt-2">{witness.Description}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Defendant Witnesses */}
+              {witnesses.filter(w => w.Side === 'Defendant').length > 0 && (
+                <div>
+                  <h3 className="text-md font-semibold text-[#0A2342] mb-3 flex items-center gap-2">
+                    <span className="inline-block w-1 h-5 bg-[#16305B] rounded-full"></span>
+                    Defendant Witnesses
+                    <span className="px-2 py-0.5 bg-[#FAF9F6] text-[#455A7C] rounded text-xs font-semibold">
+                      {witnesses.filter(w => w.Side === 'Defendant').length}
+                    </span>
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {witnesses.filter(w => w.Side === 'Defendant').map((witness) => (
+                      <div key={witness.WitnessId} className="p-4 bg-[#FAF9F6] rounded-lg border border-[#C6CDD9]/30">
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 p-2 bg-[#16305B]/10 rounded">
+                            <svg className="w-5 h-5 text-[#16305B]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-[#0A2342] mb-1">{witness.WitnessName}</p>
+                            <span className="inline-block px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs font-semibold mb-2">
+                              Defendant
+                            </span>
+                            {witness.Description && (
+                              <p className="text-sm text-[#455A7C] mt-2">{witness.Description}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
