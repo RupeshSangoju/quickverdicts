@@ -49,7 +49,7 @@ jobs:
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
-          app-name: 'main-frontend'
+          app-name: 'main-frontend-gph7fxe7abejheag'
           slot-name: 'Production'
           package: .
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_F5FD0CE67F3B49CE9940C585B0BD4821 }}
