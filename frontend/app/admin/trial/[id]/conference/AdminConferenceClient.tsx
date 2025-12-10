@@ -1082,13 +1082,16 @@ export default function AdminConferenceClient() {
 
       // ✅ CRITICAL FIX: Show instructions to ensure admin captures tab audio
       const userConfirmed = window.confirm(
-        "🎬 RECORDING SETUP - READ CAREFULLY!\n\n" +
-        "To record ALL participants' voices:\n\n" +
-        "1️⃣ In the next dialog, select 'Chrome Tab' (or 'Browser Tab')\n" +
-        "2️⃣ Select THIS current tab where the trial is running\n" +
-        "3️⃣ MUST CHECK ☑️ 'Share tab audio' checkbox at the bottom!\n\n" +
-        "⚠️ If you don't check 'Share tab audio', only YOUR voice will be recorded!\n\n" +
-        "✅ Ready? Click OK to start..."
+        "🎥 RECORDING INSTRUCTIONS - READ CAREFULLY!\n\n" +
+        "📌 TO RECORD VIDEO + ALL AUDIO:\n\n" +
+        "1️⃣ Select 'Chrome Tab' (NOT entire screen or window)\n" +
+        "2️⃣ Select THIS TAB (the active trial conference tab)\n" +
+        "3️⃣ ✅ CRITICAL: CHECK the 'Share tab audio' or 'Share audio' checkbox!\n" +
+        "4️⃣ Click 'Share'\n\n" +
+        "⚠️ WITHOUT 'Share tab audio' = Screen only (NO voices!)\n" +
+        "✅ WITH 'Share tab audio' = Screen + ALL participants' voices!\n\n" +
+        "🎤 Note: If you forget, we'll use your microphone as backup.\n\n" +
+        "Ready to start recording?"
       );
 
       if (!userConfirmed) {
@@ -1112,21 +1115,43 @@ export default function AdminConferenceClient() {
       } as any);
 
       const screenVideoTrack = screenStream.getVideoTracks()[0];
-      const screenAudioTracks = screenStream.getAudioTracks();
+      let screenAudioTracks = screenStream.getAudioTracks();
       console.log(`✅ Screen capture started: ${screenVideoTrack.label}`);
       console.log(`🎤 Screen audio tracks captured: ${screenAudioTracks.length}`);
 
       // ✅ CRITICAL: Check if tab audio was captured
       if (screenAudioTracks.length === 0) {
-        toast.error(
-          "❌ NO AUDIO CAPTURED! You forgot to check 'Share tab audio'!\n\nOnly screen video will be recorded. Stop and restart recording to capture audio.",
-          { duration: 10000 }
-        );
-        console.error("❌ RECORDING ISSUE: No audio tracks found - tab audio was not shared!");
+        console.warn("❌ No tab audio captured - requesting microphone as fallback...");
+        toast("⚠️ Tab audio not captured. Requesting microphone access as fallback...", { duration: 4000, icon: '🎤' });
+
+        try {
+          // ✅ FALLBACK: Request microphone audio to capture at least admin's voice and any system audio
+          const micStream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true
+            }
+          });
+          const micAudioTracks = micStream.getAudioTracks();
+          console.log(`✅ Microphone audio captured as fallback: ${micAudioTracks.length} track(s)`);
+          screenAudioTracks = micAudioTracks;
+
+          toast.success(
+            "✅ Recording started with microphone audio! Your voice will be captured.",
+            { duration: 4000 }
+          );
+        } catch (micError) {
+          console.error("❌ Failed to capture microphone audio:", micError);
+          toast.error(
+            "❌ NO AUDIO CAPTURED! Microphone access denied.\n\nOnly screen video will be recorded.",
+            { duration: 10000 }
+          );
+        }
       } else {
         console.log(`✅ SUCCESS: Tab audio captured! All participants will be audible in recording.`);
         toast.success(
-          "✅ Recording started with audio! All participants' voices will be captured.",
+          "✅ Recording started with tab audio! All participants' voices will be captured.",
           { duration: 4000 }
         );
       }
