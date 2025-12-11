@@ -624,7 +624,7 @@ async function getDashboardStats() {
           (SELECT COUNT(*) FROM dbo.TrialMeetings WHERE Status = 'active') AS ActiveTrials,
           (SELECT COUNT(*) FROM dbo.TrialMeetings WHERE Status = 'created') AS ScheduledTrials,
           (SELECT COUNT(*) FROM dbo.Notifications WHERE IsRead = 0 AND UserType = 'admin') AS UnreadNotifications,
-          (SELECT COUNT(*) FROM dbo.Cases WHERE CAST(ScheduledDate AS DATE) = CAST(GETDATE() AS DATE)) AS TodaysTrials,
+          (SELECT COUNT(*) FROM dbo.Cases WHERE CAST(ScheduledDate AS DATE) = CAST(DATEADD(MINUTE, 330, GETDATE()) AS DATE)) AS TodaysTrials,
           (SELECT COUNT(*) FROM dbo.Admins WHERE IsActive = 1 AND IsDeleted = 0) AS ActiveAdmins
       `);
 

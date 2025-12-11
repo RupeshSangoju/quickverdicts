@@ -14,6 +14,7 @@ const { sendNotificationEmail } = require("../utils/email");
 const SCHEDULER_INTERVAL = 60 * 1000; // Run every 60 seconds
 const WAR_ROOM_ACCESS_MINUTES = 60; // Open war room 1 hour before trial
 const NOTIFICATION_MINUTES = 30; // Send notifications 30 minutes before trial
+const INDIA_TIMEZONE_OFFSET = 330; // India Standard Time is UTC+5:30 (330 minutes)
 
 let schedulerInterval = null;
 let isRunning = false;
@@ -59,14 +60,14 @@ async function checkAndTransitionTrials() {
       INNER JOIN Attorneys a ON c.AttorneyId = a.AttorneyId
       WHERE c.AttorneyStatus = 'awaiting_trial'
         AND c.AdminApprovalStatus = 'approved'
-        AND DATEDIFF(MINUTE, GETDATE(),
+        AND DATEDIFF(MINUTE, DATEADD(MINUTE, ${INDIA_TIMEZONE_OFFSET}, GETDATE()),
             CAST(CONCAT(
               CONVERT(VARCHAR(10), c.ScheduledDate, 120),
               ' ',
               CONVERT(VARCHAR(8), c.ScheduledTime, 108)
             ) AS DATETIME)
           ) <= ${WAR_ROOM_ACCESS_MINUTES}
-        AND DATEDIFF(MINUTE, GETDATE(),
+        AND DATEDIFF(MINUTE, DATEADD(MINUTE, ${INDIA_TIMEZONE_OFFSET}, GETDATE()),
             CAST(CONCAT(
               CONVERT(VARCHAR(10), c.ScheduledDate, 120),
               ' ',
@@ -111,14 +112,14 @@ async function checkAndTransitionTrials() {
       WHERE c.AttorneyStatus = 'join_trial'
         AND c.AdminApprovalStatus = 'approved'
         AND (c.NotificationsSent IS NULL OR c.NotificationsSent = 0)
-        AND DATEDIFF(MINUTE, GETDATE(),
+        AND DATEDIFF(MINUTE, DATEADD(MINUTE, ${INDIA_TIMEZONE_OFFSET}, GETDATE()),
             CAST(CONCAT(
               CONVERT(VARCHAR(10), c.ScheduledDate, 120),
               ' ',
               CONVERT(VARCHAR(8), c.ScheduledTime, 108)
             ) AS DATETIME)
           ) <= ${NOTIFICATION_MINUTES}
-        AND DATEDIFF(MINUTE, GETDATE(),
+        AND DATEDIFF(MINUTE, DATEADD(MINUTE, ${INDIA_TIMEZONE_OFFSET}, GETDATE()),
             CAST(CONCAT(
               CONVERT(VARCHAR(10), c.ScheduledDate, 120),
               ' ',
