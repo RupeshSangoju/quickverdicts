@@ -1,4 +1,5 @@
 // Quick test to check SQL Server timezone and case scheduling
+require('dotenv').config({ path: './backend/.env' });
 const { poolPromise } = require('./backend/config/db');
 
 async function testTimezone() {
