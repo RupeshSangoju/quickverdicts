@@ -32,14 +32,15 @@ async function testTimezone() {
           ' ',
           CONVERT(VARCHAR(8), ScheduledTime, 108)
         ) AS DATETIME) AS ScheduledDateTime,
-        DATEDIFF(MINUTE, GETDATE(),
+        DATEDIFF(MINUTE, DATEADD(MINUTE, 330, GETDATE()),
           CAST(CONCAT(
             CONVERT(VARCHAR(10), ScheduledDate, 120),
             ' ',
             CONVERT(VARCHAR(8), ScheduledTime, 108)
           ) AS DATETIME)
         ) AS MinutesUntilTrial,
-        GETDATE() AS CurrentServerTime
+        DATEADD(MINUTE, 330, GETDATE()) AS CurrentServerTime_IndiaTime,
+        GETDATE() AS CurrentServerTime_UTC
       FROM Cases
       WHERE AttorneyStatus = 'awaiting_trial'
         AND AdminApprovalStatus = 'approved'
@@ -51,12 +52,13 @@ async function testTimezone() {
       const c = caseInfo.recordset[0];
       console.log(`Case: ${c.CaseTitle} (ID: ${c.CaseId})`);
       console.log(`Status: ${c.AttorneyStatus}`);
-      console.log(`Scheduled: ${c.ScheduledDateTime}`);
-      console.log(`Current Server Time: ${c.CurrentServerTime}`);
+      console.log(`Scheduled DateTime: ${c.ScheduledDateTime} (stored in DB as India time)`);
+      console.log(`Current UTC Time: ${c.CurrentServerTime_UTC}`);
+      console.log(`Current India Time: ${c.CurrentServerTime_IndiaTime} (UTC + 5:30)`);
       console.log(`Minutes until trial: ${c.MinutesUntilTrial}`);
       console.log('');
-      console.log(`War room opens at: ${c.MinutesUntilTrial <= 60 ? 'YES - SHOULD BE OPEN!' : 'NO - Not yet (opens 60 min before)'}`);
-      console.log(`Notifications sent at: ${c.MinutesUntilTrial <= 30 ? 'YES - SHOULD BE SENT!' : 'NO - Not yet (sent 30 min before)'}`);
+      console.log(`✅ War room access: ${c.MinutesUntilTrial <= 60 && c.MinutesUntilTrial >= 0 ? 'OPEN (within 60 min of trial)' : 'CLOSED (opens 60 min before trial)'}`);
+      console.log(`✅ Notifications: ${c.MinutesUntilTrial <= 30 && c.MinutesUntilTrial >= 0 ? 'SHOULD BE SENT (within 30 min)' : 'NOT YET (sends 30 min before trial)'}`);
     } else {
       console.log('No cases found with status awaiting_trial');
     }

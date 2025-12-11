@@ -444,7 +444,7 @@ async function getAvailableCasesForJurors(county = null, jurorId = null, state =
           AND c.AdminApprovalStatus = 'approved'
           AND c.IsDeleted = 0
           -- ✅ IMPORTANT: Only show cases with future trial dates (not expired)
-          AND c.ScheduledDate >= CAST(GETDATE() AS DATE)
+          AND c.ScheduledDate >= CAST(DATEADD(MINUTE, 330, GETDATE()) AS DATE)
       `;
 
       // Filter by State (REQUIRED for location matching)
