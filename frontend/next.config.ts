@@ -47,12 +47,9 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: 'Cross-Origin-Opener-Policy',
-            value: 'same-origin',
+            value: 'same-origin-allow-popups',
           },
-          {
-            key: 'Cross-Origin-Embedder-Policy',
-            value: 'require-corp',
-          },
+          // Removed Cross-Origin-Embedder-Policy to allow YouTube embeds
           {
             key: 'Content-Security-Policy',
             value: [
@@ -63,7 +60,7 @@ const nextConfig: NextConfig = {
               "font-src 'self' data: https:",
               "connect-src 'self' http: https: ws: wss:",
               "media-src 'self' blob: https: http:",
-              "frame-src 'self' https:",
+              "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https:",
               "worker-src 'self' blob:",
               "object-src 'none'",
               "base-uri 'self'",
