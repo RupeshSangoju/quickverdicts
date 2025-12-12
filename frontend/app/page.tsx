@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, memo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { FaTwitter, FaInstagram, FaFacebook, FaLinkedin, FaPlay } from "react-icons/fa";
+import { FaPlay } from "react-icons/fa";
 import { FaGavel, FaMoneyBillWave } from "react-icons/fa";
 import { IoMdClose } from "react-icons/io";
 
@@ -79,6 +79,17 @@ const FAQ_DATA = [
 /* ===========================================================
    TYPES
    =========================================================== */
+
+// Extend Window interface for gtag
+declare global {
+  interface Window {
+    gtag?: (
+      command: string,
+      action: string,
+      params?: Record<string, unknown>
+    ) => void;
+  }
+}
 
 interface LoadingState {
   isLoading: boolean;
@@ -176,7 +187,7 @@ const VideoModal = memo(({
         <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
           <iframe
             className="absolute top-0 left-0 w-full h-full"
-            src={`https://www.youtube.com/embed/${video.id}?autoplay=1&rel=0&modestbranding=1`}
+            src={`https://www.youtube-nocookie.com/embed/${video.id}?autoplay=1&rel=0&modestbranding=1`}
             title={video.title}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
@@ -204,8 +215,8 @@ const CTAButton = memo(({
   variant?: "primary" | "secondary";
 }) => {
   const handleClick = () => {
-    if (typeof window !== "undefined" && (window as any).gtag) {
-      (window as any).gtag("event", "cta_click", {
+    if (typeof window !== "undefined" && window.gtag) {
+      window.gtag("event", "cta_click", {
         user_type: type,
         location: location,
       });
@@ -320,8 +331,8 @@ export default function LandingPage() {
     document.body.style.overflow = "hidden";
 
     // Track video play event (for analytics)
-    if (typeof window !== "undefined" && (window as any).gtag) {
-      (window as any).gtag("event", "video_play", {
+    if (typeof window !== "undefined" && window.gtag) {
+      window.gtag("event", "video_play", {
         video_type: videoType,
         video_title: video.title,
       });
@@ -334,8 +345,8 @@ export default function LandingPage() {
     document.body.style.overflow = "unset";
 
     // Track video close event
-    if (typeof window !== "undefined" && (window as any).gtag) {
-      (window as any).gtag("event", "video_close", {
+    if (typeof window !== "undefined" && window.gtag) {
+      window.gtag("event", "video_close", {
         video_title: currentVideo?.title,
       });
     }
@@ -563,7 +574,7 @@ export default function LandingPage() {
               </h3>
               <ul className="mt-4 text-[#455A7C] space-y-4 text-base font-semibold list-none">
                 <li>
-                  Attorney's access to War Room with preformatted and editable Voir Dire questions and Jury Charge.
+                  Attorney&apos;s access to War Room with preformatted and editable Voir Dire questions and Jury Charge.
                 </li>
                 <li>
                   Pre-record case or appear live. 3 tiers available, timed trials at set costs:
@@ -620,7 +631,7 @@ export default function LandingPage() {
             Ready to Join a Trial—or Start One?
           </h2>
           <p className="mt-2 text-[#1a3666] font-semibold max-w-4xl mx-auto px-4">
-            Whether you're here to serve or to try a case, Quick Verdicts is ready
+            Whether you&apos;re here to serve or to try a case, Quick Verdicts is ready
             when you are. Join us participating in a faster,
             smarter pretrial resolution system.
           </p>
