@@ -219,24 +219,24 @@ async function getCasesByDate(req, res) {
     const casesWithDetails = await Promise.all(
       cases.map(async (caseItem) => {
         try {
-          // Get witnesses (gracefully handle missing table)
+          // Get witnesses from CaseWitnesses table
           let witnessesResult = { recordset: [] };
           try {
             witnessesResult = await pool
               .request()
               .input("caseId", sql.Int, caseItem.CaseId).query(`
                 SELECT
-                  Id as WitnessId,
-                  Name as WitnessName,
-                  Role as Side,
-                  Notes as Description
-                FROM dbo.Witnesses
+                  WitnessId,
+                  WitnessName,
+                  Side,
+                  Description
+                FROM dbo.CaseWitnesses
                 WHERE CaseId = @caseId
-                ORDER BY Id
+                ORDER BY OrderIndex ASC
               `);
           } catch (err) {
             if (err.number === 208) { // Invalid object name
-              console.warn('⚠️ Witnesses table does not exist yet');
+              console.warn('⚠️ CaseWitnesses table does not exist yet');
             } else {
               throw err;
             }
