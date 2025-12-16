@@ -637,7 +637,7 @@ async function getDashboardStats() {
                WHEN a.State = 'Hawaii' THEN -600
                WHEN a.State = 'India' THEN 330
                ELSE 0
-             END, GETDATE()), DATE)
+             END, GETDATE()) AS DATE)
           ) AS TodaysTrials,
           (SELECT COUNT(*) FROM dbo.Admins WHERE IsActive = 1 AND IsDeleted = 0) AS ActiveAdmins
       `);
