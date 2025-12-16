@@ -256,22 +256,51 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (!isAuthChecked) return;
-    
+
     const interval = setInterval(() => {
       if (isAuthenticated()) {
         fetchReadyTrials();
         fetchNotifications();
+        // ✅ AUTO-REFRESH: Also refresh cases for selected date to update witness counts
+        if (selectedDate) {
+          fetchCasesForDate(selectedDate);
+        }
       }
-    }, 30000);
-    
+    }, 30000); // 30 seconds
+
     return () => clearInterval(interval);
-  }, [isAuthChecked]);
+  }, [isAuthChecked, selectedDate]); // Added selectedDate dependency
 
   useEffect(() => {
     if (selectedDate && isAuthChecked) {
       fetchCasesForDate(selectedDate);
     }
   }, [selectedDate, isAuthChecked]);
+
+  // ✅ LISTEN FOR WITNESS/CASE UPDATES: Refresh when attorneys modify case data
+  useEffect(() => {
+    if (!isAuthChecked) return;
+
+    const handleWitnessUpdate = () => {
+      console.log('👤 Witness updated - refreshing admin dashboard...');
+      fetchReadyTrials();
+      if (selectedDate) {
+        fetchCasesForDate(selectedDate);
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('witness-updated', handleWitnessUpdate as EventListener);
+      window.addEventListener('case-updated', handleWitnessUpdate as EventListener);
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('witness-updated', handleWitnessUpdate as EventListener);
+        window.removeEventListener('case-updated', handleWitnessUpdate as EventListener);
+      }
+    };
+  }, [isAuthChecked, selectedDate]);
 
   // Enhanced fetch with error handling
   const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
