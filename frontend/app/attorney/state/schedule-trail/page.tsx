@@ -382,6 +382,14 @@ export default function ScheduleTrialPage() {
         icon: "✅",
       });
 
+      // ✅ TRIGGER CALENDAR REFRESH: Notify calendar to update
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('case-updated', {
+          detail: { caseId: data.caseId || data.case?.Id }
+        }));
+        console.log('📅 Dispatched case-updated event for calendar refresh');
+      }
+
       // Clear localStorage items related to case creation
       const itemsToClear = [
         "state", "county", "caseJurisdiction", "caseTier", "caseType",
