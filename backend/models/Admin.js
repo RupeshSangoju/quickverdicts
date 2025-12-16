@@ -624,7 +624,21 @@ async function getDashboardStats() {
           (SELECT COUNT(*) FROM dbo.TrialMeetings WHERE Status = 'active') AS ActiveTrials,
           (SELECT COUNT(*) FROM dbo.TrialMeetings WHERE Status = 'created') AS ScheduledTrials,
           (SELECT COUNT(*) FROM dbo.Notifications WHERE IsRead = 0 AND UserType = 'admin') AS UnreadNotifications,
-          (SELECT COUNT(*) FROM dbo.Cases WHERE CAST(ScheduledDate AS DATE) = CAST(DATEADD(MINUTE, 330, GETDATE()) AS DATE)) AS TodaysTrials,
+          (SELECT COUNT(*)
+           FROM dbo.Cases c
+           LEFT JOIN dbo.Attorneys a ON c.AttorneyId = a.AttorneyId
+           WHERE CAST(c.ScheduledDate AS DATE) = CAST(
+             DATEADD(MINUTE, CASE
+               WHEN a.State IN ('Connecticut', 'Delaware', 'Florida', 'Georgia', 'Maine', 'Maryland', 'Massachusetts', 'Michigan', 'New Hampshire', 'New Jersey', 'New York', 'North Carolina', 'Ohio', 'Pennsylvania', 'Rhode Island', 'South Carolina', 'Vermont', 'Virginia', 'West Virginia') THEN -300
+               WHEN a.State IN ('Alabama', 'Arkansas', 'Illinois', 'Iowa', 'Kansas', 'Kentucky', 'Louisiana', 'Minnesota', 'Mississippi', 'Missouri', 'Nebraska', 'North Dakota', 'Oklahoma', 'South Dakota', 'Tennessee', 'Texas', 'Wisconsin') THEN -360
+               WHEN a.State IN ('Arizona', 'Colorado', 'Idaho', 'Montana', 'New Mexico', 'Utah', 'Wyoming') THEN -420
+               WHEN a.State IN ('California', 'Nevada', 'Oregon', 'Washington') THEN -480
+               WHEN a.State = 'Alaska' THEN -540
+               WHEN a.State = 'Hawaii' THEN -600
+               WHEN a.State = 'India' THEN 330
+               ELSE 0
+             END, GETDATE()), DATE)
+          ) AS TodaysTrials,
           (SELECT COUNT(*) FROM dbo.Admins WHERE IsActive = 1 AND IsDeleted = 0) AS ActiveAdmins
       `);
 

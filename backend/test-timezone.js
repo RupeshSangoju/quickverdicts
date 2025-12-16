@@ -21,46 +21,80 @@ async function testTimezone() {
 
     // Check your scheduled case
     const caseInfo = await pool.request().query(`
-      SELECT TOP 1
-        CaseId,
-        CaseTitle,
-        ScheduledDate,
-        ScheduledTime,
-        AttorneyStatus,
+      SELECT TOP 5
+        c.CaseId,
+        c.CaseTitle,
+        c.ScheduledDate,
+        c.ScheduledTime,
+        c.AttorneyStatus,
+        a.State as AttorneyState,
+        a.FirstName + ' ' + a.LastName as AttorneyName,
+        CASE
+          WHEN a.State IN ('Connecticut', 'Delaware', 'Florida', 'Georgia', 'Maine', 'Maryland', 'Massachusetts', 'Michigan', 'New Hampshire', 'New Jersey', 'New York', 'North Carolina', 'Ohio', 'Pennsylvania', 'Rhode Island', 'South Carolina', 'Vermont', 'Virginia', 'West Virginia') THEN -300
+          WHEN a.State IN ('Alabama', 'Arkansas', 'Illinois', 'Iowa', 'Kansas', 'Kentucky', 'Louisiana', 'Minnesota', 'Mississippi', 'Missouri', 'Nebraska', 'North Dakota', 'Oklahoma', 'South Dakota', 'Tennessee', 'Texas', 'Wisconsin') THEN -360
+          WHEN a.State IN ('Arizona', 'Colorado', 'Idaho', 'Montana', 'New Mexico', 'Utah', 'Wyoming') THEN -420
+          WHEN a.State IN ('California', 'Nevada', 'Oregon', 'Washington') THEN -480
+          WHEN a.State = 'Alaska' THEN -540
+          WHEN a.State = 'Hawaii' THEN -600
+          WHEN a.State = 'India' THEN 330
+          ELSE 0
+        END as TimezoneOffset,
         CAST(CONCAT(
-          CONVERT(VARCHAR(10), ScheduledDate, 120),
+          CONVERT(VARCHAR(10), c.ScheduledDate, 120),
           ' ',
-          CONVERT(VARCHAR(8), ScheduledTime, 108)
+          CONVERT(VARCHAR(8), c.ScheduledTime, 108)
         ) AS DATETIME) AS ScheduledDateTime,
-        DATEDIFF(MINUTE, DATEADD(MINUTE, 330, GETDATE()),
+        DATEDIFF(MINUTE, DATEADD(MINUTE, CASE
+          WHEN a.State IN ('Connecticut', 'Delaware', 'Florida', 'Georgia', 'Maine', 'Maryland', 'Massachusetts', 'Michigan', 'New Hampshire', 'New Jersey', 'New York', 'North Carolina', 'Ohio', 'Pennsylvania', 'Rhode Island', 'South Carolina', 'Vermont', 'Virginia', 'West Virginia') THEN -300
+          WHEN a.State IN ('Alabama', 'Arkansas', 'Illinois', 'Iowa', 'Kansas', 'Kentucky', 'Louisiana', 'Minnesota', 'Mississippi', 'Missouri', 'Nebraska', 'North Dakota', 'Oklahoma', 'South Dakota', 'Tennessee', 'Texas', 'Wisconsin') THEN -360
+          WHEN a.State IN ('Arizona', 'Colorado', 'Idaho', 'Montana', 'New Mexico', 'Utah', 'Wyoming') THEN -420
+          WHEN a.State IN ('California', 'Nevada', 'Oregon', 'Washington') THEN -480
+          WHEN a.State = 'Alaska' THEN -540
+          WHEN a.State = 'Hawaii' THEN -600
+          WHEN a.State = 'India' THEN 330
+          ELSE 0
+        END, GETDATE()),
           CAST(CONCAT(
-            CONVERT(VARCHAR(10), ScheduledDate, 120),
+            CONVERT(VARCHAR(10), c.ScheduledDate, 120),
             ' ',
-            CONVERT(VARCHAR(8), ScheduledTime, 108)
+            CONVERT(VARCHAR(8), c.ScheduledTime, 108)
           ) AS DATETIME)
         ) AS MinutesUntilTrial,
-        DATEADD(MINUTE, 330, GETDATE()) AS CurrentServerTime_IndiaTime,
+        DATEADD(MINUTE, CASE
+          WHEN a.State IN ('Connecticut', 'Delaware', 'Florida', 'Georgia', 'Maine', 'Maryland', 'Massachusetts', 'Michigan', 'New Hampshire', 'New Jersey', 'New York', 'North Carolina', 'Ohio', 'Pennsylvania', 'Rhode Island', 'South Carolina', 'Vermont', 'Virginia', 'West Virginia') THEN -300
+          WHEN a.State IN ('Alabama', 'Arkansas', 'Illinois', 'Iowa', 'Kansas', 'Kentucky', 'Louisiana', 'Minnesota', 'Mississippi', 'Missouri', 'Nebraska', 'North Dakota', 'Oklahoma', 'South Dakota', 'Tennessee', 'Texas', 'Wisconsin') THEN -360
+          WHEN a.State IN ('Arizona', 'Colorado', 'Idaho', 'Montana', 'New Mexico', 'Utah', 'Wyoming') THEN -420
+          WHEN a.State IN ('California', 'Nevada', 'Oregon', 'Washington') THEN -480
+          WHEN a.State = 'Alaska' THEN -540
+          WHEN a.State = 'Hawaii' THEN -600
+          WHEN a.State = 'India' THEN 330
+          ELSE 0
+        END, GETDATE()) AS CurrentLocalTime,
         GETDATE() AS CurrentServerTime_UTC
-      FROM Cases
-      WHERE AttorneyStatus = 'awaiting_trial'
-        AND AdminApprovalStatus = 'approved'
-      ORDER BY ScheduledDate DESC, ScheduledTime DESC
+      FROM Cases c
+      LEFT JOIN Attorneys a ON c.AttorneyId = a.AttorneyId
+      WHERE c.AttorneyStatus IN ('awaiting_trial', 'join_trial')
+        AND c.AdminApprovalStatus = 'approved'
+      ORDER BY c.ScheduledDate DESC, c.ScheduledTime DESC
     `);
 
-    console.log('=== YOUR CASE INFO ===');
+    console.log('=== CASE INFO (with dynamic timezone per attorney) ===');
     if (caseInfo.recordset.length > 0) {
-      const c = caseInfo.recordset[0];
-      console.log(`Case: ${c.CaseTitle} (ID: ${c.CaseId})`);
-      console.log(`Status: ${c.AttorneyStatus}`);
-      console.log(`Scheduled DateTime: ${c.ScheduledDateTime} (stored in DB as India time)`);
-      console.log(`Current UTC Time: ${c.CurrentServerTime_UTC}`);
-      console.log(`Current India Time: ${c.CurrentServerTime_IndiaTime} (UTC + 5:30)`);
-      console.log(`Minutes until trial: ${c.MinutesUntilTrial}`);
-      console.log('');
-      console.log(`✅ War room access: ${c.MinutesUntilTrial <= 60 && c.MinutesUntilTrial >= 0 ? 'OPEN (within 60 min of trial)' : 'CLOSED (opens 60 min before trial)'}`);
-      console.log(`✅ Notifications: ${c.MinutesUntilTrial <= 30 && c.MinutesUntilTrial >= 0 ? 'SHOULD BE SENT (within 30 min)' : 'NOT YET (sends 30 min before trial)'}`);
+      caseInfo.recordset.forEach((c, index) => {
+        console.log(`\n--- Case ${index + 1} ---`);
+        console.log(`Case: ${c.CaseTitle} (ID: ${c.CaseId})`);
+        console.log(`Status: ${c.AttorneyStatus}`);
+        console.log(`Attorney: ${c.AttorneyName} from ${c.AttorneyState}`);
+        console.log(`Timezone Offset: ${c.TimezoneOffset} minutes (${c.TimezoneOffset / 60} hours from UTC)`);
+        console.log(`Scheduled DateTime: ${c.ScheduledDateTime}`);
+        console.log(`Current UTC Time: ${c.CurrentServerTime_UTC}`);
+        console.log(`Current ${c.AttorneyState} Time: ${c.CurrentLocalTime}`);
+        console.log(`Minutes until trial: ${c.MinutesUntilTrial}`);
+        console.log(`✅ War room: ${c.MinutesUntilTrial <= 60 && c.MinutesUntilTrial >= 0 ? 'SHOULD BE OPEN (within 60 min)' : 'CLOSED (opens 60 min before trial)'}`);
+        console.log(`✅ Notifications: ${c.MinutesUntilTrial <= 30 && c.MinutesUntilTrial >= 0 ? 'SHOULD BE SENT (within 30 min)' : 'NOT YET (sends 30 min before trial)'}`);
+      });
     } else {
-      console.log('No cases found with status awaiting_trial');
+      console.log('No cases found');
     }
 
     process.exit(0);
