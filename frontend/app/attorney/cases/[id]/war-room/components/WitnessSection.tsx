@@ -116,6 +116,15 @@ export default function WitnessSection({ caseId }: { caseId: string }) {
         setSaved(true);
         setShowAddForm(false);
         fetchWitnesses();
+
+        // ✅ TRIGGER ADMIN REFRESH: Notify admin dashboard to update witness counts
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('witness-updated', {
+            detail: { caseId: caseId }
+          }));
+          console.log('👤 Dispatched witness-updated event for admin dashboard refresh');
+        }
+
         setTimeout(() => setSaved(false), 3000);
       } else {
         const data = await response.json();

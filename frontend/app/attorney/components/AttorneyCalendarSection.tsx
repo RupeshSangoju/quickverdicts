@@ -112,6 +112,38 @@ export default function AttorneyCalendarSection({ onBack }: AttorneyCalendarSect
     }
   }, [user]);
 
+  // ✅ AUTO-REFRESH: Poll for new cases every 30 seconds
+  useEffect(() => {
+    if (!user?.isVerified) return;
+
+    // Set up interval to auto-refresh cases
+    const refreshInterval = setInterval(() => {
+      console.log('🔄 Auto-refreshing calendar...');
+      fetchCases(true); // Use true to show refresh indicator
+    }, 30000); // 30 seconds
+
+    // Clean up interval when component unmounts
+    return () => clearInterval(refreshInterval);
+  }, [user]);
+
+  // ✅ LISTEN FOR CASE UPDATES: Refresh when a new case is created
+  useEffect(() => {
+    const handleCaseUpdate = () => {
+      console.log('📅 Case updated - refreshing calendar...');
+      fetchCases(true);
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('case-updated', handleCaseUpdate as EventListener);
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('case-updated', handleCaseUpdate as EventListener);
+      }
+    };
+  }, [user]);
+
   const fetchCases = async (showRefreshIndicator = false) => {
     if (!user) return;
 
@@ -365,7 +397,7 @@ export default function AttorneyCalendarSection({ onBack }: AttorneyCalendarSect
 
   const renderList = () => {
     const grouped = groupCasesByDate();
-    const sortedDates = Object.keys(grouped).sort();
+    const sortedDates = Object.keys(grouped).sort().reverse(); // Latest dates first
 
     if (sortedDates.length === 0) {
       return (

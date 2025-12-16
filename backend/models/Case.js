@@ -444,7 +444,20 @@ async function getAvailableCasesForJurors(county = null, jurorId = null, state =
           AND c.AdminApprovalStatus = 'approved'
           AND c.IsDeleted = 0
           -- ✅ IMPORTANT: Only show cases with future trial dates (not expired)
-          AND c.ScheduledDate >= CAST(DATEADD(MINUTE, 330, GETDATE()) AS DATE)
+          -- Use attorney's local timezone to determine if case is in the future
+          AND DATEDIFF(DAY,
+            DATEADD(MINUTE, CASE
+              WHEN a.State IN ('Connecticut', 'Delaware', 'Florida', 'Georgia', 'Maine', 'Maryland', 'Massachusetts', 'Michigan', 'New Hampshire', 'New Jersey', 'New York', 'North Carolina', 'Ohio', 'Pennsylvania', 'Rhode Island', 'South Carolina', 'Vermont', 'Virginia', 'West Virginia') THEN -300
+              WHEN a.State IN ('Alabama', 'Arkansas', 'Illinois', 'Iowa', 'Kansas', 'Kentucky', 'Louisiana', 'Minnesota', 'Mississippi', 'Missouri', 'Nebraska', 'North Dakota', 'Oklahoma', 'South Dakota', 'Tennessee', 'Texas', 'Wisconsin') THEN -360
+              WHEN a.State IN ('Arizona', 'Colorado', 'Idaho', 'Montana', 'New Mexico', 'Utah', 'Wyoming') THEN -420
+              WHEN a.State IN ('California', 'Nevada', 'Oregon', 'Washington') THEN -480
+              WHEN a.State = 'Alaska' THEN -540
+              WHEN a.State = 'Hawaii' THEN -600
+              WHEN a.State = 'India' THEN 330
+              ELSE 0
+            END, GETDATE()),
+            c.ScheduledDate
+          ) >= 0
       `;
 
       // Filter by State (REQUIRED for location matching)
