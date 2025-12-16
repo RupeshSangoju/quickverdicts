@@ -397,7 +397,7 @@ export default function AttorneyCalendarSection({ onBack }: AttorneyCalendarSect
 
   const renderList = () => {
     const grouped = groupCasesByDate();
-    const sortedDates = Object.keys(grouped).sort();
+    const sortedDates = Object.keys(grouped).sort().reverse(); // Latest dates first
 
     if (sortedDates.length === 0) {
       return (
