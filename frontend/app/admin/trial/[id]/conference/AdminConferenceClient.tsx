@@ -1208,46 +1208,39 @@ export default function AdminConferenceClient() {
       const combinedStream = new MediaStream(combinedTracks);
       console.log(`🎬 Recording stream: ${combinedTracks.length} tracks (1 video + ${screenAudioTracks.length} audio with ALL participants)`);
 
-      // Try to use MP4 format first, then fall back to WebM
+      // ✅ FIX: Prioritize most compatible codec for cross-platform playback
+      // WebM with VP9/VP8 has better browser support than MP4
+      // VP9 has better compression and quality than VP8
       let mimeType = '';
-      let useMP4 = false;
       let fileExtension = '';
 
-      // Check for MP4 support (best for cross-platform compatibility)
-      if (MediaRecorder.isTypeSupported('video/mp4')) {
-        mimeType = 'video/mp4';
-        useMP4 = true;
-        fileExtension = 'mp4';
-        console.log('📼 Recording in MP4 format (native)');
-      } else if (MediaRecorder.isTypeSupported('video/mp4;codecs=h264,aac')) {
-        mimeType = 'video/mp4;codecs=h264,aac';
-        useMP4 = true;
-        fileExtension = 'mp4';
-        console.log('📼 Recording in MP4 format (h264,aac)');
-      } else if (MediaRecorder.isTypeSupported('video/mp4;codecs=avc1,mp4a')) {
-        mimeType = 'video/mp4;codecs=avc1,mp4a';
-        useMP4 = true;
-        fileExtension = 'mp4';
-        console.log('📼 Recording in MP4 format (avc1,mp4a)');
+      // Priority 1: VP9 with Opus (best quality & compression, widely supported)
+      if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')) {
+        mimeType = 'video/webm;codecs=vp9,opus';
+        fileExtension = 'webm';
+        console.log('📼 Recording in WebM format (VP9 + Opus) - Best quality');
       }
-      // Fall back to WebM if MP4 not supported
+      // Priority 2: VP8 with Opus (good compatibility)
+      else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus')) {
+        mimeType = 'video/webm;codecs=vp8,opus';
+        fileExtension = 'webm';
+        console.log('📼 Recording in WebM format (VP8 + Opus)');
+      }
+      // Priority 3: H.264 with Opus in WebM (if available)
       else if (MediaRecorder.isTypeSupported('video/webm;codecs=h264,opus')) {
         mimeType = 'video/webm;codecs=h264,opus';
         fileExtension = 'webm';
-        console.log('📼 Recording in WebM format with H.264 (h264,opus)');
-      } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')) {
-        mimeType = 'video/webm;codecs=vp9,opus';
-        fileExtension = 'webm';
-        console.log('📼 Recording in WebM format (vp9,opus)');
-      } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus')) {
-        mimeType = 'video/webm;codecs=vp8,opus';
-        fileExtension = 'webm';
-        console.log('📼 Recording in WebM format (vp8,opus)');
-      } else {
+        console.log('📼 Recording in WebM format (H.264 + Opus)');
+      }
+      // Priority 4: Generic WebM (fallback)
+      else {
         mimeType = 'video/webm';
         fileExtension = 'webm';
-        console.log('📼 Recording in WebM format (default)');
+        console.log('📼 Recording in WebM format (default codec)');
       }
+
+      console.log('ℹ️ NOTE: WebM files may require VLC, Chrome, or Firefox to play on some systems.');
+      console.log('ℹ️ Mac users: Use VLC (free) or Chrome/Firefox browser to play WebM files.');
 
       // Create MediaRecorder
       const mediaRecorder = new MediaRecorder(combinedStream, {
@@ -1256,7 +1249,7 @@ export default function AdminConferenceClient() {
         audioBitsPerSecond: 128000
       });
 
-      console.log(`✅ Using ${useMP4 ? 'MP4' : 'WebM'} format for recording`);
+      console.log(`✅ MediaRecorder initialized with format: ${mimeType}`);
 
       recordedChunksRef.current = [];
 
@@ -1299,6 +1292,16 @@ export default function AdminConferenceClient() {
       }, 1000);
 
       console.log("✅ Recording started successfully with tab audio (all participants included)!");
+
+      // ✅ Notify about WebM format and playback options
+      setTimeout(() => {
+        toast.success(
+          `📹 Recording as ${fileExtension.toUpperCase()} format\n\n` +
+          `To play on Mac: Use VLC (free), Chrome, or Firefox\n` +
+          `To play on Windows: Use VLC, Chrome, Firefox, or default player`,
+          { duration: 8000 }
+        );
+      }, 2000);
     } catch (err) {
       console.error("❌ Recording start error:", err);
       toast.error("Failed to start recording: " + (err as Error).message, { duration: 5000 });
@@ -1326,23 +1329,26 @@ export default function AdminConferenceClient() {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
     const durationStr = `${Math.floor(recordingDuration / 60)}m${recordingDuration % 60}s`;
 
+    // ✅ FIX: Use the correct file extension based on actual recording format
+    const fileExtension = (recordingBlob as any).fileExtension || 'webm';
+
     console.log("💾 Downloading recorded video...");
+    console.log(`   Format: ${fileExtension.toUpperCase()}`);
     console.log(`   Size: ${(recordingBlob.size / 1024 / 1024).toFixed(2)} MB`);
     console.log(`   Duration: ${durationStr}`);
 
-    // Download directly as MP4 (browser will play WebM video even with .mp4 extension)
-    // For true MP4 conversion, use server-side processing
+    // ✅ Download with correct extension for cross-platform compatibility
     const url = URL.createObjectURL(recordingBlob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `trial-recording-${caseId}-${durationStr}-${timestamp}.mp4`;
+    a.download = `trial-recording-${caseId}-${durationStr}-${timestamp}.${fileExtension}`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    console.log("✅ Video downloaded successfully!");
-    toast.success("Recording downloaded successfully!", { duration: 4000 });
+    console.log(`✅ Video downloaded as ${fileExtension.toUpperCase()} format!`);
+    toast.success(`Recording downloaded as ${fileExtension.toUpperCase()} format!`, { duration: 4000 });
 
     // Reset state
     setRecordingBlob(null);
