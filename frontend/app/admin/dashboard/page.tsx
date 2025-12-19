@@ -1293,30 +1293,37 @@ export default function AdminDashboard() {
         </div>
 
         {/* Live Trials - Admin can join */}
-        {readyTrials.length > 0 && (
-          <div className="bg-gradient-to-br from-purple-50 via-indigo-50 to-blue-50 rounded-xl shadow-lg p-6 border-2 border-indigo-300">
-            <div className="flex items-center mb-6">
-              <div className="p-3 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg mr-3 animate-pulse">
-                <Video className="h-7 w-7 text-white" />
-              </div>
-              <div>
-                <h3 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                  Live Trials
-                </h3>
-                <p className="text-gray-700 text-sm font-medium">Join as admin to monitor and record proceedings</p>
-              </div>
-              <span className="ml-auto px-4 py-2 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-full text-sm font-bold shadow-lg animate-pulse">
-                {readyTrials.length} LIVE
-              </span>
+        <div className="bg-gradient-to-br from-purple-50 via-indigo-50 to-blue-50 rounded-xl shadow-lg p-6 border-2 border-indigo-300">
+          <div className="flex items-center mb-6">
+            <div className={`p-3 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg mr-3 ${readyTrials.length > 0 ? 'animate-pulse' : ''}`}>
+              <Video className="h-7 w-7 text-white" />
             </div>
+            <div>
+              <h3 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                Live Trials
+              </h3>
+              <p className="text-gray-700 text-sm font-medium">Join as admin to monitor and record proceedings</p>
+            </div>
+            <span className={`ml-auto px-4 py-2 ${readyTrials.length > 0 ? 'bg-gradient-to-r from-red-500 to-pink-500 animate-pulse' : 'bg-gray-400'} text-white rounded-full text-sm font-bold shadow-lg`}>
+              {readyTrials.length} LIVE
+            </span>
+          </div>
 
-            {loadingReadyTrials ? (
-              <div className="flex justify-center items-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-indigo-600"></div>
+          {loadingReadyTrials ? (
+            <div className="flex justify-center items-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-indigo-600"></div>
+            </div>
+          ) : readyTrials.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="inline-block p-4 bg-gray-100 rounded-full mb-4">
+                <Video className="h-12 w-12 text-gray-400" />
               </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {readyTrials.map((trial) => (
+              <p className="text-gray-600 font-medium">No live trials at the moment</p>
+              <p className="text-gray-500 text-sm mt-2">Trials scheduled for today will appear here</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {readyTrials.map((trial) => (
                   <div
                     key={trial.CaseId}
                     className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all p-5 border-2 border-indigo-200 hover:border-indigo-400"
@@ -1365,7 +1372,7 @@ export default function AdminDashboard() {
               </div>
             )}
           </div>
-        )}
+        </div>
 
         {/* Attorneys Table */}
         <div ref={attorneySectionRef} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
