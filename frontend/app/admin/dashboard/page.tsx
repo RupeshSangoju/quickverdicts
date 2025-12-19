@@ -1372,7 +1372,6 @@ export default function AdminDashboard() {
               </div>
             )}
           </div>
-        </div>
 
         {/* Attorneys Table */}
         <div ref={attorneySectionRef} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
