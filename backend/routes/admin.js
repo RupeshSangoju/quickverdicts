@@ -284,6 +284,32 @@ router.get("/trials/ready", async (req, res) => {
       LEFT JOIN dbo.TrialMeetings tm ON c.CaseId = tm.CaseId
       WHERE c.AttorneyStatus = 'join_trial'
         AND c.AdminApprovalStatus = 'approved'
+        -- ✅ EXCLUDE PAST TRIALS: Only show trials for today (using attorney's timezone)
+        AND CAST(c.ScheduledDate AS DATE) = CAST(
+          DATEADD(MINUTE, CASE
+            -- Eastern Time (UTC-5) = -300 minutes
+            WHEN a.State IN ('Connecticut', 'Delaware', 'Florida', 'Georgia', 'Maine', 'Maryland',
+                           'Massachusetts', 'Michigan', 'New Hampshire', 'New Jersey', 'New York',
+                           'North Carolina', 'Ohio', 'Pennsylvania', 'Rhode Island', 'South Carolina',
+                           'Vermont', 'Virginia', 'West Virginia') THEN -300
+            -- Central Time (UTC-6) = -360 minutes
+            WHEN a.State IN ('Alabama', 'Arkansas', 'Illinois', 'Iowa', 'Kansas', 'Kentucky',
+                           'Louisiana', 'Minnesota', 'Mississippi', 'Missouri', 'Nebraska',
+                           'North Dakota', 'Oklahoma', 'South Dakota', 'Tennessee', 'Texas',
+                           'Wisconsin') THEN -360
+            -- Mountain Time (UTC-7) = -420 minutes
+            WHEN a.State IN ('Arizona', 'Colorado', 'Idaho', 'Montana', 'Nevada', 'New Mexico',
+                           'Utah', 'Wyoming') THEN -420
+            -- Pacific Time (UTC-8) = -480 minutes
+            WHEN a.State IN ('California', 'Oregon', 'Washington') THEN -480
+            -- Alaska Time (UTC-9) = -540 minutes
+            WHEN a.State = 'Alaska' THEN -540
+            -- Hawaii Time (UTC-10) = -600 minutes
+            WHEN a.State = 'Hawaii' THEN -600
+            -- India Standard Time (UTC+5:30) = +330 minutes
+            WHEN a.State = 'India' THEN 330
+            ELSE 0
+          END, GETDATE()) AS DATE)
       ORDER BY c.ScheduledDate ASC, c.ScheduledTime ASC
     `);
 
