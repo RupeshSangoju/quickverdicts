@@ -269,6 +269,7 @@ async function createCase(data) {
         )
         .input("scheduledDate", sql.Date, data.scheduledDate)
         .input("scheduledTime", sql.VarChar, timeValue) // Use VarChar to prevent timezone conversion
+        .input("timezoneOffset", sql.Int, parseInt(data.timezoneOffset || 0, 10)) // Store timezone offset
         .input(
           "plaintiffGroups",
           sql.NVarChar,
@@ -302,14 +303,14 @@ async function createCase(data) {
         ).query(`
           INSERT INTO dbo.Cases (
             AttorneyId, CaseType, CaseJurisdiction, CaseTier, State, County, CaseTitle, CaseDescription,
-            PaymentMethod, PaymentAmount, ScheduledDate, ScheduledTime,
+            PaymentMethod, PaymentAmount, ScheduledDate, ScheduledTime, TimezoneOffset,
             PlaintiffGroups, DefendantGroups, VoirDire1Questions, VoirDire2Questions,
             RequiredJurors, AttorneyStatus, AdminApprovalStatus,
             IsDeleted, CreatedAt, UpdatedAt
           )
           VALUES (
             @attorneyId, @caseType, @caseJurisdiction, @caseTier, @state, @county, @caseTitle, @caseDescription,
-            @paymentMethod, @paymentAmount, @scheduledDate, @scheduledTime,
+            @paymentMethod, @paymentAmount, @scheduledDate, @scheduledTime, @timezoneOffset,
             @plaintiffGroups, @defendantGroups, @voirDire1Questions, @voirDire2Questions,
             @requiredJurors, @attorneyStatus, @adminApprovalStatus,
             0, GETUTCDATE(), GETUTCDATE()
@@ -358,7 +359,10 @@ async function findById(caseId) {
       if (caseData) {
         // Convert UTC time to attorney's local timezone for display
         if (caseData.ScheduledDate && caseData.ScheduledTime) {
-          const timezoneOffset = getTimezoneOffsetByState(caseData.AttorneyState || caseData.State);
+          // Use stored timezone offset or fallback to state-based
+          const timezoneOffset = caseData.TimezoneOffset !== null && caseData.TimezoneOffset !== undefined
+            ? caseData.TimezoneOffset
+            : getTimezoneOffsetByState(caseData.AttorneyState || caseData.State);
 
           // Extract date using UTC methods to avoid timezone issues
           const scheduledDateObj = caseData.ScheduledDate;
@@ -450,8 +454,10 @@ async function getCasesByAttorney(attorneyId, options = {}) {
       // Convert UTC times back to attorney's local timezone for display
       const cases = result.recordset.map(caseData => {
         if (caseData.ScheduledDate && caseData.ScheduledTime) {
-          // Get timezone offset based on attorney's state
-          const timezoneOffset = getTimezoneOffsetByState(caseData.AttorneyState || caseData.State);
+          // Use stored timezone offset (from when case was created) or fallback to state-based
+          const timezoneOffset = caseData.TimezoneOffset !== null && caseData.TimezoneOffset !== undefined
+            ? caseData.TimezoneOffset
+            : getTimezoneOffsetByState(caseData.AttorneyState || caseData.State);
 
           // Extract date using UTC methods to avoid timezone interpretation issues
           const scheduledDateObj = caseData.ScheduledDate;
@@ -468,7 +474,7 @@ async function getCasesByAttorney(attorneyId, options = {}) {
 
           const timeStr = caseData.ScheduledTime;
 
-          console.log(`🔍 Case ${caseData.CaseId} - UTC in DB: ${dateStr} ${timeStr}`);
+          console.log(`🔍 Case ${caseData.CaseId} - UTC in DB: ${dateStr} ${timeStr} | TZ Offset: ${timezoneOffset} min`);
 
           // Create UTC datetime (database stores UTC)
           const utcDateTime = new Date(`${dateStr}T${timeStr}Z`);
