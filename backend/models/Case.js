@@ -181,31 +181,56 @@ async function createCase(data) {
   try {
     validateCaseData(data);
 
-    // Convert scheduledTime string to HH:MM:SS format for SQL Server TIME type
-    // Keep as string to avoid timezone conversion issues
+    // Convert scheduledTime from attorney's local timezone to UTC
     let timeValue = null;
-    if (data.scheduledTime) {
+    let utcDateTimeForScheduler = null;
+
+    if (data.scheduledTime && data.scheduledDate) {
       const trimmedTime = data.scheduledTime.trim();
       const timeParts = trimmedTime.split(':');
 
-      // Ensure we have HH:MM:SS format
+      // Parse time components
       let hours, minutes, seconds;
       if (timeParts.length === 2) {
-        hours = timeParts[0].padStart(2, '0');
-        minutes = timeParts[1].padStart(2, '0');
-        seconds = '00';
+        hours = parseInt(timeParts[0], 10);
+        minutes = parseInt(timeParts[1], 10);
+        seconds = 0;
       } else if (timeParts.length === 3) {
-        hours = timeParts[0].padStart(2, '0');
-        minutes = timeParts[1].padStart(2, '0');
-        seconds = timeParts[2].padStart(2, '0');
+        hours = parseInt(timeParts[0], 10);
+        minutes = parseInt(timeParts[1], 10);
+        seconds = parseInt(timeParts[2], 10);
       } else {
         throw new Error("Invalid time format after validation");
       }
 
-      // Store as string in HH:MM:SS format to prevent timezone conversion
-      timeValue = `${hours}:${minutes}:${seconds}`;
+      console.log(`⏰ Attorney Local Time: ${data.scheduledDate} ${trimmedTime}`);
+      console.log(`🌍 Timezone Offset: ${data.timezoneOffset} minutes (${data.timezoneName || 'Unknown'})`);
 
-      console.log(`📅 Converted scheduledTime: "${data.scheduledTime}" → String: ${timeValue}`);
+      // Create a Date object in attorney's local timezone
+      // Note: JavaScript Date always works in local server timezone, so we need to manually adjust
+      const localDateTime = new Date(`${data.scheduledDate}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`);
+
+      // Convert to UTC by subtracting the timezone offset
+      // timezoneOffset is in minutes (positive = ahead of UTC, negative = behind UTC)
+      const timezoneOffsetMinutes = parseInt(data.timezoneOffset || 0, 10);
+      const utcDateTime = new Date(localDateTime.getTime() - (timezoneOffsetMinutes * 60 * 1000));
+
+      // Extract UTC time components
+      const utcHours = utcDateTime.getUTCHours();
+      const utcMinutes = utcDateTime.getUTCMinutes();
+      const utcSeconds = utcDateTime.getUTCSeconds();
+      const utcDate = utcDateTime.toISOString().split('T')[0]; // YYYY-MM-DD
+
+      // Store as string in HH:MM:SS format
+      timeValue = `${String(utcHours).padStart(2, '0')}:${String(utcMinutes).padStart(2, '0')}:${String(utcSeconds).padStart(2, '0')}`;
+
+      console.log(`🌐 Converted to UTC: ${utcDate} ${timeValue}`);
+      console.log(`   → Attorney Local: ${data.scheduledDate} ${trimmedTime} (${data.timezoneName})`);
+      console.log(`   → UTC Time: ${utcDate} ${timeValue}`);
+
+      // Update scheduledDate to UTC date (in case it changed due to timezone conversion)
+      data.scheduledDate = utcDate;
+      utcDateTimeForScheduler = utcDateTime;
     }
 
     return await executeQuery(async (pool) => {
