@@ -340,13 +340,14 @@ async function findById(caseId) {
 
     return await executeQuery(async (pool) => {
       const result = await pool.request().input("id", sql.Int, id).query(`
-          SELECT 
-            c.*, 
+          SELECT
+            c.*,
             a.FirstName + ' ' + a.LastName AS AttorneyName,
             a.Email AS AttorneyEmail,
             a.LawFirmName,
             a.PhoneNumber AS AttorneyPhone,
             a.StateBarNumber,
+            a.State AS AttorneyState,
             ISNULL(c.RequiredJurors, 7) AS RequiredJurors
           FROM dbo.Cases c
           LEFT JOIN dbo.Attorneys a ON c.AttorneyId = a.AttorneyId
@@ -355,6 +356,17 @@ async function findById(caseId) {
 
       const caseData = result.recordset[0];
       if (caseData) {
+        // Convert UTC time to attorney's local timezone for display
+        if (caseData.ScheduledDate && caseData.ScheduledTime) {
+          const timezoneOffset = getTimezoneOffsetByState(caseData.AttorneyState || caseData.State);
+          const scheduledDate = caseData.ScheduledDate;
+          const scheduledTime = caseData.ScheduledTime;
+          const utcDateTime = new Date(`${scheduledDate.toISOString().split('T')[0]}T${scheduledTime}Z`);
+          const localDateTime = new Date(utcDateTime.getTime() + (timezoneOffset * 60 * 1000));
+          caseData.ScheduledDate = localDateTime.toISOString().split('T')[0];
+          caseData.ScheduledTime = localDateTime.toISOString().split('T')[1].substring(0, 8);
+        }
+
         // Parse JSON fields
         caseData.PlaintiffGroups = safeJSONParse(caseData.PlaintiffGroups);
         caseData.DefendantGroups = safeJSONParse(caseData.DefendantGroups);
@@ -382,14 +394,17 @@ async function getCasesByAttorney(attorneyId, options = {}) {
     return await executeQuery(async (pool) => {
       const request = pool.request().input("id", sql.Int, id);
 
+      // Join with Attorneys to get timezone info for conversion
       let query = `
         SELECT
           c.*,
+          a.State AS AttorneyState,
           (SELECT COUNT(*) FROM dbo.JurorApplications ja
            WHERE ja.CaseId = c.CaseId AND ja.Status = 'approved') AS ApprovedJurors,
           (SELECT COUNT(*) FROM dbo.JurorApplications ja
            WHERE ja.CaseId = c.CaseId AND ja.Status = 'pending') AS PendingApplications
         FROM dbo.Cases c
+        LEFT JOIN dbo.Attorneys a ON c.AttorneyId = a.AttorneyId
         WHERE c.AttorneyId = @id AND c.IsDeleted = 0
       `;
 
@@ -410,12 +425,93 @@ async function getCasesByAttorney(attorneyId, options = {}) {
       query += " ORDER BY c.ScheduledDate DESC, c.CreatedAt DESC";
 
       const result = await request.query(query);
-      return result.recordset;
+
+      // Convert UTC times back to attorney's local timezone for display
+      const cases = result.recordset.map(caseData => {
+        if (caseData.ScheduledDate && caseData.ScheduledTime) {
+          // Get timezone offset based on attorney's state
+          const timezoneOffset = getTimezoneOffsetByState(caseData.AttorneyState || caseData.State);
+
+          // Parse UTC time from database
+          const scheduledDate = caseData.ScheduledDate;
+          const scheduledTime = caseData.ScheduledTime;
+
+          // Create UTC datetime
+          const utcDateTime = new Date(`${scheduledDate.toISOString().split('T')[0]}T${scheduledTime}Z`);
+
+          // Convert to local time by adding timezone offset
+          const localDateTime = new Date(utcDateTime.getTime() + (timezoneOffset * 60 * 1000));
+
+          // Extract local date and time
+          const localDate = localDateTime.toISOString().split('T')[0];
+          const localTime = localDateTime.toISOString().split('T')[1].substring(0, 8);
+
+          // Override with local time for display
+          caseData.ScheduledDate = localDate;
+          caseData.ScheduledTime = localTime;
+        }
+
+        return caseData;
+      });
+
+      return cases;
     });
   } catch (error) {
     console.error("❌ [Case.getCasesByAttorney] Error:", error.message);
     throw error;
   }
+}
+
+// Helper function to get timezone offset by state
+function getTimezoneOffsetByState(state) {
+  if (!state) return 0;
+
+  const stateUpper = state.toUpperCase();
+
+  // India Standard Time (UTC+5:30) = +330 minutes
+  if (stateUpper === 'INDIA' || stateUpper === 'IN') {
+    return 330;
+  }
+
+  // Eastern Time (UTC-5) = -300 minutes
+  if (['CONNECTICUT', 'DELAWARE', 'FLORIDA', 'GEORGIA', 'MAINE', 'MARYLAND',
+       'MASSACHUSETTS', 'MICHIGAN', 'NEW HAMPSHIRE', 'NEW JERSEY', 'NEW YORK',
+       'NORTH CAROLINA', 'OHIO', 'PENNSYLVANIA', 'RHODE ISLAND', 'SOUTH CAROLINA',
+       'VERMONT', 'VIRGINIA', 'WEST VIRGINIA'].includes(stateUpper)) {
+    return -300;
+  }
+
+  // Central Time (UTC-6) = -360 minutes
+  if (['ALABAMA', 'ARKANSAS', 'ILLINOIS', 'IOWA', 'KANSAS', 'KENTUCKY',
+       'LOUISIANA', 'MINNESOTA', 'MISSISSIPPI', 'MISSOURI', 'NEBRASKA',
+       'NORTH DAKOTA', 'OKLAHOMA', 'SOUTH DAKOTA', 'TENNESSEE', 'TEXAS',
+       'WISCONSIN'].includes(stateUpper)) {
+    return -360;
+  }
+
+  // Mountain Time (UTC-7) = -420 minutes
+  if (['ARIZONA', 'COLORADO', 'IDAHO', 'MONTANA', 'NEW MEXICO', 'UTAH',
+       'WYOMING'].includes(stateUpper)) {
+    return -420;
+  }
+
+  // Pacific Time (UTC-8) = -480 minutes
+  if (['CALIFORNIA', 'NEVADA', 'OREGON', 'WASHINGTON'].includes(stateUpper)) {
+    return -480;
+  }
+
+  // Alaska Time (UTC-9) = -540 minutes
+  if (stateUpper === 'ALASKA') {
+    return -540;
+  }
+
+  // Hawaii Time (UTC-10) = -600 minutes
+  if (stateUpper === 'HAWAII') {
+    return -600;
+  }
+
+  // Default to UTC if state not recognized
+  return 0;
 }
 
 async function getCasesPendingAdminApproval(limit = 50) {
