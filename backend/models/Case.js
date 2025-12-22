@@ -206,31 +206,44 @@ async function createCase(data) {
       console.log(`⏰ Attorney Local Time: ${data.scheduledDate} ${trimmedTime}`);
       console.log(`🌍 Timezone Offset: ${data.timezoneOffset} minutes (${data.timezoneName || 'Unknown'})`);
 
-      // Create a Date object in attorney's local timezone
-      // Note: JavaScript Date always works in local server timezone, so we need to manually adjust
-      const localDateTime = new Date(`${data.scheduledDate}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`);
+      // Parse the scheduled date components
+      const dateParts = data.scheduledDate.split('-');
+      const year = parseInt(dateParts[0], 10);
+      const month = parseInt(dateParts[1], 10) - 1; // Month is 0-indexed in Date
+      const day = parseInt(dateParts[2], 10);
 
-      // Convert to UTC by subtracting the timezone offset
-      // timezoneOffset is in minutes (positive = ahead of UTC, negative = behind UTC)
+      // Get timezone offset (positive = ahead of UTC, negative = behind UTC)
       const timezoneOffsetMinutes = parseInt(data.timezoneOffset || 0, 10);
-      const utcDateTime = new Date(localDateTime.getTime() - (timezoneOffsetMinutes * 60 * 1000));
 
-      // Extract UTC time components
+      // Create UTC timestamp representing attorney's local time
+      // Date.UTC() creates timestamp in UTC, avoiding server timezone interpretation issues
+      const localAsUTC = Date.UTC(year, month, day, hours, minutes, seconds);
+
+      // Convert to actual UTC by subtracting timezone offset
+      // If attorney is in IST (UTC+5:30 = +330 min), subtract 330 min to get UTC
+      const actualUTC = localAsUTC - (timezoneOffsetMinutes * 60 * 1000);
+
+      // Create Date object from UTC timestamp
+      const utcDateTime = new Date(actualUTC);
+
+      // Extract UTC date and time components
+      const utcYear = utcDateTime.getUTCFullYear();
+      const utcMonth = String(utcDateTime.getUTCMonth() + 1).padStart(2, '0');
+      const utcDay = String(utcDateTime.getUTCDate()).padStart(2, '0');
       const utcHours = utcDateTime.getUTCHours();
       const utcMinutes = utcDateTime.getUTCMinutes();
       const utcSeconds = utcDateTime.getUTCSeconds();
-      const utcDate = utcDateTime.toISOString().split('T')[0]; // YYYY-MM-DD
+      const utcDate = `${utcYear}-${utcMonth}-${utcDay}`;
 
       // Store as string in HH:MM:SS format
       timeValue = `${String(utcHours).padStart(2, '0')}:${String(utcMinutes).padStart(2, '0')}:${String(utcSeconds).padStart(2, '0')}`;
 
       console.log(`🌐 Converted to UTC: ${utcDate} ${timeValue}`);
       console.log(`   → Attorney Local: ${data.scheduledDate} ${trimmedTime} (${data.timezoneName})`);
-      console.log(`   → UTC Time: ${utcDate} ${timeValue}`);
+      console.log(`   → Stored in DB (UTC): ${utcDate} ${timeValue}`);
 
       // Update scheduledDate to UTC date (in case it changed due to timezone conversion)
       data.scheduledDate = utcDate;
-      utcDateTimeForScheduler = utcDateTime;
     }
 
     return await executeQuery(async (pool) => {
