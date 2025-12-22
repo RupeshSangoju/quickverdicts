@@ -200,11 +200,12 @@ export default function AttorneyCalendarSection({ onBack }: AttorneyCalendarSect
     fetchCases(true);
   };
 
-  // Group cases by date
+  // Group cases by date - ONLY show approved cases
   const groupCasesByDate = () => {
     const grouped: { [date: string]: Case[] } = {};
     cases.forEach((c) => {
-      if (c.ScheduledDate) {
+      // Only show approved cases in calendar
+      if (c.ScheduledDate && c.AdminApprovalStatus === "approved") {
         grouped[c.ScheduledDate] = grouped[c.ScheduledDate] || [];
         grouped[c.ScheduledDate].push(c);
       }
