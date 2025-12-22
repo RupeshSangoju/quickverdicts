@@ -560,6 +560,52 @@ function getTimezoneOffsetByState(state) {
   return 0;
 }
 
+// Helper function to convert case UTC time to local time
+function convertCaseTimeToLocal(caseData) {
+  if (!caseData.ScheduledDate || !caseData.ScheduledTime) {
+    return caseData;
+  }
+
+  // Use stored timezone offset or fallback to state-based
+  const timezoneOffset = caseData.TimezoneOffset !== null && caseData.TimezoneOffset !== undefined
+    ? caseData.TimezoneOffset
+    : getTimezoneOffsetByState(caseData.AttorneyState || caseData.State);
+
+  // Extract date using UTC methods to avoid timezone issues
+  const scheduledDateObj = caseData.ScheduledDate;
+  let dateStr;
+  if (scheduledDateObj instanceof Date) {
+    const year = scheduledDateObj.getUTCFullYear();
+    const month = String(scheduledDateObj.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(scheduledDateObj.getUTCDate()).padStart(2, '0');
+    dateStr = `${year}-${month}-${day}`;
+  } else {
+    dateStr = scheduledDateObj;
+  }
+
+  const timeStr = caseData.ScheduledTime;
+
+  // Create UTC datetime (database stores UTC)
+  const utcDateTime = new Date(`${dateStr}T${timeStr}Z`);
+
+  // Convert to local time by adding timezone offset
+  const localDateTime = new Date(utcDateTime.getTime() + (timezoneOffset * 60 * 1000));
+
+  // Extract local date and time using UTC methods
+  const localYear = localDateTime.getUTCFullYear();
+  const localMonth = String(localDateTime.getUTCMonth() + 1).padStart(2, '0');
+  const localDay = String(localDateTime.getUTCDate()).padStart(2, '0');
+  const localHours = String(localDateTime.getUTCHours()).padStart(2, '0');
+  const localMinutes = String(localDateTime.getUTCMinutes()).padStart(2, '0');
+  const localSeconds = String(localDateTime.getUTCSeconds()).padStart(2, '0');
+
+  // Override with local time for display
+  caseData.ScheduledDate = `${localYear}-${localMonth}-${localDay}`;
+  caseData.ScheduledTime = `${localHours}:${localMinutes}:${localSeconds}`;
+
+  return caseData;
+}
+
 async function getCasesPendingAdminApproval(limit = 50) {
   try {
     return await executeQuery(async (pool) => {
@@ -567,12 +613,13 @@ async function getCasesPendingAdminApproval(limit = 50) {
         .request()
         .input("limit", sql.Int, Math.min(100, Math.max(1, limit))).query(`
           SELECT TOP(@limit)
-            c.*, 
+            c.*,
             a.FirstName + ' ' + a.LastName AS AttorneyName,
             a.Email AS AttorneyEmail,
             a.LawFirmName,
             a.PhoneNumber AS AttorneyPhone,
             a.StateBarNumber,
+            a.State AS AttorneyState,
             ISNULL(c.RequiredJurors, 7) AS RequiredJurors
           FROM dbo.Cases c
           LEFT JOIN dbo.Attorneys a ON c.AttorneyId = a.AttorneyId
@@ -580,7 +627,9 @@ async function getCasesPendingAdminApproval(limit = 50) {
           ORDER BY c.CreatedAt ASC
         `);
 
-      return result.recordset;
+      // Convert UTC times to attorney's local timezone
+      const cases = result.recordset.map(caseData => convertCaseTimeToLocal(caseData));
+      return cases;
     });
   } catch (error) {
     console.error(
@@ -743,11 +792,12 @@ async function getAllCases(options = {}) {
       const whereClause = whereClauses.join(" AND ");
 
       const query = `
-        SELECT 
+        SELECT
           c.*,
           a.FirstName + ' ' + a.LastName AS AttorneyName,
           a.Email AS AttorneyEmail,
           a.LawFirmName,
+          a.State AS AttorneyState,
           ISNULL(c.RequiredJurors, 7) AS RequiredJurors,
           (SELECT COUNT(*) FROM dbo.JurorApplications ja
            WHERE ja.CaseId = c.CaseId AND ja.Status = 'approved') AS ApprovedJurors
@@ -764,8 +814,11 @@ async function getAllCases(options = {}) {
 
       const result = await request.query(query);
 
+      // Convert UTC times to attorney's local timezone
+      const casesWithLocalTime = result.recordsets[0].map(caseData => convertCaseTimeToLocal(caseData));
+
       return {
-        cases: result.recordsets[0],
+        cases: casesWithLocalTime,
         total: result.recordsets[1][0].total,
         page,
         limit,
