@@ -359,12 +359,33 @@ async function findById(caseId) {
         // Convert UTC time to attorney's local timezone for display
         if (caseData.ScheduledDate && caseData.ScheduledTime) {
           const timezoneOffset = getTimezoneOffsetByState(caseData.AttorneyState || caseData.State);
-          const scheduledDate = caseData.ScheduledDate;
-          const scheduledTime = caseData.ScheduledTime;
-          const utcDateTime = new Date(`${scheduledDate.toISOString().split('T')[0]}T${scheduledTime}Z`);
+
+          // Extract date using UTC methods to avoid timezone issues
+          const scheduledDateObj = caseData.ScheduledDate;
+          let dateStr;
+          if (scheduledDateObj instanceof Date) {
+            const year = scheduledDateObj.getUTCFullYear();
+            const month = String(scheduledDateObj.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(scheduledDateObj.getUTCDate()).padStart(2, '0');
+            dateStr = `${year}-${month}-${day}`;
+          } else {
+            dateStr = scheduledDateObj;
+          }
+
+          const timeStr = caseData.ScheduledTime;
+          const utcDateTime = new Date(`${dateStr}T${timeStr}Z`);
           const localDateTime = new Date(utcDateTime.getTime() + (timezoneOffset * 60 * 1000));
-          caseData.ScheduledDate = localDateTime.toISOString().split('T')[0];
-          caseData.ScheduledTime = localDateTime.toISOString().split('T')[1].substring(0, 8);
+
+          // Extract using UTC methods
+          const localYear = localDateTime.getUTCFullYear();
+          const localMonth = String(localDateTime.getUTCMonth() + 1).padStart(2, '0');
+          const localDay = String(localDateTime.getUTCDate()).padStart(2, '0');
+          const localHours = String(localDateTime.getUTCHours()).padStart(2, '0');
+          const localMinutes = String(localDateTime.getUTCMinutes()).padStart(2, '0');
+          const localSeconds = String(localDateTime.getUTCSeconds()).padStart(2, '0');
+
+          caseData.ScheduledDate = `${localYear}-${localMonth}-${localDay}`;
+          caseData.ScheduledTime = `${localHours}:${localMinutes}:${localSeconds}`;
         }
 
         // Parse JSON fields
@@ -432,23 +453,42 @@ async function getCasesByAttorney(attorneyId, options = {}) {
           // Get timezone offset based on attorney's state
           const timezoneOffset = getTimezoneOffsetByState(caseData.AttorneyState || caseData.State);
 
-          // Parse UTC time from database
-          const scheduledDate = caseData.ScheduledDate;
-          const scheduledTime = caseData.ScheduledTime;
+          // Extract date using UTC methods to avoid timezone interpretation issues
+          const scheduledDateObj = caseData.ScheduledDate;
+          let dateStr;
+          if (scheduledDateObj instanceof Date) {
+            // Use UTC methods to extract date - avoids server timezone issues
+            const year = scheduledDateObj.getUTCFullYear();
+            const month = String(scheduledDateObj.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(scheduledDateObj.getUTCDate()).padStart(2, '0');
+            dateStr = `${year}-${month}-${day}`;
+          } else {
+            dateStr = scheduledDateObj;
+          }
 
-          // Create UTC datetime
-          const utcDateTime = new Date(`${scheduledDate.toISOString().split('T')[0]}T${scheduledTime}Z`);
+          const timeStr = caseData.ScheduledTime;
+
+          console.log(`🔍 Case ${caseData.CaseId} - UTC in DB: ${dateStr} ${timeStr}`);
+
+          // Create UTC datetime (database stores UTC)
+          const utcDateTime = new Date(`${dateStr}T${timeStr}Z`);
 
           // Convert to local time by adding timezone offset
           const localDateTime = new Date(utcDateTime.getTime() + (timezoneOffset * 60 * 1000));
 
-          // Extract local date and time
-          const localDate = localDateTime.toISOString().split('T')[0];
-          const localTime = localDateTime.toISOString().split('T')[1].substring(0, 8);
+          // Extract local date and time using UTC methods
+          const localYear = localDateTime.getUTCFullYear();
+          const localMonth = String(localDateTime.getUTCMonth() + 1).padStart(2, '0');
+          const localDay = String(localDateTime.getUTCDate()).padStart(2, '0');
+          const localHours = String(localDateTime.getUTCHours()).padStart(2, '0');
+          const localMinutes = String(localDateTime.getUTCMinutes()).padStart(2, '0');
+          const localSeconds = String(localDateTime.getUTCSeconds()).padStart(2, '0');
 
           // Override with local time for display
-          caseData.ScheduledDate = localDate;
-          caseData.ScheduledTime = localTime;
+          caseData.ScheduledDate = `${localYear}-${localMonth}-${localDay}`;
+          caseData.ScheduledTime = `${localHours}:${localMinutes}:${localSeconds}`;
+
+          console.log(`📤 Returning - Local (${caseData.AttorneyState}): ${caseData.ScheduledDate} ${caseData.ScheduledTime}`);
         }
 
         return caseData;
