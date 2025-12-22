@@ -1,6 +1,9 @@
 // Quick script to check what the API is returning for cases
 // This will help debug the timezone issue
 
+// Load environment variables first
+require('dotenv').config();
+
 const { poolPromise, sql } = require("./config/db");
 
 async function checkCaseInDB() {
