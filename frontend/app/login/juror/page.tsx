@@ -150,12 +150,21 @@ export default function JurorLogin() {
     setLoading(true);
 
     try {
+      // Capture user's timezone offset
+      const timezoneOffset = -new Date().getTimezoneOffset(); // Invert sign: positive = ahead of UTC
+
+      console.log("🌍 Juror login - Timezone:", {
+        timezoneOffset,
+        timezoneName: Intl.DateTimeFormat().resolvedOptions().timeZone
+      });
+
       // Call login API
       const response = await post<JurorLoginResponse>(
         "/auth/juror/login",
         {
           email: email.trim().toLowerCase(),
           password: password,
+          timezoneOffset: timezoneOffset,
         }
       );
 

@@ -151,12 +151,21 @@ export default function AttorneyLogin() {
     setLoading(true);
 
     try {
+      // Capture user's timezone offset
+      const timezoneOffset = -new Date().getTimezoneOffset(); // Invert sign: positive = ahead of UTC
+
+      console.log("🌍 Attorney login - Timezone:", {
+        timezoneOffset,
+        timezoneName: Intl.DateTimeFormat().resolvedOptions().timeZone
+      });
+
       // Call login API
       const response = await post<AttorneyLoginResponse>(
         "/auth/attorney/login",
         {
           email: email.trim().toLowerCase(),
           password: password,
+          timezoneOffset: timezoneOffset,
         }
       );
 

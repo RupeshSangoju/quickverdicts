@@ -79,9 +79,18 @@ export default function AdminLogin() {
     setLoading(true);
 
     try {
+      // Capture user's timezone offset
+      const timezoneOffset = -new Date().getTimezoneOffset(); // Invert sign: positive = ahead of UTC
+
+      console.log("🌍 Admin login - Timezone:", {
+        timezoneOffset,
+        timezoneName: Intl.DateTimeFormat().resolvedOptions().timeZone
+      });
+
       const response = await post<AdminLoginResponse>("/auth/admin/login", {
         email: formData.email.trim().toLowerCase(),
         password: formData.password,
+        timezoneOffset: timezoneOffset,
       });
 
       if (!response.success || !response.token || !response.user) {

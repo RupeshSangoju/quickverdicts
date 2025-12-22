@@ -244,6 +244,33 @@ async function updateLastLogin(jurorId) {
   }
 }
 
+async function updateTimezoneOffset(jurorId, timezoneOffset) {
+  try {
+    const id = parseInt(jurorId, 10);
+    const offset = parseInt(timezoneOffset, 10);
+
+    if (isNaN(id) || id <= 0) throw new Error("Valid juror ID is required");
+    if (isNaN(offset)) throw new Error("Valid timezone offset is required");
+
+    await executeQuery(async (pool) => {
+      await pool.request()
+        .input("jurorId", sql.Int, id)
+        .input("timezoneOffset", sql.Int, offset)
+        .query(`
+          UPDATE dbo.Jurors
+          SET TimezoneOffset = @timezoneOffset, UpdatedAt = GETUTCDATE()
+          WHERE JurorId = @jurorId
+        `);
+    });
+
+    console.log(`✅ Updated timezone offset for Juror ${id}: ${offset} minutes`);
+    return true;
+  } catch (error) {
+    console.error("❌ [Juror.updateTimezoneOffset] Error:", error.message);
+    throw error;
+  }
+}
+
 async function updateVerificationStatus(jurorId, status) {
   try {
     const id = parseInt(jurorId, 10);
@@ -710,6 +737,7 @@ module.exports = {
 
   // Updates
   updateLastLogin,
+  updateTimezoneOffset,
   updateVerificationStatus,
   updateTaskCompletion,
   updateOnboardingStatus,
