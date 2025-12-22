@@ -302,21 +302,35 @@ async function reviewCaseApproval(req, res) {
 
 /**
  * Get all cases with filtering for admin dashboard
- * FIXED: Better handling of null attorney ID
+ * FIXED: Use Case.getAllCases() with timezone conversion
  */
 async function getAllCases(req, res) {
   try {
-    const { status, page = 1, limit = 20 } = req.query;
+    const { page = 1, limit = 20, adminApprovalStatus, attorneyStatus } = req.query;
 
-    // Get all cases (passing undefined to get all attorneys)
-    const cases = await Case.getCasesByAttorney(undefined, status);
+    const options = {
+      page: parseInt(page),
+      limit: parseInt(limit),
+    };
+
+    if (adminApprovalStatus) {
+      options.adminApprovalStatus = adminApprovalStatus;
+    }
+
+    if (attorneyStatus) {
+      options.attorneyStatus = attorneyStatus;
+    }
+
+    // Use Case.getAllCases which has timezone conversion built in
+    const result = await Case.getAllCases(options);
 
     res.json({
       success: true,
-      cases,
-      totalCases: cases.length,
-      page: parseInt(page),
-      limit: parseInt(limit),
+      cases: result.cases,
+      totalCases: result.total,
+      page: result.page,
+      limit: result.limit,
+      totalPages: result.totalPages,
     });
   } catch (error) {
     console.error("Get all cases error:", error);
