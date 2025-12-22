@@ -266,6 +266,18 @@ export default function ScheduleTrialPage() {
         }
       };
 
+      // Capture attorney's timezone offset (in minutes from UTC)
+      // Negative values mean behind UTC, positive means ahead of UTC
+      const timezoneOffset = new Date().getTimezoneOffset(); // e.g., India = -330, UK = 0, US EST = 300
+      const timezoneName = Intl.DateTimeFormat().resolvedOptions().timeZone; // e.g., "Asia/Kolkata"
+
+      console.log("📍 Attorney timezone info:", {
+        timezoneName,
+        timezoneOffset,
+        localTime: selectedTime,
+        scheduledDate: selectedDate ? formatDateString(selectedDate) : '',
+      });
+
       const caseDetails = {
         state: localStorage.getItem("state"),
         county: localStorage.getItem("county"),
@@ -279,7 +291,9 @@ export default function ScheduleTrialPage() {
         plaintiffGroups: JSON.parse(localStorage.getItem("plaintiffGroups") || "[]"),
         defendantGroups: JSON.parse(localStorage.getItem("defendantGroups") || "[]"),
         scheduledDate: selectedDate ? formatDateString(selectedDate) : '',
-        scheduledTime: selectedTime.trim(), // Send as HH:MM format, backend will normalize
+        scheduledTime: selectedTime.trim(), // Send as HH:MM format in attorney's LOCAL time
+        timezoneOffset: -timezoneOffset, // Invert sign: positive = ahead of UTC, negative = behind UTC
+        timezoneName: timezoneName,
         name,
         email,
       };
@@ -307,7 +321,9 @@ export default function ScheduleTrialPage() {
         paymentMethod: caseDetails.paymentMethod,
         paymentAmount: caseDetails.paymentAmount,
         scheduledDate: caseDetails.scheduledDate,
-        scheduledTime: caseDetails.scheduledTime,
+        scheduledTime: caseDetails.scheduledTime, // Attorney's LOCAL time
+        timezoneOffset: caseDetails.timezoneOffset, // Minutes ahead of UTC
+        timezoneName: caseDetails.timezoneName, // e.g., "Asia/Kolkata"
         plaintiffGroups: caseDetails.plaintiffGroups,
         defendantGroups: caseDetails.defendantGroups,
         voirDire2Questions: voirDire2Questions,
@@ -323,6 +339,8 @@ export default function ScheduleTrialPage() {
         caseTitle: payload.caseTitle,
         scheduledDate: payload.scheduledDate,
         scheduledTime: payload.scheduledTime,
+        timezoneOffset: payload.timezoneOffset,
+        timezoneName: payload.timezoneName,
         plaintiffCount: payload.plaintiffGroups?.length || 0,
         defendantCount: payload.defendantGroups?.length || 0,
         voirDireCount: payload.voirDire2Questions?.length || 0,
