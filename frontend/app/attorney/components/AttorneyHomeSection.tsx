@@ -402,9 +402,10 @@ export default function AttorneyHomeSection() {
 
   const getRecentCases = () => {
     // Only show approved cases, not pending ones
-    return cases
-      .filter(c => c.AdminApprovalStatus === "approved")
-      .slice(0, 6);
+    const approvedCases = cases.filter(c => c.AdminApprovalStatus === "approved");
+    const pendingCases = cases.filter(c => c.AdminApprovalStatus === "pending");
+    console.log('🏠 Home Section - Approved cases:', approvedCases.length, '| Pending cases:', pendingCases.length);
+    return approvedCases.slice(0, 6);
   };
 
   if (loading) {
