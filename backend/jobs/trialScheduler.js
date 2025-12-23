@@ -439,7 +439,7 @@ function startScheduler() {
 
   console.log("🕐 Starting trial scheduler...");
   console.log(`   ⏱️  Checking every ${SCHEDULER_INTERVAL / 1000} seconds`);
-  console.log(`   🚪 War room opens ${WAR_ROOM_ACCESS_MINUTES} minutes (1 hour) before trial`);
+  console.log(`   🚪 War room opens ${WAR_ROOM_ACCESS_MINUTES} minutes before trial`);
   console.log(`   🔔 Notifications sent ${NOTIFICATION_MINUTES} minutes before trial`);
 
   // Run immediately on start
