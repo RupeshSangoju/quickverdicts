@@ -764,7 +764,7 @@ export default function AdminConferenceClient() {
         setJuryChargeQuestions(data.questions || []);
 
         // Check if already released
-        const lockResponse = await fetch(`${API_BASE}/api/jury-charge/status/${caseId}`, {
+        const lockResponse = await fetch(`${API_BASE}/api/jury-charge/check-locked/${caseId}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (lockResponse.ok) {
@@ -1082,16 +1082,13 @@ export default function AdminConferenceClient() {
 
       // ✅ CRITICAL FIX: Show instructions to ensure admin captures tab audio
       const userConfirmed = window.confirm(
-        "🎥 RECORDING INSTRUCTIONS - READ CAREFULLY!\n\n" +
-        "📌 TO RECORD VIDEO + ALL AUDIO:\n\n" +
-        "1️⃣ Select 'Chrome Tab' (NOT entire screen or window)\n" +
-        "2️⃣ Select THIS TAB (the active trial conference tab)\n" +
-        "3️⃣ ✅ CRITICAL: CHECK the 'Share tab audio' or 'Share audio' checkbox!\n" +
-        "4️⃣ Click 'Share'\n\n" +
-        "⚠️ WITHOUT 'Share tab audio' = Screen only (NO voices!)\n" +
-        "✅ WITH 'Share tab audio' = Screen + ALL participants' voices!\n\n" +
-        "🎤 Note: If you forget, we'll use your microphone as backup.\n\n" +
-        "Ready to start recording?"
+        "🎬 RECORDING SETUP - READ CAREFULLY!\n\n" +
+        "To record ALL participants' voices:\n\n" +
+        "1️⃣ In the next dialog, select 'Chrome Tab' (or 'Browser Tab')\n" +
+        "2️⃣ Select THIS current tab where the trial is running\n" +
+        "3️⃣ MUST CHECK ☑️ 'Share tab audio' checkbox at the bottom!\n\n" +
+        "⚠️ If you don't check 'Share tab audio', only YOUR voice will be recorded!\n\n" +
+        "✅ Ready? Click OK to start..."
       );
 
       if (!userConfirmed) {
@@ -1115,43 +1112,21 @@ export default function AdminConferenceClient() {
       } as any);
 
       const screenVideoTrack = screenStream.getVideoTracks()[0];
-      let screenAudioTracks = screenStream.getAudioTracks();
+      const screenAudioTracks = screenStream.getAudioTracks();
       console.log(`✅ Screen capture started: ${screenVideoTrack.label}`);
       console.log(`🎤 Screen audio tracks captured: ${screenAudioTracks.length}`);
 
       // ✅ CRITICAL: Check if tab audio was captured
       if (screenAudioTracks.length === 0) {
-        console.warn("❌ No tab audio captured - requesting microphone as fallback...");
-        toast("⚠️ Tab audio not captured. Requesting microphone access as fallback...", { duration: 4000, icon: '🎤' });
-
-        try {
-          // ✅ FALLBACK: Request microphone audio to capture at least admin's voice and any system audio
-          const micStream = await navigator.mediaDevices.getUserMedia({
-            audio: {
-              echoCancellation: true,
-              noiseSuppression: true,
-              autoGainControl: true
-            }
-          });
-          const micAudioTracks = micStream.getAudioTracks();
-          console.log(`✅ Microphone audio captured as fallback: ${micAudioTracks.length} track(s)`);
-          screenAudioTracks = micAudioTracks;
-
-          toast.success(
-            "✅ Recording started with microphone audio! Your voice will be captured.",
-            { duration: 4000 }
-          );
-        } catch (micError) {
-          console.error("❌ Failed to capture microphone audio:", micError);
-          toast.error(
-            "❌ NO AUDIO CAPTURED! Microphone access denied.\n\nOnly screen video will be recorded.",
-            { duration: 10000 }
-          );
-        }
+        toast.error(
+          "❌ NO AUDIO CAPTURED! You forgot to check 'Share tab audio'!\n\nOnly screen video will be recorded. Stop and restart recording to capture audio.",
+          { duration: 10000 }
+        );
+        console.error("❌ RECORDING ISSUE: No audio tracks found - tab audio was not shared!");
       } else {
         console.log(`✅ SUCCESS: Tab audio captured! All participants will be audible in recording.`);
         toast.success(
-          "✅ Recording started with tab audio! All participants' voices will be captured.",
+          "✅ Recording started with audio! All participants' voices will be captured.",
           { duration: 4000 }
         );
       }
@@ -1208,39 +1183,46 @@ export default function AdminConferenceClient() {
       const combinedStream = new MediaStream(combinedTracks);
       console.log(`🎬 Recording stream: ${combinedTracks.length} tracks (1 video + ${screenAudioTracks.length} audio with ALL participants)`);
 
-      // ✅ FIX: Prioritize most compatible codec for cross-platform playback
-      // WebM with VP9/VP8 has better browser support than MP4
-      // VP9 has better compression and quality than VP8
+      // Try to use MP4 format first, then fall back to WebM
       let mimeType = '';
+      let useMP4 = false;
       let fileExtension = '';
 
-      // Priority 1: VP9 with Opus (best quality & compression, widely supported)
-      if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')) {
-        mimeType = 'video/webm;codecs=vp9,opus';
-        fileExtension = 'webm';
-        console.log('📼 Recording in WebM format (VP9 + Opus) - Best quality');
+      // Check for MP4 support (best for cross-platform compatibility)
+      if (MediaRecorder.isTypeSupported('video/mp4')) {
+        mimeType = 'video/mp4';
+        useMP4 = true;
+        fileExtension = 'mp4';
+        console.log('📼 Recording in MP4 format (native)');
+      } else if (MediaRecorder.isTypeSupported('video/mp4;codecs=h264,aac')) {
+        mimeType = 'video/mp4;codecs=h264,aac';
+        useMP4 = true;
+        fileExtension = 'mp4';
+        console.log('📼 Recording in MP4 format (h264,aac)');
+      } else if (MediaRecorder.isTypeSupported('video/mp4;codecs=avc1,mp4a')) {
+        mimeType = 'video/mp4;codecs=avc1,mp4a';
+        useMP4 = true;
+        fileExtension = 'mp4';
+        console.log('📼 Recording in MP4 format (avc1,mp4a)');
       }
-      // Priority 2: VP8 with Opus (good compatibility)
-      else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus')) {
-        mimeType = 'video/webm;codecs=vp8,opus';
-        fileExtension = 'webm';
-        console.log('📼 Recording in WebM format (VP8 + Opus)');
-      }
-      // Priority 3: H.264 with Opus in WebM (if available)
+      // Fall back to WebM if MP4 not supported
       else if (MediaRecorder.isTypeSupported('video/webm;codecs=h264,opus')) {
         mimeType = 'video/webm;codecs=h264,opus';
         fileExtension = 'webm';
-        console.log('📼 Recording in WebM format (H.264 + Opus)');
-      }
-      // Priority 4: Generic WebM (fallback)
-      else {
+        console.log('📼 Recording in WebM format with H.264 (h264,opus)');
+      } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')) {
+        mimeType = 'video/webm;codecs=vp9,opus';
+        fileExtension = 'webm';
+        console.log('📼 Recording in WebM format (vp9,opus)');
+      } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus')) {
+        mimeType = 'video/webm;codecs=vp8,opus';
+        fileExtension = 'webm';
+        console.log('📼 Recording in WebM format (vp8,opus)');
+      } else {
         mimeType = 'video/webm';
         fileExtension = 'webm';
-        console.log('📼 Recording in WebM format (default codec)');
+        console.log('📼 Recording in WebM format (default)');
       }
-
-      console.log('ℹ️ NOTE: WebM files may require VLC, Chrome, or Firefox to play on some systems.');
-      console.log('ℹ️ Mac users: Use VLC (free) or Chrome/Firefox browser to play WebM files.');
 
       // Create MediaRecorder
       const mediaRecorder = new MediaRecorder(combinedStream, {
@@ -1249,7 +1231,7 @@ export default function AdminConferenceClient() {
         audioBitsPerSecond: 128000
       });
 
-      console.log(`✅ MediaRecorder initialized with format: ${mimeType}`);
+      console.log(`✅ Using ${useMP4 ? 'MP4' : 'WebM'} format for recording`);
 
       recordedChunksRef.current = [];
 
@@ -1292,16 +1274,6 @@ export default function AdminConferenceClient() {
       }, 1000);
 
       console.log("✅ Recording started successfully with tab audio (all participants included)!");
-
-      // ✅ Notify about WebM format and playback options
-      setTimeout(() => {
-        toast.success(
-          `📹 Recording as ${fileExtension.toUpperCase()} format\n\n` +
-          `To play on Mac: Use VLC (free), Chrome, or Firefox\n` +
-          `To play on Windows: Use VLC, Chrome, Firefox, or default player`,
-          { duration: 8000 }
-        );
-      }, 2000);
     } catch (err) {
       console.error("❌ Recording start error:", err);
       toast.error("Failed to start recording: " + (err as Error).message, { duration: 5000 });
@@ -1329,26 +1301,42 @@ export default function AdminConferenceClient() {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
     const durationStr = `${Math.floor(recordingDuration / 60)}m${recordingDuration % 60}s`;
 
-    // ✅ FIX: Use the correct file extension based on actual recording format
-    const fileExtension = (recordingBlob as any).fileExtension || 'webm';
-
     console.log("💾 Downloading recorded video...");
-    console.log(`   Format: ${fileExtension.toUpperCase()}`);
     console.log(`   Size: ${(recordingBlob.size / 1024 / 1024).toFixed(2)} MB`);
     console.log(`   Duration: ${durationStr}`);
 
-    // ✅ Download with correct extension for cross-platform compatibility
+    // Determine best file extension from blob metadata
+    const rawExt = (recordingBlob as any)?.fileExtension || '';
+    const type = recordingBlob.type || '';
+    let ext = rawExt || (type ? type.split('/')[1]?.split(';')[0] : 'webm');
+
+    // Normalize some common MIME-derived extensions
+    if (!ext) ext = 'webm';
+    if (ext === 'x-matroska') ext = 'webm';
+    if (ext.includes('mp4') || type.includes('mp4')) ext = 'mp4';
+    if (ext.includes('webm')) ext = 'webm';
+
+    const filename = `trial-recording-${caseId}-${durationStr}-${timestamp}.${ext}`;
+
     const url = URL.createObjectURL(recordingBlob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `trial-recording-${caseId}-${durationStr}-${timestamp}.${fileExtension}`;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    console.log(`✅ Video downloaded as ${fileExtension.toUpperCase()} format!`);
-    toast.success(`Recording downloaded as ${fileExtension.toUpperCase()} format!`, { duration: 4000 });
+    // Show a helpful message for mac users when file is WebM
+    const isMac = typeof navigator !== 'undefined' && /mac|darwin/i.test(navigator.platform || '');
+    if (ext === 'webm' && isMac) {
+      toast(
+        'Note: macOS QuickTime does not play .webm files natively. Use VLC or upload the file to the server for conversion to MP4 (H.264/AAC).',
+        { duration: 10000 }
+      );
+    } else {
+      toast.success('Recording downloaded successfully!', { duration: 4000 });
+    }
 
     // Reset state
     setRecordingBlob(null);

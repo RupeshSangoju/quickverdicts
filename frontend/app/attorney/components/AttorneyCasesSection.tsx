@@ -125,6 +125,29 @@ export default function AttorneyCasesSection({ onBack }: AttorneyCasesSectionPro
     }
   }, [user]);
 
+  // Listen for optimistic case status updates from other pages (e.g., war-room submit)
+  useEffect(() => {
+    const handler = (e: any) => {
+      try {
+        const detail = e.detail || {};
+        const updatedCaseId = detail.caseId;
+        const status = detail.status;
+        if (!updatedCaseId) return;
+        setCases(prev => prev.map(c => c.Id === updatedCaseId ? { ...c, AttorneyStatus: status } : c));
+      } catch (err) {
+        // ignore
+      }
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('caseStatusUpdated', handler as EventListener);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('caseStatusUpdated', handler as EventListener);
+      }
+    };
+  }, []);
+
   const fetchCases = async (showRefreshIndicator = false) => {
   if (!user) return;
   

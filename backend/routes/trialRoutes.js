@@ -818,6 +818,16 @@ router.post(
 
       const trial = result.recordset[0];
 
+      console.log("Admin join - trial record:", {
+        CaseId: trial.CaseId,
+        RoomId: trial.RoomId,
+        MeetingId: trial.MeetingId,
+        ChatThreadId: trial.ChatThreadId,
+        ChatServiceUserId: trial.ChatServiceUserId,
+      });
+
+      console.log("ACS identity client configured:", !!identityClient);
+
       // 🔧 FIX: Check for existing active admin and remove them from ACS room/chat
       const existingParticipants = await TrialMeeting.getActiveParticipants(trial.MeetingId);
       const existingAdmin = existingParticipants.find(
@@ -847,15 +857,32 @@ router.post(
         }
       }
 
-      const identityResponse = await identityClient.createUser();
-      const acsUserId = identityResponse.communicationUserId;
+      let identityResponse;
+      let acsUserId;
+      let tokenResponse;
 
-      await addParticipantToRoom(trial.RoomId, acsUserId, "Presenter");
+      try {
+        identityResponse = await identityClient.createUser();
+        acsUserId = identityResponse.communicationUserId;
+        console.log("Created ACS identity for admin:", acsUserId);
+      } catch (idErr) {
+        console.error("Error creating ACS identity for admin:", idErr && idErr.message ? idErr.message : idErr);
+        throw idErr;
+      }
 
-      const tokenResponse = await identityClient.getToken(identityResponse, [
-        "voip",
-        "chat",
-      ]);
+      try {
+        await addParticipantToRoom(trial.RoomId, acsUserId, "Presenter");
+      } catch (roomErr) {
+        console.error("Error adding admin to room:", roomErr && roomErr.message ? roomErr.message : roomErr);
+        throw roomErr;
+      }
+
+      try {
+        tokenResponse = await identityClient.getToken(identityResponse, ["voip", "chat"]);
+      } catch (tokenErr) {
+        console.error("Error getting token for admin identity:", tokenErr && tokenErr.message ? tokenErr.message : tokenErr);
+        throw tokenErr;
+      }
 
       // Add admin to chat thread using the stored service user ID
       if (trial.ChatThreadId && trial.ChatServiceUserId) {
@@ -867,8 +894,8 @@ router.post(
             "Court Administrator"
           );
         } catch (chatAddError) {
-          console.error("Failed to add admin to chat:", chatAddError);
-          // Continue anyway - they can still join video
+          console.error("Failed to add admin to chat:", chatAddError && chatAddError.message ? chatAddError.message : chatAddError);
+          // Continue - allow video-only join
         }
       }
 

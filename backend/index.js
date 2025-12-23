@@ -144,6 +144,7 @@ const paymentRoutes = safeRequireRoute("./routes/paymentRoutes", "Payment");
 const diagnosticRoutes = safeRequireRoute("./routes/diagnosticRoutes", "Diagnostic");
 const juryChargeRoutes = safeRequireRoute("./routes/juryChargeRoutes", "Jury Charge");
 const verdictRoutes = safeRequireRoute("./routes/verdictRoutes", "Verdicts");
+const recordingRoutes = safeRequireRoute("./routes/recordingRoutes", "Recordings");
 
 console.log("✅ All routes loaded\n");
 
@@ -393,6 +394,7 @@ app.use("/api/files", fileRoutes);
 app.use("/api/diagnostic", diagnosticRoutes);
 app.use("/api/jury-charge", juryChargeRoutes);
 app.use("/api/verdicts", verdictRoutes);
+app.use("/api/recordings", recordingRoutes);
 
 console.log("\n✅ All routes registered\n");
 

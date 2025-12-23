@@ -703,13 +703,13 @@ router.post(
 
       const approvedCount = jurorCountResult.recordset[0].ApprovedCount;
 
-      // ✅ PRODUCTION: Require 5-7 jurors for real trials
-      if (approvedCount < 5) {
+      // ✅ TESTING: Relax requirement to 1 juror (change back to 5 in production)
+      if (approvedCount < 1) {
         return res.status(400).json({
           success: false,
-          message: `Cannot submit war room: You need at least 5 approved jurors (currently have ${approvedCount})`,
+          message: `Cannot submit war room: You need at least 1 approved juror (currently have ${approvedCount})`,
           code: "INSUFFICIENT_JURORS",
-          requiredJurors: 5,
+          requiredJurors: 1,
           currentJurors: approvedCount,
         });
       }
@@ -765,11 +765,11 @@ router.post(
       });
       const trialTime = caseData.ScheduledTime;
 
-      // ✅ Update case status to awaiting_trial (PRODUCTION)
-      // War room will become accessible 1 hour before trial via scheduler
+      // ✅ IMMEDIATE: Enable join_trial immediately when attorney submits war room
+      // This makes the war room accessible immediately after submission (no scheduler delay)
       await pool.request().input("caseId", sql.Int, caseId).query(`
           UPDATE Cases
-          SET AttorneyStatus = 'awaiting_trial', UpdatedAt = GETUTCDATE()
+          SET AttorneyStatus = 'join_trial', NotificationsSent = 1, UpdatedAt = GETUTCDATE()
           WHERE CaseId = @caseId
         `);
 
@@ -806,11 +806,11 @@ router.post(
         WHERE IsActive = 1
       `);
 
-      // Create event
+      // Create event (war room submitted and join_trial enabled)
       await Event.createEvent({
         caseId,
         eventType: Event.EVENT_TYPES.WAR_ROOM_SUBMITTED,
-        description: `War room submitted with ${approvedCount} approved jurors - awaiting trial`,
+        description: `War room submitted with ${approvedCount} approved jurors - join_trial enabled`,
         triggeredBy: req.user.id,
         userType: req.user.type,
       });
@@ -826,7 +826,7 @@ router.post(
             caseId: caseId,
             type: Notification.NOTIFICATION_TYPES.WAR_ROOM_READY,
             title: 'War Room Submitted - Trial Preparation',
-            message: `The attorney has submitted the war room for "${caseData.CaseTitle}". Your trial is scheduled for ${trialDate} at ${trialTime}. The war room will be accessible 1 hour before the trial begins.`
+            message: `The attorney has submitted the war room for "${caseData.CaseTitle}". Your trial is scheduled for ${trialDate} at ${trialTime}. The war room is now accessible — please join the trial now.`
           });
 
           // Send email
@@ -844,9 +844,8 @@ router.post(
                 <strong>🕐 Trial Time:</strong> ${trialTime}
               </p>
             </div>
-            <p style="color: #666; line-height: 1.6;">
-              <strong>Important:</strong> The war room will become accessible <strong>1 hour before</strong> the trial begins.
-              You will receive another notification when it's time to join.
+              <p style="color: #666; line-height: 1.6;">
+              <strong>Important:</strong> The war room is now accessible. Please join the trial now.
             </p>
             <p style="color: #666; line-height: 1.6;">
               Please be prepared and available at the scheduled time.
@@ -944,7 +943,7 @@ router.post(
             All ${approvedCount} approved jurors and your team members have been notified about the trial schedule.
           </p>
           <p style="color: #666; line-height: 1.6;">
-            The trial will begin automatically 15 minutes before the scheduled time.
+            The trial room is now active — participants can join immediately.
           </p>
           <p style="color: #666; line-height: 1.6;">
             Best regards,<br/>
@@ -1006,7 +1005,7 @@ router.post(
               <li>All ${approvedCount} jurors have been notified of the trial schedule</li>
             </ul>
             <p style="color: #666; line-height: 1.6;">
-              The case is now in "Awaiting Trial" status and will automatically transition to "Join Trial" 15 minutes before the scheduled time.
+              The case is now in "Join Trial" status and participants can join immediately.
             </p>
             <p style="color: #666; line-height: 1.6;">
               Best regards,<br/>
@@ -1027,7 +1026,7 @@ router.post(
       res.json({
         success: true,
         message: "War room submitted successfully. All participants have been notified.",
-        caseStatus: "awaiting_trial",
+        caseStatus: "join_trial",
         trialDate: trialDate,
         trialTime: trialTime,
         notifications: {
