@@ -100,14 +100,14 @@ async function checkAndTransitionTrials() {
       INNER JOIN Attorneys a ON c.AttorneyId = a.AttorneyId
       WHERE c.AttorneyStatus = 'awaiting_trial'
         AND c.AdminApprovalStatus = 'approved'
-        AND DATEDIFF(MINUTE, GETUTCDATE(),
+        AND DATEDIFF(MINUTE, DATEADD(MINUTE, ${TIMEZONE_OFFSET_SQL}, GETDATE()),
             CAST(CONCAT(
               CONVERT(VARCHAR(10), c.ScheduledDate, 120),
               ' ',
               CONVERT(VARCHAR(8), c.ScheduledTime, 108)
             ) AS DATETIME)
           ) <= ${WAR_ROOM_ACCESS_MINUTES}
-        AND DATEDIFF(MINUTE, GETUTCDATE(),
+        AND DATEDIFF(MINUTE, DATEADD(MINUTE, ${TIMEZONE_OFFSET_SQL}, GETDATE()),
             CAST(CONCAT(
               CONVERT(VARCHAR(10), c.ScheduledDate, 120),
               ' ',
@@ -153,14 +153,14 @@ async function checkAndTransitionTrials() {
       WHERE c.AttorneyStatus = 'join_trial'
         AND c.AdminApprovalStatus = 'approved'
         AND (c.NotificationsSent IS NULL OR c.NotificationsSent = 0)
-        AND DATEDIFF(MINUTE, GETUTCDATE(),
+        AND DATEDIFF(MINUTE, DATEADD(MINUTE, ${TIMEZONE_OFFSET_SQL}, GETDATE()),
             CAST(CONCAT(
               CONVERT(VARCHAR(10), c.ScheduledDate, 120),
               ' ',
               CONVERT(VARCHAR(8), c.ScheduledTime, 108)
             ) AS DATETIME)
           ) <= ${NOTIFICATION_MINUTES}
-        AND DATEDIFF(MINUTE, GETUTCDATE(),
+        AND DATEDIFF(MINUTE, DATEADD(MINUTE, ${TIMEZONE_OFFSET_SQL}, GETDATE()),
             CAST(CONCAT(
               CONVERT(VARCHAR(10), c.ScheduledDate, 120),
               ' ',
