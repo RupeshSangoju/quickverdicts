@@ -12,7 +12,7 @@ const { sendNotificationEmail } = require("../utils/email");
 // ============================================
 
 const SCHEDULER_INTERVAL = 60 * 1000; // Run every 60 seconds
-const WAR_ROOM_ACCESS_MINUTES = 60; // Open war room 1 hour before trial
+const WAR_ROOM_ACCESS_MINUTES = 30; // Open war room 30 minutes before trial
 const NOTIFICATION_MINUTES = 30; // Send notifications 30 minutes before trial
 
 // ============================================
