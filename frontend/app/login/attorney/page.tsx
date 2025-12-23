@@ -161,7 +161,7 @@ export default function AttorneyLogin() {
 
       // Call login API
       const response = await post<AttorneyLoginResponse>(
-        "/auth/attorney/login",
+        "api/auth/attorney/login",
         {
           email: email.trim().toLowerCase(),
           password: password,

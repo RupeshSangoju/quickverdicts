@@ -215,6 +215,34 @@ export default function AdminDashboard() {
   const [approveCaseId, setApproveCaseId] = useState<number | null>(null);
   const [approvalComments, setApprovalComments] = useState("");
 
+  // Listen for optimistic case status updates (from war-room submit)
+  useEffect(() => {
+    const handler = (e: any) => {
+      try {
+        const detail = e.detail || {};
+        const updatedCaseId = detail.caseId;
+        const status = detail.status;
+        if (!updatedCaseId) return;
+        // Update modal if open
+        setSelectedCase(prev => prev && prev.CaseId === updatedCaseId ? { ...prev, AttorneyStatus: status } : prev);
+        // Update cases shown for the selected date
+        setCasesForDate(prev => prev.map(c => c.CaseId === updatedCaseId ? { ...c, AttorneyStatus: status } : c));
+        // Update ready trials list
+        setReadyTrials(prev => prev.map(c => c.CaseId === updatedCaseId ? { ...c, AttorneyStatus: status } : c));
+      } catch (err) {
+        // ignore
+      }
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('caseStatusUpdated', handler as EventListener);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('caseStatusUpdated', handler as EventListener);
+      }
+    };
+  }, []);
+
   // Conflict modal states
   const [showConflictModal, setShowConflictModal] = useState(false);
   const [conflictCaseId, setConflictCaseId] = useState<number | null>(null);

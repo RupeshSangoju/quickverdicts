@@ -387,7 +387,8 @@ export default function AttorneyHomeSection() {
     const now = new Date();
     return cases
       .filter(c => {
-        if (!c.ScheduledDate) return false;
+        // Only show approved cases, not pending ones
+        if (!c.ScheduledDate || c.AdminApprovalStatus !== "approved") return false;
         const eventDate = new Date(`${c.ScheduledDate}T${c.ScheduledTime || '00:00'}`);
         return eventDate >= now;
       })
@@ -399,7 +400,13 @@ export default function AttorneyHomeSection() {
       .slice(0, 6);
   };
 
-  const getRecentCases = () => cases.slice(0, 6);
+  const getRecentCases = () => {
+    // Only show approved cases, not pending ones
+    const approvedCases = cases.filter(c => c.AdminApprovalStatus === "approved");
+    const pendingCases = cases.filter(c => c.AdminApprovalStatus === "pending");
+    console.log('🏠 Home Section - Approved cases:', approvedCases.length, '| Pending cases:', pendingCases.length);
+    return approvedCases.slice(0, 6);
+  };
 
   if (loading) {
     return (

@@ -267,7 +267,7 @@ router.get("/trials/ready", async (req, res) => {
         a.Email AS AttorneyEmail,
         a.PhoneNumber AS AttorneyPhone,
         tm.RoomId,
-        tm.ThreadId,
+        tm.ChatThreadId AS ThreadId,
         tm.Status AS MeetingStatus,
         tm.IsRecording,
         (SELECT COUNT(*)
@@ -373,7 +373,7 @@ router.get("/calendar/cases-by-date", async (req, res) => {
           a.Email AS AttorneyEmail,
           a.PhoneNumber AS AttorneyPhone,
           tm.RoomId,
-          tm.ThreadId,
+          tm.ChatThreadId AS ThreadId,
           tm.Status AS MeetingStatus,
           (SELECT COUNT(*)
            FROM dbo.JurorApplications ja

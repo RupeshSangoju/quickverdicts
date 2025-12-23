@@ -179,8 +179,14 @@ export default function AttorneyCalendarSection({ onBack }: AttorneyCalendarSect
       }
 
       const data = await res.json();
-      
+
       if (data.success && Array.isArray(data.cases)) {
+        // Debug logging to check AdminApprovalStatus
+        console.log('📋 Cases fetched for calendar:', data.cases.map(c => ({
+          Id: c.Id,
+          AdminApprovalStatus: c.AdminApprovalStatus,
+          AttorneyStatus: c.AttorneyStatus
+        })));
         setCases(data.cases);
       } else {
         console.error("Unexpected response format:", data);
@@ -200,15 +206,20 @@ export default function AttorneyCalendarSection({ onBack }: AttorneyCalendarSect
     fetchCases(true);
   };
 
-  // Group cases by date
+  // Group cases by date - ONLY show approved cases
   const groupCasesByDate = () => {
     const grouped: { [date: string]: Case[] } = {};
     cases.forEach((c) => {
-      if (c.ScheduledDate) {
+      // Only show approved cases in calendar
+      if (c.ScheduledDate && c.AdminApprovalStatus === "approved") {
         grouped[c.ScheduledDate] = grouped[c.ScheduledDate] || [];
         grouped[c.ScheduledDate].push(c);
+      } else if (c.ScheduledDate) {
+        // Log cases that are filtered out
+        console.log(`🚫 Case #${c.Id} filtered out - Status: ${c.AdminApprovalStatus}`);
       }
     });
+    console.log('📅 Grouped approved cases:', Object.keys(grouped).length, 'dates with cases');
     return grouped;
   };
 

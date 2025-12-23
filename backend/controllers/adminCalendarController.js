@@ -189,7 +189,7 @@ async function getCasesByDate(req, res) {
     // Get cases for the date
     const casesResult = await pool.request().input("date", sql.Date, date)
       .query(`
-        SELECT 
+        SELECT
           c.CaseId,
           c.CaseTitle,
           c.CaseType,
@@ -210,6 +210,7 @@ async function getCasesByDate(req, res) {
         JOIN dbo.Attorneys a ON c.AttorneyId = a.AttorneyId
         LEFT JOIN dbo.TrialMeetings tm ON c.CaseId = tm.CaseId
         WHERE CAST(c.ScheduledDate AS DATE) = @date
+          AND c.AdminApprovalStatus = 'approved'
         ORDER BY c.ScheduledTime
       `);
 

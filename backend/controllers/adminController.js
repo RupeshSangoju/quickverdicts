@@ -624,7 +624,7 @@ async function getAdminDashboard(req, res) {
     res.json({
       success: true,
       stats,
-      pendingCases: pendingCases.slice(0, 5), // Latest 5 for dashboard
+      pendingCases: pendingCases, // Show ALL pending cases for admin review
       recentEvents: recentEvents.slice(0, 5), // Latest 5 for dashboard
     });
   } catch (error) {
