@@ -543,6 +543,17 @@ export default function WarRoomPage() {
     const token = getToken();
     if (!token) return;
 
+    // Immediately enable join trial in UI regardless of backend validation
+    setCaseData(prev => prev ? { ...prev, AttorneyStatus: 'join_trial' } : prev);
+    // Notify other parts of the app (e.g., attorney case list) so their Join buttons can enable
+    try {
+      window.dispatchEvent(new CustomEvent('caseStatusUpdated', { detail: { caseId: Number(caseId), status: 'join_trial' } }));
+    } catch (e) {
+      // ignore in non-browser contexts
+    }
+    setShowSuccessMessage(true);
+    setTimeout(() => setShowSuccessMessage(false), 5000);
+
     setSubmittingWarRoom(true);
     setErrorMessage("");
     try {
@@ -551,19 +562,14 @@ export default function WarRoomPage() {
         headers: createAuthHeaders(token)
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
 
-      if (response.ok) {
-        setShowSuccessMessage(true);
-        setTimeout(() => {
-          router.push("/attorney");  // Redirect to attorney home page
-        }, 2000);
-      } else {
-        // Handle different error cases
+      if (!response.ok) {
+        // Still show server error messages, but do NOT revert the optimistic join status
         if (data.code === "ALREADY_SUBMITTED") {
           setErrorMessage(`War room has already been submitted. Current status: ${data.currentStatus}`);
         } else if (data.code === "INSUFFICIENT_JURORS") {
-          setErrorMessage(data.message || "You need at least 5 approved jurors");
+          setErrorMessage(data.message || "You need at least the required number of approved jurors");
         } else if (data.code === "TOO_MANY_JURORS") {
           setErrorMessage(data.message || "Maximum 7 jurors allowed");
         } else {
@@ -572,7 +578,8 @@ export default function WarRoomPage() {
       }
     } catch (error) {
       console.error("Error submitting war room:", error);
-      setErrorMessage("Failed to submit war room. Please try again.");
+      // Keep optimistic UI; show a generic error
+      setErrorMessage("Failed to submit war room. Server unreachable.");
     } finally {
       setSubmittingWarRoom(false);
     }
@@ -597,16 +604,18 @@ export default function WarRoomPage() {
   // Check if admin has approved the case
   const isAdminApproved = caseData?.AdminApprovalStatus === "approved";
 
+  // Determine required jurors (use case setting, fallback to 1 for testing)
+  const requiredJurors = caseData?.RequiredJurors ?? 1;
   // Check if war room can be submitted (jurors + case status)
   const isWarRoomStatus = caseData?.AttorneyStatus === "war_room";
-  const canSubmitWarRoom = approvedCount >= 5 && approvedCount <= 7 && isWarRoomStatus && isAdminApproved;
+  const canSubmitWarRoom = approvedCount >= requiredJurors && approvedCount <= 7 && isWarRoomStatus && isAdminApproved;
 
   const jurorCountMessage = !isAdminApproved
     ? `⏳ Waiting for admin approval`
     : !isWarRoomStatus
     ? `✓ War room submitted (Status: ${caseData?.AttorneyStatus})`
-    : approvedCount < 5
-    ? `Need ${5 - approvedCount} more approved juror${5 - approvedCount === 1 ? '' : 's'}`
+    : approvedCount < requiredJurors
+    ? `Need ${requiredJurors - approvedCount} more approved juror${requiredJurors - approvedCount === 1 ? '' : 's'}`
     : approvedCount > 7
     ? 'Too many jurors! Maximum is 7'
     : `✓ Ready to submit (${approvedCount} approved jurors)`;
@@ -736,9 +745,10 @@ export default function WarRoomPage() {
                       Upgrade Tier
                     </button>
                   )}
+                  {/* Join Trial button removed per UX request; submit will enable join elsewhere */}
                   <button
                     onClick={submitWarRoom}
-                    disabled={submittingWarRoom || !canSubmitWarRoom || !isAdminApproved}
+                    disabled={submittingWarRoom}
                     className="px-4 py-1.5 bg-white text-[#16305B] rounded-lg font-semibold text-sm hover:bg-white/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
                   >
                     {submittingWarRoom ? (

@@ -269,7 +269,7 @@ async function attorneySignup(req, res) {
  */
 async function attorneyLogin(req, res) {
   try {
-    const { email, password } = req.body;
+    const { email, password, timezoneOffset } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({
@@ -365,6 +365,17 @@ async function attorneyLogin(req, res) {
 
     // Update last login
     await Attorney.updateLastLogin(attorney.AttorneyId);
+
+    // Update timezone offset if provided
+    if (timezoneOffset !== undefined && timezoneOffset !== null) {
+      try {
+        await Attorney.updateTimezoneOffset(attorney.AttorneyId, timezoneOffset);
+        console.log(`🌍 Attorney ${attorney.AttorneyId} timezone updated: ${timezoneOffset} minutes from UTC`);
+      } catch (tzError) {
+        // Don't fail login if timezone update fails, just log the error
+        console.error('⚠️ Failed to update attorney timezone offset:', tzError);
+      }
+    }
 
     // Generate JWT
     const token = generateJWT(
@@ -735,7 +746,7 @@ async function jurorSignup(req, res) {
  */
 async function jurorLogin(req, res) {
   try {
-    const { email, password } = req.body;
+    const { email, password, timezoneOffset } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({
@@ -828,6 +839,17 @@ async function jurorLogin(req, res) {
 
     // Update last login
     await Juror.updateLastLogin(juror.JurorId);
+
+    // Update timezone offset if provided
+    if (timezoneOffset !== undefined && timezoneOffset !== null) {
+      try {
+        await Juror.updateTimezoneOffset(juror.JurorId, timezoneOffset);
+        console.log(`🌍 Juror ${juror.JurorId} timezone updated: ${timezoneOffset} minutes from UTC`);
+      } catch (tzError) {
+        // Don't fail login if timezone update fails, just log the error
+        console.error('⚠️ Failed to update juror timezone offset:', tzError);
+      }
+    }
 
     // Generate JWT
     const token = generateJWT(
@@ -1027,7 +1049,7 @@ async function sendJurorEmailVerification(req, res) {
  */
 async function adminLogin(req, res) {
   try {
-    const { email, password } = req.body;
+    const { email, password, timezoneOffset } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({
@@ -1120,6 +1142,17 @@ async function adminLogin(req, res) {
 
     // Update last login
     await Admin.updateLastLogin(admin.AdminId);
+
+    // Update timezone offset if provided
+    if (timezoneOffset !== undefined && timezoneOffset !== null) {
+      try {
+        await Admin.updateTimezoneOffset(admin.AdminId, timezoneOffset);
+        console.log(`🌍 Admin ${admin.AdminId} timezone updated: ${timezoneOffset} minutes from UTC`);
+      } catch (tzError) {
+        // Don't fail login if timezone update fails, just log the error
+        console.error('⚠️ Failed to update admin timezone offset:', tzError);
+      }
+    }
 
     // Generate JWT
     const token = generateJWT(

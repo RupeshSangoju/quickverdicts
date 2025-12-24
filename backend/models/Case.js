@@ -181,31 +181,69 @@ async function createCase(data) {
   try {
     validateCaseData(data);
 
-    // Convert scheduledTime string to HH:MM:SS format for SQL Server TIME type
-    // Keep as string to avoid timezone conversion issues
+    // Convert scheduledTime from attorney's local timezone to UTC
     let timeValue = null;
-    if (data.scheduledTime) {
+    let utcDateTimeForScheduler = null;
+
+    if (data.scheduledTime && data.scheduledDate) {
       const trimmedTime = data.scheduledTime.trim();
       const timeParts = trimmedTime.split(':');
 
-      // Ensure we have HH:MM:SS format
+      // Parse time components
       let hours, minutes, seconds;
       if (timeParts.length === 2) {
-        hours = timeParts[0].padStart(2, '0');
-        minutes = timeParts[1].padStart(2, '0');
-        seconds = '00';
+        hours = parseInt(timeParts[0], 10);
+        minutes = parseInt(timeParts[1], 10);
+        seconds = 0;
       } else if (timeParts.length === 3) {
-        hours = timeParts[0].padStart(2, '0');
-        minutes = timeParts[1].padStart(2, '0');
-        seconds = timeParts[2].padStart(2, '0');
+        hours = parseInt(timeParts[0], 10);
+        minutes = parseInt(timeParts[1], 10);
+        seconds = parseInt(timeParts[2], 10);
       } else {
         throw new Error("Invalid time format after validation");
       }
 
-      // Store as string in HH:MM:SS format to prevent timezone conversion
-      timeValue = `${hours}:${minutes}:${seconds}`;
+      console.log(`⏰ Attorney Local Time: ${data.scheduledDate} ${trimmedTime}`);
+      console.log(`🌍 Timezone Offset: ${data.timezoneOffset} minutes (${data.timezoneName || 'Unknown'})`);
 
-      console.log(`📅 Converted scheduledTime: "${data.scheduledTime}" → String: ${timeValue}`);
+      // Parse the scheduled date components
+      const dateParts = data.scheduledDate.split('-');
+      const year = parseInt(dateParts[0], 10);
+      const month = parseInt(dateParts[1], 10) - 1; // Month is 0-indexed in Date
+      const day = parseInt(dateParts[2], 10);
+
+      // Get timezone offset (positive = ahead of UTC, negative = behind UTC)
+      const timezoneOffsetMinutes = parseInt(data.timezoneOffset || 0, 10);
+
+      // Create UTC timestamp representing attorney's local time
+      // Date.UTC() creates timestamp in UTC, avoiding server timezone interpretation issues
+      const localAsUTC = Date.UTC(year, month, day, hours, minutes, seconds);
+
+      // Convert to actual UTC by subtracting timezone offset
+      // If attorney is in IST (UTC+5:30 = +330 min), subtract 330 min to get UTC
+      const actualUTC = localAsUTC - (timezoneOffsetMinutes * 60 * 1000);
+
+      // Create Date object from UTC timestamp
+      const utcDateTime = new Date(actualUTC);
+
+      // Extract UTC date and time components
+      const utcYear = utcDateTime.getUTCFullYear();
+      const utcMonth = String(utcDateTime.getUTCMonth() + 1).padStart(2, '0');
+      const utcDay = String(utcDateTime.getUTCDate()).padStart(2, '0');
+      const utcHours = utcDateTime.getUTCHours();
+      const utcMinutes = utcDateTime.getUTCMinutes();
+      const utcSeconds = utcDateTime.getUTCSeconds();
+      const utcDate = `${utcYear}-${utcMonth}-${utcDay}`;
+
+      // Store as string in HH:MM:SS format
+      timeValue = `${String(utcHours).padStart(2, '0')}:${String(utcMinutes).padStart(2, '0')}:${String(utcSeconds).padStart(2, '0')}`;
+
+      console.log(`🌐 Converted to UTC: ${utcDate} ${timeValue}`);
+      console.log(`   → Attorney Local: ${data.scheduledDate} ${trimmedTime} (${data.timezoneName})`);
+      console.log(`   → Stored in DB (UTC): ${utcDate} ${timeValue}`);
+
+      // Update scheduledDate to UTC date (in case it changed due to timezone conversion)
+      data.scheduledDate = utcDate;
     }
 
     return await executeQuery(async (pool) => {
@@ -231,6 +269,7 @@ async function createCase(data) {
         )
         .input("scheduledDate", sql.Date, data.scheduledDate)
         .input("scheduledTime", sql.VarChar, timeValue) // Use VarChar to prevent timezone conversion
+        .input("timezoneOffset", sql.Int, parseInt(data.timezoneOffset || 0, 10)) // Store timezone offset
         .input(
           "plaintiffGroups",
           sql.NVarChar,
@@ -264,14 +303,14 @@ async function createCase(data) {
         ).query(`
           INSERT INTO dbo.Cases (
             AttorneyId, CaseType, CaseJurisdiction, CaseTier, State, County, CaseTitle, CaseDescription,
-            PaymentMethod, PaymentAmount, ScheduledDate, ScheduledTime,
+            PaymentMethod, PaymentAmount, ScheduledDate, ScheduledTime, TimezoneOffset,
             PlaintiffGroups, DefendantGroups, VoirDire1Questions, VoirDire2Questions,
             RequiredJurors, AttorneyStatus, AdminApprovalStatus,
             IsDeleted, CreatedAt, UpdatedAt
           )
           VALUES (
             @attorneyId, @caseType, @caseJurisdiction, @caseTier, @state, @county, @caseTitle, @caseDescription,
-            @paymentMethod, @paymentAmount, @scheduledDate, @scheduledTime,
+            @paymentMethod, @paymentAmount, @scheduledDate, @scheduledTime, @timezoneOffset,
             @plaintiffGroups, @defendantGroups, @voirDire1Questions, @voirDire2Questions,
             @requiredJurors, @attorneyStatus, @adminApprovalStatus,
             0, GETUTCDATE(), GETUTCDATE()
@@ -302,13 +341,14 @@ async function findById(caseId) {
 
     return await executeQuery(async (pool) => {
       const result = await pool.request().input("id", sql.Int, id).query(`
-          SELECT 
-            c.*, 
+          SELECT
+            c.*,
             a.FirstName + ' ' + a.LastName AS AttorneyName,
             a.Email AS AttorneyEmail,
             a.LawFirmName,
             a.PhoneNumber AS AttorneyPhone,
             a.StateBarNumber,
+            a.State AS AttorneyState,
             ISNULL(c.RequiredJurors, 7) AS RequiredJurors
           FROM dbo.Cases c
           LEFT JOIN dbo.Attorneys a ON c.AttorneyId = a.AttorneyId
@@ -317,6 +357,41 @@ async function findById(caseId) {
 
       const caseData = result.recordset[0];
       if (caseData) {
+        // Convert UTC time to attorney's local timezone for display
+        if (caseData.ScheduledDate && caseData.ScheduledTime) {
+          // Use stored timezone offset or fallback to state-based
+          const timezoneOffset = caseData.TimezoneOffset !== null && caseData.TimezoneOffset !== undefined
+            ? caseData.TimezoneOffset
+            : getTimezoneOffsetByState(caseData.AttorneyState || caseData.State);
+
+          // Extract date using UTC methods to avoid timezone issues
+          const scheduledDateObj = caseData.ScheduledDate;
+          let dateStr;
+          if (scheduledDateObj instanceof Date) {
+            const year = scheduledDateObj.getUTCFullYear();
+            const month = String(scheduledDateObj.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(scheduledDateObj.getUTCDate()).padStart(2, '0');
+            dateStr = `${year}-${month}-${day}`;
+          } else {
+            dateStr = scheduledDateObj;
+          }
+
+          const timeStr = caseData.ScheduledTime;
+          const utcDateTime = new Date(`${dateStr}T${timeStr}Z`);
+          const localDateTime = new Date(utcDateTime.getTime() + (timezoneOffset * 60 * 1000));
+
+          // Extract using UTC methods
+          const localYear = localDateTime.getUTCFullYear();
+          const localMonth = String(localDateTime.getUTCMonth() + 1).padStart(2, '0');
+          const localDay = String(localDateTime.getUTCDate()).padStart(2, '0');
+          const localHours = String(localDateTime.getUTCHours()).padStart(2, '0');
+          const localMinutes = String(localDateTime.getUTCMinutes()).padStart(2, '0');
+          const localSeconds = String(localDateTime.getUTCSeconds()).padStart(2, '0');
+
+          caseData.ScheduledDate = `${localYear}-${localMonth}-${localDay}`;
+          caseData.ScheduledTime = `${localHours}:${localMinutes}:${localSeconds}`;
+        }
+
         // Parse JSON fields
         caseData.PlaintiffGroups = safeJSONParse(caseData.PlaintiffGroups);
         caseData.DefendantGroups = safeJSONParse(caseData.DefendantGroups);
@@ -344,14 +419,17 @@ async function getCasesByAttorney(attorneyId, options = {}) {
     return await executeQuery(async (pool) => {
       const request = pool.request().input("id", sql.Int, id);
 
+      // Join with Attorneys to get timezone info for conversion
       let query = `
         SELECT
           c.*,
+          a.State AS AttorneyState,
           (SELECT COUNT(*) FROM dbo.JurorApplications ja
            WHERE ja.CaseId = c.CaseId AND ja.Status = 'approved') AS ApprovedJurors,
           (SELECT COUNT(*) FROM dbo.JurorApplications ja
            WHERE ja.CaseId = c.CaseId AND ja.Status = 'pending') AS PendingApplications
         FROM dbo.Cases c
+        LEFT JOIN dbo.Attorneys a ON c.AttorneyId = a.AttorneyId
         WHERE c.AttorneyId = @id AND c.IsDeleted = 0
       `;
 
@@ -372,12 +450,160 @@ async function getCasesByAttorney(attorneyId, options = {}) {
       query += " ORDER BY c.ScheduledDate DESC, c.CreatedAt DESC";
 
       const result = await request.query(query);
-      return result.recordset;
+
+      // Convert UTC times back to attorney's local timezone for display
+      const cases = result.recordset.map(caseData => {
+        if (caseData.ScheduledDate && caseData.ScheduledTime) {
+          // Use stored timezone offset (from when case was created) or fallback to state-based
+          const timezoneOffset = caseData.TimezoneOffset !== null && caseData.TimezoneOffset !== undefined
+            ? caseData.TimezoneOffset
+            : getTimezoneOffsetByState(caseData.AttorneyState || caseData.State);
+
+          // Extract date using UTC methods to avoid timezone interpretation issues
+          const scheduledDateObj = caseData.ScheduledDate;
+          let dateStr;
+          if (scheduledDateObj instanceof Date) {
+            // Use UTC methods to extract date - avoids server timezone issues
+            const year = scheduledDateObj.getUTCFullYear();
+            const month = String(scheduledDateObj.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(scheduledDateObj.getUTCDate()).padStart(2, '0');
+            dateStr = `${year}-${month}-${day}`;
+          } else {
+            dateStr = scheduledDateObj;
+          }
+
+          const timeStr = caseData.ScheduledTime;
+
+          console.log(`🔍 Case ${caseData.CaseId} - UTC in DB: ${dateStr} ${timeStr} | TZ Offset: ${timezoneOffset} min`);
+
+          // Create UTC datetime (database stores UTC)
+          const utcDateTime = new Date(`${dateStr}T${timeStr}Z`);
+
+          // Convert to local time by adding timezone offset
+          const localDateTime = new Date(utcDateTime.getTime() + (timezoneOffset * 60 * 1000));
+
+          // Extract local date and time using UTC methods
+          const localYear = localDateTime.getUTCFullYear();
+          const localMonth = String(localDateTime.getUTCMonth() + 1).padStart(2, '0');
+          const localDay = String(localDateTime.getUTCDate()).padStart(2, '0');
+          const localHours = String(localDateTime.getUTCHours()).padStart(2, '0');
+          const localMinutes = String(localDateTime.getUTCMinutes()).padStart(2, '0');
+          const localSeconds = String(localDateTime.getUTCSeconds()).padStart(2, '0');
+
+          // Override with local time for display
+          caseData.ScheduledDate = `${localYear}-${localMonth}-${localDay}`;
+          caseData.ScheduledTime = `${localHours}:${localMinutes}:${localSeconds}`;
+
+          console.log(`📤 Returning - Local (${caseData.AttorneyState}): ${caseData.ScheduledDate} ${caseData.ScheduledTime}`);
+        }
+
+        return caseData;
+      });
+
+      return cases;
     });
   } catch (error) {
     console.error("❌ [Case.getCasesByAttorney] Error:", error.message);
     throw error;
   }
+}
+
+// Helper function to get timezone offset by state
+function getTimezoneOffsetByState(state) {
+  if (!state) return 0;
+
+  const stateUpper = state.toUpperCase();
+
+  // India Standard Time (UTC+5:30) = +330 minutes
+  if (stateUpper === 'INDIA' || stateUpper === 'IN') {
+    return 330;
+  }
+
+  // Eastern Time (UTC-5) = -300 minutes
+  if (['CONNECTICUT', 'DELAWARE', 'FLORIDA', 'GEORGIA', 'MAINE', 'MARYLAND',
+       'MASSACHUSETTS', 'MICHIGAN', 'NEW HAMPSHIRE', 'NEW JERSEY', 'NEW YORK',
+       'NORTH CAROLINA', 'OHIO', 'PENNSYLVANIA', 'RHODE ISLAND', 'SOUTH CAROLINA',
+       'VERMONT', 'VIRGINIA', 'WEST VIRGINIA'].includes(stateUpper)) {
+    return -300;
+  }
+
+  // Central Time (UTC-6) = -360 minutes
+  if (['ALABAMA', 'ARKANSAS', 'ILLINOIS', 'IOWA', 'KANSAS', 'KENTUCKY',
+       'LOUISIANA', 'MINNESOTA', 'MISSISSIPPI', 'MISSOURI', 'NEBRASKA',
+       'NORTH DAKOTA', 'OKLAHOMA', 'SOUTH DAKOTA', 'TENNESSEE', 'TEXAS',
+       'WISCONSIN'].includes(stateUpper)) {
+    return -360;
+  }
+
+  // Mountain Time (UTC-7) = -420 minutes
+  if (['ARIZONA', 'COLORADO', 'IDAHO', 'MONTANA', 'NEW MEXICO', 'UTAH',
+       'WYOMING'].includes(stateUpper)) {
+    return -420;
+  }
+
+  // Pacific Time (UTC-8) = -480 minutes
+  if (['CALIFORNIA', 'NEVADA', 'OREGON', 'WASHINGTON'].includes(stateUpper)) {
+    return -480;
+  }
+
+  // Alaska Time (UTC-9) = -540 minutes
+  if (stateUpper === 'ALASKA') {
+    return -540;
+  }
+
+  // Hawaii Time (UTC-10) = -600 minutes
+  if (stateUpper === 'HAWAII') {
+    return -600;
+  }
+
+  // Default to UTC if state not recognized
+  return 0;
+}
+
+// Helper function to convert case UTC time to local time
+function convertCaseTimeToLocal(caseData) {
+  if (!caseData.ScheduledDate || !caseData.ScheduledTime) {
+    return caseData;
+  }
+
+  // Use stored timezone offset or fallback to state-based
+  const timezoneOffset = caseData.TimezoneOffset !== null && caseData.TimezoneOffset !== undefined
+    ? caseData.TimezoneOffset
+    : getTimezoneOffsetByState(caseData.AttorneyState || caseData.State);
+
+  // Extract date using UTC methods to avoid timezone issues
+  const scheduledDateObj = caseData.ScheduledDate;
+  let dateStr;
+  if (scheduledDateObj instanceof Date) {
+    const year = scheduledDateObj.getUTCFullYear();
+    const month = String(scheduledDateObj.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(scheduledDateObj.getUTCDate()).padStart(2, '0');
+    dateStr = `${year}-${month}-${day}`;
+  } else {
+    dateStr = scheduledDateObj;
+  }
+
+  const timeStr = caseData.ScheduledTime;
+
+  // Create UTC datetime (database stores UTC)
+  const utcDateTime = new Date(`${dateStr}T${timeStr}Z`);
+
+  // Convert to local time by adding timezone offset
+  const localDateTime = new Date(utcDateTime.getTime() + (timezoneOffset * 60 * 1000));
+
+  // Extract local date and time using UTC methods
+  const localYear = localDateTime.getUTCFullYear();
+  const localMonth = String(localDateTime.getUTCMonth() + 1).padStart(2, '0');
+  const localDay = String(localDateTime.getUTCDate()).padStart(2, '0');
+  const localHours = String(localDateTime.getUTCHours()).padStart(2, '0');
+  const localMinutes = String(localDateTime.getUTCMinutes()).padStart(2, '0');
+  const localSeconds = String(localDateTime.getUTCSeconds()).padStart(2, '0');
+
+  // Override with local time for display
+  caseData.ScheduledDate = `${localYear}-${localMonth}-${localDay}`;
+  caseData.ScheduledTime = `${localHours}:${localMinutes}:${localSeconds}`;
+
+  return caseData;
 }
 
 async function getCasesPendingAdminApproval(limit = 50) {
@@ -387,12 +613,13 @@ async function getCasesPendingAdminApproval(limit = 50) {
         .request()
         .input("limit", sql.Int, Math.min(100, Math.max(1, limit))).query(`
           SELECT TOP(@limit)
-            c.*, 
+            c.*,
             a.FirstName + ' ' + a.LastName AS AttorneyName,
             a.Email AS AttorneyEmail,
             a.LawFirmName,
             a.PhoneNumber AS AttorneyPhone,
             a.StateBarNumber,
+            a.State AS AttorneyState,
             ISNULL(c.RequiredJurors, 7) AS RequiredJurors
           FROM dbo.Cases c
           LEFT JOIN dbo.Attorneys a ON c.AttorneyId = a.AttorneyId
@@ -400,7 +627,9 @@ async function getCasesPendingAdminApproval(limit = 50) {
           ORDER BY c.CreatedAt ASC
         `);
 
-      return result.recordset;
+      // Convert UTC times to attorney's local timezone
+      const cases = result.recordset.map(caseData => convertCaseTimeToLocal(caseData));
+      return cases;
     });
   } catch (error) {
     console.error(
@@ -563,11 +792,12 @@ async function getAllCases(options = {}) {
       const whereClause = whereClauses.join(" AND ");
 
       const query = `
-        SELECT 
+        SELECT
           c.*,
           a.FirstName + ' ' + a.LastName AS AttorneyName,
           a.Email AS AttorneyEmail,
           a.LawFirmName,
+          a.State AS AttorneyState,
           ISNULL(c.RequiredJurors, 7) AS RequiredJurors,
           (SELECT COUNT(*) FROM dbo.JurorApplications ja
            WHERE ja.CaseId = c.CaseId AND ja.Status = 'approved') AS ApprovedJurors
@@ -584,8 +814,11 @@ async function getAllCases(options = {}) {
 
       const result = await request.query(query);
 
+      // Convert UTC times to attorney's local timezone
+      const casesWithLocalTime = result.recordsets[0].map(caseData => convertCaseTimeToLocal(caseData));
+
       return {
-        cases: result.recordsets[0],
+        cases: casesWithLocalTime,
         total: result.recordsets[1][0].total,
         page,
         limit,

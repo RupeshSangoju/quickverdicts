@@ -192,6 +192,33 @@ async function updateLastLogin(attorneyId) {
   }
 }
 
+async function updateTimezoneOffset(attorneyId, timezoneOffset) {
+  try {
+    const id = parseInt(attorneyId, 10);
+    const offset = parseInt(timezoneOffset, 10);
+
+    if (isNaN(id) || id <= 0) throw new Error("Valid attorney ID is required");
+    if (isNaN(offset)) throw new Error("Valid timezone offset is required");
+
+    await executeQuery(async (pool) => {
+      await pool.request()
+        .input("attorneyId", sql.Int, id)
+        .input("timezoneOffset", sql.Int, offset)
+        .query(`
+          UPDATE dbo.Attorneys
+          SET TimezoneOffset = @timezoneOffset, UpdatedAt = GETUTCDATE()
+          WHERE AttorneyId = @attorneyId
+        `);
+    });
+
+    console.log(`✅ Updated timezone offset for Attorney ${id}: ${offset} minutes`);
+    return true;
+  } catch (error) {
+    console.error("❌ [Attorney.updateTimezoneOffset] Error:", error.message);
+    throw error;
+  }
+}
+
 async function updateVerificationStatus(attorneyId, status) {
   try {
     const id = parseInt(attorneyId, 10);
@@ -597,6 +624,7 @@ module.exports = {
 
   // Updates
   updateLastLogin,
+  updateTimezoneOffset,
   updateVerificationStatus,
   updatePassword,
   updateProfile,

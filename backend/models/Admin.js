@@ -211,6 +211,33 @@ async function updateLastLogin(adminId) {
   }
 }
 
+async function updateTimezoneOffset(adminId, timezoneOffset) {
+  try {
+    const id = parseInt(adminId, 10);
+    const offset = parseInt(timezoneOffset, 10);
+
+    if (isNaN(id) || id <= 0) throw new Error("Valid admin ID is required");
+    if (isNaN(offset)) throw new Error("Valid timezone offset is required");
+
+    await executeQuery(async (pool) => {
+      await pool.request()
+        .input("adminId", sql.Int, id)
+        .input("timezoneOffset", sql.Int, offset)
+        .query(`
+          UPDATE dbo.Admins
+          SET TimezoneOffset = @timezoneOffset, UpdatedAt = GETUTCDATE()
+          WHERE AdminId = @adminId AND IsDeleted = 0
+        `);
+    });
+
+    console.log(`✅ Updated timezone offset for Admin ${id}: ${offset} minutes`);
+    return true;
+  } catch (error) {
+    console.error("❌ [Admin.updateTimezoneOffset] Error:", error.message);
+    throw error;
+  }
+}
+
 /**
  * Update admin password
  */
@@ -663,6 +690,7 @@ module.exports = {
 
   // Updates
   updateLastLogin,
+  updateTimezoneOffset,
   updatePassword,
   updateProfile,
   updatePermissions,
