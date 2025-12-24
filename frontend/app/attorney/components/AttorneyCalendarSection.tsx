@@ -182,7 +182,7 @@ export default function AttorneyCalendarSection({ onBack }: AttorneyCalendarSect
 
       if (data.success && Array.isArray(data.cases)) {
         // Debug logging to check AdminApprovalStatus
-        console.log('📋 Cases fetched for calendar:', data.cases.map(c => ({
+        console.log('📋 Cases fetched for calendar:', data.cases.map((c: Case) => ({
           Id: c.Id,
           AdminApprovalStatus: c.AdminApprovalStatus,
           AttorneyStatus: c.AttorneyStatus
@@ -415,7 +415,7 @@ export default function AttorneyCalendarSection({ onBack }: AttorneyCalendarSect
         <div className="bg-white rounded-xl shadow-lg p-12 text-center">
           <CalendarIcon className="mx-auto h-16 w-16 text-gray-400 mb-4" />
           <h3 className="text-xl font-bold text-gray-900 mb-2">No Scheduled Cases</h3>
-          <p className="text-gray-600 mb-6">You don't have any scheduled cases yet.</p>
+          <p className="text-gray-600 mb-6">You do not have any scheduled cases yet.</p>
           <button
             onClick={() => router.push("/attorney/state/case-type")}
             className="px-6 py-3 bg-[#16305B] text-white rounded-lg hover:bg-[#1e417a] transition-colors font-semibold"
@@ -509,7 +509,7 @@ export default function AttorneyCalendarSection({ onBack }: AttorneyCalendarSect
               Your calendar will be available once your account is verified by an administrator.
             </p>
             <p className="text-sm text-gray-500">
-              This usually takes 24-48 hours. You'll receive a notification once verified.
+              This usually takes 24-48 hours. You will receive a notification once verified.
             </p>
           </div>
         </div>
