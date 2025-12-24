@@ -318,27 +318,47 @@ router.post(
 
       console.log(`📋 Case ${caseId} status: ${caseData.AttorneyStatus}, AdminApproval: ${caseData.AdminApprovalStatus}`);
 
-      // Check if trial can be joined (15 minutes before scheduled time)
+      // ✅ FIX: Check if trial can be joined (15 minutes before scheduled time)
+      // Scheduled time is stored in attorney's LOCAL timezone
       // Admins can join anytime
       if (userType !== "admin" && caseData.ScheduledDate && caseData.ScheduledTime) {
-        // ✅ FIX: Scheduled times are stored in UTC, so append 'Z' to parse as UTC
-        const scheduledDateTime = new Date(`${caseData.ScheduledDate}T${caseData.ScheduledTime}Z`);
-        const now = new Date();
-        const fifteenMinutesBefore = new Date(scheduledDateTime.getTime() - 15 * 60 * 1000);
+        // Parse the stored local date/time
+        const dateParts = caseData.ScheduledDate.split('T')[0].split('-');
+        const timeParts = caseData.ScheduledTime.split(':');
+
+        const year = parseInt(dateParts[0], 10);
+        const month = parseInt(dateParts[1], 10) - 1; // 0-indexed
+        const day = parseInt(dateParts[2], 10);
+        const hours = parseInt(timeParts[0], 10);
+        const minutes = parseInt(timeParts[1], 10);
+        const seconds = parseInt(timeParts[2] || 0, 10);
+
+        // Get the timezone offset that was stored when case was created
+        const timezoneOffsetMinutes = parseInt(caseData.TimezoneOffset || 0, 10);
+
+        // Create UTC timestamp for the scheduled time using the stored timezone offset
+        // Date.UTC creates timestamp, then subtract offset to convert from local to UTC
+        const scheduledLocalAsUTC = Date.UTC(year, month, day, hours, minutes, seconds);
+        const scheduledActualUTC = scheduledLocalAsUTC - (timezoneOffsetMinutes * 60 * 1000);
+
+        const now = Date.now();
+        const fifteenMinutesInMs = 15 * 60 * 1000;
+        const canJoinAfter = scheduledActualUTC - fifteenMinutesInMs;
 
         console.log(`🕐 Trial join time check for case ${caseId}:`);
-        console.log(`   Scheduled UTC: ${scheduledDateTime.toISOString()}`);
-        console.log(`   Current UTC: ${now.toISOString()}`);
-        console.log(`   Can join after UTC: ${fifteenMinutesBefore.toISOString()}`);
+        console.log(`   Scheduled (in attorney TZ): ${caseData.ScheduledDate} ${caseData.ScheduledTime}`);
+        console.log(`   Timezone offset: ${timezoneOffsetMinutes} minutes`);
+        console.log(`   Current time (UTC): ${new Date(now).toISOString()}`);
+        console.log(`   Can join after (UTC): ${new Date(canJoinAfter).toISOString()}`);
 
-        if (now < fifteenMinutesBefore) {
-          const minutesUntilJoin = Math.ceil((fifteenMinutesBefore.getTime() - now.getTime()) / (60 * 1000));
+        if (now < canJoinAfter) {
+          const minutesUntilJoin = Math.ceil((canJoinAfter - now) / (60 * 1000));
           console.log(`⏰ Too early to join - ${minutesUntilJoin} minutes until join time`);
           return res.status(403).json({
             success: false,
             message: `Trial cannot be joined yet. You can join ${minutesUntilJoin} minute${minutesUntilJoin !== 1 ? 's' : ''} before the scheduled time.`,
-            scheduledTime: scheduledDateTime.toISOString(),
-            canJoinAt: fifteenMinutesBefore.toISOString()
+            scheduledTime: new Date(scheduledActualUTC).toISOString(),
+            canJoinAt: new Date(canJoinAfter).toISOString()
           });
         }
         console.log(`✅ Time check passed - can join now`);

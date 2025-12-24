@@ -98,7 +98,7 @@ function validateCaseData(data) {
     }
   }
 
-  // Validate future date (only if both date and time are valid)
+  // ✅ FIX: Validate future date using user's timezone (not server timezone)
   if (data.scheduledDate && data.scheduledTime && errors.length === 0) {
     try {
       // Ensure time is in HH:MM:SS format for validation
@@ -111,19 +111,33 @@ function validateCaseData(data) {
           timeForValidation = `${timeForValidation}:00`;
         }
 
-        const scheduledDateTime = new Date(
-          `${data.scheduledDate}T${timeForValidation}`
-        );
+        // Parse date and time components
+        const dateParts = data.scheduledDate.split('-');
+        const year = parseInt(dateParts[0], 10);
+        const month = parseInt(dateParts[1], 10) - 1; // 0-indexed
+        const day = parseInt(dateParts[2], 10);
 
-        if (isNaN(scheduledDateTime.getTime())) {
+        const [hours, minutes, seconds] = timeForValidation.split(':').map(Number);
+
+        // Get user's timezone offset (in minutes)
+        // Positive = ahead of UTC, negative = behind UTC
+        const timezoneOffsetMinutes = parseInt(data.timezoneOffset || 0, 10);
+
+        // Create timestamp in user's local timezone
+        // Date.UTC creates UTC timestamp, then we subtract offset to get user's local time equivalent
+        const userLocalTimestamp = Date.UTC(year, month, day, hours, minutes, seconds) - (timezoneOffsetMinutes * 60 * 1000);
+
+        // Get current time in user's timezone
+        const nowUTC = Date.now();
+        const nowInUserTimezone = nowUTC;
+
+        // Compare with 5 minute buffer
+        const fiveMinutesInMs = 5 * 60 * 1000;
+
+        if (isNaN(userLocalTimestamp)) {
           errors.push("Invalid date/time format");
-        } else {
-          // Check if scheduled time is in the future (with 5 minute buffer)
-          const now = new Date();
-          const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
-          if (scheduledDateTime <= fiveMinutesAgo) {
-            errors.push("Scheduled date/time must be in the future");
-          }
+        } else if (userLocalTimestamp <= (nowInUserTimezone - fiveMinutesInMs)) {
+          errors.push("Scheduled date/time must be in the future");
         }
       }
     } catch (err) {
@@ -181,9 +195,9 @@ async function createCase(data) {
   try {
     validateCaseData(data);
 
-    // Convert scheduledTime from attorney's local timezone to UTC
+    // ✅ FIX: Store scheduled time in attorney's LOCAL timezone (NO UTC conversion)
+    // The timezone offset is stored separately for reference
     let timeValue = null;
-    let utcDateTimeForScheduler = null;
 
     if (data.scheduledTime && data.scheduledDate) {
       const trimmedTime = data.scheduledTime.trim();
@@ -203,47 +217,14 @@ async function createCase(data) {
         throw new Error("Invalid time format after validation");
       }
 
-      console.log(`⏰ Attorney Local Time: ${data.scheduledDate} ${trimmedTime}`);
-      console.log(`🌍 Timezone Offset: ${data.timezoneOffset} minutes (${data.timezoneName || 'Unknown'})`);
+      // Store as string in HH:MM:SS format (EXACTLY as entered by attorney in their local timezone)
+      timeValue = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 
-      // Parse the scheduled date components
-      const dateParts = data.scheduledDate.split('-');
-      const year = parseInt(dateParts[0], 10);
-      const month = parseInt(dateParts[1], 10) - 1; // Month is 0-indexed in Date
-      const day = parseInt(dateParts[2], 10);
-
-      // Get timezone offset (positive = ahead of UTC, negative = behind UTC)
-      const timezoneOffsetMinutes = parseInt(data.timezoneOffset || 0, 10);
-
-      // Create UTC timestamp representing attorney's local time
-      // Date.UTC() creates timestamp in UTC, avoiding server timezone interpretation issues
-      const localAsUTC = Date.UTC(year, month, day, hours, minutes, seconds);
-
-      // Convert to actual UTC by subtracting timezone offset
-      // If attorney is in IST (UTC+5:30 = +330 min), subtract 330 min to get UTC
-      const actualUTC = localAsUTC - (timezoneOffsetMinutes * 60 * 1000);
-
-      // Create Date object from UTC timestamp
-      const utcDateTime = new Date(actualUTC);
-
-      // Extract UTC date and time components
-      const utcYear = utcDateTime.getUTCFullYear();
-      const utcMonth = String(utcDateTime.getUTCMonth() + 1).padStart(2, '0');
-      const utcDay = String(utcDateTime.getUTCDate()).padStart(2, '0');
-      const utcHours = utcDateTime.getUTCHours();
-      const utcMinutes = utcDateTime.getUTCMinutes();
-      const utcSeconds = utcDateTime.getUTCSeconds();
-      const utcDate = `${utcYear}-${utcMonth}-${utcDay}`;
-
-      // Store as string in HH:MM:SS format
-      timeValue = `${String(utcHours).padStart(2, '0')}:${String(utcMinutes).padStart(2, '0')}:${String(utcSeconds).padStart(2, '0')}`;
-
-      console.log(`🌐 Converted to UTC: ${utcDate} ${timeValue}`);
-      console.log(`   → Attorney Local: ${data.scheduledDate} ${trimmedTime} (${data.timezoneName})`);
-      console.log(`   → Stored in DB (UTC): ${utcDate} ${timeValue}`);
-
-      // Update scheduledDate to UTC date (in case it changed due to timezone conversion)
-      data.scheduledDate = utcDate;
+      console.log(`⏰ Storing in attorney's local timezone:`);
+      console.log(`   → Date: ${data.scheduledDate}`);
+      console.log(`   → Time: ${timeValue}`);
+      console.log(`   → Timezone: ${data.timezoneName || 'Unknown'} (Offset: ${data.timezoneOffset || 0} minutes)`);
+      console.log(`   → NO UTC conversion - storing as-is`);
     }
 
     return await executeQuery(async (pool) => {

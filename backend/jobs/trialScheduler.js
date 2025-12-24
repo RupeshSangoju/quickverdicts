@@ -16,44 +16,10 @@ const WAR_ROOM_ACCESS_MINUTES = 30; // Open war room X minutes before trial (con
 const NOTIFICATION_MINUTES = 30; // Send notifications X minutes before trial
 
 // ============================================
-// TIMEZONE OFFSET SQL - CALCULATED PER ATTORNEY STATE
+// ✅ FIX: Use stored TimezoneOffset from Cases table
 // ============================================
-// Returns timezone offset in minutes based on attorney's state
-// Uses SQL CASE statement for dynamic timezone calculation
-const TIMEZONE_OFFSET_SQL = `
-  CASE
-    -- Eastern Time (UTC-5) = -300 minutes
-    WHEN a.State IN ('Connecticut', 'Delaware', 'Florida', 'Georgia', 'Maine', 'Maryland',
-                     'Massachusetts', 'Michigan', 'New Hampshire', 'New Jersey', 'New York',
-                     'North Carolina', 'Ohio', 'Pennsylvania', 'Rhode Island', 'South Carolina',
-                     'Vermont', 'Virginia', 'West Virginia') THEN -300
-
-    -- Central Time (UTC-6) = -360 minutes
-    WHEN a.State IN ('Alabama', 'Arkansas', 'Illinois', 'Iowa', 'Kansas', 'Kentucky',
-                     'Louisiana', 'Minnesota', 'Mississippi', 'Missouri', 'Nebraska',
-                     'North Dakota', 'Oklahoma', 'South Dakota', 'Tennessee', 'Texas',
-                     'Wisconsin') THEN -360
-
-    -- Mountain Time (UTC-7) = -420 minutes
-    WHEN a.State IN ('Arizona', 'Colorado', 'Idaho', 'Montana', 'New Mexico', 'Utah',
-                     'Wyoming') THEN -420
-
-    -- Pacific Time (UTC-8) = -480 minutes
-    WHEN a.State IN ('California', 'Nevada', 'Oregon', 'Washington') THEN -480
-
-    -- Alaska Time (UTC-9) = -540 minutes
-    WHEN a.State = 'Alaska' THEN -540
-
-    -- Hawaii Time (UTC-10) = -600 minutes
-    WHEN a.State = 'Hawaii' THEN -600
-
-    -- India Standard Time (UTC+5:30) = +330 minutes
-    WHEN a.State = 'India' THEN 330
-
-    -- Default to UTC if state not recognized
-    ELSE 0
-  END
-`;
+// The timezone offset is now captured from the user's PC when they schedule the case
+// and stored in the TimezoneOffset column. No need for state-based calculation.
 
 let schedulerInterval = null;
 let isRunning = false;
@@ -85,13 +51,15 @@ async function checkAndTransitionTrials() {
     // STEP 2: Send Notifications (NOTIFICATION_MINUTES before trial)
     // ============================================
 
-    // Find cases that need notifications sent (NOTIFICATION_MINUTES before)
+    // ✅ FIX: Find cases that need notifications sent (NOTIFICATION_MINUTES before)
+    // Scheduled time is stored in attorney's LOCAL timezone, use TimezoneOffset to convert to UTC
     const casesForNotifications = await pool.request().query(`
       SELECT
         c.CaseId,
         c.CaseTitle,
         c.ScheduledDate,
         c.ScheduledTime,
+        c.TimezoneOffset,
         c.AttorneyId,
         c.County,
         c.CaseType,
@@ -103,7 +71,7 @@ async function checkAndTransitionTrials() {
         a.State as AttorneyState
         , DATEDIFF(MINUTE,
             GETUTCDATE(),
-            DATEADD(MINUTE, -(${TIMEZONE_OFFSET_SQL}),
+            DATEADD(MINUTE, -ISNULL(c.TimezoneOffset, 0),
               CAST(CONCAT(
                 CONVERT(VARCHAR(10), c.ScheduledDate, 120),
                 ' ',
@@ -115,7 +83,7 @@ async function checkAndTransitionTrials() {
             CONVERT(VARCHAR(10), c.ScheduledDate, 120), ' ', CONVERT(VARCHAR(8), c.ScheduledTime, 108)
           ) AS DATETIME) AS ScheduledDateTime
         , GETUTCDATE() AS ServerTimeUTC
-        , DATEADD(MINUTE, -(${TIMEZONE_OFFSET_SQL}), CAST(CONCAT(
+        , DATEADD(MINUTE, -ISNULL(c.TimezoneOffset, 0), CAST(CONCAT(
             CONVERT(VARCHAR(10), c.ScheduledDate, 120), ' ', CONVERT(VARCHAR(8), c.ScheduledTime, 108)
           ) AS DATETIME)) AS ScheduledDateTimeUTC
       FROM Cases c
@@ -125,13 +93,13 @@ async function checkAndTransitionTrials() {
         AND (c.NotificationsSent IS NULL OR c.NotificationsSent = 0)
         AND DATEDIFF(MINUTE,
             GETUTCDATE(),
-            DATEADD(MINUTE, -(${TIMEZONE_OFFSET_SQL}), CAST(CONCAT(
+            DATEADD(MINUTE, -ISNULL(c.TimezoneOffset, 0), CAST(CONCAT(
               CONVERT(VARCHAR(10), c.ScheduledDate, 120), ' ', CONVERT(VARCHAR(8), c.ScheduledTime, 108)
             ) AS DATETIME))
           ) <= ${NOTIFICATION_MINUTES}
         AND DATEDIFF(MINUTE,
             GETUTCDATE(),
-            DATEADD(MINUTE, -(${TIMEZONE_OFFSET_SQL}), CAST(CONCAT(
+            DATEADD(MINUTE, -ISNULL(c.TimezoneOffset, 0), CAST(CONCAT(
               CONVERT(VARCHAR(10), c.ScheduledDate, 120), ' ', CONVERT(VARCHAR(8), c.ScheduledTime, 108)
             ) AS DATETIME))
           ) >= -60  -- Don't notify for trials that started over 1 hour ago
