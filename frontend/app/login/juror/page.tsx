@@ -160,7 +160,7 @@ export default function JurorLogin() {
 
       // Call login API
       const response = await post<JurorLoginResponse>(
-        "/auth/juror/login",
+        "api/auth/juror/login",
         {
           email: email.trim().toLowerCase(),
           password: password,

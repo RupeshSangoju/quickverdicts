@@ -98,11 +98,17 @@ async function reviewCaseApproval(req, res) {
 
       // Try to block the time slot in admin calendar
       try {
-        await AdminCalendar.blockSlotForCase(
-          caseId,
-          caseData.ScheduledDate.toISOString().split("T")[0],
-          timeString
-        );
+        // ✅ FIX ScheduledDate safely (string OR Date)
+        let scheduledDateStr;
+
+        if (caseData.ScheduledDate instanceof Date) {
+          scheduledDateStr = caseData.ScheduledDate.toISOString().split("T")[0];
+        } else if (typeof caseData.ScheduledDate === "string") {
+          scheduledDateStr = caseData.ScheduledDate.split("T")[0];
+        } else {
+          throw new Error(`Invalid ScheduledDate type: ${typeof caseData.ScheduledDate}`);
+        }
+
       } catch (blockError) {
         // Handle slot already blocked error gracefully
         if (blockError.message && blockError.message.includes("already blocked")) {

@@ -989,20 +989,17 @@ router.post(
         });
       }
 
-      // Update meeting status to completed
       await TrialMeeting.updateMeetingStatus(meeting.MeetingId, "completed");
 
-      // Update case status
       await Case.updateCaseStatus(caseId, {
         attorneyStatus: "view_details",
       });
 
-      // Create event
       await Event.createEvent({
         caseId,
         eventType: Event.EVENT_TYPES.TRIAL_COMPLETED,
         description: "Trial meeting ended",
-        triggeredBy: req.user.id || 0,
+        triggeredBy: req.user?.id || 0, // ✅ FIX
         userType: "admin",
       });
 
@@ -1019,6 +1016,7 @@ router.post(
     }
   }
 );
+
 
 // ============================================
 // HEALTH CHECK
