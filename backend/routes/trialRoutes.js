@@ -321,13 +321,19 @@ router.post(
       // Check if trial can be joined (15 minutes before scheduled time)
       // Admins can join anytime
       if (userType !== "admin" && caseData.ScheduledDate && caseData.ScheduledTime) {
-        const scheduledDateTime = new Date(`${caseData.ScheduledDate}T${caseData.ScheduledTime}`);
+        // ✅ FIX: Scheduled times are stored in UTC, so append 'Z' to parse as UTC
+        const scheduledDateTime = new Date(`${caseData.ScheduledDate}T${caseData.ScheduledTime}Z`);
         const now = new Date();
         const fifteenMinutesBefore = new Date(scheduledDateTime.getTime() - 15 * 60 * 1000);
 
+        console.log(`🕐 Trial join time check for case ${caseId}:`);
+        console.log(`   Scheduled UTC: ${scheduledDateTime.toISOString()}`);
+        console.log(`   Current UTC: ${now.toISOString()}`);
+        console.log(`   Can join after UTC: ${fifteenMinutesBefore.toISOString()}`);
+
         if (now < fifteenMinutesBefore) {
           const minutesUntilJoin = Math.ceil((fifteenMinutesBefore.getTime() - now.getTime()) / (60 * 1000));
-          console.log(`⏰ Too early to join - Trial starts at ${scheduledDateTime.toLocaleString()}, can join at ${fifteenMinutesBefore.toLocaleString()}`);
+          console.log(`⏰ Too early to join - ${minutesUntilJoin} minutes until join time`);
           return res.status(403).json({
             success: false,
             message: `Trial cannot be joined yet. You can join ${minutesUntilJoin} minute${minutesUntilJoin !== 1 ? 's' : ''} before the scheduled time.`,
@@ -335,6 +341,7 @@ router.post(
             canJoinAt: fifteenMinutesBefore.toISOString()
           });
         }
+        console.log(`✅ Time check passed - can join now`);
       }
 
       // Verify authorization and set display name
