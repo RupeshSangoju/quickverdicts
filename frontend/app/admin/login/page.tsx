@@ -87,7 +87,7 @@ export default function AdminLogin() {
         timezoneName: Intl.DateTimeFormat().resolvedOptions().timeZone
       });
 
-      const response = await post<AdminLoginResponse>("/auth/admin/login", {
+      const response = await post<AdminLoginResponse>("api/auth/admin/login", {
         email: formData.email.trim().toLowerCase(),
         password: formData.password,
         timezoneOffset: timezoneOffset,
