@@ -125,6 +125,7 @@ async function createCase(req, res) {
       } else if (timeParts.length === 3) {
         normalizedTime = `${timeParts[0].padStart(2, '0')}:${timeParts[1].padStart(2, '0')}:${timeParts[2].padStart(2, '0')}`;
       }
+      console.log(normalizedTime);
 
       console.log(`✅ Normalized scheduledTime: "${trimmedTime}" → "${normalizedTime}"`);
       restOfBody.scheduledTime = normalizedTime;

@@ -226,7 +226,8 @@ async function createCase(data) {
       console.log(`   → Timezone: ${data.timezoneName || 'Unknown'} (Offset: ${data.timezoneOffset || 0} minutes)`);
       console.log(`   → NO UTC conversion - storing as-is`);
     }
-
+    console.log("timeValue:",timeValue);
+    console.log(" parseInt(data.timezoneOffset || 0, 10) : ", parseInt(data.timezoneOffset || 0, 10));
     return await executeQuery(async (pool) => {
       const result = await pool
         .request()

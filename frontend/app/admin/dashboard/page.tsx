@@ -942,6 +942,63 @@ export default function AdminDashboard() {
       alert('Failed to download MS Forms template');
     }
   };
+
+  function applyOffsetToUtcTime(utcTime: string, dateString: string, timezoneOffset: string, offsetMinutesMap:number) {
+  const offsetMinutes = offsetMinutesMap * 2;
+  if (offsetMinutes === null) throw new Error('Invalid timezoneOffset');
+
+  // Build a UTC instant (number of ms since epoch)
+  const utcMs = Date.parse(`${dateString}T${utcTime}Z`);
+  if (isNaN(utcMs)) throw new Error('Invalid UTC date/time');
+
+  // If timezoneOffset includes '+' subtract offsetMinutes, if '-' add it
+  const signChar = timezoneOffset.includes('+') ? '+' : timezoneOffset.includes('-') ? '-' : '+';
+        // console.log("utcMs:",new Date(utcMs))
+  const resultMs = signChar === '+'
+    ? utcMs - offsetMinutes * 60_000
+    : utcMs + Math.abs(offsetMinutes) * 60_000;
+
+  const resultDate = new Date(resultMs);
+  return {
+    date: resultDate,
+    "12HoursTime": resultDate.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }),
+    "24HoursTime" : resultDate.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: false }),
+    "dateString": resultDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+  };
+}
+
+function getSystemTimezoneInfo() {
+  const offset = new Date().getTimezoneOffset();
+  const offsetHours = offset / 60;
+  const timezoneName = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const sign = offset <= 0 ? '+' : '-';
+  const absHours = Math.floor(Math.abs(offsetHours));
+  const minutes = Math.abs(offsetHours % 1) * 60;
+  
+  return {
+    offsetHours: -offsetHours, // Negate because getTimezoneOffset returns opposite sign
+    offsetMinutes: -offset,
+    timezoneName,
+    sign,
+    formatOffset: `UTC${sign}${String(absHours).padStart(2, '0')}:${String(Math.round(minutes)).padStart(2, '0')}`
+  };
+}
+
+
+function formatTime(timeString: string, scheduledDate: string) {
+
+  const systemTz = getSystemTimezoneInfo();
+    let zoneMap  = '';
+
+    // use the formatOffset returned from getSystemTimezoneInfo and ensure offsetMinutes is numeric
+    zoneMap = systemTz.formatOffset ? systemTz.formatOffset : "";
+    const offsetMinutes = typeof systemTz.offsetMinutes === 'number' ? systemTz.offsetMinutes : 0;
+
+    // console.log(applyOffsetToUtcTime(timeString, scheduledDate, zoneMap, offsetMinutes));
+
+    const dataSystemmap = applyOffsetToUtcTime(timeString, scheduledDate, zoneMap, offsetMinutes);
+    return `${dataSystemmap["dateString"]} - ${dataSystemmap["24HoursTime"]}`;
+}
   
   return (
     <main className="min-h-screen w-full" style={{ backgroundColor: BG }}>
@@ -1286,7 +1343,7 @@ export default function AdminDashboard() {
                       </div>
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <Calendar className="h-4 w-4" />
-                        <span><strong>Scheduled:</strong> {formatDateTime(caseItem.ScheduledDate, caseItem.ScheduledTime)}</span>
+                        <span><strong>Scheduled:</strong> {formatTime(caseItem.ScheduledTime, caseItem.ScheduledDate)}</span>
                       </div>
                     </div>
                     <div className="flex space-x-3 ml-6">
