@@ -449,6 +449,123 @@ router.delete(
   }
 );
 
+/**
+ * GET /api/case/cases/:caseId/documents
+ * Get documents for a case
+ * Accessible to attorneys (own cases), jurors (approved), and admins
+ */
+router.get(
+  "/cases/:caseId/documents",
+  caseOperationsLimiter,
+  authMiddleware,
+  validateCaseId,
+  loadCase,
+  verifyCaseAccess,
+  async (req, res) => {
+    try {
+      const caseId = req.validatedCaseId;
+      const CaseDocument = require("../models/CaseDocument");
+
+      const documents = await CaseDocument.getDocumentsByCase(caseId);
+
+      res.json({
+        success: true,
+        documents: documents || [],
+      });
+    } catch (error) {
+      console.error("Get case documents error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch case documents",
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/case/cases/:caseId/witnesses
+ * Get witnesses for a case
+ * Accessible to attorneys (own cases), jurors (approved), and admins
+ */
+router.get(
+  "/cases/:caseId/witnesses",
+  caseOperationsLimiter,
+  authMiddleware,
+  validateCaseId,
+  loadCase,
+  verifyCaseAccess,
+  async (req, res) => {
+    try {
+      const caseId = req.validatedCaseId;
+      const pool = await poolPromise;
+
+      const result = await pool
+        .request()
+        .input("caseId", sql.Int, caseId)
+        .query(`
+          SELECT *
+          FROM CaseWitnesses
+          WHERE CaseId = @caseId
+          ORDER BY OrderIndex ASC
+        `);
+
+      res.json({
+        success: true,
+        witnesses: result.recordset || [],
+      });
+    } catch (error) {
+      console.error("Get case witnesses error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch case witnesses",
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/case/cases/:caseId/team
+ * Get team members for a case
+ * Accessible to attorneys (own cases), jurors (approved), and admins
+ */
+router.get(
+  "/cases/:caseId/team",
+  caseOperationsLimiter,
+  authMiddleware,
+  validateCaseId,
+  loadCase,
+  verifyCaseAccess,
+  async (req, res) => {
+    try {
+      const caseId = req.validatedCaseId;
+      const pool = await poolPromise;
+
+      const result = await pool
+        .request()
+        .input("caseId", sql.Int, caseId).query(`
+          SELECT
+            Name,
+            Role,
+            Email
+          FROM WarRoomTeam
+          WHERE CaseId = @caseId
+          ORDER BY Role, Name
+        `);
+
+      res.json({
+        success: true,
+        team: result.recordset || [],
+      });
+    } catch (error) {
+      console.error("Get case team error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch team members",
+      });
+    }
+  }
+);
+
 // ============================================
 // ERROR HANDLER
 // ============================================
