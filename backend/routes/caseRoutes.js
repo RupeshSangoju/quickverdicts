@@ -451,8 +451,9 @@ router.delete(
 
 /**
  * GET /api/case/cases/:caseId/documents
- * Get documents for a case
+ * Get war room documents for a case
  * Accessible to attorneys (own cases), jurors (approved), and admins
+ * NOTE: This endpoint fetches WarRoomDocuments (trial documents), not CaseDocuments (filing documents)
  */
 router.get(
   "/cases/:caseId/documents",
@@ -464,13 +465,29 @@ router.get(
   async (req, res) => {
     try {
       const caseId = req.validatedCaseId;
-      const CaseDocument = require("../models/CaseDocument");
+      const pool = await poolPromise;
 
-      const documents = await CaseDocument.getDocumentsByCase(caseId);
+      const result = await pool
+        .request()
+        .input("caseId", sql.Int, caseId).query(`
+          SELECT
+            Id,
+            CaseId,
+            Type,
+            FileName,
+            FileUrl,
+            Description,
+            Size,
+            MimeType,
+            UploadedAt
+          FROM WarRoomDocuments
+          WHERE CaseId = @caseId
+          ORDER BY UploadedAt DESC
+        `);
 
       res.json({
         success: true,
-        documents: documents || [],
+        documents: result.recordset || [],
       });
     } catch (error) {
       console.error("Get case documents error:", error);
