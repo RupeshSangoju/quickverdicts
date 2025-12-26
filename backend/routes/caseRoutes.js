@@ -564,12 +564,15 @@ router.get(
         .request()
         .input("caseId", sql.Int, caseId).query(`
           SELECT
+            Id,
+            CaseId,
             Name,
             Role,
-            Email
-          FROM WarRoomTeam
+            Email,
+            AddedAt
+          FROM WarRoomTeamMembers
           WHERE CaseId = @caseId
-          ORDER BY Role, Name
+          ORDER BY AddedAt DESC
         `);
 
       res.json({
