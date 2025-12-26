@@ -16,6 +16,9 @@ const {
   getCaseDetails,
 } = require("../controllers/caseController");
 
+// Import database connection
+const { poolPromise, sql } = require("../config/db");
+
 // Import models
 const Case = require("../models/Case");
 const JurorApplication = require("../models/JurorApplication");
