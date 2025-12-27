@@ -1237,34 +1237,36 @@ export default function AdminConferenceClient() {
       const combinedStream = new MediaStream(combinedTracks);
       console.log(`🎬 Recording stream: ${combinedTracks.length} tracks (1 video + ${screenAudioTracks.length} audio with ALL participants)`);
 
-      // Try to use MP4 format first, then fall back to WebM
+      // Try to use MP4 format with explicit codecs first, then fall back to WebM
+      // IMPORTANT: Skip 'video/mp4' (native) because browser may choose AVC1 which doesn't support resolution changes
       let mimeType = '';
       let useMP4 = false;
       let fileExtension = '';
 
-      // Check for MP4 support (best for cross-platform compatibility)
-      if (MediaRecorder.isTypeSupported('video/mp4')) {
-        mimeType = 'video/mp4';
+      // Check for MP4 with explicit codecs (we need to control AVC3 vs AVC1)
+      if (MediaRecorder.isTypeSupported('video/mp4;codecs=avc3,mp4a')) {
+        // AVC3 supports resolution changes during recording (BEST for screen sharing)
+        mimeType = 'video/mp4;codecs=avc3,mp4a';
         useMP4 = true;
         fileExtension = 'mp4';
-        console.log('📼 Recording in MP4 format (native)');
+        console.log('📼 Recording in MP4 format (avc3,mp4a) - supports resolution changes ✅');
       } else if (MediaRecorder.isTypeSupported('video/mp4;codecs=h264,aac')) {
         mimeType = 'video/mp4;codecs=h264,aac';
         useMP4 = true;
         fileExtension = 'mp4';
-        console.log('📼 Recording in MP4 format (h264,aac)');
-      } else if (MediaRecorder.isTypeSupported('video/mp4;codecs=avc3,mp4a')) {
-        // AVC3 supports resolution changes during recording (better for screen sharing)
-        mimeType = 'video/mp4;codecs=avc3,mp4a';
-        useMP4 = true;
-        fileExtension = 'mp4';
-        console.log('📼 Recording in MP4 format (avc3,mp4a) - supports resolution changes');
+        console.log('📼 Recording in MP4 format (h264,aac) ✅');
       } else if (MediaRecorder.isTypeSupported('video/mp4;codecs=avc1,mp4a')) {
         // AVC1 requires fixed resolution (fallback, may error if resolution changes)
         mimeType = 'video/mp4;codecs=avc1,mp4a';
         useMP4 = true;
         fileExtension = 'mp4';
-        console.log('📼 Recording in MP4 format (avc1,mp4a) - WARNING: may fail if resolution changes');
+        console.log('📼 Recording in MP4 format (avc1,mp4a) ⚠️ WARNING: may fail if resolution changes');
+      } else if (MediaRecorder.isTypeSupported('video/mp4')) {
+        // Native MP4 (last resort - browser chooses codec)
+        mimeType = 'video/mp4';
+        useMP4 = true;
+        fileExtension = 'mp4';
+        console.log('📼 Recording in MP4 format (native) ⚠️ WARNING: codec chosen by browser');
       }
       // Try WebM with AAC audio (better compatibility than Opus)
       else if (MediaRecorder.isTypeSupported('video/webm;codecs=h264,aac')) {
