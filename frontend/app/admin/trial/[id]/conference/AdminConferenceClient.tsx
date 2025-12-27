@@ -1199,11 +1199,18 @@ export default function AdminConferenceClient() {
         useMP4 = true;
         fileExtension = 'mp4';
         console.log('📼 Recording in MP4 format (h264,aac)');
+      } else if (MediaRecorder.isTypeSupported('video/mp4;codecs=avc3,mp4a')) {
+        // AVC3 supports resolution changes during recording (better for screen sharing)
+        mimeType = 'video/mp4;codecs=avc3,mp4a';
+        useMP4 = true;
+        fileExtension = 'mp4';
+        console.log('📼 Recording in MP4 format (avc3,mp4a) - supports resolution changes');
       } else if (MediaRecorder.isTypeSupported('video/mp4;codecs=avc1,mp4a')) {
+        // AVC1 requires fixed resolution (fallback, may error if resolution changes)
         mimeType = 'video/mp4;codecs=avc1,mp4a';
         useMP4 = true;
         fileExtension = 'mp4';
-        console.log('📼 Recording in MP4 format (avc1,mp4a)');
+        console.log('📼 Recording in MP4 format (avc1,mp4a) - WARNING: may fail if resolution changes');
       }
       // Try WebM with AAC audio (better compatibility than Opus)
       else if (MediaRecorder.isTypeSupported('video/webm;codecs=h264,aac')) {
