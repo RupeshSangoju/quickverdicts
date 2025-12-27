@@ -1205,23 +1205,37 @@ export default function AdminConferenceClient() {
         fileExtension = 'mp4';
         console.log('📼 Recording in MP4 format (avc1,mp4a)');
       }
-      // Fall back to WebM if MP4 not supported
+      // Try WebM with AAC audio (better compatibility than Opus)
+      else if (MediaRecorder.isTypeSupported('video/webm;codecs=h264,aac')) {
+        mimeType = 'video/webm;codecs=h264,aac';
+        fileExtension = 'webm';
+        console.log('📼 Recording in WebM format with H.264+AAC (h264,aac) - BEST PLAYBACK COMPATIBILITY');
+      } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9,aac')) {
+        mimeType = 'video/webm;codecs=vp9,aac';
+        fileExtension = 'webm';
+        console.log('📼 Recording in WebM format with VP9+AAC (vp9,aac) - GOOD PLAYBACK COMPATIBILITY');
+      } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8,aac')) {
+        mimeType = 'video/webm;codecs=vp8,aac';
+        fileExtension = 'webm';
+        console.log('📼 Recording in WebM format with VP8+AAC (vp8,aac) - GOOD PLAYBACK COMPATIBILITY');
+      }
+      // Fall back to WebM with Opus (may have playback issues in some browsers)
       else if (MediaRecorder.isTypeSupported('video/webm;codecs=h264,opus')) {
         mimeType = 'video/webm;codecs=h264,opus';
         fileExtension = 'webm';
-        console.log('📼 Recording in WebM format with H.264 (h264,opus)');
+        console.log('📼 Recording in WebM format with H.264+Opus (h264,opus) - May have playback issues');
       } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')) {
         mimeType = 'video/webm;codecs=vp9,opus';
         fileExtension = 'webm';
-        console.log('📼 Recording in WebM format (vp9,opus)');
+        console.log('📼 Recording in WebM format with VP9+Opus (vp9,opus) - May have playback issues');
       } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus')) {
         mimeType = 'video/webm;codecs=vp8,opus';
         fileExtension = 'webm';
-        console.log('📼 Recording in WebM format (vp8,opus)');
+        console.log('📼 Recording in WebM format with VP8+Opus (vp8,opus) - May have playback issues');
       } else {
         mimeType = 'video/webm';
         fileExtension = 'webm';
-        console.log('📼 Recording in WebM format (default)');
+        console.log('📼 Recording in WebM format (default) - May have playback issues');
       }
 
       // Create MediaRecorder
@@ -1327,13 +1341,25 @@ export default function AdminConferenceClient() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    // Show a helpful message for mac users when file is WebM
-    const isMac = typeof navigator !== 'undefined' && /mac|darwin/i.test(navigator.platform || '');
-    if (ext === 'webm' && isMac) {
-      toast(
-        'Note: macOS QuickTime does not play .webm files natively. Use VLC or upload the file to the server for conversion to MP4 (H.264/AAC).',
-        { duration: 10000 }
-      );
+    // Show helpful message about WebM playback compatibility
+    if (ext === 'webm') {
+      const hasOpus = type.includes('opus');
+      if (hasOpus) {
+        toast(
+          'Warning: This recording uses Opus audio codec which may not play in all browsers. If you experience playback issues, use the conversion endpoint (/api/recordings/convert) to convert to MP4 with AAC audio for universal compatibility.',
+          { duration: 12000 }
+        );
+      } else {
+        const isMac = typeof navigator !== 'undefined' && /mac|darwin/i.test(navigator.platform || '');
+        if (isMac) {
+          toast(
+            'Note: macOS QuickTime does not play .webm files natively. Use VLC or a modern browser for playback.',
+            { duration: 8000 }
+          );
+        } else {
+          toast.success('Recording downloaded successfully! WebM format should play in most modern browsers.', { duration: 4000 });
+        }
+      }
     } else {
       toast.success('Recording downloaded successfully!', { duration: 4000 });
     }
