@@ -10,6 +10,8 @@ import {
 } from "@azure/communication-calling";
 import { AzureCommunicationTokenCredential } from "@azure/communication-common";
 import { ChatClient } from "@azure/communication-chat";
+import { FFmpeg } from "@ffmpeg/ffmpeg";
+import { fetchFile, toBlobURL } from "@ffmpeg/util";
 import { getToken } from "@/lib/apiClient";
 import {
   Video,
@@ -1071,6 +1073,58 @@ export default function AdminConferenceClient() {
     }
   };
 
+  /**
+   * Convert WebM with Opus to MP4 with AAC using ffmpeg.wasm
+   */
+  const convertWebMToMP4 = async (webmBlob: Blob): Promise<Blob | null> => {
+    try {
+      console.log('🔧 Initializing FFmpeg for conversion...');
+      const ffmpeg = new FFmpeg();
+
+      // Load ffmpeg core
+      const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
+      await ffmpeg.load({
+        coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
+        wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+      });
+
+      console.log('✅ FFmpeg loaded successfully');
+
+      // Write input file
+      const inputFileName = 'input.webm';
+      const outputFileName = 'output.mp4';
+
+      await ffmpeg.writeFile(inputFileName, await fetchFile(webmBlob));
+      console.log('📝 Input file written:', inputFileName);
+
+      // Convert: WebM (Opus) → MP4 (AAC)
+      console.log('⚙️ Running conversion: WebM (Opus) → MP4 (AAC)...');
+      await ffmpeg.exec([
+        '-i', inputFileName,
+        '-c:v', 'libx264',      // H.264 video codec
+        '-preset', 'fast',       // Fast encoding
+        '-crf', '23',            // Quality (lower = better, 23 is good)
+        '-c:a', 'aac',           // AAC audio codec
+        '-b:a', '128k',          // Audio bitrate
+        '-movflags', 'faststart', // Enable streaming
+        outputFileName
+      ]);
+
+      console.log('✅ Conversion completed');
+
+      // Read output file
+      const data = await ffmpeg.readFile(outputFileName);
+      const mp4Blob = new Blob([data], { type: 'video/mp4' });
+
+      console.log('📦 MP4 blob created:', (mp4Blob.size / 1024 / 1024).toFixed(2), 'MB');
+
+      return mp4Blob;
+    } catch (error) {
+      console.error('❌ FFmpeg conversion error:', error);
+      throw error;
+    }
+  };
+
   const startRecording = async () => {
     try {
       if (!call) {
@@ -1263,7 +1317,7 @@ export default function AdminConferenceClient() {
         }
       };
 
-      mediaRecorder.onstop = () => {
+      mediaRecorder.onstop = async () => {
         console.log(`⏹️ Recording stopped. Total chunks: ${recordedChunksRef.current.length}`);
 
         // Stop all stream tracks (screen capture + audio)
@@ -1271,11 +1325,35 @@ export default function AdminConferenceClient() {
         screenStream.getTracks().forEach(track => track.stop());
 
         // Create blob
-        const blob = new Blob(recordedChunksRef.current, { type: mimeType });
+        let blob = new Blob(recordedChunksRef.current, { type: mimeType });
         console.log(`💾 Final blob size: ${blob.size} bytes (${(blob.size / 1024 / 1024).toFixed(2)} MB)`);
 
+        // Check if conversion is needed (Opus audio codec)
+        const needsConversion = mimeType.includes('opus');
+
+        if (needsConversion) {
+          console.log('🔄 Detected Opus audio codec - converting to MP4+AAC for better compatibility...');
+          toast.loading('Converting recording to MP4 for better playback compatibility...', { duration: 2000 });
+
+          try {
+            const convertedBlob = await convertWebMToMP4(blob);
+            if (convertedBlob) {
+              blob = convertedBlob;
+              (blob as any).fileExtension = 'mp4';
+              console.log('✅ Conversion successful! New size:', (blob.size / 1024 / 1024).toFixed(2), 'MB');
+              toast.success('Recording converted successfully!', { duration: 3000 });
+            }
+          } catch (err) {
+            console.error('❌ Conversion failed:', err);
+            toast.error('Conversion failed - using original recording', { duration: 4000 });
+            // Keep original blob with original extension
+          }
+        }
+
         setRecordingBlob(blob);
-        (blob as any).fileExtension = fileExtension;
+        if (!(blob as any).fileExtension) {
+          (blob as any).fileExtension = fileExtension;
+        }
       };
 
       mediaRecorder.onerror = (event: any) => {
