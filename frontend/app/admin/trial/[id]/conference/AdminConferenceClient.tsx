@@ -73,6 +73,7 @@ export default function AdminConferenceClient() {
   const [recordingBlob, setRecordingBlob] = useState<Blob | null>(null);
   const mediaRecorderRef = useRef<RecordRTCPromisesHandler | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
+  const recordingStreamRef = useRef<MediaStream | null>(null);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const recordingAudioContextRef = useRef<AudioContext | null>(null);
   const recordingAudioSourcesRef = useRef<MediaStreamAudioSourceNode[]>([]);
@@ -1186,6 +1187,9 @@ export default function AdminConferenceClient() {
       const combinedStream = new MediaStream(combinedTracks);
       console.log(`🎬 Recording stream: ${combinedTracks.length} tracks (1 video + ${screenAudioTracks.length} audio with ALL participants)`);
 
+      // Store stream reference for cleanup later
+      recordingStreamRef.current = combinedStream;
+
       // ✅ Using RecordRTC for better codec handling and cross-browser compatibility
       // RecordRTC automatically selects the best available codecs and handles conversion
       console.log('🎬 Initializing RecordRTC for reliable recording...');
@@ -1239,10 +1243,13 @@ export default function AdminConferenceClient() {
         setRecordingBlob(blob);
         toast.success('Recording saved successfully!', { duration: 3000 });
 
-        // Destroy recorder and clean up
-        if (mediaRecorderRef.current.stream) {
-          mediaRecorderRef.current.stream.getTracks().forEach((track: MediaStreamTrack) => track.stop());
+        // Clean up stream tracks
+        if (recordingStreamRef.current) {
+          recordingStreamRef.current.getTracks().forEach((track: MediaStreamTrack) => track.stop());
+          recordingStreamRef.current = null;
         }
+
+        // Destroy recorder
         await mediaRecorderRef.current.destroy();
         mediaRecorderRef.current = null;
 
