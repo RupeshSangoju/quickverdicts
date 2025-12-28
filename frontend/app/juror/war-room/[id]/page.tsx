@@ -57,6 +57,64 @@ function getCaseName(plaintiffGroups: string, defendantGroups: string) {
   }
 }
 
+// Timezone conversion functions
+function applyOffsetToUtcTime(utcTime: string, dateString: string, timezoneOffset: string, offsetMinutesMap:number) {
+  const offsetMinutes = offsetMinutesMap * 2;
+  if (offsetMinutes === null) throw new Error('Invalid timezoneOffset');
+
+  // Build a UTC instant (number of ms since epoch)
+  const utcMs = Date.parse(`${dateString}T${utcTime}Z`);
+  if (isNaN(utcMs)) throw new Error('Invalid UTC date/time');
+
+  // If timezoneOffset includes '+' subtract offsetMinutes, if '-' add it
+  const signChar = timezoneOffset.includes('+') ? '+' : timezoneOffset.includes('-') ? '-' : '+';
+  const resultMs = signChar === '+'
+    ? utcMs - offsetMinutes * 60_000
+    : utcMs + Math.abs(offsetMinutes) * 60_000;
+
+  const resultDate = new Date(resultMs);
+  return {
+    date: resultDate,
+    "12HoursTime": resultDate.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }),
+    "24HoursTime" : resultDate.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: false })
+  };
+}
+
+function getSystemTimezoneInfo() {
+  const offset = new Date().getTimezoneOffset();
+  const offsetHours = offset / 60;
+  const timezoneName = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const sign = offset <= 0 ? '+' : '-';
+  const absHours = Math.floor(Math.abs(offsetHours));
+  const minutes = Math.abs(offsetHours % 1) * 60;
+
+  return {
+    offsetHours: -offsetHours, // Negate because getTimezoneOffset returns opposite sign
+    offsetMinutes: -offset,
+    timezoneName,
+    sign,
+    formatOffset: `UTC${sign}${String(absHours).padStart(2, '0')}:${String(Math.round(minutes)).padStart(2, '0')}`
+  };
+}
+
+function formatTime(timeString: string, scheduledDate: string) {
+  try {
+    if (!timeString) return "";
+
+    const systemTz = getSystemTimezoneInfo();
+    let zoneMap  = '';
+
+    // use the formatOffset returned from getSystemTimezoneInfo and ensure offsetMinutes is numeric
+    zoneMap = systemTz.formatOffset ? systemTz.formatOffset : "";
+    const offsetMinutes = typeof systemTz.offsetMinutes === 'number' ? systemTz.offsetMinutes : 0;
+
+    const dataSystemmap = applyOffsetToUtcTime(timeString, scheduledDate, zoneMap, offsetMinutes);
+    return dataSystemmap["24HoursTime"];
+  } catch {
+    return timeString;
+  }
+}
+
 function getFileExtension(filename: string): string {
   return filename.split('.').pop()?.toLowerCase() || '';
 }
@@ -364,7 +422,7 @@ export default function JurorWarRoomPage() {
             </div>
             <div>
               <span className="font-semibold text-[#0A2342]">Time:</span>
-              <p className="text-[#455A7C]">{caseData.ScheduledTime}</p>
+              <p className="text-[#455A7C]">{formatTime(caseData.ScheduledTime, caseData.ScheduledDate)}</p>
             </div>
             <div>
               <span className="font-semibold text-[#0A2342]">Location:</span>
