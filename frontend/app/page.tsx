@@ -465,14 +465,10 @@ export default function LandingPage() {
 
             <div className="p-6 flex flex-col flex-grow">
               <h3 className="mt-2 text-xl font-semibold text-[#0A2342]">
-                Jurors are screened. Mock trials are timed.
+                Quick Verdicts is a mock trial preparation and virtual courtroom platform where attorneys can present disputes to screened, local jurors.
               </h3>
-              <p className="mt-2 text-[#1a3666] text-base">
-                The platform intends to resolve the question:
-              </p>
-              <p className="mt-1 text-[#0A2342] text-base font-semibold italic">
-                What would a jury in a certain county do?
-              </p>
+
+
               <ol className="mt-4 space-y-4 text-[#0A2342] text-sm list-none">
                 <li>
                   <p className="font-semibold">1. Start Your Trial</p>
@@ -481,7 +477,7 @@ export default function LandingPage() {
                 <li>
                   <p className="font-semibold">2. Prepare Your Case</p>
                   <p>
-                    Upload evidence into secure war room, QV provides templates for Voir dire questions and the Jury Charge. Pre-record all sides of the trial presentation or plan to appear live.
+                    Access your private War Room complete with editable templates for Voir Dire Questions and the Jury Charge.  Upload demonstrative evidence for the jury’s review.  Prepare pre-recorded .mp4 of the trial presentation or plan to appear live. 
                   </p>
                 </li>
                 <li>
@@ -490,6 +486,33 @@ export default function LandingPage() {
                     Schedule and conduct your trial with panel of 6-8 jurors - 100% virtually.
                   </p>
                 </li>
+                <li>
+                  <p className="font-semibold">4. What You Get</p>
+                  <p>
+                  •	Access to War Room                 
+                  </p>
+                  <p>•	6-8 local mock jurors screened for general bias and further screened with your Voir Dire Questions</p>
+                  <p>•	Deliberated Final Verdict</p>
+                  <p>•	Recording of trial and deliberations</p>
+                  <p>•	Debriefing period provided following verdict</p>
+                  <p>•	Witness Evaluations</p>
+                </li>
+                <li>
+                  <p className="font-semibold">5.	Cost effective enough for small cases</p>
+                  <p>* 3 tiers available</p>
+                  <p>•	2.5 hours $3500</p>
+                  <p>•	3.5 hours $4500</p>
+                  <p>•	4.5 hours $5500</p>
+                </li>
+                <li>
+                  <p className="font-semibold">6.	Effective for:</p>
+                  <p>* Pre-mediation analysis</p>
+                  <p>* Stowers demands</p>
+                  <p>* Pivotal fact issues on witness credibility, liability and damages</p>
+                  <p>* Test legal strategies</p>
+                  <p>* Settlement evaluations & negotiations</p>
+                </li>
+
               </ol>
               <div className="mt-auto pt-6">
                 <CTAButton href="/signup/attorney" type="attorney" location="attorney_section" variant="primary">
@@ -528,27 +551,58 @@ export default function LandingPage() {
               <h3 className="mt-2 text-xl font-semibold text-[#0A2342]">
                 We Pay Jurors to Deliberate Online
               </h3>
-              <p className="mt-2 text-[#1a3666] text-base">
-                Serving a mock jury is now more accessible—and rewarding. Sign up,
-                find a case, and join the trial on the scheduled date. All online.
-                All paid.
-              </p>
               <ol className="mt-4 space-y-4 text-[#0A2342] text-sm list-none">
                 <li>
                   <p className="font-semibold">1. Sign Up to Serve</p>
                   <p>
-                    Create a free account and get verified as a potential juror.
+                    Create a free account and get verified as a potential mock juror for cases in your locale.  You will need to be able to receive payments from either Venmo, PayPal or Zelle.
                   </p>
                 </li>
                 <li>
                   <p className="font-semibold">2. Find a Trial to Join</p>
-                  <p>Browse upcoming cases on the juror job board, QV will further screen you for possible conflicts.</p>
+                  <p>Browse upcoming cases on the Job Board.  Once you select a case, you will be further screened for possible conflicts or bias based on the issues in the case selected.</p>
                 </li>
                 <li>
                   <p className="font-semibold">3. Join the Live Trial</p>
                   <p>
                     Log in on the scheduled date and participate in the virtual trial.
                   </p>
+                </li>
+                <li>
+                  <p className="font-semibold">4.	What does the Foreperson do?</p>
+                  <p>
+                    After the trial presentation, the Foreperson accesses the Jury Charge in the Chat Box and keeps the conversation on track.  The Foreperson ensures that each mock juror participates in the debate.  The Foreperson enters the consensus answers to the Jury Charge and submits it as a Final Verdict.  
+                  </p>
+                </li>
+                <li>
+                  <p className="font-semibold">5.	What happens during the QV Trial?</p>
+                  <p>
+Everyone will watch the attorneys’ presentations together—full face!  The presentation may be in person or may be by video.  Carefully listen to all sides of the dispute.  You’ll examine evidence, watch video statements of witnesses, and deliberate with your fellow mock jurors to arrive at a consensus to the Final Verdict.                    </p>
+                </li>
+                <li>
+                  <p className="font-semibold">6.	What happens during deliberations?</p>
+                  <p>
+You will review the legal instructions and definitions given to you.  You will review each question in the Jury Charge.  Each juror should express his or her questions, ideas and opinions about each issue.  You may disagree with one another; however, it is important to use reasoning to deliberate and reach a unanimous decision.  The Foreperson submits the Final Verdict contained in the Chat Box.                    </p>
+                </li>
+                <li>
+                  <p className="font-semibold">7.	What happens after the QV Trial?</p>
+                  <p>
+After the QV Trial, jurors remain in the QV Courtroom until the attorneys appear to debrief with you about your Final Verdict.                    </p>
+                </li>
+                <li>
+                  <p className="font-semibold">8.	Get paid.</p>
+                  <p>
+Following the debriefing period you will be paid for your services through Venmo, Zelle or PayPal.  Each case will pay the amount set forth on the Job Board.  We will stop the clock, and you will be released at the end of the allotted time.                  </p>
+                </li>
+                <li>
+                  <p className="font-semibold">9.	Can I sign up for another QV Trial?</p>
+                  <p>
+Yes, you can sign up for another trial!  You may participate in as many as four (4) trials per year.  Remember that each QV Trial is different.  You should not assume a fact or legal issue about any case based on your prior experience with a different case.                  </p>
+                </li>
+                <li>
+                  <p className="font-semibold">10.	Can I talk about the case after the QV Trial?</p>
+                  <p>
+Unless you are otherwise required by a judge or a court order, you cannot talk about the case after the QV Trial to anyone.  Your agreement includes an NDA—a non-disclosure agreement.  If you were to become a party to a lawsuit, you would not want a mock juror revealing anything about you or your case to someone else.                    </p>
                 </li>
               </ol>
               <div className="mt-auto pt-6">
@@ -559,14 +613,14 @@ export default function LandingPage() {
             </div>
           </article>
         </section>
-
-        {/* More about quick verdicts */}
+{/*
+        
         <section className="bg-[#f9f7f2] py-12 px-6">
           <h2 className="text-3xl md:text-4xl font-semibold text-[#0A2342] text-center mb-10">
             Learn More About Quick Verdicts
           </h2>
           <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-10 items-center">
-            {/* Text */}
+
             <div>
               <h3 className="text-2xl font-semibold text-[#0A2342] mb-4">
                 With Quick Verdicts advisory verdicts are faster, more accessible, and more
@@ -592,7 +646,6 @@ export default function LandingPage() {
                 <li>Each Juror completes witness evaluations</li>
               </ul>
             </div>
-            {/* Image */}
             <div className="flex justify-center md:justify-end">
               <Image
                 src="/image4.png"
@@ -606,7 +659,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* FAQ */}
+
         <section className="px-6 md:px-20 py-16 text-left">
           <h2 className="text-3xl md:text-4xl font-semibold text-[#0A2342] mb-6">
             Frequently Asked Questions
@@ -624,6 +677,32 @@ export default function LandingPage() {
             ))}
           </dl>
         </section>
+*/}
+  
+<a
+  href="https://sway.cloud.microsoft/l04vDH5fiMcigqbD?ref=Link"
+  target="_blank"
+  rel="noopener noreferrer"
+  className="inline-block bg-[#0A2342] text-white px-6 py-3 rounded-md font-semibold
+             hover:bg-[#133b6f] transition duration-300 ml-70"
+>
+  More Information About Attorney
+</a>
+
+<a
+  href="https://sway.cloud.microsoft/gSXwTvIo8kEn3rp4?ref=Link"
+  target="_blank"
+  rel="noopener noreferrer"
+  className="inline-block bg-[#0A2342] text-white px-6 py-3 rounded-md font-semibold
+             hover:bg-[#133b6f] transition duration-300 ml-90"
+>
+  More Information About Juror
+</a>
+<section className="bg-[#f9f7f2] py-12 px-6 pb-10"/>
+
+
+  
+
 
         {/* CTA Section */}
         <section className="bg-[#EEE7D5] py-16 text-center border-t border-[#ede3cf] m-0">
