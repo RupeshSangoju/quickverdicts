@@ -5,7 +5,9 @@ import { CheckCircle, AlertCircle, Send, Save, FileText } from "lucide-react";
 import toast from "react-hot-toast";
 import { getToken } from "@/lib/apiClient";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL
+  ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api$/, '')
+  : "http://localhost:4000";
 
 // ============================================
 // TYPES
@@ -55,7 +57,7 @@ export default function JurorVerdictForm({ caseId, jurorId }: JurorVerdictFormPr
       setError(null);
 
       const token = getToken();
-      const response = await fetch(`${API_BASE}/jury-charge/juror/${caseId}`, {
+      const response = await fetch(`${API_BASE}/api/jury-charge/juror/${caseId}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -85,7 +87,7 @@ export default function JurorVerdictForm({ caseId, jurorId }: JurorVerdictFormPr
   async function checkSubmissionStatus() {
     try {
       const token = getToken();
-      const response = await fetch(`${API_BASE}/verdicts/check/${caseId}/${jurorId}`, {
+      const response = await fetch(`${API_BASE}/api/verdicts/check/${caseId}/${jurorId}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -129,7 +131,7 @@ export default function JurorVerdictForm({ caseId, jurorId }: JurorVerdictFormPr
       setSaving(true);
       const token = getToken();
 
-      const response = await fetch(`${API_BASE}/verdicts/draft`, {
+      const response = await fetch(`${API_BASE}/api/verdicts/draft`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -194,7 +196,7 @@ export default function JurorVerdictForm({ caseId, jurorId }: JurorVerdictFormPr
       setSubmitting(true);
       const token = getToken();
 
-      const response = await fetch(`${API_BASE}/verdicts/submit`, {
+      const response = await fetch(`${API_BASE}/api/verdicts/submit`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

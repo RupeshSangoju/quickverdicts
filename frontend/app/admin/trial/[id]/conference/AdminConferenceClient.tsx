@@ -10,6 +10,7 @@ import {
 } from "@azure/communication-calling";
 import { AzureCommunicationTokenCredential } from "@azure/communication-common";
 import { ChatClient } from "@azure/communication-chat";
+import RecordRTC, { RecordRTCPromisesHandler } from "recordrtc";
 import { getToken } from "@/lib/apiClient";
 import {
   Video,
@@ -70,8 +71,9 @@ export default function AdminConferenceClient() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [recordingBlob, setRecordingBlob] = useState<Blob | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaRecorderRef = useRef<RecordRTCPromisesHandler | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
+  const recordingStreamRef = useRef<MediaStream | null>(null);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const recordingAudioContextRef = useRef<AudioContext | null>(null);
   const recordingAudioSourcesRef = useRef<MediaStreamAudioSourceNode[]>([]);
@@ -1071,6 +1073,8 @@ export default function AdminConferenceClient() {
     }
   };
 
+  // RecordRTC handles codec conversion internally - no need for manual conversion
+
   const startRecording = async () => {
     try {
       if (!call) {
@@ -1183,87 +1187,28 @@ export default function AdminConferenceClient() {
       const combinedStream = new MediaStream(combinedTracks);
       console.log(`🎬 Recording stream: ${combinedTracks.length} tracks (1 video + ${screenAudioTracks.length} audio with ALL participants)`);
 
-      // Try to use MP4 format first, then fall back to WebM
-      let mimeType = '';
-      let useMP4 = false;
-      let fileExtension = '';
+      // Store stream reference for cleanup later
+      recordingStreamRef.current = combinedStream;
 
-      // Check for MP4 support (best for cross-platform compatibility)
-      if (MediaRecorder.isTypeSupported('video/mp4')) {
-        mimeType = 'video/mp4';
-        useMP4 = true;
-        fileExtension = 'mp4';
-        console.log('📼 Recording in MP4 format (native)');
-      } else if (MediaRecorder.isTypeSupported('video/mp4;codecs=h264,aac')) {
-        mimeType = 'video/mp4;codecs=h264,aac';
-        useMP4 = true;
-        fileExtension = 'mp4';
-        console.log('📼 Recording in MP4 format (h264,aac)');
-      } else if (MediaRecorder.isTypeSupported('video/mp4;codecs=avc1,mp4a')) {
-        mimeType = 'video/mp4;codecs=avc1,mp4a';
-        useMP4 = true;
-        fileExtension = 'mp4';
-        console.log('📼 Recording in MP4 format (avc1,mp4a)');
-      }
-      // Fall back to WebM if MP4 not supported
-      else if (MediaRecorder.isTypeSupported('video/webm;codecs=h264,opus')) {
-        mimeType = 'video/webm;codecs=h264,opus';
-        fileExtension = 'webm';
-        console.log('📼 Recording in WebM format with H.264 (h264,opus)');
-      } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')) {
-        mimeType = 'video/webm;codecs=vp9,opus';
-        fileExtension = 'webm';
-        console.log('📼 Recording in WebM format (vp9,opus)');
-      } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus')) {
-        mimeType = 'video/webm;codecs=vp8,opus';
-        fileExtension = 'webm';
-        console.log('📼 Recording in WebM format (vp8,opus)');
-      } else {
-        mimeType = 'video/webm';
-        fileExtension = 'webm';
-        console.log('📼 Recording in WebM format (default)');
-      }
+      // ✅ Using RecordRTC for better codec handling and cross-browser compatibility
+      // RecordRTC automatically selects the best available codecs and handles conversion
+      console.log('🎬 Initializing RecordRTC for reliable recording...');
 
-      // Create MediaRecorder
-      const mediaRecorder = new MediaRecorder(combinedStream, {
-        mimeType: mimeType,
+      const recorder = new RecordRTCPromisesHandler(combinedStream, {
+        type: 'video',
+        mimeType: 'video/webm',  // RecordRTC will handle codec selection
+        recorderType: RecordRTC.MediaStreamRecorder,
         videoBitsPerSecond: 2500000,
-        audioBitsPerSecond: 128000
+        audioBitsPerSecond: 128000,
+        timeSlice: 1000,  // Get data every second
+        ondataavailable: (blob: Blob) => {
+          console.log(`📦 Recording chunk: ${blob.size} bytes`);
+        },
       });
 
-      console.log(`✅ Using ${useMP4 ? 'MP4' : 'WebM'} format for recording`);
-
-      recordedChunksRef.current = [];
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data && event.data.size > 0) {
-          recordedChunksRef.current.push(event.data);
-          console.log(`📦 Chunk ${recordedChunksRef.current.length}: ${event.data.size} bytes`);
-        }
-      };
-
-      mediaRecorder.onstop = () => {
-        console.log(`⏹️ Recording stopped. Total chunks: ${recordedChunksRef.current.length}`);
-
-        // Stop all stream tracks (screen capture + audio)
-        combinedStream.getTracks().forEach(track => track.stop());
-        screenStream.getTracks().forEach(track => track.stop());
-
-        // Create blob
-        const blob = new Blob(recordedChunksRef.current, { type: mimeType });
-        console.log(`💾 Final blob size: ${blob.size} bytes (${(blob.size / 1024 / 1024).toFixed(2)} MB)`);
-
-        setRecordingBlob(blob);
-        (blob as any).fileExtension = fileExtension;
-      };
-
-      mediaRecorder.onerror = (event: any) => {
-        console.error("❌ MediaRecorder error:", event.error);
-      };
-
-      // Start recording - request data every 1 second
-      mediaRecorder.start(1000);
-      mediaRecorderRef.current = mediaRecorder;
+      await recorder.startRecording();
+      mediaRecorderRef.current = recorder;
+      console.log('✅ RecordRTC recording started with automatic codec selection');
       setIsRecording(true);
       setRecordingDuration(0);
 
@@ -1280,11 +1225,39 @@ export default function AdminConferenceClient() {
     }
   };
 
-  const stopRecording = () => {
+  const stopRecording = async () => {
     if (mediaRecorderRef.current && isRecording) {
-      console.log("🛑 Stopping recording...");
-      mediaRecorderRef.current.stop();
-      mediaRecorderRef.current = null;
+      console.log("🛑 Stopping RecordRTC recording...");
+
+      try {
+        await mediaRecorderRef.current.stopRecording();
+        const blob = await mediaRecorderRef.current.getBlob();
+
+        console.log(`💾 Final blob size: ${blob.size} bytes (${(blob.size / 1024 / 1024).toFixed(2)} MB)`);
+        console.log(`📼 Recording MIME type: ${blob.type}`);
+
+        // Set file extension based on blob type
+        const fileExtension = blob.type.includes('mp4') ? 'mp4' : 'webm';
+        (blob as any).fileExtension = fileExtension;
+
+        setRecordingBlob(blob);
+        toast.success('Recording saved successfully!', { duration: 3000 });
+
+        // Clean up stream tracks
+        if (recordingStreamRef.current) {
+          recordingStreamRef.current.getTracks().forEach((track: MediaStreamTrack) => track.stop());
+          recordingStreamRef.current = null;
+        }
+
+        // Destroy recorder
+        await mediaRecorderRef.current.destroy();
+        mediaRecorderRef.current = null;
+
+      } catch (error) {
+        console.error('❌ Error stopping recording:', error);
+        toast.error('Failed to save recording', { duration: 4000 });
+      }
+
       setIsRecording(false);
 
       // Clear duration timer
@@ -1327,13 +1300,25 @@ export default function AdminConferenceClient() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    // Show a helpful message for mac users when file is WebM
-    const isMac = typeof navigator !== 'undefined' && /mac|darwin/i.test(navigator.platform || '');
-    if (ext === 'webm' && isMac) {
-      toast(
-        'Note: macOS QuickTime does not play .webm files natively. Use VLC or upload the file to the server for conversion to MP4 (H.264/AAC).',
-        { duration: 10000 }
-      );
+    // Show helpful message about WebM playback compatibility
+    if (ext === 'webm') {
+      const hasOpus = type.includes('opus');
+      if (hasOpus) {
+        toast(
+          'Warning: This recording uses Opus audio codec which may not play in all browsers. If you experience playback issues, use the conversion endpoint (/api/recordings/convert) to convert to MP4 with AAC audio for universal compatibility.',
+          { duration: 12000 }
+        );
+      } else {
+        const isMac = typeof navigator !== 'undefined' && /mac|darwin/i.test(navigator.platform || '');
+        if (isMac) {
+          toast(
+            'Note: macOS QuickTime does not play .webm files natively. Use VLC or a modern browser for playback.',
+            { duration: 8000 }
+          );
+        } else {
+          toast.success('Recording downloaded successfully! WebM format should play in most modern browsers.', { duration: 4000 });
+        }
+      }
     } else {
       toast.success('Recording downloaded successfully!', { duration: 4000 });
     }
