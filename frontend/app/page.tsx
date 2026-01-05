@@ -23,7 +23,7 @@ const Navbar = dynamic(() => import("./components/Navbar"), {
 
 const SITE_CONFIG = {
   name: "Quick Verdicts",
-  tagline: "For lawyers: Strategic. Expedient. Cost effective",
+  tagline: "For Lawyers: Strategic. Expedient. Cost effective.",
   subtitle: "For Mock Jurors: Get paid to serve remotely",
   description: "Resolve disputes quickly with Quick Verdicts. Attorneys can start virtual trials, and citizens can get paid to serve as remote jurors.",
   url: process.env.NEXT_PUBLIC_SITE_URL || "https://quickverdicts.com",
@@ -398,10 +398,10 @@ export default function LandingPage() {
 
         {/* Hero Section */}
         <section className="pt-42 pb-12 text-center">
-          <h1 className="text-3xl md:text-4xl font-semibold text-[#0A2342] leading-snug">
+          <p className="text-3xl md:text-4xl font-semibold text-[#0A2342] leading-snug">
             {SITE_CONFIG.tagline}
-          </h1>
-          <p className="mt-2 text-2xl md:text-3xl font-semibold text-[#0A2342] px-4">
+          </p>
+          <p className="mt-2 text-3xl md:text-4xl font-semibold text-[#0A2342] px-4">
             {SITE_CONFIG.subtitle}
           </p>
           <div className="mt-6 flex justify-center gap-4 flex-wrap px-4">
@@ -686,7 +686,7 @@ Unless you are otherwise required by a judge or a court order, you cannot talk a
   className="inline-block bg-[#0A2342] text-white px-6 py-3 rounded-md font-semibold
              hover:bg-[#133b6f] transition duration-300 ml-70"
 >
-  More Information About Attorney
+  More Information for Attorneys
 </a>
 
 <a
@@ -696,7 +696,7 @@ Unless you are otherwise required by a judge or a court order, you cannot talk a
   className="inline-block bg-[#0A2342] text-white px-6 py-3 rounded-md font-semibold
              hover:bg-[#133b6f] transition duration-300 ml-90"
 >
-  More Information About Juror
+  More Information for Jurors
 </a>
 <section className="bg-[#f9f7f2] py-12 px-6 pb-10"/>
 

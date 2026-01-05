@@ -345,7 +345,7 @@ function AttorneySignupInner() {
 
           try {
             actions.setLoading(true);
-            const response = await post("/auth/attorney/send-otp", {
+            const response = await post("/api/auth/attorney/send-otp", {
               email: formData.email,
             });
 
@@ -374,7 +374,7 @@ function AttorneySignupInner() {
 
           try {
             actions.setLoading(true);
-            const response = await post("/auth/attorney/verify-otp", {
+            const response = await post("/api/auth/attorney/verify-otp", {
               email: formData.email,
               otp: formData.otp,
             });
@@ -425,7 +425,7 @@ function AttorneySignupInner() {
           console.log("📤 Submitting attorney signup...");
 
           // Submit signup
-          const response = await post("/auth/attorney/signup", {
+          const response = await post("/api/auth/attorney/signup", {
             firstName: formData.firstName,
             middleName: formData.middleName,
             lastName: formData.lastName,
