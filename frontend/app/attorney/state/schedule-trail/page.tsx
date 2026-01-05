@@ -503,12 +503,25 @@ export default function ScheduleTrialPage() {
             {/* Stepper - Full Width */}
             <Stepper currentStep={7} />
 
-            <div className="w-full max-w-6xl mx-auto mb-8 px-20">
-              <h1 className="text-3xl font-bold text-[#16305B] mb-2">Schedule Trial</h1>
-              <p className="text-gray-600 text-base">
-                Choose your preferred date and time for this trial.
-              </p>
-            </div>
+      <div className="w-full max-w-6xl mx-auto mb-8 px-20">
+        <div className="flex w-full items-start">
+          {/* Left section */}
+          <div className="flex-1">
+            <h1 className="text-3xl font-bold text-[#16305B] mb-2">
+              Schedule Trial
+            </h1>
+            <p className="text-gray-600 text-base">
+              Choose your preferred date and time for this trial.
+            </p>
+          </div>
+
+          {/* Right message */}
+          <div className="ml-1 mt-6 whitespace-nowrap text-lg font-bold text-red-600 text-right">
+            Please schedule case at least four (4) weeks from today.
+          </div>
+        </div>
+      </div>
+
 
             {scheduled ? (
               <div className="flex-1 flex flex-col items-center justify-center px-8">

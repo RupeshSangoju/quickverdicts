@@ -759,7 +759,7 @@ export default function WarRoomPage() {
                     ) : (
                       <>
                         <CheckCircleIcon className="w-4 h-4" />
-                        Submit War Room
+                         Submit Case for Trial 
                       </>
                     )}
                   </button>
