@@ -378,7 +378,7 @@ function JurorSignupInner() {
           actions.setLoading(true);
           console.log("📤 Sending OTP to:", formData.email);
 
-          const response = await post("/auth/juror/send-otp", {
+          const response = await post("/api/auth/juror/send-otp", {
             email: formData.email,
           });
 
@@ -416,7 +416,7 @@ function JurorSignupInner() {
             otpLength: formData.otp.length,
           });
 
-          const response = await post("/auth/juror/verify-otp", {
+          const response = await post("/api/auth/juror/verify-otp", {
             email: formData.email,
             otp: formData.otp,
           });
@@ -492,7 +492,7 @@ function JurorSignupInner() {
             agreedToTerms: formData.agreedToTerms,
           };
 
-          const response = await post("/auth/juror/signup", payload);
+          const response = await post("/api/auth/juror/signup", payload);
 
           if (response.success && response.token && response.user) {
             // Store auth data
@@ -558,7 +558,7 @@ function JurorSignupInner() {
   const handleResendOTP = async () => {
     try {
       actions.setLoading(true);
-      const response = await post("/auth/juror/send-otp", {
+      const response = await post("/api/auth/juror/send-otp", {
         email: formData.email,
       });
 
