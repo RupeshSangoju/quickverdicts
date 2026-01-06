@@ -115,6 +115,17 @@ type JuryQuestion = {
   Options: string[];
 };
 
+type JurorApplication = {
+  ApplicationId: number;
+  JurorId: number;
+  Status: string;
+  AppliedAt: string;
+  JurorName: string;
+  JurorEmail: string;
+  County: string;
+  State: string;
+};
+
 type CaseDetail = {
   CaseId: number;
   CaseTitle: string;
@@ -136,6 +147,7 @@ type CaseDetail = {
   IsRecording?: boolean;
   witnesses: Witness[];
   juryQuestions: JuryQuestion[];
+  jurors: JurorApplication[];
   approvedJurorCount: number;
   canJoin: boolean;
 };
@@ -222,6 +234,14 @@ export default function AdminDashboard() {
   const [deleteWitnessName, setDeleteWitnessName] = useState<string>("");
   const [deleteWitnessCaseId, setDeleteWitnessCaseId] = useState<number | null>(null);
   const [deletingWitness, setDeletingWitness] = useState(false);
+
+  // Juror delete modal states
+  const [showDeleteJurorModal, setShowDeleteJurorModal] = useState(false);
+  const [deleteJurorApplicationId, setDeleteJurorApplicationId] = useState<number | null>(null);
+  const [deleteJurorName, setDeleteJurorName] = useState<string>("");
+  const [deleteJurorCaseId, setDeleteJurorCaseId] = useState<number | null>(null);
+  const [deletingJuror, setDeletingJuror] = useState(false);
+
   const [approvalComments, setApprovalComments] = useState("");
 
   // Listen for optimistic case status updates (from war-room submit)
@@ -1000,6 +1020,57 @@ export default function AdminDashboard() {
       alert('Failed to delete witness');
     } finally {
       setDeletingWitness(false);
+    }
+  };
+
+  const handleDeleteJuror = (applicationId: number, jurorName: string, caseId: number) => {
+    setDeleteJurorApplicationId(applicationId);
+    setDeleteJurorName(jurorName);
+    setDeleteJurorCaseId(caseId);
+    setShowDeleteJurorModal(true);
+  };
+
+  const confirmDeleteJuror = async () => {
+    if (!deleteJurorApplicationId || !deleteJurorCaseId) return;
+
+    setDeletingJuror(true);
+    try {
+      const response = await fetchWithAuth(`${API_BASE}/api/admin/juror-applications/${deleteJurorApplicationId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        // Update the selectedCase to remove the deleted juror
+        if (selectedCase && selectedCase.CaseId === deleteJurorCaseId) {
+          setSelectedCase({
+            ...selectedCase,
+            jurors: selectedCase.jurors.filter(j => j.ApplicationId !== deleteJurorApplicationId)
+          });
+        }
+
+        // Update casesForDate to remove the deleted juror
+        setCasesForDate(prevCases =>
+          prevCases.map(c =>
+            c.CaseId === deleteJurorCaseId
+              ? { ...c, jurors: c.jurors.filter(j => j.ApplicationId !== deleteJurorApplicationId) }
+              : c
+          )
+        );
+
+        alert('Juror application deleted successfully');
+        setShowDeleteJurorModal(false);
+        setDeleteJurorApplicationId(null);
+        setDeleteJurorName("");
+        setDeleteJurorCaseId(null);
+      } else {
+        const data = await response.json();
+        alert(`Failed to delete juror application: ${data.message || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error deleting juror application:', error);
+      alert('Failed to delete juror application');
+    } finally {
+      setDeletingJuror(false);
     }
   };
 
@@ -1942,6 +2013,59 @@ function formatTime(timeString: string, scheduledDate: string) {
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center">
+                    <Users className="h-5 w-5 mr-2 text-blue-600" />
+                    <h3 className="font-semibold text-gray-900">Jurors ({selectedCase.jurors?.length || 0})</h3>
+                  </div>
+                </div>
+                {!selectedCase.jurors || selectedCase.jurors.length === 0 ? (
+                  <p className="text-gray-500 text-sm">No juror applications yet</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full bg-white border border-gray-200 rounded-lg">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b">Name</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b">Email</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b">Location</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b">Status</th>
+                          <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {selectedCase.jurors.map((juror) => (
+                          <tr key={juror.ApplicationId} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 text-sm font-medium text-gray-900">{juror.JurorName}</td>
+                            <td className="px-4 py-3 text-sm text-gray-600">{juror.JurorEmail}</td>
+                            <td className="px-4 py-3 text-sm text-gray-600">{juror.County}, {juror.State}</td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                juror.Status === 'approved' ? "bg-green-100 text-green-700" :
+                                juror.Status === 'rejected' ? "bg-red-100 text-red-700" :
+                                "bg-yellow-100 text-yellow-700"
+                              }`}>
+                                {juror.Status.charAt(0).toUpperCase() + juror.Status.slice(1)}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <button
+                                onClick={() => handleDeleteJuror(juror.ApplicationId, juror.JurorName, selectedCase.CaseId)}
+                                className="inline-flex items-center gap-1 px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 text-xs font-medium transition-colors"
+                              >
+                                <XCircle className="h-3 w-3" />
+                                Delete
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center">
                     <FileText className="h-5 w-5 mr-2 text-green-600" />
                     <h3 className="font-semibold text-gray-900">Jury Charge Questions ({selectedCase.juryQuestions.length})</h3>
                   </div>
@@ -2039,6 +2163,44 @@ function formatTime(timeString: string, scheduledDate: string) {
                   </>
                 ) : (
                   "Delete Witness"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Juror Confirmation Modal */}
+      {showDeleteJurorModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/10 backdrop-blur-md">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md">
+            <div className="flex items-center mb-4">
+              <XCircle className="h-6 w-6 text-red-600 mr-3" />
+              <h3 className="text-xl font-semibold text-gray-900">Delete Juror Application</h3>
+            </div>
+            <p className="text-gray-600 mb-4">
+              Are you sure you want to delete the application from <span className="font-semibold">{deleteJurorName}</span>? This action cannot be undone.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowDeleteJurorModal(false)}
+                disabled={deletingJuror}
+                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteJuror}
+                disabled={deletingJuror}
+                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 font-medium disabled:opacity-50 inline-flex items-center"
+              >
+                {deletingJuror ? (
+                  <>
+                    <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></span>
+                    Deleting...
+                  </>
+                ) : (
+                  "Delete Application"
                 )}
               </button>
             </div>

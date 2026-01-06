@@ -386,7 +386,7 @@ router.get("/calendar/cases-by-date", async (req, res) => {
         ORDER BY c.ScheduledTime ASC
       `);
 
-    // Fetch witnesses and jury questions for each case
+    // Fetch witnesses, jury questions, and juror applications for each case
     const casesWithDetails = await Promise.all(
       result.recordset.map(async (caseItem) => {
         // Fetch witnesses for this case
@@ -405,6 +405,26 @@ router.get("/calendar/cases-by-date", async (req, res) => {
             "SELECT QuestionId, QuestionText, QuestionType, Options FROM dbo.JuryChargeQuestions WHERE CaseId = @caseId ORDER BY QuestionOrder ASC"
           );
 
+        // Fetch juror applications for this case
+        const jurorsResult = await pool
+          .request()
+          .input("caseId", sql.Int, caseItem.CaseId)
+          .query(
+            `SELECT
+              ja.ApplicationId,
+              ja.JurorId,
+              ja.Status,
+              ja.AppliedAt,
+              j.Name as JurorName,
+              j.Email as JurorEmail,
+              j.County,
+              j.State
+            FROM dbo.JurorApplications ja
+            INNER JOIN dbo.Jurors j ON ja.JurorId = j.JurorId
+            WHERE ja.CaseId = @caseId
+            ORDER BY ja.AppliedAt DESC`
+          );
+
         // Parse JSON options if present
         const juryQuestions = questionsResult.recordset.map((q) => ({
           ...q,
@@ -419,6 +439,7 @@ router.get("/calendar/cases-by-date", async (req, res) => {
             !!(caseItem.RoomId && caseItem.ThreadId),
           witnesses: witnessesResult.recordset || [],
           juryQuestions: juryQuestions || [],
+          jurors: jurorsResult.recordset || [],
         };
       })
     );
@@ -1000,6 +1021,56 @@ router.delete("/witnesses/:witnessId", async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to delete witness",
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * Delete a juror application (Admin only)
+ * DELETE /api/admin/juror-applications/:applicationId
+ */
+router.delete("/juror-applications/:applicationId", async (req, res) => {
+  try {
+    const applicationId = parseInt(req.params.applicationId, 10);
+
+    if (isNaN(applicationId) || applicationId <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid application ID is required",
+      });
+    }
+
+    const pool = await poolPromise;
+
+    // Check if application exists
+    const checkResult = await pool
+      .request()
+      .input("applicationId", sql.Int, applicationId)
+      .query("SELECT ApplicationId FROM dbo.JurorApplications WHERE ApplicationId = @applicationId");
+
+    if (checkResult.recordset.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Juror application not found",
+      });
+    }
+
+    // Delete the juror application
+    await pool
+      .request()
+      .input("applicationId", sql.Int, applicationId)
+      .query("DELETE FROM dbo.JurorApplications WHERE ApplicationId = @applicationId");
+
+    res.json({
+      success: true,
+      message: "Juror application deleted successfully",
+    });
+  } catch (error) {
+    console.error("Error deleting juror application (admin):", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete juror application",
       error: error.message,
     });
   }
