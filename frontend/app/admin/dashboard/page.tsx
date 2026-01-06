@@ -83,6 +83,7 @@ type Juror = {
   County: string;
   State: string;
   IsVerified: boolean;
+  Status?: string;
   IsActive?: boolean;
   OnboardingCompleted?: boolean;
   CreatedAt: string;
@@ -507,6 +508,7 @@ export default function AdminDashboard() {
         County: j.County ?? j.county,
         State: j.State ?? j.state,
         IsVerified: j.IsVerified ?? j.verified,
+        Status: j.Status ?? j.status,
         IsActive: j.IsActive ?? j.isActive,
         OnboardingCompleted: j.OnboardingCompleted ?? j.onboardingCompleted,
         CreatedAt: j.CreatedAt ?? j.createdAt,
