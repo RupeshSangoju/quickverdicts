@@ -351,7 +351,8 @@ router.get("/calendar/cases-by-date", async (req, res) => {
       });
     }
 
-    console.log("Fetching cases for date:", date);
+    console.log("🔍 [DEBUG] Fetching cases for date:", date);
+    console.log("🔍 [DEBUG] THIS IS THE NEW CODE WITH JURORS!");
     const pool = await poolPromise;
 
     const result = await pool.request().input("date", sql.Date, date).query(`
@@ -386,18 +387,74 @@ router.get("/calendar/cases-by-date", async (req, res) => {
         ORDER BY c.ScheduledTime ASC
       `);
 
-    const cases = result.recordset.map((caseItem) => ({
-      ...caseItem,
-      approvedJurorCount: caseItem.ApprovedJurorCount || 0,
-      canJoin:
-        caseItem.AttorneyStatus === "join_trial" &&
-        !!(caseItem.RoomId && caseItem.ThreadId),
-    }));
+    // Fetch witnesses, jury questions, and juror applications for each case
+    const casesWithDetails = await Promise.all(
+      result.recordset.map(async (caseItem) => {
+        // Fetch witnesses for this case
+        const witnessesResult = await pool
+          .request()
+          .input("caseId", sql.Int, caseItem.CaseId)
+          .query(
+            "SELECT WitnessId, WitnessName, Email, Side, Description, IsAccepted FROM dbo.CaseWitnesses WHERE CaseId = @caseId ORDER BY OrderIndex ASC"
+          );
+
+        // Fetch jury charge questions for this case
+        const questionsResult = await pool
+          .request()
+          .input("caseId", sql.Int, caseItem.CaseId)
+          .query(
+            "SELECT QuestionId, QuestionText, QuestionType, Options FROM dbo.JuryChargeQuestions WHERE CaseId = @caseId ORDER BY QuestionOrder ASC"
+          );
+
+        // Fetch juror applications for this case
+        const jurorsResult = await pool
+          .request()
+          .input("caseId", sql.Int, caseItem.CaseId)
+          .query(
+            `SELECT
+              ja.ApplicationId,
+              ja.JurorId,
+              ja.Status,
+              ja.AppliedAt,
+              j.Name as JurorName,
+              j.Email as JurorEmail,
+              j.County,
+              j.State
+            FROM dbo.JurorApplications ja
+            INNER JOIN dbo.Jurors j ON ja.JurorId = j.JurorId
+            WHERE ja.CaseId = @caseId
+            ORDER BY ja.AppliedAt DESC`
+          );
+
+        // Parse JSON options if present
+        const juryQuestions = questionsResult.recordset.map((q) => ({
+          ...q,
+          Options: q.Options ? safeJSONParse(q.Options, []) : [],
+        }));
+
+        const caseData = {
+          ...caseItem,
+          approvedJurorCount: caseItem.ApprovedJurorCount || 0,
+          canJoin:
+            caseItem.AttorneyStatus === "join_trial" &&
+            !!(caseItem.RoomId && caseItem.ThreadId),
+          witnesses: witnessesResult.recordset || [],
+          juryQuestions: juryQuestions || [],
+          jurors: jurorsResult.recordset || [],
+        };
+
+        console.log(`🔍 [DEBUG] Case ${caseItem.CaseId}: witnesses=${caseData.witnesses.length}, jurors=${caseData.jurors.length}, questions=${caseData.juryQuestions.length}`);
+
+        return caseData;
+      })
+    );
+
+    console.log("🔍 [DEBUG] Returning", casesWithDetails.length, "cases with full details");
 
     res.json({
       success: true,
-      cases,
-      count: cases.length,
+      cases: casesWithDetails,
+      count: casesWithDetails.length,
       date,
     });
   } catch (error) {
@@ -917,6 +974,110 @@ router.get("/cases/:caseId/recordings", async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch recordings",
+      error: error.message,
+    });
+  }
+});
+
+// ============================================
+// Witness Management Routes (Admin)
+// ============================================
+
+/**
+ * Delete a witness (Admin only)
+ * DELETE /api/admin/witnesses/:witnessId
+ */
+router.delete("/witnesses/:witnessId", async (req, res) => {
+  try {
+    const witnessId = parseInt(req.params.witnessId, 10);
+
+    if (isNaN(witnessId) || witnessId <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid witness ID is required",
+      });
+    }
+
+    const pool = await poolPromise;
+
+    // Check if witness exists
+    const checkResult = await pool
+      .request()
+      .input("witnessId", sql.Int, witnessId)
+      .query("SELECT WitnessId FROM dbo.CaseWitnesses WHERE WitnessId = @witnessId");
+
+    if (checkResult.recordset.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Witness not found",
+      });
+    }
+
+    // Delete the witness
+    await pool
+      .request()
+      .input("witnessId", sql.Int, witnessId)
+      .query("DELETE FROM dbo.CaseWitnesses WHERE WitnessId = @witnessId");
+
+    res.json({
+      success: true,
+      message: "Witness deleted successfully",
+    });
+  } catch (error) {
+    console.error("Error deleting witness (admin):", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete witness",
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * Delete a juror application (Admin only)
+ * DELETE /api/admin/juror-applications/:applicationId
+ */
+router.delete("/juror-applications/:applicationId", async (req, res) => {
+  try {
+    const applicationId = parseInt(req.params.applicationId, 10);
+
+    if (isNaN(applicationId) || applicationId <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid application ID is required",
+      });
+    }
+
+    const pool = await poolPromise;
+
+    // Check if application exists
+    const checkResult = await pool
+      .request()
+      .input("applicationId", sql.Int, applicationId)
+      .query("SELECT ApplicationId FROM dbo.JurorApplications WHERE ApplicationId = @applicationId");
+
+    if (checkResult.recordset.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Juror application not found",
+      });
+    }
+
+    // Delete the juror application
+    await pool
+      .request()
+      .input("applicationId", sql.Int, applicationId)
+      .query("DELETE FROM dbo.JurorApplications WHERE ApplicationId = @applicationId");
+
+    res.json({
+      success: true,
+      message: "Juror application deleted successfully",
+    });
+  } catch (error) {
+    console.error("Error deleting juror application (admin):", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete juror application",
       error: error.message,
     });
   }

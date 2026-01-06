@@ -102,8 +102,10 @@ type Notification = {
 type Witness = {
   WitnessId: number;
   WitnessName: string;
+  Email: string | null;
   Side: string;
   Description: string;
+  IsAccepted: boolean;
 };
 
 type JuryQuestion = {
@@ -111,6 +113,17 @@ type JuryQuestion = {
   QuestionText: string;
   QuestionType: string;
   Options: string[];
+};
+
+type JurorApplication = {
+  ApplicationId: number;
+  JurorId: number;
+  Status: string;
+  AppliedAt: string;
+  JurorName: string;
+  JurorEmail: string;
+  County: string;
+  State: string;
 };
 
 type CaseDetail = {
@@ -134,6 +147,7 @@ type CaseDetail = {
   IsRecording?: boolean;
   witnesses: Witness[];
   juryQuestions: JuryQuestion[];
+  jurors: JurorApplication[];
   approvedJurorCount: number;
   canJoin: boolean;
 };
@@ -213,6 +227,21 @@ export default function AdminDashboard() {
   // Case approval modal states
   const [showCaseApprovalModal, setShowCaseApprovalModal] = useState(false);
   const [approveCaseId, setApproveCaseId] = useState<number | null>(null);
+
+  // Witness delete modal states
+  const [showDeleteWitnessModal, setShowDeleteWitnessModal] = useState(false);
+  const [deleteWitnessId, setDeleteWitnessId] = useState<number | null>(null);
+  const [deleteWitnessName, setDeleteWitnessName] = useState<string>("");
+  const [deleteWitnessCaseId, setDeleteWitnessCaseId] = useState<number | null>(null);
+  const [deletingWitness, setDeletingWitness] = useState(false);
+
+  // Juror delete modal states
+  const [showDeleteJurorModal, setShowDeleteJurorModal] = useState(false);
+  const [deleteJurorApplicationId, setDeleteJurorApplicationId] = useState<number | null>(null);
+  const [deleteJurorName, setDeleteJurorName] = useState<string>("");
+  const [deleteJurorCaseId, setDeleteJurorCaseId] = useState<number | null>(null);
+  const [deletingJuror, setDeletingJuror] = useState(false);
+
   const [approvalComments, setApprovalComments] = useState("");
 
   // Listen for optimistic case status updates (from war-room submit)
@@ -943,6 +972,126 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleDeleteWitness = (witnessId: number, witnessName: string, caseId: number) => {
+    setDeleteWitnessId(witnessId);
+    setDeleteWitnessName(witnessName);
+    setDeleteWitnessCaseId(caseId);
+    setShowDeleteWitnessModal(true);
+  };
+
+  const confirmDeleteWitness = async () => {
+    if (!deleteWitnessId || !deleteWitnessCaseId) return;
+
+    setDeletingWitness(true);
+    try {
+      const response = await fetchWithAuth(`${API_BASE}/api/admin/witnesses/${deleteWitnessId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        // Update the selectedCase to remove the deleted witness
+        if (selectedCase && selectedCase.CaseId === deleteWitnessCaseId) {
+          setSelectedCase({
+            ...selectedCase,
+            witnesses: selectedCase.witnesses.filter(w => w.WitnessId !== deleteWitnessId)
+          });
+        }
+
+        // Update casesForDate to remove the deleted witness
+        setCasesForDate(prevCases =>
+          prevCases.map(c =>
+            c.CaseId === deleteWitnessCaseId
+              ? { ...c, witnesses: c.witnesses.filter(w => w.WitnessId !== deleteWitnessId) }
+              : c
+          )
+        );
+
+        alert('Witness deleted successfully');
+        setShowDeleteWitnessModal(false);
+        setDeleteWitnessId(null);
+        setDeleteWitnessName("");
+        setDeleteWitnessCaseId(null);
+      } else {
+        const data = await response.json();
+        alert(`Failed to delete witness: ${data.message || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error deleting witness:', error);
+      alert('Failed to delete witness');
+    } finally {
+      setDeletingWitness(false);
+    }
+  };
+
+  const handleDeleteJuror = (applicationId: number, jurorName: string, caseId: number) => {
+    setDeleteJurorApplicationId(applicationId);
+    setDeleteJurorName(jurorName);
+    setDeleteJurorCaseId(caseId);
+    setShowDeleteJurorModal(true);
+  };
+
+  const confirmDeleteJuror = async () => {
+    if (!deleteJurorApplicationId || !deleteJurorCaseId) return;
+
+    setDeletingJuror(true);
+    try {
+      const response = await fetchWithAuth(`${API_BASE}/api/admin/juror-applications/${deleteJurorApplicationId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        // Update the selectedCase to remove the deleted juror
+        if (selectedCase && selectedCase.CaseId === deleteJurorCaseId) {
+          setSelectedCase({
+            ...selectedCase,
+            jurors: selectedCase.jurors.filter(j => j.ApplicationId !== deleteJurorApplicationId)
+          });
+        }
+
+        // Update casesForDate to remove the deleted juror
+        setCasesForDate(prevCases =>
+          prevCases.map(c =>
+            c.CaseId === deleteJurorCaseId
+              ? { ...c, jurors: c.jurors.filter(j => j.ApplicationId !== deleteJurorApplicationId) }
+              : c
+          )
+        );
+
+        alert('Juror application deleted successfully');
+        setShowDeleteJurorModal(false);
+        setDeleteJurorApplicationId(null);
+        setDeleteJurorName("");
+        setDeleteJurorCaseId(null);
+      } else {
+        const data = await response.json();
+        alert(`Failed to delete juror application: ${data.message || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error deleting juror application:', error);
+      alert('Failed to delete juror application');
+    } finally {
+      setDeletingJuror(false);
+    }
+  };
+
+  const getJurorDecisionLabel = (status?: string) => {
+    const normalized = (status || "").toString().trim().toLowerCase();
+    if (normalized === 'approved') return 'Accepted';
+    if (normalized === 'rejected') return 'Rejected';
+    if (normalized === 'pending') return 'Pending';
+    if (!normalized) return 'Unknown';
+    return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+  };
+
+  const getJurorDecisionClasses = (status?: string) => {
+    const normalized = (status || "").toString().trim().toLowerCase();
+    if (normalized === 'approved') return 'bg-green-100 text-green-700';
+    if (normalized === 'rejected') return 'bg-red-100 text-red-700';
+    if (normalized === 'pending') return 'bg-yellow-100 text-yellow-700';
+    if (!normalized) return 'bg-gray-100 text-gray-700';
+    return 'bg-yellow-100 text-yellow-700';
+  };
+
   function applyOffsetToUtcTime(utcTime: string, dateString: string, timezoneOffset: string, offsetMinutesMap:number) {
   const offsetMinutes = offsetMinutesMap * 2;
   if (offsetMinutes === null) throw new Error('Invalid timezoneOffset');
@@ -1230,8 +1379,8 @@ function formatTime(timeString: string, scheduledDate: string) {
             ) : casesForDate.length === 0 ? (
               <div className="text-center py-16 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
                 <Calendar className="h-20 w-20 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-600 font-semibold text-lg">No trials scheduled</p>
-                <p className="text-sm text-gray-500 mt-2">Select a different date to view scheduled trials</p>
+                <p className="text-gray-600 font-medium">No trials scheduled</p>
+                <p className="text-gray-500 text-sm mt-2">Select a different date to view scheduled trials</p>
               </div>
             ) : (
               <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
@@ -1246,51 +1395,49 @@ function formatTime(timeString: string, scheduledDate: string) {
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-3">
-                          <h3 className="font-bold text-gray-900 text-lg group-hover:text-blue-600 transition-colors">
-                            {caseItem.CaseTitle}
-                          </h3>
-                          <span className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded font-mono">
-                            #{caseItem.CaseId}
-                          </span>
-                        </div>
-                        
-                        <div className="grid grid-cols-2 gap-3 text-sm mb-3">
-                          <div className="flex items-center text-gray-700">
-                            <Clock className="h-4 w-4 mr-2 text-blue-500" />
-                            <span className="font-medium">{caseItem.ScheduledTime}</span>
-                          </div>
-                          <div className="flex items-center text-gray-700">
-                            <Building2 className="h-4 w-4 mr-2 text-purple-500" />
-                            <span className="truncate font-medium">{caseItem.LawFirmName}</span>
-                          </div>
-                          <div className="flex items-center text-gray-700">
-                            <Briefcase className="h-4 w-4 mr-2 text-green-500" />
-                            <span className="font-medium">{caseItem.CaseType}</span>
-                          </div>
-                          <div className="flex items-center text-gray-700">
-                            <Users className="h-4 w-4 mr-2 text-orange-500" />
-                            <span className="font-medium">{caseItem.approvedJurorCount} Jurors</span>
-                          </div>
-                        </div>
-
-                        <div className="flex flex-wrap gap-2">
-                          <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-xs font-bold">
-                            {caseItem.witnesses?.length || 0} Witnesses
-                          </span>
-                          <span className="px-3 py-1 bg-green-100 text-green-700 rounded-lg text-xs font-bold">
-                            {caseItem.juryQuestions?.length || 0} Questions
-                          </span>
-                          {caseItem.canJoin && (
-                            <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-xs font-bold flex items-center gap-1">
-                              <CheckCircle2 className="h-3 w-3" />
-                              Ready
-                            </span>
-                          )}
-                        </div>
+                        <h3 className="font-bold text-gray-900 text-lg mb-1">{caseItem.CaseTitle}</h3>
+                        <p className="text-sm text-gray-600">Case #{caseItem.CaseId}</p>
                       </div>
+                      {caseItem.IsRecording && (
+                        <span className="px-2 py-1 bg-red-100 text-red-700 rounded-lg text-xs font-bold flex items-center gap-1">
+                          <span className="inline-block w-2 h-2 bg-red-600 rounded-full animate-pulse"></span>
+                          REC
+                        </span>
+                      )}
+                    </div>
 
-                      <ExternalLink className="h-6 w-6 text-gray-400 group-hover:text-blue-500 transition-colors ml-4" />
+                    <div className="grid grid-cols-2 gap-2 text-xs mb-3">
+                      <div className="flex items-center gap-1.5 text-gray-700">
+                        <Clock className="h-3.5 w-3.5 text-indigo-500" />
+                        <span>{caseItem.ScheduledTime}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-gray-700">
+                        <Users className="h-3.5 w-3.5 text-green-500" />
+                        <span>{caseItem.approvedJurorCount} Jurors</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-gray-700">
+                        <Building2 className="h-3.5 w-3.5 text-purple-500" />
+                        <span className="truncate">{caseItem.LawFirmName}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-gray-700">
+                        <Briefcase className="h-3.5 w-3.5 text-orange-500" />
+                        <span>{caseItem.CaseType}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-xs font-bold">
+                        {caseItem.witnesses?.length || 0} Witnesses
+                      </span>
+                      <span className="px-3 py-1 bg-green-100 text-green-700 rounded-lg text-xs font-bold">
+                        {caseItem.juryQuestions?.length || 0} Questions
+                      </span>
+                      {caseItem.canJoin && (
+                        <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-xs font-bold flex items-center gap-1">
+                          <CheckCircle2 className="h-3 w-3" />
+                          Ready
+                        </span>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -1494,7 +1641,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                   <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Law Firm</th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Bar Number</th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Joined</th>
+                  <th className="px-6 py-4 text-sm text-gray-600">Joined</th>
                   <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
@@ -1636,7 +1783,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                   <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Verification</th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Status</th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Onboarding</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Joined</th>
+                  <th className="px-6 py-4 text-sm text-gray-600">Joined</th>
                   <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
@@ -1675,15 +1822,9 @@ function formatTime(timeString: string, scheduledDate: string) {
                         )}
                       </td>
                       <td className="px-6 py-4">
-                        {juror.IsActive ? (
-                          <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-green-100 text-green-800">
-                            Active
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-red-100 text-red-800">
-                            Inactive
-                          </span>
-                        )}
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${getJurorDecisionClasses(juror.Status)}`}>
+                          {getJurorDecisionLabel(juror.Status)}
+                        </span>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center space-x-2">
@@ -1836,16 +1977,92 @@ function formatTime(timeString: string, scheduledDate: string) {
                 {selectedCase.witnesses.length === 0 ? (
                   <p className="text-gray-500 text-sm">No witnesses added</p>
                 ) : (
-                  <div className="space-y-2">
-                    {selectedCase.witnesses.map((witness) => (
-                      <div key={witness.WitnessId} className="border border-gray-200 rounded-lg p-3 bg-gray-50">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-medium text-gray-900">{witness.WitnessName}</span>
-                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${witness.Side === "Plaintiff" ? "bg-blue-100 text-blue-700" : "bg-red-100 text-red-700"}`}>{witness.Side}</span>
-                        </div>
-                        {witness.Description && <p className="text-sm text-gray-600">{witness.Description}</p>}
-                      </div>
-                    ))}
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full bg-white border border-gray-200 rounded-lg">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b">Name</th>
+                          {/* <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b">Email</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b">Side</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b">Status</th>
+                          <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b">Actions</th> */}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {selectedCase.witnesses.map((witness) => (
+                          <tr key={witness.WitnessId} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 text-sm font-medium text-gray-900">{witness.WitnessName}</td>
+                            {/* <td className="px-4 py-3 text-sm text-gray-600">{witness.Email || 'N/A'}</td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-1 rounded text-xs font-medium ${witness.Side === "Plaintiff" ? "bg-blue-100 text-blue-700" : "bg-red-100 text-red-700"}`}>
+                                {witness.Side}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-1 rounded text-xs font-medium ${witness.IsAccepted ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>
+                                {witness.IsAccepted ? 'Accepted' : 'Pending'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <button
+                                onClick={() => handleDeleteWitness(witness.WitnessId, witness.WitnessName, selectedCase.CaseId)}
+                                className="inline-flex items-center gap-1 px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 text-xs font-medium transition-colors"
+                              >
+                                <XCircle className="h-3 w-3" />
+                                Delete
+                              </button>
+                            </td> */}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center">
+                    <Users className="h-5 w-5 mr-2 text-blue-600" />
+                    <h3 className="font-semibold text-gray-900">Jurors ({selectedCase.jurors?.length || 0})</h3>
+                  </div>
+                </div>
+                {!selectedCase.jurors || selectedCase.jurors.length === 0 ? (
+                  <p className="text-gray-500 text-sm">No juror applications yet</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full bg-white border border-gray-200 rounded-lg">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b">Name</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b">Email</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b">Status</th>
+                          <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {selectedCase.jurors.map((juror) => (
+                          <tr key={juror.ApplicationId} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 text-sm font-medium text-gray-900">{juror.JurorName}</td>
+                            <td className="px-4 py-3 text-sm text-gray-600">{juror.JurorEmail}</td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-1 rounded text-xs font-medium ${getJurorDecisionClasses(juror.Status)}`}>
+                                {getJurorDecisionLabel(juror.Status)}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <button
+                                onClick={() => handleDeleteJuror(juror.ApplicationId, juror.JurorName, selectedCase.CaseId)}
+                                className="inline-flex items-center gap-1 px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 text-xs font-medium transition-colors"
+                              >
+                                <XCircle className="h-3 w-3" />
+                                Delete
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </div>
@@ -1913,6 +2130,82 @@ function formatTime(timeString: string, scheduledDate: string) {
               <button onClick={() => setShowDeclineModal(false)} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium">Cancel</button>
               <button onClick={confirmDecline} disabled={actionLoading !== null} className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 font-medium disabled:opacity-50 inline-flex items-center">
                 {actionLoading ? <><span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></span>Declining...</> : "Confirm Decline"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Witness Confirmation Modal */}
+      {showDeleteWitnessModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/10 backdrop-blur-md">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md">
+            <div className="flex items-center mb-4">
+              <XCircle className="h-6 w-6 text-red-600 mr-3" />
+              <h3 className="text-xl font-semibold text-gray-900">Delete Witness</h3>
+            </div>
+            <p className="text-gray-600 mb-4">
+              Are you sure you want to delete witness <span className="font-semibold">{deleteWitnessName}</span>? This action cannot be undone.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowDeleteWitnessModal(false)}
+                disabled={deletingWitness}
+                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteWitness}
+                disabled={deletingWitness}
+                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 font-medium disabled:opacity-50 inline-flex items-center"
+              >
+                {deletingWitness ? (
+                  <>
+                    <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></span>
+                    Deleting...
+                  </>
+                ) : (
+                  "Delete Witness"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Juror Confirmation Modal */}
+      {showDeleteJurorModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/10 backdrop-blur-md">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md">
+            <div className="flex items-center mb-4">
+              <XCircle className="h-6 w-6 text-red-600 mr-3" />
+              <h3 className="text-xl font-semibold text-gray-900">Delete Juror Application</h3>
+            </div>
+            <p className="text-gray-600 mb-4">
+              Are you sure you want to delete the application from <span className="font-semibold">{deleteJurorName}</span>? This action cannot be undone.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowDeleteJurorModal(false)}
+                disabled={deletingJuror}
+                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteJuror}
+                disabled={deletingJuror}
+                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 font-medium disabled:opacity-50 inline-flex items-center"
+              >
+                {deletingJuror ? (
+                  <>
+                    <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></span>
+                    Deleting...
+                  </>
+                ) : (
+                  "Delete Application"
+                )}
               </button>
             </div>
           </div>

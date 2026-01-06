@@ -277,6 +277,34 @@ async function getCasesByDate(req, res) {
               WHERE CaseId = @caseId AND Status = 'approved'
             `);
 
+          // Get juror applications with juror details
+          let jurorApplicationsResult = { recordset: [] };
+          try {
+            jurorApplicationsResult = await pool
+              .request()
+              .input("caseId", sql.Int, caseItem.CaseId).query(`
+                SELECT
+                  ja.ApplicationId,
+                  ja.JurorId,
+                  ja.Status,
+                  ja.AppliedAt,
+                  j.Name as JurorName,
+                  j.Email as JurorEmail,
+                  j.County,
+                  j.State
+                FROM dbo.JurorApplications ja
+                INNER JOIN dbo.Jurors j ON ja.JurorId = j.JurorId
+                WHERE ja.CaseId = @caseId
+                ORDER BY ja.AppliedAt DESC
+              `);
+          } catch (err) {
+            if (err.number === 208) {
+              console.warn('⚠️ JurorApplications or Jurors table does not exist yet');
+            } else {
+              throw err;
+            }
+          }
+
           return {
             ...caseItem,
             State: caseItem.AttorneyState,
@@ -285,6 +313,7 @@ async function getCasesByDate(req, res) {
               ...q,
               Options: q.Options ? (typeof q.Options === 'string' ? JSON.parse(q.Options) : q.Options) : [],
             })),
+            jurors: jurorApplicationsResult.recordset,
             approvedJurorCount:
               jurorsResult.recordset[0]?.ApprovedJurorCount || 0,
             canJoin:
