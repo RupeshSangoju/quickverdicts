@@ -2014,29 +2014,27 @@ function formatTime(timeString: string, scheduledDate: string) {
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center">
                     <Users className="h-5 w-5 mr-2 text-blue-600" />
-                    <h3 className="font-semibold text-gray-900">Jurors ({selectedCase.jurors?.filter(j => j.Status === 'approved').length || 0})</h3>
+                    <h3 className="font-semibold text-gray-900">Jurors ({selectedCase.jurors?.length || 0})</h3>
                   </div>
                 </div>
-                {!selectedCase.jurors || selectedCase.jurors.filter(j => j.Status === 'approved').length === 0 ? (
-                  <p className="text-gray-500 text-sm">No approved jurors yet</p>
+                {!selectedCase.jurors || selectedCase.jurors.length === 0 ? (
+                  <p className="text-gray-500 text-sm">No juror applications yet</p>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="min-w-full bg-white border border-gray-200 rounded-lg">
                       <thead className="bg-gray-50">
                         <tr>
                           <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b">Name</th>
-                          {/* <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b">Email</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b">Location</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b">Email</th>
                           <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b">Status</th>
-                          <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b">Actions</th> */}
+                          <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
-                        {selectedCase.jurors.filter(j => j.Status === 'approved').map((juror) => (
+                        {selectedCase.jurors.map((juror) => (
                           <tr key={juror.ApplicationId} className="hover:bg-gray-50">
                             <td className="px-4 py-3 text-sm font-medium text-gray-900">{juror.JurorName}</td>
-                            {/* <td className="px-4 py-3 text-sm text-gray-600">{juror.JurorEmail}</td>
-                            <td className="px-4 py-3 text-sm text-gray-600">{juror.County}, {juror.State}</td>
+                            <td className="px-4 py-3 text-sm text-gray-600">{juror.JurorEmail}</td>
                             <td className="px-4 py-3">
                               <span className={`px-2 py-1 rounded text-xs font-medium ${
                                 juror.Status === 'approved' ? "bg-green-100 text-green-700" :
@@ -2054,7 +2052,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                                 <XCircle className="h-3 w-3" />
                                 Delete
                               </button>
-                            </td> */}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
