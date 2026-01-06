@@ -102,8 +102,10 @@ type Notification = {
 type Witness = {
   WitnessId: number;
   WitnessName: string;
+  Email: string | null;
   Side: string;
   Description: string;
+  IsAccepted: boolean;
 };
 
 type JuryQuestion = {
@@ -213,6 +215,13 @@ export default function AdminDashboard() {
   // Case approval modal states
   const [showCaseApprovalModal, setShowCaseApprovalModal] = useState(false);
   const [approveCaseId, setApproveCaseId] = useState<number | null>(null);
+
+  // Witness delete modal states
+  const [showDeleteWitnessModal, setShowDeleteWitnessModal] = useState(false);
+  const [deleteWitnessId, setDeleteWitnessId] = useState<number | null>(null);
+  const [deleteWitnessName, setDeleteWitnessName] = useState<string>("");
+  const [deleteWitnessCaseId, setDeleteWitnessCaseId] = useState<number | null>(null);
+  const [deletingWitness, setDeletingWitness] = useState(false);
   const [approvalComments, setApprovalComments] = useState("");
 
   // Listen for optimistic case status updates (from war-room submit)
@@ -940,6 +949,57 @@ export default function AdminDashboard() {
     } catch (error) {
       console.error('Error downloading MS Forms template:', error);
       alert('Failed to download MS Forms template');
+    }
+  };
+
+  const handleDeleteWitness = (witnessId: number, witnessName: string, caseId: number) => {
+    setDeleteWitnessId(witnessId);
+    setDeleteWitnessName(witnessName);
+    setDeleteWitnessCaseId(caseId);
+    setShowDeleteWitnessModal(true);
+  };
+
+  const confirmDeleteWitness = async () => {
+    if (!deleteWitnessId || !deleteWitnessCaseId) return;
+
+    setDeletingWitness(true);
+    try {
+      const response = await fetchWithAuth(`${API_BASE}/api/admin/witnesses/${deleteWitnessId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        // Update the selectedCase to remove the deleted witness
+        if (selectedCase && selectedCase.CaseId === deleteWitnessCaseId) {
+          setSelectedCase({
+            ...selectedCase,
+            witnesses: selectedCase.witnesses.filter(w => w.WitnessId !== deleteWitnessId)
+          });
+        }
+
+        // Update casesForDate to remove the deleted witness
+        setCasesForDate(prevCases =>
+          prevCases.map(c =>
+            c.CaseId === deleteWitnessCaseId
+              ? { ...c, witnesses: c.witnesses.filter(w => w.WitnessId !== deleteWitnessId) }
+              : c
+          )
+        );
+
+        alert('Witness deleted successfully');
+        setShowDeleteWitnessModal(false);
+        setDeleteWitnessId(null);
+        setDeleteWitnessName("");
+        setDeleteWitnessCaseId(null);
+      } else {
+        const data = await response.json();
+        alert(`Failed to delete witness: ${data.message || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error deleting witness:', error);
+      alert('Failed to delete witness');
+    } finally {
+      setDeletingWitness(false);
     }
   };
 
@@ -1836,16 +1896,45 @@ function formatTime(timeString: string, scheduledDate: string) {
                 {selectedCase.witnesses.length === 0 ? (
                   <p className="text-gray-500 text-sm">No witnesses added</p>
                 ) : (
-                  <div className="space-y-2">
-                    {selectedCase.witnesses.map((witness) => (
-                      <div key={witness.WitnessId} className="border border-gray-200 rounded-lg p-3 bg-gray-50">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-medium text-gray-900">{witness.WitnessName}</span>
-                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${witness.Side === "Plaintiff" ? "bg-blue-100 text-blue-700" : "bg-red-100 text-red-700"}`}>{witness.Side}</span>
-                        </div>
-                        {witness.Description && <p className="text-sm text-gray-600">{witness.Description}</p>}
-                      </div>
-                    ))}
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full bg-white border border-gray-200 rounded-lg">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b">Name</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b">Email</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b">Side</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b">Status</th>
+                          <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {selectedCase.witnesses.map((witness) => (
+                          <tr key={witness.WitnessId} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 text-sm font-medium text-gray-900">{witness.WitnessName}</td>
+                            <td className="px-4 py-3 text-sm text-gray-600">{witness.Email || 'N/A'}</td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-1 rounded text-xs font-medium ${witness.Side === "Plaintiff" ? "bg-blue-100 text-blue-700" : "bg-red-100 text-red-700"}`}>
+                                {witness.Side}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-1 rounded text-xs font-medium ${witness.IsAccepted ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>
+                                {witness.IsAccepted ? 'Accepted' : 'Pending'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <button
+                                onClick={() => handleDeleteWitness(witness.WitnessId, witness.WitnessName, selectedCase.CaseId)}
+                                className="inline-flex items-center gap-1 px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 text-xs font-medium transition-colors"
+                              >
+                                <XCircle className="h-3 w-3" />
+                                Delete
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </div>
@@ -1913,6 +2002,44 @@ function formatTime(timeString: string, scheduledDate: string) {
               <button onClick={() => setShowDeclineModal(false)} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium">Cancel</button>
               <button onClick={confirmDecline} disabled={actionLoading !== null} className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 font-medium disabled:opacity-50 inline-flex items-center">
                 {actionLoading ? <><span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></span>Declining...</> : "Confirm Decline"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Witness Confirmation Modal */}
+      {showDeleteWitnessModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/10 backdrop-blur-md">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md">
+            <div className="flex items-center mb-4">
+              <XCircle className="h-6 w-6 text-red-600 mr-3" />
+              <h3 className="text-xl font-semibold text-gray-900">Delete Witness</h3>
+            </div>
+            <p className="text-gray-600 mb-4">
+              Are you sure you want to delete witness <span className="font-semibold">{deleteWitnessName}</span>? This action cannot be undone.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowDeleteWitnessModal(false)}
+                disabled={deletingWitness}
+                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteWitness}
+                disabled={deletingWitness}
+                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 font-medium disabled:opacity-50 inline-flex items-center"
+              >
+                {deletingWitness ? (
+                  <>
+                    <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></span>
+                    Deleting...
+                  </>
+                ) : (
+                  "Delete Witness"
+                )}
               </button>
             </div>
           </div>

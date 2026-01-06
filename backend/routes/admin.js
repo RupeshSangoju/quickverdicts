@@ -386,18 +386,47 @@ router.get("/calendar/cases-by-date", async (req, res) => {
         ORDER BY c.ScheduledTime ASC
       `);
 
-    const cases = result.recordset.map((caseItem) => ({
-      ...caseItem,
-      approvedJurorCount: caseItem.ApprovedJurorCount || 0,
-      canJoin:
-        caseItem.AttorneyStatus === "join_trial" &&
-        !!(caseItem.RoomId && caseItem.ThreadId),
-    }));
+    // Fetch witnesses and jury questions for each case
+    const casesWithDetails = await Promise.all(
+      result.recordset.map(async (caseItem) => {
+        // Fetch witnesses for this case
+        const witnessesResult = await pool
+          .request()
+          .input("caseId", sql.Int, caseItem.CaseId)
+          .query(
+            "SELECT WitnessId, WitnessName, Email, Side, Description, IsAccepted FROM dbo.CaseWitnesses WHERE CaseId = @caseId ORDER BY OrderIndex ASC"
+          );
+
+        // Fetch jury charge questions for this case
+        const questionsResult = await pool
+          .request()
+          .input("caseId", sql.Int, caseItem.CaseId)
+          .query(
+            "SELECT QuestionId, QuestionText, QuestionType, Options FROM dbo.JuryChargeQuestions WHERE CaseId = @caseId ORDER BY QuestionOrder ASC"
+          );
+
+        // Parse JSON options if present
+        const juryQuestions = questionsResult.recordset.map((q) => ({
+          ...q,
+          Options: q.Options ? safeJSONParse(q.Options, []) : [],
+        }));
+
+        return {
+          ...caseItem,
+          approvedJurorCount: caseItem.ApprovedJurorCount || 0,
+          canJoin:
+            caseItem.AttorneyStatus === "join_trial" &&
+            !!(caseItem.RoomId && caseItem.ThreadId),
+          witnesses: witnessesResult.recordset || [],
+          juryQuestions: juryQuestions || [],
+        };
+      })
+    );
 
     res.json({
       success: true,
-      cases,
-      count: cases.length,
+      cases: casesWithDetails,
+      count: casesWithDetails.length,
       date,
     });
   } catch (error) {
@@ -917,6 +946,60 @@ router.get("/cases/:caseId/recordings", async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch recordings",
+      error: error.message,
+    });
+  }
+});
+
+// ============================================
+// Witness Management Routes (Admin)
+// ============================================
+
+/**
+ * Delete a witness (Admin only)
+ * DELETE /api/admin/witnesses/:witnessId
+ */
+router.delete("/witnesses/:witnessId", async (req, res) => {
+  try {
+    const witnessId = parseInt(req.params.witnessId, 10);
+
+    if (isNaN(witnessId) || witnessId <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid witness ID is required",
+      });
+    }
+
+    const pool = await poolPromise;
+
+    // Check if witness exists
+    const checkResult = await pool
+      .request()
+      .input("witnessId", sql.Int, witnessId)
+      .query("SELECT WitnessId FROM dbo.CaseWitnesses WHERE WitnessId = @witnessId");
+
+    if (checkResult.recordset.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Witness not found",
+      });
+    }
+
+    // Delete the witness
+    await pool
+      .request()
+      .input("witnessId", sql.Int, witnessId)
+      .query("DELETE FROM dbo.CaseWitnesses WHERE WitnessId = @witnessId");
+
+    res.json({
+      success: true,
+      message: "Witness deleted successfully",
+    });
+  } catch (error) {
+    console.error("Error deleting witness (admin):", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete witness",
       error: error.message,
     });
   }
