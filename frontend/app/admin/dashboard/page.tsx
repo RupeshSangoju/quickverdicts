@@ -1074,6 +1074,24 @@ export default function AdminDashboard() {
     }
   };
 
+  const getJurorDecisionLabel = (status?: string) => {
+    const normalized = (status || "").toString().trim().toLowerCase();
+    if (normalized === 'approved') return 'Accepted';
+    if (normalized === 'rejected') return 'Rejected';
+    if (normalized === 'pending') return 'Pending';
+    if (!normalized) return 'Unknown';
+    return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+  };
+
+  const getJurorDecisionClasses = (status?: string) => {
+    const normalized = (status || "").toString().trim().toLowerCase();
+    if (normalized === 'approved') return 'bg-green-100 text-green-700';
+    if (normalized === 'rejected') return 'bg-red-100 text-red-700';
+    if (normalized === 'pending') return 'bg-yellow-100 text-yellow-700';
+    if (!normalized) return 'bg-gray-100 text-gray-700';
+    return 'bg-yellow-100 text-yellow-700';
+  };
+
   function applyOffsetToUtcTime(utcTime: string, dateString: string, timezoneOffset: string, offsetMinutesMap:number) {
   const offsetMinutes = offsetMinutesMap * 2;
   if (offsetMinutes === null) throw new Error('Invalid timezoneOffset');
@@ -1361,8 +1379,8 @@ function formatTime(timeString: string, scheduledDate: string) {
             ) : casesForDate.length === 0 ? (
               <div className="text-center py-16 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
                 <Calendar className="h-20 w-20 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-600 font-semibold text-lg">No trials scheduled</p>
-                <p className="text-sm text-gray-500 mt-2">Select a different date to view scheduled trials</p>
+                <p className="text-gray-600 font-medium">No trials scheduled</p>
+                <p className="text-gray-500 text-sm mt-2">Select a different date to view scheduled trials</p>
               </div>
             ) : (
               <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
@@ -1377,51 +1395,49 @@ function formatTime(timeString: string, scheduledDate: string) {
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-3">
-                          <h3 className="font-bold text-gray-900 text-lg group-hover:text-blue-600 transition-colors">
-                            {caseItem.CaseTitle}
-                          </h3>
-                          <span className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded font-mono">
-                            #{caseItem.CaseId}
-                          </span>
-                        </div>
-                        
-                        <div className="grid grid-cols-2 gap-3 text-sm mb-3">
-                          <div className="flex items-center text-gray-700">
-                            <Clock className="h-4 w-4 mr-2 text-blue-500" />
-                            <span className="font-medium">{caseItem.ScheduledTime}</span>
-                          </div>
-                          <div className="flex items-center text-gray-700">
-                            <Building2 className="h-4 w-4 mr-2 text-purple-500" />
-                            <span className="truncate font-medium">{caseItem.LawFirmName}</span>
-                          </div>
-                          <div className="flex items-center text-gray-700">
-                            <Briefcase className="h-4 w-4 mr-2 text-green-500" />
-                            <span className="font-medium">{caseItem.CaseType}</span>
-                          </div>
-                          <div className="flex items-center text-gray-700">
-                            <Users className="h-4 w-4 mr-2 text-orange-500" />
-                            <span className="font-medium">{caseItem.approvedJurorCount} Jurors</span>
-                          </div>
-                        </div>
-
-                        <div className="flex flex-wrap gap-2">
-                          <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-xs font-bold">
-                            {caseItem.witnesses?.length || 0} Witnesses
-                          </span>
-                          <span className="px-3 py-1 bg-green-100 text-green-700 rounded-lg text-xs font-bold">
-                            {caseItem.juryQuestions?.length || 0} Questions
-                          </span>
-                          {caseItem.canJoin && (
-                            <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-xs font-bold flex items-center gap-1">
-                              <CheckCircle2 className="h-3 w-3" />
-                              Ready
-                            </span>
-                          )}
-                        </div>
+                        <h3 className="font-bold text-gray-900 text-lg mb-1">{caseItem.CaseTitle}</h3>
+                        <p className="text-sm text-gray-600">Case #{caseItem.CaseId}</p>
                       </div>
+                      {caseItem.IsRecording && (
+                        <span className="px-2 py-1 bg-red-100 text-red-700 rounded-lg text-xs font-bold flex items-center gap-1">
+                          <span className="inline-block w-2 h-2 bg-red-600 rounded-full animate-pulse"></span>
+                          REC
+                        </span>
+                      )}
+                    </div>
 
-                      <ExternalLink className="h-6 w-6 text-gray-400 group-hover:text-blue-500 transition-colors ml-4" />
+                    <div className="grid grid-cols-2 gap-2 text-xs mb-3">
+                      <div className="flex items-center gap-1.5 text-gray-700">
+                        <Clock className="h-3.5 w-3.5 text-indigo-500" />
+                        <span>{caseItem.ScheduledTime}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-gray-700">
+                        <Users className="h-3.5 w-3.5 text-green-500" />
+                        <span>{caseItem.approvedJurorCount} Jurors</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-gray-700">
+                        <Building2 className="h-3.5 w-3.5 text-purple-500" />
+                        <span className="truncate">{caseItem.LawFirmName}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-gray-700">
+                        <Briefcase className="h-3.5 w-3.5 text-orange-500" />
+                        <span>{caseItem.CaseType}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-xs font-bold">
+                        {caseItem.witnesses?.length || 0} Witnesses
+                      </span>
+                      <span className="px-3 py-1 bg-green-100 text-green-700 rounded-lg text-xs font-bold">
+                        {caseItem.juryQuestions?.length || 0} Questions
+                      </span>
+                      {caseItem.canJoin && (
+                        <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-xs font-bold flex items-center gap-1">
+                          <CheckCircle2 className="h-3 w-3" />
+                          Ready
+                        </span>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -1625,7 +1641,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                   <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Law Firm</th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Bar Number</th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Joined</th>
+                  <th className="px-6 py-4 text-sm text-gray-600">Joined</th>
                   <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
@@ -1767,7 +1783,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                   <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Verification</th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Status</th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Onboarding</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Joined</th>
+                  <th className="px-6 py-4 text-sm text-gray-600">Joined</th>
                   <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
@@ -1806,15 +1822,9 @@ function formatTime(timeString: string, scheduledDate: string) {
                         )}
                       </td>
                       <td className="px-6 py-4">
-                        {juror.IsActive ? (
-                          <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-green-100 text-green-800">
-                            Active
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-red-100 text-red-800">
-                            Inactive
-                          </span>
-                        )}
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${getJurorDecisionClasses(juror.Status)}`}>
+                          {getJurorDecisionLabel(juror.Status)}
+                        </span>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center space-x-2">
@@ -2036,12 +2046,8 @@ function formatTime(timeString: string, scheduledDate: string) {
                             <td className="px-4 py-3 text-sm font-medium text-gray-900">{juror.JurorName}</td>
                             <td className="px-4 py-3 text-sm text-gray-600">{juror.JurorEmail}</td>
                             <td className="px-4 py-3">
-                              <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                juror.Status === 'approved' ? "bg-green-100 text-green-700" :
-                                juror.Status === 'rejected' ? "bg-red-100 text-red-700" :
-                                "bg-yellow-100 text-yellow-700"
-                              }`}>
-                                {juror.Status.charAt(0).toUpperCase() + juror.Status.slice(1)}
+                              <span className={`px-2 py-1 rounded text-xs font-medium ${getJurorDecisionClasses(juror.Status)}`}>
+                                {getJurorDecisionLabel(juror.Status)}
                               </span>
                             </td>
                             <td className="px-4 py-3 text-center">
