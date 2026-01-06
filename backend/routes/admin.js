@@ -351,7 +351,8 @@ router.get("/calendar/cases-by-date", async (req, res) => {
       });
     }
 
-    console.log("Fetching cases for date:", date);
+    console.log("🔍 [DEBUG] Fetching cases for date:", date);
+    console.log("🔍 [DEBUG] THIS IS THE NEW CODE WITH JURORS!");
     const pool = await poolPromise;
 
     const result = await pool.request().input("date", sql.Date, date).query(`
@@ -431,7 +432,7 @@ router.get("/calendar/cases-by-date", async (req, res) => {
           Options: q.Options ? safeJSONParse(q.Options, []) : [],
         }));
 
-        return {
+        const caseData = {
           ...caseItem,
           approvedJurorCount: caseItem.ApprovedJurorCount || 0,
           canJoin:
@@ -441,8 +442,14 @@ router.get("/calendar/cases-by-date", async (req, res) => {
           juryQuestions: juryQuestions || [],
           jurors: jurorsResult.recordset || [],
         };
+
+        console.log(`🔍 [DEBUG] Case ${caseItem.CaseId}: witnesses=${caseData.witnesses.length}, jurors=${caseData.jurors.length}, questions=${caseData.juryQuestions.length}`);
+
+        return caseData;
       })
     );
+
+    console.log("🔍 [DEBUG] Returning", casesWithDetails.length, "cases with full details");
 
     res.json({
       success: true,
