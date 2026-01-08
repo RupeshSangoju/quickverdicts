@@ -398,17 +398,23 @@ async function deleteCase(req, res) {
     const { caseId } = req.params;
     const adminId = req.user?.id || 1;
 
+    console.log(`🗑️  [deleteCase] Starting deletion for case ${caseId} by admin ${adminId}`);
+
     // Get case data before deletion
     const caseData = await Case.findById(caseId);
     if (!caseData) {
+      console.log(`❌ [deleteCase] Case ${caseId} not found`);
       return res.status(404).json({
         success: false,
         message: "Case not found",
       });
     }
 
+    console.log(`📋 [deleteCase] Found case: "${caseData.CaseTitle}", IsDeleted=${caseData.IsDeleted}`);
+
     // Check if case is already deleted
     if (caseData.IsDeleted === 1) {
+      console.log(`⚠️  [deleteCase] Case ${caseId} is already deleted`);
       return res.status(400).json({
         success: false,
         message: "Case is already deleted",
@@ -421,10 +427,16 @@ async function deleteCase(req, res) {
     // Get all jurors who applied to this case (all statuses - approved, pending, rejected)
     const allApplications = await JurorApplication.getApplicationsByCase(caseId);
 
+    console.log(`👥 [deleteCase] Found ${allApplications.length} juror applications for case ${caseId}`);
+
     // Soft delete the case
     await Case.softDeleteCase(caseId);
 
-    console.log(`✅ Admin ${adminId} deleted case ${caseId} - "${caseData.CaseTitle}"`);
+    console.log(`✅ [deleteCase] Soft delete completed for case ${caseId}`);
+
+    // Verify deletion
+    const deletedCase = await Case.findById(caseId);
+    console.log(`🔍 [deleteCase] Verification after deletion: IsDeleted=${deletedCase?.IsDeleted} for case ${caseId}`);
 
     // Prepare notifications array for bulk creation
     const notifications = [];
@@ -467,6 +479,8 @@ async function deleteCase(req, res) {
       notificationsSent: notifications.length,
     });
 
+    console.log(`🎯 [deleteCase] Successfully completed deletion of case ${caseId}`);
+
     res.json({
       success: true,
       message: "Case deleted successfully",
@@ -476,6 +490,7 @@ async function deleteCase(req, res) {
         notificationsSent: notifications.length,
         attorneyNotified: attorney ? true : false,
         jurorsNotified: allApplications.length,
+        isDeleted: deletedCase?.IsDeleted,
       },
     });
   } catch (error) {
