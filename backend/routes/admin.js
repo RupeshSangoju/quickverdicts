@@ -16,6 +16,7 @@ const {
   reviewCaseApproval,
   getAllCases,
   getCaseDetailsForAdmin,
+  deleteCase,
   getAttorneysPendingVerification,
   verifyAttorney,
   getJurorsPendingVerification,
@@ -604,6 +605,7 @@ router.get("/cases/pending", getCasesPendingApproval);
 router.get("/cases", getAllCases);
 router.get("/cases/:caseId", getCaseDetailsForAdmin);
 router.post("/cases/:caseId/review", reviewCaseApproval);
+router.delete("/cases/:caseId/delete", deleteCase);
 
 // ============================================
 // Case Reschedule Routes (Time Slot Conflict Resolution)

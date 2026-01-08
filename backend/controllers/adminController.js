@@ -390,6 +390,105 @@ async function getCaseDetailsForAdmin(req, res) {
 }
 
 /**
+ * Delete case by admin
+ * Removes case from system and notifies attorney and all jurors
+ */
+async function deleteCase(req, res) {
+  try {
+    const { caseId } = req.params;
+    const adminId = req.user?.id || 1;
+
+    // Get case data before deletion
+    const caseData = await Case.findById(caseId);
+    if (!caseData) {
+      return res.status(404).json({
+        success: false,
+        message: "Case not found",
+      });
+    }
+
+    // Check if case is already deleted
+    if (caseData.IsDeleted === 1) {
+      return res.status(400).json({
+        success: false,
+        message: "Case is already deleted",
+      });
+    }
+
+    // Get attorney information
+    const attorney = await Attorney.findById(caseData.AttorneyId);
+
+    // Get all jurors who applied to this case (all statuses - approved, pending, rejected)
+    const allApplications = await JurorApplication.getApplicationsByCase(caseId);
+
+    // Soft delete the case
+    await Case.softDeleteCase(caseId);
+
+    console.log(`✅ Admin ${adminId} deleted case ${caseId} - "${caseData.CaseTitle}"`);
+
+    // Prepare notifications array for bulk creation
+    const notifications = [];
+
+    // Notify the attorney
+    if (attorney) {
+      notifications.push({
+        userId: attorney.AttorneyId,
+        userType: "attorney",
+        caseId: parseInt(caseId),
+        type: "case_deleted",
+        title: "Case Deleted by Admin",
+        message: `Your case "${caseData.CaseTitle}" has been deleted by the administrator. If you have questions, please contact support.`,
+      });
+    }
+
+    // Notify all jurors who had any interaction with this case
+    allApplications.forEach((application) => {
+      notifications.push({
+        userId: application.JurorId,
+        userType: "juror",
+        caseId: parseInt(caseId),
+        type: "case_deleted",
+        title: "Case Deleted",
+        message: `The case "${caseData.CaseTitle}" you applied to has been deleted by the administrator.`,
+      });
+    });
+
+    // Send all notifications at once using bulk insert
+    if (notifications.length > 0) {
+      await Notification.createBulkNotifications(notifications);
+      console.log(`📧 Sent ${notifications.length} notifications for deleted case ${caseId}`);
+    }
+
+    // Log admin action
+    const Admin = require("../models/Admin");
+    await Admin.logAdminAction(adminId, "delete_case", "case", caseId, {
+      caseTitle: caseData.CaseTitle,
+      attorneyId: caseData.AttorneyId,
+      notificationsSent: notifications.length,
+    });
+
+    res.json({
+      success: true,
+      message: "Case deleted successfully",
+      data: {
+        caseId: parseInt(caseId),
+        caseTitle: caseData.CaseTitle,
+        notificationsSent: notifications.length,
+        attorneyNotified: attorney ? true : false,
+        jurorsNotified: allApplications.length,
+      },
+    });
+  } catch (error) {
+    console.error("❌ [adminController.deleteCase] Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete case",
+      error: error.message,
+    });
+  }
+}
+
+/**
  * Get attorneys pending verification
  */
 async function getAttorneysPendingVerification(req, res) {
@@ -740,6 +839,7 @@ module.exports = {
   reviewCaseApproval,
   getAllCases,
   getCaseDetailsForAdmin,
+  deleteCase,
 
   // User verification
   getAttorneysPendingVerification,
