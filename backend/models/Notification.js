@@ -15,6 +15,7 @@ const NOTIFICATION_TYPES = {
   CASE_SUBMITTED: "case_submitted",
   CASE_APPROVED: "case_approved",
   CASE_REJECTED: "case_rejected",
+  CASE_DELETED: "case_deleted",
   CASE_RESCHEDULE_REQUESTED: "case_reschedule_requested",
   CASE_RESCHEDULE_NEEDED: "case_reschedule_needed", // Used when admin rejects and provides alternative slots
 

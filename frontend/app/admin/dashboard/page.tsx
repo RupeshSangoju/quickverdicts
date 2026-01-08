@@ -6,7 +6,7 @@ import {
   Users, UserCheck, Calendar, FileText, CheckCircle2, Clock, Building2,
   XCircle, Video, UserIcon, Download, ExternalLink, Bell, Activity,
   Phone, Mail, AlertCircle, TrendingUp, Eye, PlayCircle, PauseCircle,
-  MapPin, Briefcase
+  MapPin, Briefcase, Trash2
 } from "lucide-react";
 import ConflictModal from "@/components/modals/ConflictModal";
 import { formatDateString, formatTime, formatDateTime, getDayOfWeek } from "@/lib/dateUtils";
@@ -242,6 +242,12 @@ export default function AdminDashboard() {
   const [deleteJurorName, setDeleteJurorName] = useState<string>("");
   const [deleteJurorCaseId, setDeleteJurorCaseId] = useState<number | null>(null);
   const [deletingJuror, setDeletingJuror] = useState(false);
+
+  // Case delete modal states
+  const [showDeleteCaseModal, setShowDeleteCaseModal] = useState(false);
+  const [deleteCaseId, setDeleteCaseId] = useState<number | null>(null);
+  const [deleteCaseTitle, setDeleteCaseTitle] = useState<string>("");
+  const [deletingCase, setDeletingCase] = useState(false);
 
   const [approvalComments, setApprovalComments] = useState("");
 
@@ -1073,6 +1079,57 @@ export default function AdminDashboard() {
       alert('Failed to delete juror application');
     } finally {
       setDeletingJuror(false);
+    }
+  };
+
+  const handleDeleteCase = (caseId: number, caseTitle: string) => {
+    setDeleteCaseId(caseId);
+    setDeleteCaseTitle(caseTitle);
+    setShowDeleteCaseModal(true);
+  };
+
+  const confirmDeleteCase = async () => {
+    if (!deleteCaseId) return;
+
+    setDeletingCase(true);
+    try {
+      const response = await fetchWithAuth(`${API_BASE}/api/admin/cases/${deleteCaseId}/delete`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+
+        // Close the case modal
+        setShowCaseModal(false);
+        setSelectedCase(null);
+
+        // Remove case from pending cases list
+        setPendingCases(prevCases => prevCases.filter(c => c.CaseId !== deleteCaseId));
+
+        // Remove case from casesForDate list
+        setCasesForDate(prevCases => prevCases.filter(c => c.CaseId !== deleteCaseId));
+
+        // Remove case from ready trials list
+        setReadyTrials(prevTrials => prevTrials.filter(t => t.CaseId !== deleteCaseId));
+
+        toast.success(`Case "${deleteCaseTitle}" deleted successfully. ${data.data?.notificationsSent || 0} notifications sent to affected users.`);
+
+        setShowDeleteCaseModal(false);
+        setDeleteCaseId(null);
+        setDeleteCaseTitle("");
+
+        // Refresh dashboard stats
+        fetchDashboardData();
+      } else {
+        const data = await response.json();
+        toast.error(`Failed to delete case: ${data.message || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error deleting case:', error);
+      toast.error('Failed to delete case. Please try again.');
+    } finally {
+      setDeletingCase(false);
     }
   };
 
@@ -2111,7 +2168,14 @@ function formatTime(timeString: string, scheduledDate: string) {
               </div>
             </div>
 
-            <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 flex justify-end">
+            <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 flex justify-between">
+              <button
+                onClick={() => handleDeleteCase(selectedCase.CaseId, selectedCase.CaseTitle)}
+                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium flex items-center gap-2 transition-colors"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete Case
+              </button>
               <button onClick={() => { setShowCaseModal(false); setSelectedCase(null); }} className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium">Close</button>
             </div>
           </div>
@@ -2207,6 +2271,57 @@ function formatTime(timeString: string, scheduledDate: string) {
                   </>
                 ) : (
                   "Delete Application"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Case Confirmation Modal */}
+      {showDeleteCaseModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/10 backdrop-blur-md">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md">
+            <div className="flex items-center mb-4">
+              <Trash2 className="h-6 w-6 text-red-600 mr-3" />
+              <h3 className="text-xl font-semibold text-gray-900">Delete Case</h3>
+            </div>
+            <p className="text-gray-600 mb-4">
+              Are you sure you want to delete the case <span className="font-semibold">"{deleteCaseTitle}"</span>?
+            </p>
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+              <p className="text-sm text-yellow-800 font-medium">
+                ⚠️ This action cannot be undone. The case will be permanently removed and:
+              </p>
+              <ul className="text-sm text-yellow-700 mt-2 ml-4 list-disc space-y-1">
+                <li>The attorney will be notified</li>
+                <li>All jurors will be notified</li>
+                <li>The case will disappear from all user views</li>
+              </ul>
+            </div>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowDeleteCaseModal(false)}
+                disabled={deletingCase}
+                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteCase}
+                disabled={deletingCase}
+                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 font-medium disabled:opacity-50 inline-flex items-center"
+              >
+                {deletingCase ? (
+                  <>
+                    <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></span>
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete Case
+                  </>
                 )}
               </button>
             </div>
