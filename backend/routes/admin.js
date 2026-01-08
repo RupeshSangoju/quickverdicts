@@ -285,6 +285,7 @@ router.get("/trials/ready", async (req, res) => {
       LEFT JOIN dbo.TrialMeetings tm ON c.CaseId = tm.CaseId
       WHERE c.AttorneyStatus = 'join_trial'
         AND c.AdminApprovalStatus = 'approved'
+        AND c.IsDeleted = 0
         -- ✅ EXCLUDE PAST TRIALS: Only show trials for today (using attorney's timezone)
         AND CAST(c.ScheduledDate AS DATE) = CAST(
           DATEADD(MINUTE, CASE
@@ -385,6 +386,7 @@ router.get("/calendar/cases-by-date", async (req, res) => {
         LEFT JOIN dbo.TrialMeetings tm ON c.CaseId = tm.CaseId
         WHERE CAST(c.ScheduledDate AS DATE) = @date
           AND c.AdminApprovalStatus = 'approved'
+          AND c.IsDeleted = 0
         ORDER BY c.ScheduledTime ASC
       `);
 
