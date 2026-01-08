@@ -430,9 +430,11 @@ export default function AdminDashboard() {
     try {
       const response = await fetchWithAuth(`${API_BASE}/api/admin/calendar/cases-by-date?date=${date}`);
       const data = await response.json();
-      
+
       if (data.success) {
-        setCasesForDate(data.cases || []);
+        // Filter out any deleted cases as extra safeguard
+        const activeCases = (data.cases || []).filter((c: any) => c.IsDeleted === 0 || !c.IsDeleted);
+        setCasesForDate(activeCases);
       } else {
         setCasesForDate([]);
       }
@@ -449,9 +451,11 @@ export default function AdminDashboard() {
     try {
       const response = await fetchWithAuth(`${API_BASE}/api/admin/trials/ready`);
       const data = await response.json();
-      
+
       if (data.success) {
-        setReadyTrials(data.trials || []);
+        // Filter out any deleted cases as extra safeguard
+        const activeTrials = (data.trials || []).filter((t: any) => t.IsDeleted === 0 || !t.IsDeleted);
+        setReadyTrials(activeTrials);
       } else {
         setReadyTrials([]);
       }
@@ -481,7 +485,9 @@ export default function AdminDashboard() {
       const statsData = await statsRes.json();
 
       if (dashboardData.success) {
-        setPendingCases(dashboardData.pendingCases || []);
+        // Filter out any deleted cases as extra safeguard
+        const activeCases = (dashboardData.pendingCases || []).filter((c: any) => c.IsDeleted === 0 || !c.IsDeleted);
+        setPendingCases(activeCases);
       }
 
       if (statsData.success) {
