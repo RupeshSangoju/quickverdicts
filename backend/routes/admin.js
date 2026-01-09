@@ -120,7 +120,7 @@ router.get("/analytics", getSystemAnalytics);
 
 router.get("/stats/comprehensive", async (req, res) => {
   try {
-    console.log("Fetching comprehensive stats for user:", req.user);
+    //console.log("Fetching comprehensive stats for user:", req.user);
     const stats = await Admin.getDashboardStats();
     res.json({ success: true, stats });
   } catch (error) {
@@ -247,7 +247,7 @@ router.get("/audit-logs", async (req, res) => {
 
 router.get("/trials/ready", async (req, res) => {
   try {
-    console.log("Fetching ready trials for user:", req.user);
+   // console.log("Fetching ready trials for user:", req.user);
     const pool = await poolPromise;
 
     const result = await pool.request().query(`
