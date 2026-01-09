@@ -221,7 +221,7 @@ async function reviewCaseApproval(req, res) {
             RejectionReason = @rejectionReason,
             AdminComments = @comments,
             UpdatedAt = GETUTCDATE()
-          WHERE CaseId = @caseId
+          WHERE CaseId = @caseId AND IsDeleted = 0
         `);
 
       // If scheduling conflict, create reschedule request
@@ -401,7 +401,7 @@ async function deleteCase(req, res) {
     console.log(`🗑️  [deleteCase] Starting deletion for case ${caseId} by admin ${adminId}`);
 
     // Get case data before deletion
-    const caseData = await Case.findById(caseId);
+    const caseData = await Case.findById(caseId, { includeDeleted: true });
     if (!caseData) {
       console.log(`❌ [deleteCase] Case ${caseId} not found`);
       return res.status(404).json({
@@ -435,8 +435,10 @@ async function deleteCase(req, res) {
     console.log(`✅ [deleteCase] Soft delete completed for case ${caseId}`);
 
     // Verify deletion
-    const deletedCase = await Case.findById(caseId);
-    console.log(`🔍 [deleteCase] Verification after deletion: IsDeleted=${deletedCase?.IsDeleted} for case ${caseId}`);
+    const deletedCase = await Case.findById(caseId, { includeDeleted: true });
+    console.log(
+      `🔍 [deleteCase] Verification after deletion: IsDeleted=${deletedCase?.IsDeleted} for case ${caseId}`
+    );
 
     // Prepare notifications array for bulk creation
     const notifications = [];

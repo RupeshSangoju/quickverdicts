@@ -90,6 +90,7 @@ async function checkAndTransitionTrials() {
       INNER JOIN Attorneys a ON c.AttorneyId = a.AttorneyId
       WHERE c.AttorneyStatus = 'join_trial'
         AND c.AdminApprovalStatus = 'approved'
+        AND c.IsDeleted = 0
         AND (c.NotificationsSent IS NULL OR c.NotificationsSent = 0)
         AND DATEDIFF(MINUTE,
             GETUTCDATE(),
@@ -139,7 +140,7 @@ async function openWarRoomAccess(caseData, pool) {
   await pool.request().input("caseId", sql.Int, caseId).query(`
     UPDATE Cases
     SET AttorneyStatus = 'join_trial', UpdatedAt = GETUTCDATE()
-    WHERE CaseId = @caseId
+    WHERE CaseId = @caseId AND IsDeleted = 0
   `);
 
   console.log(`✅ War room is now accessible for case ${caseId} (${WAR_ROOM_ACCESS_MINUTES} minutes before trial)`);
@@ -357,7 +358,7 @@ async function sendTrialNotifications(caseData, pool) {
   await pool.request().input("caseId", sql.Int, caseId).query(`
     UPDATE Cases
     SET NotificationsSent = 1, UpdatedAt = GETUTCDATE()
-    WHERE CaseId = @caseId
+    WHERE CaseId = @caseId AND IsDeleted = 0
   `);
 
   console.log(`✅ Successfully sent notifications for case ${caseId} (${NOTIFICATION_MINUTES} minutes before trial)`);

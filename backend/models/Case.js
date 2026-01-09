@@ -312,7 +312,7 @@ async function createCase(data) {
 // READ
 // ============================================
 
-async function findById(caseId) {
+async function findById(caseId, options = {}) {
   try {
     const id = parseInt(caseId, 10);
     if (isNaN(id) || id <= 0) {
@@ -321,7 +321,11 @@ async function findById(caseId) {
       throw err;
     }
 
+    const { includeDeleted = false } = options;
+
     return await executeQuery(async (pool) => {
+      const whereDeletedClause = includeDeleted ? "" : " AND c.IsDeleted = 0";
+
       const result = await pool.request().input("id", sql.Int, id).query(`
           SELECT
             c.*,
@@ -334,7 +338,7 @@ async function findById(caseId) {
             ISNULL(c.RequiredJurors, 7) AS RequiredJurors
           FROM dbo.Cases c
           LEFT JOIN dbo.Attorneys a ON c.AttorneyId = a.AttorneyId
-          WHERE c.CaseId = @id
+          WHERE c.CaseId = @id${whereDeletedClause}
         `);
 
       const caseData = result.recordset[0];
