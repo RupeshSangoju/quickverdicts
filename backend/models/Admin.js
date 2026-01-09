@@ -646,15 +646,16 @@ async function getDashboardStats() {
           (SELECT COUNT(*) FROM dbo.Attorneys WHERE IsVerified = 0 AND IsDeleted = 0) AS PendingAttorneys,
           (SELECT COUNT(*) FROM dbo.Jurors WHERE IsVerified = 1 AND IsDeleted = 0) AS VerifiedJurors,
           (SELECT COUNT(*) FROM dbo.Jurors WHERE IsVerified = 0 AND IsDeleted = 0) AS PendingJurors,
-          (SELECT COUNT(*) FROM dbo.Cases WHERE AdminApprovalStatus = 'pending') AS PendingCases,
-          (SELECT COUNT(*) FROM dbo.Cases WHERE AdminApprovalStatus = 'approved') AS ApprovedCases,
+          (SELECT COUNT(*) FROM dbo.Cases WHERE AdminApprovalStatus = 'pending' AND IsDeleted = 0) AS PendingCases,
+          (SELECT COUNT(*) FROM dbo.Cases WHERE AdminApprovalStatus = 'approved' AND IsDeleted = 0) AS ApprovedCases,
           (SELECT COUNT(*) FROM dbo.TrialMeetings WHERE Status = 'active') AS ActiveTrials,
           (SELECT COUNT(*) FROM dbo.TrialMeetings WHERE Status = 'created') AS ScheduledTrials,
           (SELECT COUNT(*) FROM dbo.Notifications WHERE IsRead = 0 AND UserType = 'admin') AS UnreadNotifications,
           (SELECT COUNT(*)
            FROM dbo.Cases c
            LEFT JOIN dbo.Attorneys a ON c.AttorneyId = a.AttorneyId
-           WHERE CAST(c.ScheduledDate AS DATE) = CAST(
+           WHERE c.IsDeleted = 0
+             AND CAST(c.ScheduledDate AS DATE) = CAST(
              DATEADD(MINUTE, CASE
                WHEN a.State IN ('Connecticut', 'Delaware', 'Florida', 'Georgia', 'Maine', 'Maryland', 'Massachusetts', 'Michigan', 'New Hampshire', 'New Jersey', 'New York', 'North Carolina', 'Ohio', 'Pennsylvania', 'Rhode Island', 'South Carolina', 'Vermont', 'Virginia', 'West Virginia') THEN -300
                WHEN a.State IN ('Alabama', 'Arkansas', 'Illinois', 'Iowa', 'Kansas', 'Kentucky', 'Louisiana', 'Minnesota', 'Mississippi', 'Missouri', 'Nebraska', 'North Dakota', 'Oklahoma', 'South Dakota', 'Tennessee', 'Texas', 'Wisconsin') THEN -360

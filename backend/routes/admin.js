@@ -120,7 +120,7 @@ router.get("/analytics", getSystemAnalytics);
 
 router.get("/stats/comprehensive", async (req, res) => {
   try {
-    console.log("Fetching comprehensive stats for user:", req.user);
+    //console.log("Fetching comprehensive stats for user:", req.user);
     const stats = await Admin.getDashboardStats();
     res.json({ success: true, stats });
   } catch (error) {
@@ -247,7 +247,7 @@ router.get("/audit-logs", async (req, res) => {
 
 router.get("/trials/ready", async (req, res) => {
   try {
-    console.log("Fetching ready trials for user:", req.user);
+   // console.log("Fetching ready trials for user:", req.user);
     const pool = await poolPromise;
 
     const result = await pool.request().query(`
@@ -285,6 +285,7 @@ router.get("/trials/ready", async (req, res) => {
       LEFT JOIN dbo.TrialMeetings tm ON c.CaseId = tm.CaseId
       WHERE c.AttorneyStatus = 'join_trial'
         AND c.AdminApprovalStatus = 'approved'
+        AND c.IsDeleted = 0
         -- ✅ EXCLUDE PAST TRIALS: Only show trials for today (using attorney's timezone)
         AND CAST(c.ScheduledDate AS DATE) = CAST(
           DATEADD(MINUTE, CASE
@@ -342,10 +343,14 @@ router.get("/trials/ready", async (req, res) => {
 // ============================================
 
 router.get("/calendar/cases-by-date", async (req, res) => {
+  console.log("🚀 [ENTRY] /calendar/cases-by-date CALLED with query:", req.query);
   try {
     const { date } = req.query;
 
+    console.log("📅 [DEBUG] Date from query:", date, "Valid:", isValidDate(date));
+
     if (!date || !isValidDate(date)) {
+      console.log("❌ [DEBUG] Invalid date, returning 400");
       return res.status(400).json({
         success: false,
         message: "Valid date parameter is required (format: YYYY-MM-DD)",
@@ -367,6 +372,7 @@ router.get("/calendar/cases-by-date", async (req, res) => {
           c.ScheduledTime,
           c.AttorneyStatus,
           c.AdminApprovalStatus,
+          c.IsDeleted,
           c.PlaintiffGroups,
           c.DefendantGroups,
           c.PaymentAmount,
@@ -385,8 +391,14 @@ router.get("/calendar/cases-by-date", async (req, res) => {
         LEFT JOIN dbo.TrialMeetings tm ON c.CaseId = tm.CaseId
         WHERE CAST(c.ScheduledDate AS DATE) = @date
           AND c.AdminApprovalStatus = 'approved'
+          AND c.IsDeleted = 0
         ORDER BY c.ScheduledTime ASC
       `);
+
+    console.log(`📊 [DEBUG] Query returned ${result.recordset.length} cases`);
+    result.recordset.forEach(c => {
+      console.log(`  - Case ${c.CaseId}: "${c.CaseTitle}" IsDeleted=${c.IsDeleted}`);
+    });
 
     // Fetch witnesses, jury questions, and juror applications for each case
     const casesWithDetails = await Promise.all(

@@ -211,6 +211,7 @@ async function getCasesByDate(req, res) {
         LEFT JOIN dbo.TrialMeetings tm ON c.CaseId = tm.CaseId
         WHERE CAST(c.ScheduledDate AS DATE) = @date
           AND c.AdminApprovalStatus = 'approved'
+          AND c.IsDeleted = 0
         ORDER BY c.ScheduledTime
       `);
 
