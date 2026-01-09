@@ -368,6 +368,7 @@ router.get("/calendar/cases-by-date", async (req, res) => {
           c.ScheduledTime,
           c.AttorneyStatus,
           c.AdminApprovalStatus,
+          c.IsDeleted,
           c.PlaintiffGroups,
           c.DefendantGroups,
           c.PaymentAmount,
@@ -389,6 +390,11 @@ router.get("/calendar/cases-by-date", async (req, res) => {
           AND c.IsDeleted = 0
         ORDER BY c.ScheduledTime ASC
       `);
+
+    console.log(`📊 [DEBUG] Query returned ${result.recordset.length} cases`);
+    result.recordset.forEach(c => {
+      console.log(`  - Case ${c.CaseId}: "${c.CaseTitle}" IsDeleted=${c.IsDeleted}`);
+    });
 
     // Fetch witnesses, jury questions, and juror applications for each case
     const casesWithDetails = await Promise.all(
