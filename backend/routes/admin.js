@@ -343,10 +343,14 @@ router.get("/trials/ready", async (req, res) => {
 // ============================================
 
 router.get("/calendar/cases-by-date", async (req, res) => {
+  console.log("🚀 [ENTRY] /calendar/cases-by-date CALLED with query:", req.query);
   try {
     const { date } = req.query;
 
+    console.log("📅 [DEBUG] Date from query:", date, "Valid:", isValidDate(date));
+
     if (!date || !isValidDate(date)) {
+      console.log("❌ [DEBUG] Invalid date, returning 400");
       return res.status(400).json({
         success: false,
         message: "Valid date parameter is required (format: YYYY-MM-DD)",
