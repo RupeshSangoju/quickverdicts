@@ -2148,18 +2148,16 @@ export default function WarRoomPage() {
                         Current Scheduled Date
                       </label>
                       <div className="p-3 bg-gray-100 rounded-lg text-sm text-gray-700">
-                        {caseData?.ScheduledDate ? formatDateString(caseData.ScheduledDate) : "N/A"}
+                        {caseData?.ScheduledDate || "N/A"}
                       </div>
-                      <p className="text-xs text-gray-500 mt-1">Raw: {caseData?.ScheduledDate || "N/A"}</p>
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-[#0A2342] mb-2">
                         Current Scheduled Time
                       </label>
                       <div className="p-3 bg-gray-100 rounded-lg text-sm text-gray-700">
-                        {caseData?.ScheduledTime ? formatTime(caseData.ScheduledTime) : "N/A"}
+                        {caseData?.ScheduledTime || "N/A"}
                       </div>
-                      <p className="text-xs text-gray-500 mt-1">Raw: {caseData?.ScheduledTime || "N/A"}</p>
                     </div>
                   </div>
 
