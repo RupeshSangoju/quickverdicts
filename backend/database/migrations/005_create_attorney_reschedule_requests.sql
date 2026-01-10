@@ -36,8 +36,8 @@ BEGIN
 
         -- Foreign keys
         CONSTRAINT FK_AttorneyRescheduleRequests_Cases FOREIGN KEY (CaseId) REFERENCES dbo.Cases(CaseId) ON DELETE CASCADE,
-        CONSTRAINT FK_AttorneyRescheduleRequests_Attorneys FOREIGN KEY (AttorneyId) REFERENCES dbo.Attorneys(AttorneyId) ON DELETE CASCADE,
-        CONSTRAINT FK_AttorneyRescheduleRequests_Admins FOREIGN KEY (AdminId) REFERENCES dbo.Admins(AdminId),
+        CONSTRAINT FK_AttorneyRescheduleRequests_Attorneys FOREIGN KEY (AttorneyId) REFERENCES dbo.Attorneys(AttorneyId) ON DELETE NO ACTION,
+        CONSTRAINT FK_AttorneyRescheduleRequests_Admins FOREIGN KEY (AdminId) REFERENCES dbo.Admins(AdminId) ON DELETE NO ACTION,
 
         -- Constraints
         CONSTRAINT CHK_RescheduleStatus CHECK (Status IN ('pending', 'approved', 'rejected'))
