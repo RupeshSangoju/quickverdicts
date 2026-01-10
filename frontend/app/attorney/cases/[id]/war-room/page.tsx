@@ -738,9 +738,16 @@ export default function WarRoomPage() {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        console.error("Reschedule request error response:", error);
-        throw new Error(error.message || "Failed to submit reschedule request");
+        let errorMessage = "Failed to submit reschedule request";
+        try {
+          const error = await response.json();
+          console.error("Reschedule request error response:", error);
+          errorMessage = error.message || error.error || errorMessage;
+        } catch (e) {
+          console.error("Failed to parse error response:", e);
+          errorMessage = `Server error: ${response.status} ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
       }
 
       // Success - close modal and show success message
