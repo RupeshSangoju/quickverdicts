@@ -181,7 +181,11 @@ export default function AdminRescheduleRequestsPage() {
   };
 
   const formatTime = (timeStr: string) => {
-    return formatTimeUtil(timeStr);
+    if (!timeStr) return "N/A";
+    // Remove milliseconds and show raw time value (e.g., "18:00:00.0000000" -> "18:00")
+    const cleanTime = timeStr.split('.')[0];
+    const [hours, minutes] = cleanTime.split(':');
+    return `${hours}:${minutes}`;
   };
 
   if (loading) {
