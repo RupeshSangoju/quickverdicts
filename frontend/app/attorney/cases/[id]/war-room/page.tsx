@@ -95,11 +95,61 @@ type CaseData = {
   UpdatedAt?: string;
 };
 
-function formatTime(timeString: string | undefined): string {
+// Timezone helper functions (same logic as AttorneyHomeSection)
+function getSystemTimezoneInfo() {
+  const offset = new Date().getTimezoneOffset();
+  const offsetHours = offset / 60;
+  const timezoneName = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const sign = offset <= 0 ? '+' : '-';
+  const absHours = Math.floor(Math.abs(offsetHours));
+  const minutes = Math.abs(offsetHours % 1) * 60;
+
+  return {
+    offsetHours: -offsetHours,
+    offsetMinutes: -offset,
+    timezoneName,
+    sign,
+    formatOffset: `UTC${sign}${String(absHours).padStart(2, '0')}:${String(Math.round(minutes)).padStart(2, '0')}`
+  };
+}
+
+function applyOffsetToUtcTime(utcTime: string, dateString: string, timezoneOffset: string, offsetMinutesMap: number) {
+  const offsetMinutes = offsetMinutesMap * 2;
+  if (offsetMinutes === null) throw new Error('Invalid timezoneOffset');
+
+  const utcMs = Date.parse(`${dateString}T${utcTime}Z`);
+  if (isNaN(utcMs)) throw new Error('Invalid UTC date/time');
+
+  const signChar = timezoneOffset.includes('+') ? '+' : timezoneOffset.includes('-') ? '-' : '+';
+  const resultMs = signChar === '+'
+    ? utcMs - offsetMinutes * 60_000
+    : utcMs + Math.abs(offsetMinutes) * 60_000;
+
+  const resultDate = new Date(resultMs);
+  return {
+    date: resultDate,
+    "12HoursTime": resultDate.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }),
+    "24HoursTime": resultDate.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: false })
+  };
+}
+
+function formatTime(timeString: string | undefined, scheduledDate?: string): string {
   if (!timeString) return "N/A";
   try {
-    // Time is already in correct timezone from database, just format it nicely
-    const cleanTime = timeString.split('.')[0]; // Remove milliseconds if present
+    // If scheduledDate is provided, apply timezone conversion (same as attorney home page)
+    if (scheduledDate) {
+      const systemTz = getSystemTimezoneInfo();
+      let zoneMap = '';
+
+      zoneMap = systemTz.formatOffset ? systemTz.formatOffset : "";
+      const offsetMinutes = typeof systemTz.offsetMinutes === 'number' ? systemTz.offsetMinutes : 0;
+
+      const dataSystemmap = applyOffsetToUtcTime(timeString, scheduledDate, zoneMap, offsetMinutes);
+      return dataSystemmap["24HoursTime"];
+    }
+
+    // Fallback to simple formatting if no scheduledDate
+    const cleanTime = timeString.split('.')[0];
     const [hours, minutes] = cleanTime.split(':').map(Number);
     const period = hours >= 12 ? 'PM' : 'AM';
     const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
@@ -2148,7 +2198,7 @@ export default function WarRoomPage() {
                         Current Scheduled Date
                       </label>
                       <div className="p-3 bg-gray-100 rounded-lg text-sm text-gray-700">
-                        {caseData?.ScheduledDate || "N/A"}
+                        {caseData?.ScheduledDate ? formatDateString(caseData.ScheduledDate) : "N/A"}
                       </div>
                     </div>
                     <div>
@@ -2156,7 +2206,7 @@ export default function WarRoomPage() {
                         Current Scheduled Time
                       </label>
                       <div className="p-3 bg-gray-100 rounded-lg text-sm text-gray-700">
-                        {caseData?.ScheduledTime || "N/A"}
+                        {caseData?.ScheduledTime ? formatTime(caseData.ScheduledTime, caseData.ScheduledDate) : "N/A"}
                       </div>
                     </div>
                   </div>
