@@ -1526,13 +1526,15 @@ router.post("/reschedule-requests/:requestId/approve", authMiddleware, requireAd
 
     console.log(`📅 Updating case ${request.CaseId} schedule to ${request.NewScheduledDate} ${request.NewScheduledTime}`);
 
-    // Update case with new scheduled date/time
+    // Update case with new scheduled date/time AND reset status to war_room
+    // This ensures the case appears on the job board for new juror applications
     try {
       await Case.updateCaseDetails(request.CaseId, {
         scheduledDate: request.NewScheduledDate,
         scheduledTime: request.NewScheduledTime,
+        attorneyStatus: 'war_room',
       });
-      console.log(`✅ Case schedule updated successfully`);
+      console.log(`✅ Case schedule updated and status reset to war_room`);
     } catch (updateError) {
       console.error("❌ Error updating case schedule:", updateError);
       throw new Error(`Failed to update case schedule: ${updateError.message}`);

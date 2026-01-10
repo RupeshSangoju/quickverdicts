@@ -935,6 +935,7 @@ async function updateCaseDetails(caseId, updates) {
       voirDire2Questions: sql.NVarChar,
       plaintiffGroups: sql.NVarChar,
       defendantGroups: sql.NVarChar,
+      attorneyStatus: sql.NVarChar,
     };
 
     return await executeQuery(async (pool) => {
