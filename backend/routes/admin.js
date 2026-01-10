@@ -1701,4 +1701,139 @@ router.post("/reschedule-requests/:requestId/reject", authMiddleware, requireAdm
   }
 });
 
+/**
+ * POST /api/admin/cases/:caseId/reschedule
+ * Admin-initiated case reschedule
+ * This will:
+ * 1. Delete all juror applications
+ * 2. Reset case status to war_room
+ * 3. Notify attorney and affected jurors
+ */
+router.post("/cases/:caseId/reschedule", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const { caseId } = req.params;
+    const adminId = req.user.id;
+    const { reason } = req.body;
+
+    console.log(`📅 [Admin Reschedule] Admin ${adminId} rescheduling case ${caseId}`);
+
+    if (!reason || reason.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Reason is required for rescheduling",
+      });
+    }
+
+    // Get case data
+    const caseData = await Case.findById(caseId);
+    if (!caseData) {
+      return res.status(404).json({
+        success: false,
+        message: "Case not found",
+      });
+    }
+
+    const { executeQuery, sql } = require("../config/db");
+
+    // Get list of affected jurors before deletion
+    let affectedJurors = [];
+    try {
+      affectedJurors = await executeQuery(async (pool) => {
+        const result = await pool
+          .request()
+          .input("caseId", sql.Int, parseInt(caseId))
+          .query(`
+            SELECT DISTINCT JurorId, Status
+            FROM dbo.JurorApplications
+            WHERE CaseId = @caseId
+          `);
+        return result.recordset;
+      });
+    } catch (error) {
+      console.error("❌ Error getting affected jurors:", error);
+    }
+
+    // Delete all juror applications
+    let deletedCount = 0;
+    try {
+      deletedCount = await executeQuery(async (pool) => {
+        const result = await pool
+          .request()
+          .input("caseId", sql.Int, parseInt(caseId))
+          .query(`
+            DELETE FROM dbo.JurorApplications
+            WHERE CaseId = @caseId;
+            SELECT @@ROWCOUNT AS deletedCount;
+          `);
+        return result.recordset[0].deletedCount;
+      });
+      console.log(`🗑️  Deleted ${deletedCount} juror applications for case ${caseId}`);
+    } catch (error) {
+      console.error("❌ Error deleting juror applications:", error);
+    }
+
+    // Reset case status to war_room
+    try {
+      await Case.updateCaseDetails(caseId, {
+        attorneyStatus: 'war_room',
+      });
+      console.log(`✅ Case ${caseId} status reset to war_room`);
+    } catch (error) {
+      console.error("❌ Error updating case status:", error);
+      throw new Error(`Failed to update case status: ${error.message}`);
+    }
+
+    let notificationsSent = 0;
+
+    // Notify attorney
+    try {
+      await Notification.create({
+        userId: caseData.AttorneyId,
+        userType: "attorney",
+        caseId: parseInt(caseId),
+        type: "admin_case_rescheduled",
+        title: "Case Rescheduled by Admin",
+        message: `Your case "${caseData.CaseTitle}" has been rescheduled by the administrator. Reason: ${reason}. All juror applications have been removed. Please update the trial schedule and resubmit the case.`,
+      });
+      notificationsSent++;
+      console.log(`📧 Notification sent to attorney ${caseData.AttorneyId}`);
+    } catch (error) {
+      console.error("❌ Error sending attorney notification:", error);
+    }
+
+    // Notify all affected jurors
+    try {
+      for (const juror of affectedJurors) {
+        const statusText = juror.Status === 'approved' ? 'accepted' : juror.Status;
+        await Notification.create({
+          userId: juror.JurorId,
+          userType: "juror",
+          caseId: parseInt(caseId),
+          type: "admin_case_rescheduled",
+          title: "Case Rescheduled by Admin",
+          message: `The case "${caseData.CaseTitle}" has been rescheduled by the administrator. Your ${statusText} application has been removed. You can reapply once the attorney updates the schedule.`,
+        });
+        notificationsSent++;
+      }
+      console.log(`📧 Notifications sent to ${affectedJurors.length} affected jurors`);
+    } catch (error) {
+      console.error("❌ Error sending juror notifications:", error);
+    }
+
+    res.json({
+      success: true,
+      message: "Case rescheduled successfully",
+      deletedApplications: deletedCount,
+      notificationsSent: notificationsSent,
+    });
+  } catch (error) {
+    console.error("❌ Error rescheduling case:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to reschedule case",
+      error: error.message,
+    });
+  }
+});
+
 module.exports = router;

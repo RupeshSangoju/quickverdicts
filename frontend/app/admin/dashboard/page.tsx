@@ -250,6 +250,13 @@ export default function AdminDashboard() {
   const [deleteCaseTitle, setDeleteCaseTitle] = useState<string>("");
   const [deletingCase, setDeletingCase] = useState(false);
 
+  // Case reschedule modal states
+  const [showRescheduleModal, setShowRescheduleModal] = useState(false);
+  const [rescheduleCaseId, setRescheduleCaseId] = useState<number | null>(null);
+  const [rescheduleCaseTitle, setRescheduleCaseTitle] = useState<string>("");
+  const [rescheduleReason, setRescheduleReason] = useState<string>("");
+  const [rescheduling, setRescheduling] = useState(false);
+
   const [approvalComments, setApprovalComments] = useState("");
 
   // Listen for optimistic case status updates (from war-room submit)
@@ -1142,6 +1149,57 @@ export default function AdminDashboard() {
       toast.error('Failed to delete case. Please try again.');
     } finally {
       setDeletingCase(false);
+    }
+  };
+
+  const handleRescheduleCase = (caseId: number, caseTitle: string) => {
+    setRescheduleCaseId(caseId);
+    setRescheduleCaseTitle(caseTitle);
+    setRescheduleReason("");
+    setShowRescheduleModal(true);
+  };
+
+  const confirmRescheduleCase = async () => {
+    if (!rescheduleCaseId) return;
+
+    if (!rescheduleReason || rescheduleReason.trim().length === 0) {
+      toast.error("Please provide a reason for rescheduling");
+      return;
+    }
+
+    setRescheduling(true);
+    try {
+      const response = await fetchWithAuth(`${API_BASE}/api/admin/cases/${rescheduleCaseId}/reschedule`, {
+        method: 'POST',
+        body: JSON.stringify({ reason: rescheduleReason.trim() }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+
+        // Close the case modal
+        setShowCaseModal(false);
+        setSelectedCase(null);
+
+        // Refresh the case lists
+        toast.success(`Case "${rescheduleCaseTitle}" rescheduled successfully. ${data.notificationsSent || 0} notifications sent.`);
+
+        setShowRescheduleModal(false);
+        setRescheduleCaseId(null);
+        setRescheduleCaseTitle("");
+        setRescheduleReason("");
+
+        // Refresh dashboard data
+        fetchDashboardData();
+      } else {
+        const data = await response.json();
+        toast.error(`Failed to reschedule case: ${data.message || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error rescheduling case:', error);
+      toast.error('Failed to reschedule case. Please try again.');
+    } finally {
+      setRescheduling(false);
     }
   };
 
@@ -2212,13 +2270,22 @@ function formatTime(timeString: string, scheduledDate: string) {
             </div>
 
             <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 flex justify-between">
-              <button
-                onClick={() => handleDeleteCase(selectedCase.CaseId, selectedCase.CaseTitle)}
-                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium flex items-center gap-2 transition-colors"
-              >
-                <Trash2 className="h-4 w-4" />
-                Delete Case
-              </button>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => handleRescheduleCase(selectedCase.CaseId, selectedCase.CaseTitle)}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium flex items-center gap-2 transition-colors"
+                >
+                  <Calendar className="h-4 w-4" />
+                  Reschedule Case
+                </button>
+                <button
+                  onClick={() => handleDeleteCase(selectedCase.CaseId, selectedCase.CaseTitle)}
+                  className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium flex items-center gap-2 transition-colors"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete Case
+                </button>
+              </div>
               <button onClick={() => { setShowCaseModal(false); setSelectedCase(null); }} className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium">Close</button>
             </div>
           </div>
@@ -2314,6 +2381,71 @@ function formatTime(timeString: string, scheduledDate: string) {
                   </>
                 ) : (
                   "Delete Application"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reschedule Case Modal */}
+      {showRescheduleModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/10 backdrop-blur-md">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md">
+            <div className="flex items-center mb-4">
+              <Calendar className="h-6 w-6 text-blue-600 mr-3" />
+              <h3 className="text-xl font-semibold text-gray-900">Reschedule Case</h3>
+            </div>
+            <p className="text-gray-600 mb-4">
+              Reschedule the case <span className="font-semibold">"{rescheduleCaseTitle}"</span>
+            </p>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+              <p className="text-sm text-blue-800 font-medium mb-2">
+                ℹ️ Rescheduling this case will:
+              </p>
+              <ul className="text-sm text-blue-700 ml-4 list-disc space-y-1">
+                <li>Delete all juror applications (approved, pending, rejected)</li>
+                <li>Reset the case status to war room</li>
+                <li>Notify the attorney and all affected jurors</li>
+                <li>Attorney can then update the trial schedule and resubmit</li>
+              </ul>
+            </div>
+            <div className="mb-4">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Reason for Reschedule <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={rescheduleReason}
+                onChange={(e) => setRescheduleReason(e.target.value)}
+                placeholder="Enter the reason for rescheduling this case..."
+                rows={4}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-black focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={rescheduling}
+              />
+            </div>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowRescheduleModal(false)}
+                disabled={rescheduling}
+                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmRescheduleCase}
+                disabled={rescheduling || !rescheduleReason.trim()}
+                className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 font-medium disabled:opacity-50 inline-flex items-center"
+              >
+                {rescheduling ? (
+                  <>
+                    <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></span>
+                    Rescheduling...
+                  </>
+                ) : (
+                  <>
+                    <Calendar className="h-4 w-4 mr-2" />
+                    Confirm Reschedule
+                  </>
                 )}
               </button>
             </div>
