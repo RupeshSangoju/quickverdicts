@@ -243,6 +243,16 @@ export default function WarRoomPage() {
   const [docToDelete, setDocToDelete] = useState<{ id: number; name: string } | null>(null);
   const [deletingDocument, setDeletingDocument] = useState(false);
 
+  // Reschedule request
+  const [showRescheduleModal, setShowRescheduleModal] = useState(false);
+  const [rescheduleData, setRescheduleData] = useState({
+    newScheduledDate: "",
+    newScheduledTime: "",
+    reason: "",
+    attorneyComments: "",
+  });
+  const [submittingReschedule, setSubmittingReschedule] = useState(false);
+
   useEffect(() => {
     fetchWarRoomData();
   }, [caseId]);
@@ -701,6 +711,56 @@ export default function WarRoomPage() {
     }
   };
 
+  const handleRescheduleRequest = async () => {
+    try {
+      setSubmittingReschedule(true);
+      setErrorMessage("");
+
+      // Validate inputs
+      if (!rescheduleData.newScheduledDate || !rescheduleData.newScheduledTime) {
+        setErrorMessage("Please provide both new date and time");
+        return;
+      }
+
+      const token = getToken();
+      if (!token) {
+        router.push("/login");
+        return;
+      }
+
+      const response = await fetch(`${API_BASE}/api/attorney/cases/${caseId}/request-reschedule`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(rescheduleData),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to submit reschedule request");
+      }
+
+      // Success - close modal and show success message
+      setShowRescheduleModal(false);
+      setRescheduleData({
+        newScheduledDate: "",
+        newScheduledTime: "",
+        reason: "",
+        attorneyComments: "",
+      });
+      setShowSuccessMessage(true);
+      setErrorMessage("");
+      alert("Reschedule request submitted successfully! Admin will review your request.");
+    } catch (error: any) {
+      console.error("Reschedule request error:", error);
+      setErrorMessage(error.message || "Failed to submit reschedule request");
+    } finally {
+      setSubmittingReschedule(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#f9f7f2]">
       <div className="max-w-7xl mx-auto p-6 space-y-6">
@@ -743,6 +803,16 @@ export default function WarRoomPage() {
                     >
                       <CreditCardIcon className="w-3.5 h-3.5" />
                       Upgrade Tier
+                    </button>
+                  )}
+                  {/* Reschedule Case button - only show if admin approved */}
+                  {isAdminApproved && (
+                    <button
+                      onClick={() => setShowRescheduleModal(true)}
+                      className="px-3 py-1.5 bg-amber-500/90 hover:bg-amber-500 text-white rounded-lg font-semibold text-xs transition-all flex items-center gap-1.5"
+                    >
+                      <CalendarIcon className="w-3.5 h-3.5" />
+                      Reschedule Case
                     </button>
                   )}
                   {/* Join Trial button removed per UX request; submit will enable join elsewhere */}
@@ -2003,6 +2073,166 @@ export default function WarRoomPage() {
                     }}
                     disabled={deletingDocument}
                     className="px-4 py-2 bg-[#FAF9F6] text-[#455A7C] rounded-lg font-semibold text-sm hover:bg-[#f0ede6] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Reschedule Request Modal */}
+        {showRescheduleModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="sticky top-0 bg-[#16305B] text-white p-5 rounded-t-xl z-10">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-bold">Request Case Reschedule</h3>
+                  <button
+                    onClick={() => {
+                      setShowRescheduleModal(false);
+                      setRescheduleData({
+                        newScheduledDate: "",
+                        newScheduledTime: "",
+                        reason: "",
+                        attorneyComments: "",
+                      });
+                      setErrorMessage("");
+                    }}
+                    disabled={submittingReschedule}
+                    className="p-1 hover:bg-white/20 rounded transition-colors disabled:opacity-50"
+                  >
+                    <XMarkIcon className="w-6 h-6" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-6">
+                {errorMessage && (
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+                    <ExclamationCircleIcon className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-red-800">{errorMessage}</p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-4">
+                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                    <p className="text-sm text-amber-800">
+                      <strong>Note:</strong> Submitting a reschedule request will send it to the admin for approval.
+                      If approved, all accepted jurors will be removed and you'll need to accept new applications with the updated schedule.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-[#0A2342] mb-2">
+                        Current Date
+                      </label>
+                      <div className="p-3 bg-gray-100 rounded-lg text-sm text-gray-700">
+                        {caseData?.ScheduledDate ? formatDateString(caseData.ScheduledDate) : "N/A"}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-[#0A2342] mb-2">
+                        Current Time
+                      </label>
+                      <div className="p-3 bg-gray-100 rounded-lg text-sm text-gray-700">
+                        {caseData?.ScheduledTime ? formatTime(caseData.ScheduledTime) : "N/A"}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-[#0A2342] mb-2">
+                        New Date <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        value={rescheduleData.newScheduledDate}
+                        onChange={(e) => setRescheduleData({ ...rescheduleData, newScheduledDate: e.target.value })}
+                        min={new Date().toISOString().split('T')[0]}
+                        className="w-full px-4 py-2 border border-[#C6CDD9] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#16305B] text-sm"
+                        disabled={submittingReschedule}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-[#0A2342] mb-2">
+                        New Time <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="time"
+                        value={rescheduleData.newScheduledTime}
+                        onChange={(e) => setRescheduleData({ ...rescheduleData, newScheduledTime: e.target.value })}
+                        className="w-full px-4 py-2 border border-[#C6CDD9] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#16305B] text-sm"
+                        disabled={submittingReschedule}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-[#0A2342] mb-2">
+                      Reason for Reschedule
+                    </label>
+                    <input
+                      type="text"
+                      value={rescheduleData.reason}
+                      onChange={(e) => setRescheduleData({ ...rescheduleData, reason: e.target.value })}
+                      placeholder="e.g., Scheduling conflict, witness unavailability"
+                      className="w-full px-4 py-2 border border-[#C6CDD9] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#16305B] text-sm"
+                      disabled={submittingReschedule}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-[#0A2342] mb-2">
+                      Additional Comments
+                    </label>
+                    <textarea
+                      value={rescheduleData.attorneyComments}
+                      onChange={(e) => setRescheduleData({ ...rescheduleData, attorneyComments: e.target.value })}
+                      placeholder="Provide any additional details for the admin..."
+                      rows={4}
+                      className="w-full px-4 py-2 border border-[#C6CDD9] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#16305B] text-sm resize-none"
+                      disabled={submittingReschedule}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button
+                    onClick={handleRescheduleRequest}
+                    disabled={submittingReschedule || !rescheduleData.newScheduledDate || !rescheduleData.newScheduledTime}
+                    className="flex-1 px-6 py-3 bg-[#16305B] text-white rounded-lg font-semibold text-sm hover:bg-[#0A2342] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {submittingReschedule ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white"></div>
+                        <span>Submitting...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CalendarIcon className="w-4 h-4" />
+                        <span>Submit Reschedule Request</span>
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowRescheduleModal(false);
+                      setRescheduleData({
+                        newScheduledDate: "",
+                        newScheduledTime: "",
+                        reason: "",
+                        attorneyComments: "",
+                      });
+                      setErrorMessage("");
+                    }}
+                    disabled={submittingReschedule}
+                    className="px-6 py-3 bg-[#FAF9F6] text-[#455A7C] rounded-lg font-semibold text-sm hover:bg-[#f0ede6] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Cancel
                   </button>

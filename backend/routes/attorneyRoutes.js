@@ -24,6 +24,7 @@ const Case = require("../models/Case");
 const JurorApplication = require("../models/JurorApplication");
 const Notification = require("../models/Notification");
 const CaseReschedule = require("../models/CaseReschedule");
+const AttorneyRescheduleRequest = require("../models/AttorneyRescheduleRequest");
 
 /* ===========================================================
    ✅ PUBLIC ROUTES (no authentication required)
@@ -850,6 +851,150 @@ router.post(
     res.json({
       success: true,
       message: "Your request has been sent to the admin",
+    });
+  })
+);
+
+/* ===========================================================
+   ATTORNEY-INITIATED RESCHEDULE (NEW FEATURE)
+   =========================================================== */
+
+/**
+ * POST /api/attorney/cases/:caseId/request-reschedule
+ * Attorney requests to reschedule a case from war room
+ * Request body: { newScheduledDate, newScheduledTime, reason, attorneyComments }
+ */
+router.post(
+  "/cases/:caseId/request-reschedule",
+  asyncHandler(async (req, res) => {
+    const { caseId } = req.params;
+    const attorneyId = req.user.id;
+    const { newScheduledDate, newScheduledTime, reason, attorneyComments } = req.body;
+
+    console.log(`📝 [Attorney Reschedule Request] Case ${caseId} by Attorney ${attorneyId}`);
+
+    // Validate inputs
+    if (!newScheduledDate || !newScheduledTime) {
+      return res.status(400).json({
+        success: false,
+        message: "New scheduled date and time are required",
+      });
+    }
+
+    // Get case to verify ownership and get original schedule
+    const caseData = await Case.findById(caseId);
+    if (!caseData) {
+      return res.status(404).json({
+        success: false,
+        message: "Case not found",
+      });
+    }
+
+    // Verify attorney owns this case
+    if (caseData.AttorneyId !== attorneyId) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to reschedule this case",
+      });
+    }
+
+    // Only allow reschedule for cases in war_room status
+    if (caseData.AttorneyStatus !== "war_room") {
+      return res.status(400).json({
+        success: false,
+        message: "Case must be in war room status to request reschedule",
+      });
+    }
+
+    // Check if there's already a pending reschedule request for this case
+    const hasPending = await AttorneyRescheduleRequest.hasPendingRequest(caseId);
+    if (hasPending) {
+      return res.status(400).json({
+        success: false,
+        message: "There is already a pending reschedule request for this case",
+      });
+    }
+
+    // Create reschedule request
+    const requestId = await AttorneyRescheduleRequest.createRescheduleRequest({
+      caseId: parseInt(caseId),
+      attorneyId,
+      newScheduledDate,
+      newScheduledTime,
+      originalScheduledDate: caseData.ScheduledDate,
+      originalScheduledTime: caseData.ScheduledTime,
+      reason,
+      attorneyComments,
+    });
+
+    // Create notification for all admins
+    try {
+      // Get all admins
+      const { executeQuery, sql } = require("../config/db");
+      const adminIds = await executeQuery(async (pool) => {
+        const result = await pool.request().query(`
+          SELECT AdminId FROM dbo.Admins WHERE IsActive = 1
+        `);
+        return result.recordset.map(a => a.AdminId);
+      });
+
+      // Create notification for each admin
+      for (const adminId of adminIds) {
+        await Notification.create({
+          userId: adminId,
+          userType: "admin",
+          caseId: parseInt(caseId),
+          type: "attorney_reschedule_request",
+          title: "New Reschedule Request",
+          message: `Attorney has requested to reschedule case "${caseData.CaseTitle}" from ${caseData.ScheduledDate} to ${newScheduledDate}`,
+        });
+      }
+    } catch (notifError) {
+      console.error("Error creating admin notifications:", notifError);
+      // Continue even if notification fails
+    }
+
+    res.json({
+      success: true,
+      message: "Reschedule request submitted successfully. Admin will review your request.",
+      requestId,
+    });
+  })
+);
+
+/**
+ * GET /api/attorney/cases/:caseId/reschedule-status
+ * Get reschedule request status for a case
+ */
+router.get(
+  "/cases/:caseId/reschedule-status",
+  asyncHandler(async (req, res) => {
+    const { caseId } = req.params;
+    const attorneyId = req.user.id;
+
+    // Get case to verify ownership
+    const caseData = await Case.findById(caseId);
+    if (!caseData) {
+      return res.status(404).json({
+        success: false,
+        message: "Case not found",
+      });
+    }
+
+    // Verify attorney owns this case
+    if (caseData.AttorneyId !== attorneyId) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to view this case",
+      });
+    }
+
+    // Get latest reschedule request for this case
+    const rescheduleRequest = await AttorneyRescheduleRequest.findByCaseId(caseId);
+
+    res.json({
+      success: true,
+      rescheduleRequest,
     });
   })
 );
