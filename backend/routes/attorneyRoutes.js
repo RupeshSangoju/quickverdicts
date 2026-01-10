@@ -898,11 +898,12 @@ router.post(
       });
     }
 
-    // Only allow reschedule for cases in war_room status
-    if (caseData.AttorneyStatus !== "war_room") {
+    // Allow reschedule for cases in war_room, awaiting_trial, or join_trial status
+    const allowedStatuses = ["war_room", "awaiting_trial", "join_trial"];
+    if (!allowedStatuses.includes(caseData.AttorneyStatus)) {
       return res.status(400).json({
         success: false,
-        message: "Case must be in war room status to request reschedule",
+        message: "Case must be in war room, awaiting trial, or join trial status to request reschedule",
       });
     }
 
