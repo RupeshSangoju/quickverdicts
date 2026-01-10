@@ -1153,7 +1153,7 @@ export default function WarRoomPage() {
                 <InfoCard
                   icon={ClockIcon}
                   label="Trial Time"
-                  value={formatTime(caseData.ScheduledTime)}
+                  value={formatTime(caseData.ScheduledTime, caseData.ScheduledDate)}
                   variant="blue"
                 />
                 <InfoCard
