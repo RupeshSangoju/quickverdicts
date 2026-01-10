@@ -816,7 +816,15 @@ export default function WarRoomPage() {
                   {/* Reschedule Case button - only show if admin approved and case has schedule */}
                   {isAdminApproved && caseData?.ScheduledDate && caseData?.ScheduledTime && (
                     <button
-                      onClick={() => setShowRescheduleModal(true)}
+                      onClick={() => {
+                        console.log('🔍 [Reschedule Modal] Opening with case data:', {
+                          ScheduledDate: caseData.ScheduledDate,
+                          ScheduledTime: caseData.ScheduledTime,
+                          CaseId: caseData.Id,
+                          CaseTitle: caseData.CaseTitle,
+                        });
+                        setShowRescheduleModal(true);
+                      }}
                       className="px-3 py-1.5 bg-amber-500/90 hover:bg-amber-500 text-white rounded-lg font-semibold text-xs transition-all flex items-center gap-1.5"
                     >
                       <CalendarIcon className="w-3.5 h-3.5" />
@@ -2137,19 +2145,21 @@ export default function WarRoomPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-semibold text-[#0A2342] mb-2">
-                        Current Date
+                        Current Scheduled Date
                       </label>
                       <div className="p-3 bg-gray-100 rounded-lg text-sm text-gray-700">
                         {caseData?.ScheduledDate ? formatDateString(caseData.ScheduledDate) : "N/A"}
                       </div>
+                      <p className="text-xs text-gray-500 mt-1">Raw: {caseData?.ScheduledDate || "N/A"}</p>
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-[#0A2342] mb-2">
-                        Current Time
+                        Current Scheduled Time
                       </label>
                       <div className="p-3 bg-gray-100 rounded-lg text-sm text-gray-700">
                         {caseData?.ScheduledTime ? formatTime(caseData.ScheduledTime) : "N/A"}
                       </div>
+                      <p className="text-xs text-gray-500 mt-1">Raw: {caseData?.ScheduledTime || "N/A"}</p>
                     </div>
                   </div>
 
