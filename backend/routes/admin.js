@@ -1538,22 +1538,39 @@ router.post("/reschedule-requests/:requestId/approve", authMiddleware, requireAd
       throw new Error(`Failed to update case schedule: ${updateError.message}`);
     }
 
-    // Delete all accepted juror applications for this case
+    // Delete ALL juror applications for this case (approved, pending, rejected)
+    // This ensures the case goes back to job board and no jurors see it in "My Cases"
     const { executeQuery, sql } = require("../config/db");
     let deletedCount = 0;
+    let affectedJurors = [];
+
     try {
+      // First, get the list of jurors who had applications
+      affectedJurors = await executeQuery(async (pool) => {
+        const result = await pool
+          .request()
+          .input("caseId", sql.Int, parseInt(request.CaseId))
+          .query(`
+            SELECT DISTINCT JurorId, Status
+            FROM dbo.JurorApplications
+            WHERE CaseId = @caseId
+          `);
+        return result.recordset;
+      });
+
+      // Delete all applications for this case
       deletedCount = await executeQuery(async (pool) => {
         const result = await pool
           .request()
           .input("caseId", sql.Int, parseInt(request.CaseId))
           .query(`
             DELETE FROM dbo.JurorApplications
-            WHERE CaseId = @caseId AND Status = 'approved';
+            WHERE CaseId = @caseId;
             SELECT @@ROWCOUNT AS deletedCount;
           `);
         return result.recordset[0].deletedCount;
       });
-      console.log(`🗑️  Deleted ${deletedCount} approved juror applications for case ${request.CaseId}`);
+      console.log(`🗑️  Deleted ${deletedCount} juror applications (all statuses) for case ${request.CaseId}`);
     } catch (deleteError) {
       console.error("❌ Error deleting juror applications:", deleteError);
       // Continue even if deletion fails - we don't want to block the approval
@@ -1576,11 +1593,30 @@ router.post("/reschedule-requests/:requestId/approve", authMiddleware, requireAd
         caseId: request.CaseId,
         type: "reschedule_approved",
         title: "Reschedule Request Approved",
-        message: `Your reschedule request for case "${request.CaseTitle}" has been approved. The case has been rescheduled to ${request.NewScheduledDate} at ${request.NewScheduledTime}. All accepted jurors have been removed and you can now accept new juror applications.`,
+        message: `Your reschedule request for case "${request.CaseTitle}" has been approved. The case has been rescheduled to ${request.NewScheduledDate} at ${request.NewScheduledTime}. All juror applications have been removed and the case is now available on the job board for new applications.`,
       });
       console.log(`📧 Notification sent to attorney ${request.AttorneyId}`);
     } catch (notifError) {
       console.error("❌ Error sending notification:", notifError);
+      // Continue even if notification fails
+    }
+
+    // Notify all affected jurors that their application was removed due to reschedule
+    try {
+      for (const juror of affectedJurors) {
+        const statusText = juror.Status === 'approved' ? 'accepted' : juror.Status;
+        await Notification.create({
+          userId: juror.JurorId,
+          userType: "juror",
+          caseId: request.CaseId,
+          type: "case_rescheduled",
+          title: "Case Rescheduled - Application Removed",
+          message: `The case "${request.CaseTitle}" has been rescheduled to ${request.NewScheduledDate} at ${request.NewScheduledTime}. Your ${statusText} application has been removed. You can reapply from the job board if you're available at the new time.`,
+        });
+      }
+      console.log(`📧 Notifications sent to ${affectedJurors.length} affected jurors`);
+    } catch (notifError) {
+      console.error("❌ Error sending juror notifications:", notifError);
       // Continue even if notification fails
     }
 

@@ -278,7 +278,7 @@ export default function AdminRescheduleRequestsPage() {
                           <UserIcon className="h-4 w-4" />
                           <span className="font-medium">Approved Jurors:</span>
                           <span className="font-semibold text-red-600">{request.ApprovedJurors}</span>
-                          <span className="text-xs text-gray-500">(will be removed if approved)</span>
+                          <span className="text-xs text-gray-500">(all applications will be deleted)</span>
                         </div>
                       </div>
                     </div>
@@ -391,10 +391,10 @@ export default function AdminRescheduleRequestsPage() {
                   <ul className="list-disc ml-5 space-y-1">
                     <li>Update the case schedule to the new date/time</li>
                     <li>
-                      Delete all {selectedRequest.ApprovedJurors} accepted juror application(s)
+                      Delete ALL juror applications (approved, pending, rejected) for this case
                     </li>
-                    <li>Notify the attorney of the approval</li>
-                    <li>Allow new jurors to apply with the updated schedule</li>
+                    <li>Notify the attorney and all affected jurors</li>
+                    <li>Return the case to the job board for new applications</li>
                   </ul>
                 </div>
               </div>
