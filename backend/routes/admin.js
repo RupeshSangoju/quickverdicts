@@ -1772,12 +1772,13 @@ router.post("/cases/:caseId/reschedule", authMiddleware, requireAdmin, async (re
       console.error("❌ Error deleting juror applications:", error);
     }
 
-    // Reset case status to war_room
+    // Reset case status to war_room and mark as admin-rescheduled
     try {
       await Case.updateCaseDetails(caseId, {
         attorneyStatus: 'war_room',
+        adminRescheduledBy: adminId,
       });
-      console.log(`✅ Case ${caseId} status reset to war_room`);
+      console.log(`✅ Case ${caseId} status reset to war_room and marked as admin-rescheduled`);
     } catch (error) {
       console.error("❌ Error updating case status:", error);
       throw new Error(`Failed to update case status: ${error.message}`);

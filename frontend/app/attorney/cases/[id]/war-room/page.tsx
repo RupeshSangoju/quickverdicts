@@ -307,6 +307,14 @@ export default function WarRoomPage() {
     fetchWarRoomData();
   }, [caseId]);
 
+  // Auto-open reschedule modal if admin rescheduled the case
+  useEffect(() => {
+    if (caseData && caseData.AdminRescheduledBy && !showRescheduleModal) {
+      setShowRescheduleModal(true);
+      toast.info("Admin has requested that you reschedule this case. Please update the trial schedule.");
+    }
+  }, [caseData, showRescheduleModal]);
+
   async function fetchWarRoomData() {
     const token = getToken();
     if (!token) {

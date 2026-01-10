@@ -530,6 +530,10 @@ export default function AttorneyHomeSection() {
       return { label: "Completed", color: "bg-purple-100 text-purple-700 border-purple-300" };
     }
     if (c.AttorneyStatus === "war_room") {
+      // Check if admin rescheduled this case
+      if (c.AdminRescheduledBy) {
+        return { label: "Reschedule Needed", color: "bg-orange-100 text-orange-700 border-orange-300" };
+      }
       return { label: "Open for Applications", color: "bg-blue-100 text-blue-700 border-blue-300" };
     }
     return null;

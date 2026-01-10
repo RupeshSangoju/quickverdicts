@@ -936,6 +936,17 @@ router.post(
       attorneyComments,
     });
 
+    // Clear admin reschedule flag since attorney is now handling it
+    try {
+      await Case.updateCaseDetails(caseId, {
+        adminRescheduledBy: null,
+      });
+      console.log(`✅ Cleared AdminRescheduledBy flag for case ${caseId}`);
+    } catch (error) {
+      console.error("Error clearing admin reschedule flag:", error);
+      // Continue even if this fails
+    }
+
     // Create notification for all admins
     try {
       // Get all admins
