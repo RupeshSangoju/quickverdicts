@@ -907,6 +907,14 @@ router.post(
       });
     }
 
+    // Ensure case has a scheduled date and time before allowing reschedule
+    if (!caseData.ScheduledDate || !caseData.ScheduledTime) {
+      return res.status(400).json({
+        success: false,
+        message: "Case must have a scheduled date and time before you can request a reschedule. Please set the trial schedule first.",
+      });
+    }
+
     // Check if there's already a pending reschedule request for this case
     const hasPending = await AttorneyRescheduleRequest.hasPendingRequest(caseId);
     if (hasPending) {

@@ -739,6 +739,7 @@ export default function WarRoomPage() {
 
       if (!response.ok) {
         const error = await response.json();
+        console.error("Reschedule request error response:", error);
         throw new Error(error.message || "Failed to submit reschedule request");
       }
 
@@ -805,8 +806,8 @@ export default function WarRoomPage() {
                       Upgrade Tier
                     </button>
                   )}
-                  {/* Reschedule Case button - only show if admin approved */}
-                  {isAdminApproved && (
+                  {/* Reschedule Case button - only show if admin approved and case has schedule */}
+                  {isAdminApproved && caseData?.ScheduledDate && caseData?.ScheduledTime && (
                     <button
                       onClick={() => setShowRescheduleModal(true)}
                       className="px-3 py-1.5 bg-amber-500/90 hover:bg-amber-500 text-white rounded-lg font-semibold text-xs transition-all flex items-center gap-1.5"
