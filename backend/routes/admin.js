@@ -1524,40 +1524,65 @@ router.post("/reschedule-requests/:requestId/approve", authMiddleware, requireAd
       });
     }
 
-    // Approve the reschedule request
-    await AttorneyRescheduleRequest.approveRequest(requestId, adminId, adminComments);
+    console.log(`📅 Updating case ${request.CaseId} schedule to ${request.NewScheduledDate} ${request.NewScheduledTime}`);
 
     // Update case with new scheduled date/time
-    await Case.updateCaseDetails(request.CaseId, {
-      scheduledDate: request.NewScheduledDate,
-      scheduledTime: request.NewScheduledTime,
-    });
+    try {
+      await Case.updateCaseDetails(request.CaseId, {
+        scheduledDate: request.NewScheduledDate,
+        scheduledTime: request.NewScheduledTime,
+      });
+      console.log(`✅ Case schedule updated successfully`);
+    } catch (updateError) {
+      console.error("❌ Error updating case schedule:", updateError);
+      throw new Error(`Failed to update case schedule: ${updateError.message}`);
+    }
 
     // Delete all accepted juror applications for this case
     const { executeQuery, sql } = require("../config/db");
-    const deletedCount = await executeQuery(async (pool) => {
-      const result = await pool
-        .request()
-        .input("caseId", sql.Int, parseInt(request.CaseId))
-        .query(`
-          DELETE FROM dbo.JurorApplications
-          WHERE CaseId = @caseId AND Status = 'approved';
-          SELECT @@ROWCOUNT AS deletedCount;
-        `);
-      return result.recordset[0].deletedCount;
-    });
+    let deletedCount = 0;
+    try {
+      deletedCount = await executeQuery(async (pool) => {
+        const result = await pool
+          .request()
+          .input("caseId", sql.Int, parseInt(request.CaseId))
+          .query(`
+            DELETE FROM dbo.JurorApplications
+            WHERE CaseId = @caseId AND Status = 'approved';
+            SELECT @@ROWCOUNT AS deletedCount;
+          `);
+        return result.recordset[0].deletedCount;
+      });
+      console.log(`🗑️  Deleted ${deletedCount} approved juror applications for case ${request.CaseId}`);
+    } catch (deleteError) {
+      console.error("❌ Error deleting juror applications:", deleteError);
+      // Continue even if deletion fails - we don't want to block the approval
+    }
 
-    console.log(`🗑️  Deleted ${deletedCount} approved juror applications for case ${request.CaseId}`);
+    // Approve the reschedule request (mark as approved in DB)
+    try {
+      await AttorneyRescheduleRequest.approveRequest(requestId, adminId, adminComments);
+      console.log(`✅ Reschedule request ${requestId} marked as approved`);
+    } catch (approveError) {
+      console.error("❌ Error approving request:", approveError);
+      throw new Error(`Failed to mark request as approved: ${approveError.message}`);
+    }
 
     // Notify attorney of approval
-    await Notification.create({
-      userId: request.AttorneyId,
-      userType: "attorney",
-      caseId: request.CaseId,
-      type: "reschedule_approved",
-      title: "Reschedule Request Approved",
-      message: `Your reschedule request for case "${request.CaseTitle}" has been approved. The case has been rescheduled to ${request.NewScheduledDate} at ${request.NewScheduledTime}. All accepted jurors have been removed and you can now accept new juror applications.`,
-    });
+    try {
+      await Notification.create({
+        userId: request.AttorneyId,
+        userType: "attorney",
+        caseId: request.CaseId,
+        type: "reschedule_approved",
+        title: "Reschedule Request Approved",
+        message: `Your reschedule request for case "${request.CaseTitle}" has been approved. The case has been rescheduled to ${request.NewScheduledDate} at ${request.NewScheduledTime}. All accepted jurors have been removed and you can now accept new juror applications.`,
+      });
+      console.log(`📧 Notification sent to attorney ${request.AttorneyId}`);
+    } catch (notifError) {
+      console.error("❌ Error sending notification:", notifError);
+      // Continue even if notification fails
+    }
 
     res.json({
       success: true,
@@ -1565,7 +1590,7 @@ router.post("/reschedule-requests/:requestId/approve", authMiddleware, requireAd
       deletedJurors: deletedCount,
     });
   } catch (error) {
-    console.error("Error approving reschedule request:", error);
+    console.error("❌ Error approving reschedule request:", error);
     res.status(500).json({
       success: false,
       message: "Failed to approve reschedule request",

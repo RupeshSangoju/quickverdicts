@@ -384,9 +384,11 @@ export default function AdminRescheduleRequestsPage() {
             </div>
             <div className="p-6 space-y-4">
               <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                <p className="text-sm text-amber-800">
-                  <strong>Warning:</strong> Approving this request will:
-                  <ul className="list-disc ml-5 mt-2 space-y-1">
+                <div className="text-sm text-amber-800">
+                  <p className="font-semibold mb-2">
+                    <strong>Warning:</strong> Approving this request will:
+                  </p>
+                  <ul className="list-disc ml-5 space-y-1">
                     <li>Update the case schedule to the new date/time</li>
                     <li>
                       Delete all {selectedRequest.ApprovedJurors} accepted juror application(s)
@@ -394,7 +396,7 @@ export default function AdminRescheduleRequestsPage() {
                     <li>Notify the attorney of the approval</li>
                     <li>Allow new jurors to apply with the updated schedule</li>
                   </ul>
-                </p>
+                </div>
               </div>
 
               <div>
