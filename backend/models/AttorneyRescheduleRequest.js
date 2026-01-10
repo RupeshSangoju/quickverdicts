@@ -203,6 +203,8 @@ async function getPendingRequests() {
             c.County,
             c.State,
             c.CaseType,
+            c.ScheduledDate AS CurrentScheduledDate,
+            c.ScheduledTime AS CurrentScheduledTime,
             a.FirstName + ' ' + a.LastName AS AttorneyName,
             a.Email AS AttorneyEmail,
             a.LawFirmName,

@@ -28,6 +28,8 @@ type RescheduleRequest = {
   NewScheduledTime: string;
   OriginalScheduledDate: string;
   OriginalScheduledTime: string;
+  CurrentScheduledDate: string;
+  CurrentScheduledTime: string;
   Reason: string | null;
   AttorneyComments: string | null;
   Status: "pending" | "approved" | "rejected";
@@ -294,18 +296,18 @@ export default function AdminRescheduleRequestsPage() {
                   <div className="grid grid-cols-2 gap-6 mb-6">
                     {/* Original Schedule */}
                     <div className="space-y-3">
-                      <h4 className="font-semibold text-gray-900">Original Schedule</h4>
+                      <h4 className="font-semibold text-gray-900">Current Schedule</h4>
                       <div className="space-y-2">
                         <div className="flex items-center gap-2 text-gray-700">
                           <CalendarIcon className="h-4 w-4" />
                           <span className="line-through text-red-600">
-                            {formatDate(request.OriginalScheduledDate)}
+                            {formatDate(request.CurrentScheduledDate)}
                           </span>
                         </div>
                         <div className="flex items-center gap-2 text-gray-700">
                           <ClockIcon className="h-4 w-4" />
                           <span className="line-through text-red-600">
-                            {formatTime(request.OriginalScheduledTime)}
+                            {formatTime(request.CurrentScheduledTime)}
                           </span>
                         </div>
                       </div>
