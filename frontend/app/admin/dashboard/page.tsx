@@ -190,6 +190,7 @@ export default function AdminDashboard() {
     activeTrials: 0,
     scheduledTrials: 0,
     unreadNotifications: 0,
+    pendingRescheduleRequests: 0,
   });
 
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
@@ -470,12 +471,13 @@ export default function AdminDashboard() {
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      const [dashboardRes, attRes, jurRes, casesRes, statsRes] = await Promise.all([
+      const [dashboardRes, attRes, jurRes, casesRes, statsRes, rescheduleRes] = await Promise.all([
         fetchWithAuth(`${API_BASE}/api/admin/dashboard`),
         fetchWithAuth(`${API_BASE}/api/admin/attorneys`),
         fetchWithAuth(`${API_BASE}/api/admin/jurors`),
         fetchWithAuth(`${API_BASE}/api/admin/cases/pending`),
         fetchWithAuth(`${API_BASE}/api/admin/stats/comprehensive`),
+        fetchWithAuth(`${API_BASE}/api/admin/reschedule-requests`),
       ]);
 
       const dashboardData = await dashboardRes.json();
@@ -483,12 +485,15 @@ export default function AdminDashboard() {
       const jurData = await jurRes.json();
       const casesData = await casesRes.json();
       const statsData = await statsRes.json();
+      const rescheduleData = await rescheduleRes.json();
 
       if (dashboardData.success) {
         // Filter out any deleted cases as extra safeguard
         const activeCases = (dashboardData.pendingCases || []).filter((c: any) => c.IsDeleted === 0 || !c.IsDeleted);
         setPendingCases(activeCases);
       }
+
+      const pendingRescheduleCount = rescheduleData.success ? (rescheduleData.count || 0) : 0;
 
       if (statsData.success) {
         setStats({
@@ -500,6 +505,7 @@ export default function AdminDashboard() {
           activeTrials: statsData.stats.ActiveTrials,
           scheduledTrials: statsData.stats.ScheduledTrials,
           unreadNotifications: statsData.stats.UnreadNotifications,
+          pendingRescheduleRequests: pendingRescheduleCount,
         });
       }
 
@@ -1345,6 +1351,19 @@ function formatTime(timeString: string, scheduledDate: string) {
               </div>
             </div>
           </div>
+
+          <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl hover:scale-105 transition-all border border-gray-200 cursor-pointer" onClick={() => router.push('/admin/reschedule-requests')}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-600 text-sm font-medium">Reschedule Requests</p>
+                <p className="text-4xl font-bold mt-2" style={{ color: BLUE }}>{stats.pendingRescheduleRequests}</p>
+                <p className="text-gray-500 text-xs mt-1">Need review</p>
+              </div>
+              <div className="p-3 rounded-xl" style={{ backgroundColor: LIGHT_BLUE }}>
+                <Calendar className="h-8 w-8" style={{ color: BLUE }} />
+              </div>
+            </div>
+          </div>
         </div>
 
 {/* Calendar and Cases View */}
@@ -1380,8 +1399,8 @@ function formatTime(timeString: string, scheduledDate: string) {
                     <span className="text-gray-900 group-hover:text-green-600 font-semibold">Jurors Management</span>
                   </div>
                 </button>
-                <button 
-                  className="w-full bg-gradient-to-r from-yellow-50 to-yellow-100 rounded-lg p-4 text-left font-medium hover:shadow-md transition-all border border-yellow-200 group" 
+                <button
+                  className="w-full bg-gradient-to-r from-yellow-50 to-yellow-100 rounded-lg p-4 text-left font-medium hover:shadow-md transition-all border border-yellow-200 group"
                   onClick={() => casesSectionRef.current?.scrollIntoView({ behavior: "smooth" })}
                 >
                   <div className="flex items-center">
@@ -1389,6 +1408,24 @@ function formatTime(timeString: string, scheduledDate: string) {
                       <FileText className="h-5 w-5 text-white" />
                     </div>
                     <span className="text-gray-900 group-hover:text-yellow-600 font-semibold">Pending Cases</span>
+                  </div>
+                </button>
+                <button
+                  className="w-full bg-gradient-to-r from-amber-50 to-amber-100 rounded-lg p-4 text-left font-medium hover:shadow-md transition-all border border-amber-200 group"
+                  onClick={() => router.push('/admin/reschedule-requests')}
+                >
+                  <div className="flex items-center">
+                    <div className="p-2 bg-amber-500 rounded-lg mr-3 group-hover:scale-110 transition-transform">
+                      <Calendar className="h-5 w-5 text-white" />
+                    </div>
+                    <div className="flex-1 flex items-center justify-between">
+                      <span className="text-gray-900 group-hover:text-amber-600 font-semibold">Reschedule Requests</span>
+                      {stats.pendingRescheduleRequests > 0 && (
+                        <span className="px-2 py-1 bg-amber-500 text-white text-xs font-bold rounded-full">
+                          {stats.pendingRescheduleRequests}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </button>
               </div>
