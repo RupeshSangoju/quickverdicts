@@ -36,6 +36,7 @@ type Case = {
   status?: string;
   AdminApprovalStatus?: string;
   AttorneyStatus?: string;
+  AdminRescheduledBy?: number | null;
   RescheduleRequired?: number | boolean;
   AlternateSlots?: string;
   OriginalScheduledDate?: string;
