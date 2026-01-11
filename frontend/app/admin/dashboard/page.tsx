@@ -1766,36 +1766,34 @@ function formatTime(timeString: string, scheduledDate: string) {
           </div>
 
         {/* Reschedule Requests */}
-        {stats.pendingRescheduleRequests > 0 && (
-          <div className="bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 rounded-xl shadow-lg p-6 border-2 border-orange-300">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center">
-                <div className="p-3 bg-gradient-to-r from-orange-600 to-amber-600 rounded-lg mr-3">
-                  <Calendar className="h-7 w-7 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-2xl font-bold bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">
-                    Reschedule Requests
-                  </h3>
-                  <p className="text-gray-700 text-sm font-medium">Attorney-initiated case reschedule requests pending approval</p>
-                </div>
+        <div className="bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 rounded-xl shadow-lg p-6 border-2 border-orange-300">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center">
+              <div className="p-3 bg-gradient-to-r from-orange-600 to-amber-600 rounded-lg mr-3">
+                <Calendar className="h-7 w-7 text-white" />
               </div>
-              <span className="px-4 py-2 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-full text-sm font-bold shadow-lg">
-                {stats.pendingRescheduleRequests} Pending
-              </span>
+              <div>
+                <h3 className="text-2xl font-bold bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">
+                  Reschedule Requests
+                </h3>
+                <p className="text-gray-700 text-sm font-medium">Attorney-initiated case reschedule requests pending approval</p>
+              </div>
             </div>
-
-            <div className="flex justify-center">
-              <button
-                onClick={() => router.push('/admin/reschedule-requests')}
-                className="bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all flex items-center gap-2"
-              >
-                <Calendar className="h-5 w-5" />
-                View All Reschedule Requests
-              </button>
-            </div>
+            <span className="px-4 py-2 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-full text-sm font-bold shadow-lg">
+              {stats.pendingRescheduleRequests} Pending
+            </span>
           </div>
-        )}
+
+          <div className="flex justify-center">
+            <button
+              onClick={() => router.push('/admin/reschedule-requests')}
+              className="bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all flex items-center gap-2"
+            >
+              <Calendar className="h-5 w-5" />
+              View All Reschedule Requests
+            </button>
+          </div>
+        </div>
 
         {/* Attorneys Table */}
         <div ref={attorneySectionRef} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
