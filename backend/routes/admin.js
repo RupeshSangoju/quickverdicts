@@ -1589,7 +1589,7 @@ router.post("/reschedule-requests/:requestId/approve", authMiddleware, requireAd
 
     // Notify attorney of approval
     try {
-      await Notification.create({
+      await Notification.createNotification({
         userId: request.AttorneyId,
         userType: "attorney",
         caseId: request.CaseId,
@@ -1607,7 +1607,7 @@ router.post("/reschedule-requests/:requestId/approve", authMiddleware, requireAd
     try {
       for (const juror of affectedJurors) {
         const statusText = juror.Status === 'approved' ? 'accepted' : juror.Status;
-        await Notification.create({
+        await Notification.createNotification({
           userId: juror.JurorId,
           userType: "juror",
           caseId: request.CaseId,
@@ -1678,7 +1678,7 @@ router.post("/reschedule-requests/:requestId/reject", authMiddleware, requireAdm
     await AttorneyRescheduleRequest.rejectRequest(requestId, adminId, adminComments);
 
     // Notify attorney of rejection
-    await Notification.create({
+    await Notification.createNotification({
       userId: request.AttorneyId,
       userType: "attorney",
       caseId: request.CaseId,
