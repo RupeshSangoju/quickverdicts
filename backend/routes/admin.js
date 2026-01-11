@@ -1788,7 +1788,7 @@ router.post("/cases/:caseId/reschedule", authMiddleware, requireAdmin, async (re
 
     // Notify attorney
     try {
-      await Notification.create({
+      await Notification.createNotification({
         userId: caseData.AttorneyId,
         userType: "attorney",
         caseId: parseInt(caseId),
@@ -1800,13 +1800,14 @@ router.post("/cases/:caseId/reschedule", authMiddleware, requireAdmin, async (re
       console.log(`📧 Notification sent to attorney ${caseData.AttorneyId}`);
     } catch (error) {
       console.error("❌ Error sending attorney notification:", error);
+      console.error("❌ Full error details:", error);
     }
 
     // Notify all affected jurors
     try {
       for (const juror of affectedJurors) {
         const statusText = juror.Status === 'approved' ? 'accepted' : juror.Status;
-        await Notification.create({
+        await Notification.createNotification({
           userId: juror.JurorId,
           userType: "juror",
           caseId: parseInt(caseId),
@@ -1819,6 +1820,7 @@ router.post("/cases/:caseId/reschedule", authMiddleware, requireAdmin, async (re
       console.log(`📧 Notifications sent to ${affectedJurors.length} affected jurors`);
     } catch (error) {
       console.error("❌ Error sending juror notifications:", error);
+      console.error("❌ Full error details:", error);
     }
 
     res.json({
