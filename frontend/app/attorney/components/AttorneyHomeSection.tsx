@@ -532,7 +532,7 @@ export default function AttorneyHomeSection() {
     if (c.AttorneyStatus === "war_room") {
       // Check if admin rescheduled this case
       if (c.AdminRescheduledBy) {
-        return { label: "Reschedule Needed", color: "bg-orange-100 text-orange-700 border-orange-300" };
+        return { label: "Admin Rescheduled Case", color: "bg-orange-100 text-orange-700 border-orange-300" };
       }
       return { label: "Open for Applications", color: "bg-blue-100 text-blue-700 border-blue-300" };
     }

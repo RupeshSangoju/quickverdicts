@@ -647,6 +647,12 @@ export default function WarRoomPage() {
         } else {
           setErrorMessage(data.message || "Failed to submit war room. Please try again.");
         }
+      } else {
+        // Success - show toast and redirect
+        toast.success("War room successfully submitted!");
+        setTimeout(() => {
+          router.push("/attorney");
+        }, 1500);
       }
     } catch (error) {
       console.error("Error submitting war room:", error);
@@ -822,7 +828,8 @@ export default function WarRoomPage() {
       });
       setShowSuccessMessage(true);
       setErrorMessage("");
-      alert("Reschedule request submitted successfully! Admin will review your request.");
+      toast.success("Reschedule request submitted successfully! Admin will review your request.");
+      setShowRescheduleModal(false);
     } catch (error: any) {
       console.error("Reschedule request error:", error);
       setErrorMessage(error.message || "Failed to submit reschedule request");
@@ -896,7 +903,7 @@ export default function WarRoomPage() {
                   {/* Join Trial button removed per UX request; submit will enable join elsewhere */}
                   <button
                     onClick={submitWarRoom}
-                    disabled={submittingWarRoom}
+                    disabled={submittingWarRoom || !isWarRoomStatus}
                     className="px-4 py-1.5 bg-white text-[#16305B] rounded-lg font-semibold text-sm hover:bg-white/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
                   >
                     {submittingWarRoom ? (

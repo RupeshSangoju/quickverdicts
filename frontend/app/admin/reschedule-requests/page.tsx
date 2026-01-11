@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
 import {
   CalendarIcon,
   ClockIcon,
@@ -115,18 +116,18 @@ export default function AdminRescheduleRequestsPage() {
       );
 
       if (response.ok) {
-        alert("Reschedule request approved successfully!");
+        toast.success("Reschedule request approved successfully!");
         setShowApproveModal(false);
         setSelectedRequest(null);
         setAdminComments("");
         fetchRescheduleRequests();
       } else {
         const error = await response.json();
-        alert(`Failed to approve request: ${error.message}`);
+        toast.error(`Failed to approve request: ${error.message}`);
       }
     } catch (error) {
       console.error("Error approving request:", error);
-      alert("Failed to approve reschedule request");
+      toast.error("Failed to approve reschedule request");
     } finally {
       setActionLoading(false);
     }
@@ -136,7 +137,7 @@ export default function AdminRescheduleRequestsPage() {
     if (!selectedRequest) return;
 
     if (!adminComments || adminComments.trim().length === 0) {
-      alert("Please provide a reason for rejection");
+      toast.error("Please provide a reason for rejection");
       return;
     }
 
@@ -156,18 +157,18 @@ export default function AdminRescheduleRequestsPage() {
       );
 
       if (response.ok) {
-        alert("Reschedule request rejected successfully!");
+        toast.success("Reschedule request rejected successfully!");
         setShowRejectModal(false);
         setSelectedRequest(null);
         setAdminComments("");
         fetchRescheduleRequests();
       } else {
         const error = await response.json();
-        alert(`Failed to reject request: ${error.message}`);
+        toast.error(`Failed to reject request: ${error.message}`);
       }
     } catch (error) {
       console.error("Error rejecting request:", error);
-      alert("Failed to reject reschedule request");
+      toast.error("Failed to reject reschedule request");
     } finally {
       setActionLoading(false);
     }
