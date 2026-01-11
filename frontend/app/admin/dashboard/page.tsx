@@ -1766,7 +1766,7 @@ function formatTime(timeString: string, scheduledDate: string) {
           </div>
 
         {/* Reschedule Requests */}
-        {pendingRescheduleRequests > 0 && (
+        {stats.pendingRescheduleRequests > 0 && (
           <div className="bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 rounded-xl shadow-lg p-6 border-2 border-orange-300">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center">
@@ -1781,7 +1781,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                 </div>
               </div>
               <span className="px-4 py-2 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-full text-sm font-bold shadow-lg">
-                {pendingRescheduleRequests} Pending
+                {stats.pendingRescheduleRequests} Pending
               </span>
             </div>
 
