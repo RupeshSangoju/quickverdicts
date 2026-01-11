@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import toast from "react-hot-toast";
 import WitnessSection from "./components/WitnessSection";
 import JuryChargeBuilder from "./components/JuryChargeBuilder";
 import { formatDateString } from "@/lib/dateUtils";
