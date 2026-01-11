@@ -935,6 +935,8 @@ async function updateCaseDetails(caseId, updates) {
       voirDire2Questions: sql.NVarChar,
       plaintiffGroups: sql.NVarChar,
       defendantGroups: sql.NVarChar,
+      attorneyStatus: sql.NVarChar,
+      adminRescheduledBy: sql.Int,
     };
 
     return await executeQuery(async (pool) => {
@@ -951,7 +953,7 @@ async function updateCaseDetails(caseId, updates) {
             console.log(`📅 [updateCaseDetails] Setting scheduledDate: "${value}"`);
             req.input(key, allowed[key], value);
           }
-          // Handle scheduledTime - convert to Date object for sql.Time
+          // Handle scheduledTime - pass as string to avoid timezone conversion
           else if (key === "scheduledTime") {
             const trimmedTime = value.trim();
             const timeParts = trimmedTime.split(':');
@@ -970,12 +972,10 @@ async function updateCaseDetails(caseId, updates) {
               throw new Error(`Invalid time format: ${value}`);
             }
 
-            // Create a Date object with today's date and the specified time
-            const timeValue = new Date();
-            timeValue.setHours(parseInt(hours), parseInt(minutes), parseInt(seconds), 0);
-
-            console.log(`🕐 [updateCaseDetails] Converting scheduledTime: "${value}" → ${hours}:${minutes}:${seconds}`);
-            req.input(key, allowed[key], timeValue);
+            // Pass time as string to avoid timezone conversion
+            const timeString = `${hours}:${minutes}:${seconds}`;
+            console.log(`🕐 [updateCaseDetails] Setting scheduledTime: "${value}" → ${timeString}`);
+            req.input(key, sql.VarChar, timeString);
           }
           // Handle JSON fields
           else if (

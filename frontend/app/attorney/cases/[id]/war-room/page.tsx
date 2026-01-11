@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import toast from "react-hot-toast";
 import WitnessSection from "./components/WitnessSection";
 import JuryChargeBuilder from "./components/JuryChargeBuilder";
 import { formatDateString } from "@/lib/dateUtils";
@@ -95,11 +96,61 @@ type CaseData = {
   UpdatedAt?: string;
 };
 
-function formatTime(timeString: string | undefined): string {
+// Timezone helper functions (same logic as AttorneyHomeSection)
+function getSystemTimezoneInfo() {
+  const offset = new Date().getTimezoneOffset();
+  const offsetHours = offset / 60;
+  const timezoneName = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const sign = offset <= 0 ? '+' : '-';
+  const absHours = Math.floor(Math.abs(offsetHours));
+  const minutes = Math.abs(offsetHours % 1) * 60;
+
+  return {
+    offsetHours: -offsetHours,
+    offsetMinutes: -offset,
+    timezoneName,
+    sign,
+    formatOffset: `UTC${sign}${String(absHours).padStart(2, '0')}:${String(Math.round(minutes)).padStart(2, '0')}`
+  };
+}
+
+function applyOffsetToUtcTime(utcTime: string, dateString: string, timezoneOffset: string, offsetMinutesMap: number) {
+  const offsetMinutes = offsetMinutesMap * 2;
+  if (offsetMinutes === null) throw new Error('Invalid timezoneOffset');
+
+  const utcMs = Date.parse(`${dateString}T${utcTime}Z`);
+  if (isNaN(utcMs)) throw new Error('Invalid UTC date/time');
+
+  const signChar = timezoneOffset.includes('+') ? '+' : timezoneOffset.includes('-') ? '-' : '+';
+  const resultMs = signChar === '+'
+    ? utcMs - offsetMinutes * 60_000
+    : utcMs + Math.abs(offsetMinutes) * 60_000;
+
+  const resultDate = new Date(resultMs);
+  return {
+    date: resultDate,
+    "12HoursTime": resultDate.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }),
+    "24HoursTime": resultDate.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: false })
+  };
+}
+
+function formatTime(timeString: string | undefined, scheduledDate?: string): string {
   if (!timeString) return "N/A";
   try {
-    // Time is already in correct timezone from database, just format it nicely
-    const cleanTime = timeString.split('.')[0]; // Remove milliseconds if present
+    // If scheduledDate is provided, apply timezone conversion (same as attorney home page)
+    if (scheduledDate) {
+      const systemTz = getSystemTimezoneInfo();
+      let zoneMap = '';
+
+      zoneMap = systemTz.formatOffset ? systemTz.formatOffset : "";
+      const offsetMinutes = typeof systemTz.offsetMinutes === 'number' ? systemTz.offsetMinutes : 0;
+
+      const dataSystemmap = applyOffsetToUtcTime(timeString, scheduledDate, zoneMap, offsetMinutes);
+      return dataSystemmap["24HoursTime"];
+    }
+
+    // Fallback to simple formatting if no scheduledDate
+    const cleanTime = timeString.split('.')[0];
     const [hours, minutes] = cleanTime.split(':').map(Number);
     const period = hours >= 12 ? 'PM' : 'AM';
     const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
@@ -243,9 +294,30 @@ export default function WarRoomPage() {
   const [docToDelete, setDocToDelete] = useState<{ id: number; name: string } | null>(null);
   const [deletingDocument, setDeletingDocument] = useState(false);
 
+  // Reschedule request
+  const [showRescheduleModal, setShowRescheduleModal] = useState(false);
+  const [rescheduleData, setRescheduleData] = useState({
+    newScheduledDate: "",
+    newScheduledTime: "",
+    reason: "",
+    attorneyComments: "",
+  });
+  const [submittingReschedule, setSubmittingReschedule] = useState(false);
+
   useEffect(() => {
     fetchWarRoomData();
   }, [caseId]);
+
+  // Auto-open reschedule modal if admin rescheduled the case
+  useEffect(() => {
+    if (caseData && caseData.AdminRescheduledBy && !showRescheduleModal) {
+      setShowRescheduleModal(true);
+      toast("Admin has requested that you reschedule this case. Please update the trial schedule.", {
+        icon: '📅',
+        duration: 5000,
+      });
+    }
+  }, [caseData, showRescheduleModal]);
 
   async function fetchWarRoomData() {
     const token = getToken();
@@ -575,6 +647,12 @@ export default function WarRoomPage() {
         } else {
           setErrorMessage(data.message || "Failed to submit war room. Please try again.");
         }
+      } else {
+        // Success - show toast and redirect
+        toast.success("War room successfully submitted!");
+        setTimeout(() => {
+          router.push("/attorney");
+        }, 1500);
       }
     } catch (error) {
       console.error("Error submitting war room:", error);
@@ -701,6 +779,65 @@ export default function WarRoomPage() {
     }
   };
 
+  const handleRescheduleRequest = async () => {
+    try {
+      setSubmittingReschedule(true);
+      setErrorMessage("");
+
+      // Validate inputs
+      if (!rescheduleData.newScheduledDate || !rescheduleData.newScheduledTime) {
+        setErrorMessage("Please provide both new date and time");
+        return;
+      }
+
+      const token = getToken();
+      if (!token) {
+        router.push("/login");
+        return;
+      }
+
+      const response = await fetch(`${API_BASE}/api/attorney/cases/${caseId}/request-reschedule`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(rescheduleData),
+      });
+
+      if (!response.ok) {
+        let errorMessage = "Failed to submit reschedule request";
+        try {
+          const error = await response.json();
+          console.error("Reschedule request error response:", error);
+          errorMessage = error.message || error.error || errorMessage;
+        } catch (e) {
+          console.error("Failed to parse error response:", e);
+          errorMessage = `Server error: ${response.status} ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
+      }
+
+      // Success - close modal and show success message
+      setShowRescheduleModal(false);
+      setRescheduleData({
+        newScheduledDate: "",
+        newScheduledTime: "",
+        reason: "",
+        attorneyComments: "",
+      });
+      setShowSuccessMessage(true);
+      setErrorMessage("");
+      toast.success("Reschedule request submitted successfully! Admin will review your request.");
+      setShowRescheduleModal(false);
+    } catch (error: any) {
+      console.error("Reschedule request error:", error);
+      setErrorMessage(error.message || "Failed to submit reschedule request");
+    } finally {
+      setSubmittingReschedule(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#f9f7f2]">
       <div className="max-w-7xl mx-auto p-6 space-y-6">
@@ -745,10 +882,28 @@ export default function WarRoomPage() {
                       Upgrade Tier
                     </button>
                   )}
+                  {/* Reschedule Case button - only show if admin approved and case has schedule */}
+                  {isAdminApproved && caseData?.ScheduledDate && caseData?.ScheduledTime && (
+                    <button
+                      onClick={() => {
+                        console.log('🔍 [Reschedule Modal] Opening with case data:', {
+                          ScheduledDate: caseData.ScheduledDate,
+                          ScheduledTime: caseData.ScheduledTime,
+                          CaseId: caseData.Id,
+                          CaseTitle: caseData.CaseTitle,
+                        });
+                        setShowRescheduleModal(true);
+                      }}
+                      className="px-3 py-1.5 bg-amber-500/90 hover:bg-amber-500 text-white rounded-lg font-semibold text-xs transition-all flex items-center gap-1.5"
+                    >
+                      <CalendarIcon className="w-3.5 h-3.5" />
+                      Reschedule Case
+                    </button>
+                  )}
                   {/* Join Trial button removed per UX request; submit will enable join elsewhere */}
                   <button
                     onClick={submitWarRoom}
-                    disabled={submittingWarRoom}
+                    disabled={submittingWarRoom || !isWarRoomStatus}
                     className="px-4 py-1.5 bg-white text-[#16305B] rounded-lg font-semibold text-sm hover:bg-white/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
                   >
                     {submittingWarRoom ? (
@@ -1017,7 +1172,7 @@ export default function WarRoomPage() {
                 <InfoCard
                   icon={ClockIcon}
                   label="Trial Time"
-                  value={formatTime(caseData.ScheduledTime)}
+                  value={formatTime(caseData.ScheduledTime, caseData.ScheduledDate)}
                   variant="blue"
                 />
                 <InfoCard
@@ -2003,6 +2158,166 @@ export default function WarRoomPage() {
                     }}
                     disabled={deletingDocument}
                     className="px-4 py-2 bg-[#FAF9F6] text-[#455A7C] rounded-lg font-semibold text-sm hover:bg-[#f0ede6] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Reschedule Request Modal */}
+        {showRescheduleModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="sticky top-0 bg-[#16305B] text-white p-5 rounded-t-xl z-10">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-bold">Request Case Reschedule</h3>
+                  <button
+                    onClick={() => {
+                      setShowRescheduleModal(false);
+                      setRescheduleData({
+                        newScheduledDate: "",
+                        newScheduledTime: "",
+                        reason: "",
+                        attorneyComments: "",
+                      });
+                      setErrorMessage("");
+                    }}
+                    disabled={submittingReschedule}
+                    className="p-1 hover:bg-white/20 rounded transition-colors disabled:opacity-50"
+                  >
+                    <XMarkIcon className="w-6 h-6" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-6">
+                {errorMessage && (
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+                    <ExclamationCircleIcon className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-red-800">{errorMessage}</p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-4">
+                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                    <p className="text-sm text-amber-800">
+                      <strong>Note:</strong> Submitting a reschedule request will send it to the admin for approval.
+                      If approved, all accepted jurors will be removed and you'll need to accept new applications with the updated schedule.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-[#0A2342] mb-2">
+                        Current Scheduled Date
+                      </label>
+                      <div className="p-3 bg-gray-100 rounded-lg text-sm text-gray-700">
+                        {caseData?.ScheduledDate ? formatDateString(caseData.ScheduledDate) : "N/A"}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-[#0A2342] mb-2">
+                        Current Scheduled Time
+                      </label>
+                      <div className="p-3 bg-gray-100 rounded-lg text-sm text-gray-700">
+                        {caseData?.ScheduledTime ? formatTime(caseData.ScheduledTime, caseData.ScheduledDate) : "N/A"}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-[#0A2342] mb-2">
+                        New Date <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        value={rescheduleData.newScheduledDate}
+                        onChange={(e) => setRescheduleData({ ...rescheduleData, newScheduledDate: e.target.value })}
+                        min={new Date().toISOString().split('T')[0]}
+                        className="w-full px-4 py-2 border border-[#C6CDD9] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#16305B] text-sm"
+                        disabled={submittingReschedule}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-[#0A2342] mb-2">
+                        New Time <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="time"
+                        value={rescheduleData.newScheduledTime}
+                        onChange={(e) => setRescheduleData({ ...rescheduleData, newScheduledTime: e.target.value })}
+                        className="w-full px-4 py-2 border border-[#C6CDD9] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#16305B] text-sm"
+                        disabled={submittingReschedule}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-[#0A2342] mb-2">
+                      Reason for Reschedule
+                    </label>
+                    <input
+                      type="text"
+                      value={rescheduleData.reason}
+                      onChange={(e) => setRescheduleData({ ...rescheduleData, reason: e.target.value })}
+                      placeholder="e.g., Scheduling conflict, witness unavailability"
+                      className="w-full px-4 py-2 border border-[#C6CDD9] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#16305B] text-sm"
+                      disabled={submittingReschedule}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-[#0A2342] mb-2">
+                      Additional Comments
+                    </label>
+                    <textarea
+                      value={rescheduleData.attorneyComments}
+                      onChange={(e) => setRescheduleData({ ...rescheduleData, attorneyComments: e.target.value })}
+                      placeholder="Provide any additional details for the admin..."
+                      rows={4}
+                      className="w-full px-4 py-2 border border-[#C6CDD9] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#16305B] text-sm resize-none"
+                      disabled={submittingReschedule}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button
+                    onClick={handleRescheduleRequest}
+                    disabled={submittingReschedule || !rescheduleData.newScheduledDate || !rescheduleData.newScheduledTime}
+                    className="flex-1 px-6 py-3 bg-[#16305B] text-white rounded-lg font-semibold text-sm hover:bg-[#0A2342] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {submittingReschedule ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white"></div>
+                        <span>Submitting...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CalendarIcon className="w-4 h-4" />
+                        <span>Submit Reschedule Request</span>
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowRescheduleModal(false);
+                      setRescheduleData({
+                        newScheduledDate: "",
+                        newScheduledTime: "",
+                        reason: "",
+                        attorneyComments: "",
+                      });
+                      setErrorMessage("");
+                    }}
+                    disabled={submittingReschedule}
+                    className="px-6 py-3 bg-[#FAF9F6] text-[#455A7C] rounded-lg font-semibold text-sm hover:bg-[#f0ede6] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Cancel
                   </button>

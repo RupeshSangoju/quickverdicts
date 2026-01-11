@@ -36,6 +36,9 @@ const Case = require("../models/Case");
 const CaseDocument = require("../models/CaseDocument");
 const TrialRecording = require("../models/TrialRecording");
 const TrialIncident = require("../models/TrialIncident");
+const AttorneyRescheduleRequest = require("../models/AttorneyRescheduleRequest");
+const JurorApplication = require("../models/JurorApplication");
+const Notification = require("../models/Notification");
 
 // ============================================
 // HELPER FUNCTIONS
@@ -1451,5 +1454,389 @@ router.post("/jurors/:id/verify", async (req, res) => {
 
 router.get("/schedule", getAdminSchedule);
 router.put("/schedule", updateSchedule);
+
+// ============================================
+// ATTORNEY-INITIATED RESCHEDULE REQUESTS
+// ============================================
+
+/**
+ * GET /api/admin/reschedule-requests
+ * Get all pending attorney reschedule requests
+ */
+router.get("/reschedule-requests", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const requests = await AttorneyRescheduleRequest.getPendingRequests();
+
+    res.json({
+      success: true,
+      requests,
+      count: requests.length,
+    });
+  } catch (error) {
+    console.error("Error getting reschedule requests:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get reschedule requests",
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * POST /api/admin/reschedule-requests/:requestId/approve
+ * Approve attorney reschedule request
+ * This will:
+ * 1. Update case scheduled date/time
+ * 2. Delete all accepted juror applications
+ * 3. Notify attorney of approval
+ */
+router.post("/reschedule-requests/:requestId/approve", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const adminId = req.user.id;
+    const { adminComments } = req.body;
+
+    console.log(`✅ [Admin] Approving reschedule request ${requestId} by admin ${adminId}`);
+
+    // Get the reschedule request
+    const request = await AttorneyRescheduleRequest.findById(requestId);
+    if (!request) {
+      return res.status(404).json({
+        success: false,
+        message: "Reschedule request not found",
+      });
+    }
+
+    // Check if already processed
+    if (request.Status !== "pending") {
+      return res.status(400).json({
+        success: false,
+        message: `Reschedule request has already been ${request.Status}`,
+      });
+    }
+
+    // Get case data
+    const caseData = await Case.findById(request.CaseId);
+    if (!caseData) {
+      return res.status(404).json({
+        success: false,
+        message: "Case not found",
+      });
+    }
+
+    console.log(`📅 Updating case ${request.CaseId} schedule to ${request.NewScheduledDate} ${request.NewScheduledTime}`);
+
+    // Update case with new scheduled date/time AND reset status to war_room
+    // This ensures the case appears on the job board for new juror applications
+    try {
+      await Case.updateCaseDetails(request.CaseId, {
+        scheduledDate: request.NewScheduledDate,
+        scheduledTime: request.NewScheduledTime,
+        attorneyStatus: 'war_room',
+      });
+      console.log(`✅ Case schedule updated and status reset to war_room`);
+    } catch (updateError) {
+      console.error("❌ Error updating case schedule:", updateError);
+      throw new Error(`Failed to update case schedule: ${updateError.message}`);
+    }
+
+    // Delete ALL juror applications for this case (approved, pending, rejected)
+    // This ensures the case goes back to job board and no jurors see it in "My Cases"
+    const { executeQuery, sql } = require("../config/db");
+    let deletedCount = 0;
+    let affectedJurors = [];
+
+    try {
+      // First, get the list of jurors who had applications
+      affectedJurors = await executeQuery(async (pool) => {
+        const result = await pool
+          .request()
+          .input("caseId", sql.Int, parseInt(request.CaseId))
+          .query(`
+            SELECT DISTINCT JurorId, Status
+            FROM dbo.JurorApplications
+            WHERE CaseId = @caseId
+          `);
+        return result.recordset;
+      });
+
+      // Delete all applications for this case
+      deletedCount = await executeQuery(async (pool) => {
+        const result = await pool
+          .request()
+          .input("caseId", sql.Int, parseInt(request.CaseId))
+          .query(`
+            DELETE FROM dbo.JurorApplications
+            WHERE CaseId = @caseId;
+            SELECT @@ROWCOUNT AS deletedCount;
+          `);
+        return result.recordset[0].deletedCount;
+      });
+      console.log(`🗑️  Deleted ${deletedCount} juror applications (all statuses) for case ${request.CaseId}`);
+    } catch (deleteError) {
+      console.error("❌ Error deleting juror applications:", deleteError);
+      // Continue even if deletion fails - we don't want to block the approval
+    }
+
+    // Approve the reschedule request (mark as approved in DB)
+    try {
+      await AttorneyRescheduleRequest.approveRequest(requestId, adminId, adminComments);
+      console.log(`✅ Reschedule request ${requestId} marked as approved`);
+    } catch (approveError) {
+      console.error("❌ Error approving request:", approveError);
+      throw new Error(`Failed to mark request as approved: ${approveError.message}`);
+    }
+
+    // Notify attorney of approval
+    try {
+      await Notification.createNotification({
+        userId: request.AttorneyId,
+        userType: "attorney",
+        caseId: request.CaseId,
+        type: "reschedule_approved",
+        title: "Reschedule Request Approved",
+        message: `Your reschedule request for case "${request.CaseTitle}" has been approved. The case has been rescheduled to ${request.NewScheduledDate} at ${request.NewScheduledTime}. All juror applications have been removed and the case is now available on the job board for new applications.`,
+      });
+      console.log(`📧 Notification sent to attorney ${request.AttorneyId}`);
+    } catch (notifError) {
+      console.error("❌ Error sending notification:", notifError);
+      // Continue even if notification fails
+    }
+
+    // Notify all affected jurors that their application was removed due to reschedule
+    try {
+      for (const juror of affectedJurors) {
+        const statusText = juror.Status === 'approved' ? 'accepted' : juror.Status;
+        await Notification.createNotification({
+          userId: juror.JurorId,
+          userType: "juror",
+          caseId: request.CaseId,
+          type: "case_rescheduled",
+          title: "Case Rescheduled - Application Removed",
+          message: `The case "${request.CaseTitle}" has been rescheduled to ${request.NewScheduledDate} at ${request.NewScheduledTime}. Your ${statusText} application has been removed. You can reapply from the job board if you're available at the new time.`,
+        });
+      }
+      console.log(`📧 Notifications sent to ${affectedJurors.length} affected jurors`);
+    } catch (notifError) {
+      console.error("❌ Error sending juror notifications:", notifError);
+      // Continue even if notification fails
+    }
+
+    res.json({
+      success: true,
+      message: "Reschedule request approved successfully. Case updated and jurors removed.",
+      deletedJurors: deletedCount,
+    });
+  } catch (error) {
+    console.error("❌ Error approving reschedule request:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to approve reschedule request",
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * POST /api/admin/reschedule-requests/:requestId/reject
+ * Reject attorney reschedule request
+ * This will notify the attorney with the rejection reason
+ */
+router.post("/reschedule-requests/:requestId/reject", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const adminId = req.user.id;
+    const { adminComments } = req.body;
+
+    console.log(`❌ [Admin] Rejecting reschedule request ${requestId} by admin ${adminId}`);
+
+    if (!adminComments || adminComments.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Admin comments are required for rejection",
+      });
+    }
+
+    // Get the reschedule request
+    const request = await AttorneyRescheduleRequest.findById(requestId);
+    if (!request) {
+      return res.status(404).json({
+        success: false,
+        message: "Reschedule request not found",
+      });
+    }
+
+    // Check if already processed
+    if (request.Status !== "pending") {
+      return res.status(400).json({
+        success: false,
+        message: `Reschedule request has already been ${request.Status}`,
+      });
+    }
+
+    // Reject the reschedule request
+    await AttorneyRescheduleRequest.rejectRequest(requestId, adminId, adminComments);
+
+    // Notify attorney of rejection
+    await Notification.createNotification({
+      userId: request.AttorneyId,
+      userType: "attorney",
+      caseId: request.CaseId,
+      type: "reschedule_rejected",
+      title: "Reschedule Request Rejected",
+      message: `Your reschedule request for case "${request.CaseTitle}" has been rejected. Reason: ${adminComments}`,
+    });
+
+    res.json({
+      success: true,
+      message: "Reschedule request rejected successfully. Attorney has been notified.",
+    });
+  } catch (error) {
+    console.error("Error rejecting reschedule request:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to reject reschedule request",
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * POST /api/admin/cases/:caseId/reschedule
+ * Admin-initiated case reschedule
+ * This will:
+ * 1. Delete all juror applications
+ * 2. Reset case status to war_room
+ * 3. Notify attorney and affected jurors
+ */
+router.post("/cases/:caseId/reschedule", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const { caseId } = req.params;
+    const adminId = req.user.id;
+    const { reason } = req.body;
+
+    console.log(`📅 [Admin Reschedule] Admin ${adminId} rescheduling case ${caseId}`);
+
+    if (!reason || reason.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Reason is required for rescheduling",
+      });
+    }
+
+    // Get case data
+    const caseData = await Case.findById(caseId);
+    if (!caseData) {
+      return res.status(404).json({
+        success: false,
+        message: "Case not found",
+      });
+    }
+
+    const { executeQuery, sql } = require("../config/db");
+
+    // Get list of affected jurors before deletion
+    let affectedJurors = [];
+    try {
+      affectedJurors = await executeQuery(async (pool) => {
+        const result = await pool
+          .request()
+          .input("caseId", sql.Int, parseInt(caseId))
+          .query(`
+            SELECT DISTINCT JurorId, Status
+            FROM dbo.JurorApplications
+            WHERE CaseId = @caseId
+          `);
+        return result.recordset;
+      });
+    } catch (error) {
+      console.error("❌ Error getting affected jurors:", error);
+    }
+
+    // Delete all juror applications
+    let deletedCount = 0;
+    try {
+      deletedCount = await executeQuery(async (pool) => {
+        const result = await pool
+          .request()
+          .input("caseId", sql.Int, parseInt(caseId))
+          .query(`
+            DELETE FROM dbo.JurorApplications
+            WHERE CaseId = @caseId;
+            SELECT @@ROWCOUNT AS deletedCount;
+          `);
+        return result.recordset[0].deletedCount;
+      });
+      console.log(`🗑️  Deleted ${deletedCount} juror applications for case ${caseId}`);
+    } catch (error) {
+      console.error("❌ Error deleting juror applications:", error);
+    }
+
+    // Reset case status to war_room and mark as admin-rescheduled
+    try {
+      await Case.updateCaseDetails(caseId, {
+        attorneyStatus: 'war_room',
+        adminRescheduledBy: adminId,
+      });
+      console.log(`✅ Case ${caseId} status reset to war_room and marked as admin-rescheduled`);
+    } catch (error) {
+      console.error("❌ Error updating case status:", error);
+      throw new Error(`Failed to update case status: ${error.message}`);
+    }
+
+    let notificationsSent = 0;
+
+    // Notify attorney
+    try {
+      await Notification.createNotification({
+        userId: caseData.AttorneyId,
+        userType: "attorney",
+        caseId: parseInt(caseId),
+        type: "admin_case_rescheduled",
+        title: "Case Rescheduled by Admin",
+        message: `Your case "${caseData.CaseTitle}" has been rescheduled by the administrator. Reason: ${reason}. All juror applications have been removed. Please update the trial schedule and resubmit the case.`,
+      });
+      notificationsSent++;
+      console.log(`📧 Notification sent to attorney ${caseData.AttorneyId}`);
+    } catch (error) {
+      console.error("❌ Error sending attorney notification:", error);
+      console.error("❌ Full error details:", error);
+    }
+
+    // Notify all affected jurors
+    try {
+      for (const juror of affectedJurors) {
+        const statusText = juror.Status === 'approved' ? 'accepted' : juror.Status;
+        await Notification.createNotification({
+          userId: juror.JurorId,
+          userType: "juror",
+          caseId: parseInt(caseId),
+          type: "admin_case_rescheduled",
+          title: "Case Rescheduled by Admin",
+          message: `The case "${caseData.CaseTitle}" has been rescheduled by the administrator. Your ${statusText} application has been removed. You can reapply once the attorney updates the schedule.`,
+        });
+        notificationsSent++;
+      }
+      console.log(`📧 Notifications sent to ${affectedJurors.length} affected jurors`);
+    } catch (error) {
+      console.error("❌ Error sending juror notifications:", error);
+      console.error("❌ Full error details:", error);
+    }
+
+    res.json({
+      success: true,
+      message: "Case rescheduled successfully",
+      deletedApplications: deletedCount,
+      notificationsSent: notificationsSent,
+    });
+  } catch (error) {
+    console.error("❌ Error rescheduling case:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to reschedule case",
+      error: error.message,
+    });
+  }
+});
 
 module.exports = router;

@@ -12,6 +12,16 @@ import { useRouter } from "next/navigation";
 import { getToken } from "@/lib/apiClient";
 import { formatDateString } from "@/lib/dateUtils";
 
+// Format time to clean format (remove milliseconds)
+function formatTimeClean(timeStr: string): string {
+  if (!timeStr) return "N/A";
+  // Remove milliseconds (e.g., "16:00:00.0000000" -> "16:00:00")
+  const cleanTime = timeStr.split('.')[0];
+  // Extract hours and minutes only (e.g., "16:00:00" -> "16:00")
+  const [hours, minutes] = cleanTime.split(':');
+  return `${hours}:${minutes}`;
+}
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL
   ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api$/, "")
   : "http://localhost:4000";
@@ -429,7 +439,7 @@ export default function JobBoardSection() {
                         </div>
                         <div className="flex items-center justify-between">
                           <span className="text-gray-600">Time:</span>
-                          <span className="font-medium text-gray-900">{caseItem.ScheduledTime}</span>
+                          <span className="font-medium text-gray-900">{formatTimeClean(caseItem.ScheduledTime)}</span>
                         </div>
                         <div className="flex items-center justify-between">
                           <span className="text-gray-600">Location:</span>

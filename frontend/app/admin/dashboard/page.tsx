@@ -190,6 +190,7 @@ export default function AdminDashboard() {
     activeTrials: 0,
     scheduledTrials: 0,
     unreadNotifications: 0,
+    pendingRescheduleRequests: 0,
   });
 
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
@@ -248,6 +249,13 @@ export default function AdminDashboard() {
   const [deleteCaseId, setDeleteCaseId] = useState<number | null>(null);
   const [deleteCaseTitle, setDeleteCaseTitle] = useState<string>("");
   const [deletingCase, setDeletingCase] = useState(false);
+
+  // Case reschedule modal states
+  const [showRescheduleModal, setShowRescheduleModal] = useState(false);
+  const [rescheduleCaseId, setRescheduleCaseId] = useState<number | null>(null);
+  const [rescheduleCaseTitle, setRescheduleCaseTitle] = useState<string>("");
+  const [rescheduleReason, setRescheduleReason] = useState<string>("");
+  const [rescheduling, setRescheduling] = useState(false);
 
   const [approvalComments, setApprovalComments] = useState("");
 
@@ -470,12 +478,13 @@ export default function AdminDashboard() {
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      const [dashboardRes, attRes, jurRes, casesRes, statsRes] = await Promise.all([
+      const [dashboardRes, attRes, jurRes, casesRes, statsRes, rescheduleRes] = await Promise.all([
         fetchWithAuth(`${API_BASE}/api/admin/dashboard`),
         fetchWithAuth(`${API_BASE}/api/admin/attorneys`),
         fetchWithAuth(`${API_BASE}/api/admin/jurors`),
         fetchWithAuth(`${API_BASE}/api/admin/cases/pending`),
         fetchWithAuth(`${API_BASE}/api/admin/stats/comprehensive`),
+        fetchWithAuth(`${API_BASE}/api/admin/reschedule-requests`),
       ]);
 
       const dashboardData = await dashboardRes.json();
@@ -483,12 +492,15 @@ export default function AdminDashboard() {
       const jurData = await jurRes.json();
       const casesData = await casesRes.json();
       const statsData = await statsRes.json();
+      const rescheduleData = await rescheduleRes.json();
 
       if (dashboardData.success) {
         // Filter out any deleted cases as extra safeguard
         const activeCases = (dashboardData.pendingCases || []).filter((c: any) => c.IsDeleted === 0 || !c.IsDeleted);
         setPendingCases(activeCases);
       }
+
+      const pendingRescheduleCount = rescheduleData.success ? (rescheduleData.count || 0) : 0;
 
       if (statsData.success) {
         setStats({
@@ -500,6 +512,7 @@ export default function AdminDashboard() {
           activeTrials: statsData.stats.ActiveTrials,
           scheduledTrials: statsData.stats.ScheduledTrials,
           unreadNotifications: statsData.stats.UnreadNotifications,
+          pendingRescheduleRequests: pendingRescheduleCount,
         });
       }
 
@@ -1139,6 +1152,57 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleRescheduleCase = (caseId: number, caseTitle: string) => {
+    setRescheduleCaseId(caseId);
+    setRescheduleCaseTitle(caseTitle);
+    setRescheduleReason("");
+    setShowRescheduleModal(true);
+  };
+
+  const confirmRescheduleCase = async () => {
+    if (!rescheduleCaseId) return;
+
+    if (!rescheduleReason || rescheduleReason.trim().length === 0) {
+      toast.error("Please provide a reason for rescheduling");
+      return;
+    }
+
+    setRescheduling(true);
+    try {
+      const response = await fetchWithAuth(`${API_BASE}/api/admin/cases/${rescheduleCaseId}/reschedule`, {
+        method: 'POST',
+        body: JSON.stringify({ reason: rescheduleReason.trim() }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+
+        // Close the case modal
+        setShowCaseModal(false);
+        setSelectedCase(null);
+
+        // Refresh the case lists
+        toast.success(`Case "${rescheduleCaseTitle}" rescheduled successfully. ${data.notificationsSent || 0} notifications sent.`);
+
+        setShowRescheduleModal(false);
+        setRescheduleCaseId(null);
+        setRescheduleCaseTitle("");
+        setRescheduleReason("");
+
+        // Refresh dashboard data
+        fetchDashboardData();
+      } else {
+        const data = await response.json();
+        toast.error(`Failed to reschedule case: ${data.message || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error rescheduling case:', error);
+      toast.error('Failed to reschedule case. Please try again.');
+    } finally {
+      setRescheduling(false);
+    }
+  };
+
   const getJurorDecisionLabel = (status?: string) => {
     const normalized = (status || "").toString().trim().toLowerCase();
     if (normalized === 'approved') return 'Accepted';
@@ -1345,6 +1409,19 @@ function formatTime(timeString: string, scheduledDate: string) {
               </div>
             </div>
           </div>
+
+          <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl hover:scale-105 transition-all border border-gray-200 cursor-pointer" onClick={() => router.push('/admin/reschedule-requests')}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-600 text-sm font-medium">Reschedule Requests</p>
+                <p className="text-4xl font-bold mt-2" style={{ color: BLUE }}>{stats.pendingRescheduleRequests}</p>
+                <p className="text-gray-500 text-xs mt-1">Need review</p>
+              </div>
+              <div className="p-3 rounded-xl" style={{ backgroundColor: LIGHT_BLUE }}>
+                <Calendar className="h-8 w-8" style={{ color: BLUE }} />
+              </div>
+            </div>
+          </div>
         </div>
 
 {/* Calendar and Cases View */}
@@ -1380,8 +1457,8 @@ function formatTime(timeString: string, scheduledDate: string) {
                     <span className="text-gray-900 group-hover:text-green-600 font-semibold">Jurors Management</span>
                   </div>
                 </button>
-                <button 
-                  className="w-full bg-gradient-to-r from-yellow-50 to-yellow-100 rounded-lg p-4 text-left font-medium hover:shadow-md transition-all border border-yellow-200 group" 
+                <button
+                  className="w-full bg-gradient-to-r from-yellow-50 to-yellow-100 rounded-lg p-4 text-left font-medium hover:shadow-md transition-all border border-yellow-200 group"
                   onClick={() => casesSectionRef.current?.scrollIntoView({ behavior: "smooth" })}
                 >
                   <div className="flex items-center">
@@ -1389,6 +1466,24 @@ function formatTime(timeString: string, scheduledDate: string) {
                       <FileText className="h-5 w-5 text-white" />
                     </div>
                     <span className="text-gray-900 group-hover:text-yellow-600 font-semibold">Pending Cases</span>
+                  </div>
+                </button>
+                <button
+                  className="w-full bg-gradient-to-r from-amber-50 to-amber-100 rounded-lg p-4 text-left font-medium hover:shadow-md transition-all border border-amber-200 group"
+                  onClick={() => router.push('/admin/reschedule-requests')}
+                >
+                  <div className="flex items-center">
+                    <div className="p-2 bg-amber-500 rounded-lg mr-3 group-hover:scale-110 transition-transform">
+                      <Calendar className="h-5 w-5 text-white" />
+                    </div>
+                    <div className="flex-1 flex items-center justify-between">
+                      <span className="text-gray-900 group-hover:text-amber-600 font-semibold">Reschedule Requests</span>
+                      {stats.pendingRescheduleRequests > 0 && (
+                        <span className="px-2 py-1 bg-amber-500 text-white text-xs font-bold rounded-full">
+                          {stats.pendingRescheduleRequests}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </button>
               </div>
@@ -1669,6 +1764,36 @@ function formatTime(timeString: string, scheduledDate: string) {
               </div>
             )}
           </div>
+
+        {/* Reschedule Requests */}
+        <div className="bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 rounded-xl shadow-lg p-6 border-2 border-orange-300">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center">
+              <div className="p-3 bg-gradient-to-r from-orange-600 to-amber-600 rounded-lg mr-3">
+                <Calendar className="h-7 w-7 text-white" />
+              </div>
+              <div>
+                <h3 className="text-2xl font-bold bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">
+                  Reschedule Requests
+                </h3>
+                <p className="text-gray-700 text-sm font-medium">Attorney-initiated case reschedule requests pending approval</p>
+              </div>
+            </div>
+            <span className="px-4 py-2 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-full text-sm font-bold shadow-lg">
+              {stats.pendingRescheduleRequests} Pending
+            </span>
+          </div>
+
+          <div className="flex justify-center">
+            <button
+              onClick={() => router.push('/admin/reschedule-requests')}
+              className="bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all flex items-center gap-2"
+            >
+              <Calendar className="h-5 w-5" />
+              View All Reschedule Requests
+            </button>
+          </div>
+        </div>
 
         {/* Attorneys Table */}
         <div ref={attorneySectionRef} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -2175,13 +2300,22 @@ function formatTime(timeString: string, scheduledDate: string) {
             </div>
 
             <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 flex justify-between">
-              <button
-                onClick={() => handleDeleteCase(selectedCase.CaseId, selectedCase.CaseTitle)}
-                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium flex items-center gap-2 transition-colors"
-              >
-                <Trash2 className="h-4 w-4" />
-                Delete Case
-              </button>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => handleRescheduleCase(selectedCase.CaseId, selectedCase.CaseTitle)}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium flex items-center gap-2 transition-colors"
+                >
+                  <Calendar className="h-4 w-4" />
+                  Reschedule Case
+                </button>
+                <button
+                  onClick={() => handleDeleteCase(selectedCase.CaseId, selectedCase.CaseTitle)}
+                  className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium flex items-center gap-2 transition-colors"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete Case
+                </button>
+              </div>
               <button onClick={() => { setShowCaseModal(false); setSelectedCase(null); }} className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium">Close</button>
             </div>
           </div>
@@ -2277,6 +2411,71 @@ function formatTime(timeString: string, scheduledDate: string) {
                   </>
                 ) : (
                   "Delete Application"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reschedule Case Modal */}
+      {showRescheduleModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/10 backdrop-blur-md">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md">
+            <div className="flex items-center mb-4">
+              <Calendar className="h-6 w-6 text-blue-600 mr-3" />
+              <h3 className="text-xl font-semibold text-gray-900">Reschedule Case</h3>
+            </div>
+            <p className="text-gray-600 mb-4">
+              Reschedule the case <span className="font-semibold">"{rescheduleCaseTitle}"</span>
+            </p>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+              <p className="text-sm text-blue-800 font-medium mb-2">
+                ℹ️ Rescheduling this case will:
+              </p>
+              <ul className="text-sm text-blue-700 ml-4 list-disc space-y-1">
+                <li>Delete all juror applications (approved, pending, rejected)</li>
+                <li>Reset the case status to war room</li>
+                <li>Notify the attorney and all affected jurors</li>
+                <li>Attorney can then update the trial schedule and resubmit</li>
+              </ul>
+            </div>
+            <div className="mb-4">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Reason for Reschedule <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={rescheduleReason}
+                onChange={(e) => setRescheduleReason(e.target.value)}
+                placeholder="Enter the reason for rescheduling this case..."
+                rows={4}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-black focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={rescheduling}
+              />
+            </div>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowRescheduleModal(false)}
+                disabled={rescheduling}
+                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmRescheduleCase}
+                disabled={rescheduling || !rescheduleReason.trim()}
+                className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 font-medium disabled:opacity-50 inline-flex items-center"
+              >
+                {rescheduling ? (
+                  <>
+                    <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></span>
+                    Rescheduling...
+                  </>
+                ) : (
+                  <>
+                    <Calendar className="h-4 w-4 mr-2" />
+                    Confirm Reschedule
+                  </>
                 )}
               </button>
             </div>
