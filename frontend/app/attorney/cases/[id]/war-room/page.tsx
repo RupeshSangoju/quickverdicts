@@ -84,6 +84,7 @@ type CaseData = {
   ScheduledTime?: string;
   RequiredJurors?: number;
   AdminApprovalStatus?: string;
+  AdminRescheduledBy?: number | null;
   CaseDescription?: string;
   PaymentMethod?: string;
   PaymentAmount?: number;
