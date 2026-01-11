@@ -312,7 +312,10 @@ export default function WarRoomPage() {
   useEffect(() => {
     if (caseData && caseData.AdminRescheduledBy && !showRescheduleModal) {
       setShowRescheduleModal(true);
-      toast.info("Admin has requested that you reschedule this case. Please update the trial schedule.");
+      toast("Admin has requested that you reschedule this case. Please update the trial schedule.", {
+        icon: '📅',
+        duration: 5000,
+      });
     }
   }, [caseData, showRescheduleModal]);
 
