@@ -304,6 +304,7 @@ export default function WarRoomPage() {
     attorneyComments: "",
   });
   const [submittingReschedule, setSubmittingReschedule] = useState(false);
+  const [pendingRescheduleRequest, setPendingRescheduleRequest] = useState<any>(null);
 
   useEffect(() => {
     fetchWarRoomData();
@@ -328,7 +329,7 @@ export default function WarRoomPage() {
     }
 
     try {
-      const [caseRes, teamRes, docsRes, appsRes] = await Promise.all([
+      const [caseRes, teamRes, docsRes, appsRes, rescheduleRes] = await Promise.all([
         fetch(`${API_BASE}/api/case/cases/${caseId}`, {
           headers: createAuthHeaders(token)
         }),
@@ -339,6 +340,9 @@ export default function WarRoomPage() {
           headers: createAuthHeaders(token)
         }),
         fetch(`${API_BASE}/api/war-room/cases/${caseId}/applications`, {
+          headers: createAuthHeaders(token)
+        }),
+        fetch(`${API_BASE}/api/attorney/cases/${caseId}/reschedule-status`, {
           headers: createAuthHeaders(token)
         })
       ]);
@@ -361,6 +365,13 @@ export default function WarRoomPage() {
       if (appsRes.ok) {
         const appsJson = await appsRes.json();
         setApplications(appsJson.applications || []);
+      }
+
+      if (rescheduleRes.ok) {
+        const rescheduleJson = await rescheduleRes.json();
+        // Only set pending request if status is 'pending'
+        const request = rescheduleJson.rescheduleRequest;
+        setPendingRescheduleRequest(request && request.Status === 'pending' ? request : null);
       }
     } catch (error) {
       console.error("Error fetching war room data:", error);
@@ -831,6 +842,8 @@ export default function WarRoomPage() {
       setErrorMessage("");
       toast.success("Reschedule request submitted successfully! Admin will review your request.");
       setShowRescheduleModal(false);
+      // Refresh war room data to show pending request banner
+      await fetchWarRoomData();
     } catch (error: any) {
       console.error("Reschedule request error:", error);
       setErrorMessage(error.message || "Failed to submit reschedule request");
@@ -850,6 +863,30 @@ export default function WarRoomPage() {
           <ArrowLeftIcon className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
           <span>Back to Home</span>
         </button>
+
+        {/* Pending Reschedule Request Banner */}
+        {pendingRescheduleRequest && (
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-l-4 border-amber-500 rounded-lg p-4 shadow-sm">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-amber-100 rounded-lg">
+                <ClockIcon className="w-5 h-5 text-amber-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm font-semibold text-amber-900 mb-1">
+                  Reschedule Request Pending Admin Approval
+                </h3>
+                <p className="text-sm text-amber-800">
+                  Your request to reschedule this case to <span className="font-semibold">{formatDateString(pendingRescheduleRequest.NewScheduledDate)}</span> at <span className="font-semibold">{formatTimeDisplay(pendingRescheduleRequest.NewScheduledTime, pendingRescheduleRequest.NewScheduledDate)}</span> is awaiting admin review.
+                </p>
+                {pendingRescheduleRequest.AttorneyComments && (
+                  <p className="text-xs text-amber-700 mt-2">
+                    <span className="font-medium">Your comments:</span> {pendingRescheduleRequest.AttorneyComments}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Header Card */}
         <div className="bg-white rounded-lg shadow border border-[#C6CDD9] overflow-hidden">
@@ -887,18 +924,26 @@ export default function WarRoomPage() {
                   {isAdminApproved && caseData?.ScheduledDate && caseData?.ScheduledTime && (
                     <button
                       onClick={() => {
-                        console.log('🔍 [Reschedule Modal] Opening with case data:', {
-                          ScheduledDate: caseData.ScheduledDate,
-                          ScheduledTime: caseData.ScheduledTime,
-                          CaseId: caseData.Id,
-                          CaseTitle: caseData.CaseTitle,
-                        });
-                        setShowRescheduleModal(true);
+                        if (!pendingRescheduleRequest) {
+                          console.log('🔍 [Reschedule Modal] Opening with case data:', {
+                            ScheduledDate: caseData.ScheduledDate,
+                            ScheduledTime: caseData.ScheduledTime,
+                            CaseId: caseData.Id,
+                            CaseTitle: caseData.CaseTitle,
+                          });
+                          setShowRescheduleModal(true);
+                        }
                       }}
-                      className="px-3 py-1.5 bg-amber-500/90 hover:bg-amber-500 text-white rounded-lg font-semibold text-xs transition-all flex items-center gap-1.5"
+                      disabled={!!pendingRescheduleRequest}
+                      className={`px-3 py-1.5 rounded-lg font-semibold text-xs transition-all flex items-center gap-1.5 ${
+                        pendingRescheduleRequest
+                          ? 'bg-gray-400 cursor-not-allowed opacity-60 text-white'
+                          : 'bg-amber-500/90 hover:bg-amber-500 text-white'
+                      }`}
+                      title={pendingRescheduleRequest ? 'You have a pending reschedule request' : 'Request to reschedule this case'}
                     >
                       <CalendarIcon className="w-3.5 h-3.5" />
-                      Reschedule Case
+                      {pendingRescheduleRequest ? 'Request Pending' : 'Reschedule Case'}
                     </button>
                   )}
                   {/* Join Trial button removed per UX request; submit will enable join elsewhere */}
