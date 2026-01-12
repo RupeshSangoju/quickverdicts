@@ -876,7 +876,7 @@ export default function WarRoomPage() {
                   Reschedule Request Pending Admin Approval
                 </h3>
                 <p className="text-sm text-amber-800">
-                  Your request to reschedule this case to <span className="font-semibold">{formatDateString(pendingRescheduleRequest.NewScheduledDate)}</span> at <span className="font-semibold">{formatTimeDisplay(pendingRescheduleRequest.NewScheduledTime, pendingRescheduleRequest.NewScheduledDate)}</span> is awaiting admin review.
+                  Your request to reschedule this case to <span className="font-semibold">{formatDateString(pendingRescheduleRequest.NewScheduledDate)}</span> at <span className="font-semibold">{formatTime(pendingRescheduleRequest.NewScheduledTime, pendingRescheduleRequest.NewScheduledDate)}</span> is awaiting admin review.
                 </p>
                 {pendingRescheduleRequest.AttorneyComments && (
                   <p className="text-xs text-amber-700 mt-2">
