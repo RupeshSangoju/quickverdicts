@@ -698,12 +698,14 @@ export default function WarRoomPage() {
   const requiredJurors = caseData?.RequiredJurors ?? 1;
   // Check if war room can be submitted (jurors + case status)
   const isWarRoomStatus = caseData?.AttorneyStatus === "war_room";
-  const canSubmitWarRoom = approvedCount >= requiredJurors && approvedCount <= 7 && isWarRoomStatus && isAdminApproved;
+  const canSubmitWarRoom = approvedCount >= requiredJurors && approvedCount <= 7 && isWarRoomStatus && isAdminApproved && !pendingRescheduleRequest;
 
   const jurorCountMessage = !isAdminApproved
     ? `⏳ Waiting for admin approval`
     : !isWarRoomStatus
     ? `✓ War room submitted (Status: ${caseData?.AttorneyStatus})`
+    : pendingRescheduleRequest
+    ? `⏳ Waiting for admin to approve reschedule request`
     : approvedCount < requiredJurors
     ? `Need ${requiredJurors - approvedCount} more approved juror${requiredJurors - approvedCount === 1 ? '' : 's'}`
     : approvedCount > 7
@@ -949,8 +951,9 @@ export default function WarRoomPage() {
                   {/* Join Trial button removed per UX request; submit will enable join elsewhere */}
                   <button
                     onClick={submitWarRoom}
-                    disabled={submittingWarRoom || !isWarRoomStatus}
+                    disabled={submittingWarRoom || !isWarRoomStatus || !!pendingRescheduleRequest}
                     className="px-4 py-1.5 bg-white text-[#16305B] rounded-lg font-semibold text-sm hover:bg-white/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                    title={pendingRescheduleRequest ? 'Cannot submit while reschedule request is pending' : ''}
                   >
                     {submittingWarRoom ? (
                       <>
