@@ -399,7 +399,7 @@ export default function ScheduleTrialPage() {
       console.log("✅ Case created successfully:", data);
 
       // Success! Show toast notification
-      toast.success("Case created successfully! Redirecting to dashboard...", {
+      toast.success("Trial Scheduled Successfully! A confirmation has been sent to your email address.", {
         duration: 3000,
         icon: "✅",
       });
@@ -526,14 +526,6 @@ export default function ScheduleTrialPage() {
             {scheduled ? (
               <div className="flex-1 flex flex-col items-center justify-center px-8">
                 <div className="w-full max-w-2xl bg-white rounded-2xl shadow-lg border border-gray-200 p-10">
-                  <div className="text-center mb-8">
-                    <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
-                      <CheckCircle2 className="w-10 h-10 text-green-600" />
-                    </div>
-                    <h2 className="text-2xl font-bold text-gray-900 mb-2">Trial Scheduled Successfully!</h2>
-                    <p className="text-gray-600">A confirmation has been sent to your email address.</p>
-                  </div>
-
                   <div className="bg-gray-50 rounded-xl p-6 mb-8 border border-gray-200">
                     <h3 className="font-semibold text-gray-900 mb-4 text-lg">Trial Details</h3>
                     
