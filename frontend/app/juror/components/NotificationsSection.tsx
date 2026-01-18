@@ -16,6 +16,7 @@ type Notification = {
   IsRead: boolean;
   CreatedAt: string;
   CaseTitle?: string;
+  CaseId?: number;
 };
 
 export default function NotificationsSection() {
@@ -177,6 +178,7 @@ export default function NotificationsSection() {
                       {notification.CaseTitle && (
                         <p className="text-xs text-gray-500">
                           Related to: <span className="font-medium">{notification.CaseTitle}</span>
+                          {notification.CaseId && <span className="text-gray-400 ml-1">(Case ID: {notification.CaseId})</span>}
                         </p>
                       )}
                     </div>
