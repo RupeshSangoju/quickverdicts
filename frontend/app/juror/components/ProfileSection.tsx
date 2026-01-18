@@ -32,6 +32,11 @@ export default function ProfileSection() {
   const [editData, setEditData] = useState({ name: "", email: "", password: "", phone: "" });
   const [updating, setUpdating] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     const fetchJuror = async () => {
@@ -95,6 +100,105 @@ export default function ProfileSection() {
     setEditData({ ...editData, [e.target.name]: e.target.value });
   }
 
+  async function sendOtp() {
+    try {
+      const token = getToken();
+      if (!token) {
+        alert("Authentication token not found. Please login again.");
+        return false;
+      }
+
+      const res = await fetch(`${API_BASE}/api/auth/send-otp`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({ email: juror?.email }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setOtpSent(true);
+        return true;
+      } else {
+        alert(data.message || "Failed to send OTP");
+        return false;
+      }
+    } catch (err) {
+      alert("Failed to send OTP. Please try again.");
+      return false;
+    }
+  }
+
+  async function verifyOtpAndUpdate() {
+    setVerifyingOtp(true);
+    try {
+      const token = getToken();
+      if (!token) {
+        alert("Authentication token not found. Please login again.");
+        setVerifyingOtp(false);
+        return;
+      }
+
+      // First verify OTP
+      const verifyRes = await fetch(`${API_BASE}/api/auth/verify-otp`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          email: juror?.email,
+          otp: otp
+        }),
+      });
+
+      const verifyData = await verifyRes.json();
+      if (!verifyData.success) {
+        alert(verifyData.message || "Invalid OTP. Please try again.");
+        setVerifyingOtp(false);
+        return;
+      }
+
+      // OTP verified, now update profile with password
+      const updateRes = await fetch(`${API_BASE}/api/juror/profile`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: editData.name,
+          email: editData.email,
+          password: editData.password,
+          phone: editData.phone,
+        }),
+      });
+
+      const updateData = await updateRes.json();
+      if (updateData.success) {
+        alert("Profile updated successfully!");
+        if (updateData.juror) {
+          setJuror(updateData.juror);
+        } else {
+          setJuror(j => j ? { ...j, name: editData.name, phone: editData.phone } : j);
+        }
+        setShowOtpModal(false);
+        setShowEdit(false);
+        setOtp("");
+        setOtpSent(false);
+        setEditData({ name: "", email: "", password: "", phone: "" });
+      } else {
+        alert(updateData.message || "Failed to update profile");
+      }
+    } catch (err) {
+      alert("Failed to update profile. Please try again.");
+    } finally {
+      setVerifyingOtp(false);
+    }
+  }
+
   if (loading) {
     return (
       <main className="flex-1 min-h-screen flex items-center justify-center bg-[#FAF9F6]">
@@ -110,6 +214,20 @@ export default function ProfileSection() {
 
   async function handleEditProfile(e: React.FormEvent) {
     e.preventDefault();
+
+    // If password is being changed, require OTP verification
+    if (editData.password && editData.password.trim() !== "") {
+      setUpdating(true);
+      const otpSentSuccess = await sendOtp();
+      setUpdating(false);
+
+      if (otpSentSuccess) {
+        setShowOtpModal(true);
+      }
+      return;
+    }
+
+    // If no password change, update profile normally
     setUpdating(true);
     try {
       const token = getToken();
@@ -120,16 +238,7 @@ export default function ProfileSection() {
         return;
       }
 
-      // Simulate API call for demo
-      setTimeout(() => {
-        if (juror) {
-          setJuror({ ...juror, name: editData.name, phone: editData.phone });
-        }
-        setShowEdit(false);
-        setUpdating(false);
-      }, 1500);
-
-        const res = await fetch(`${API_BASE}/api/juror/profile`, {
+      const res = await fetch(`${API_BASE}/api/juror/profile`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -138,7 +247,6 @@ export default function ProfileSection() {
         body: JSON.stringify({
           name: editData.name,
           email: editData.email,
-          password: editData.password,
           phone: editData.phone,
         }),
       });
@@ -149,12 +257,14 @@ export default function ProfileSection() {
         } else {
           setJuror(j => j ? { ...j, name: editData.name, phone: editData.phone } : j);
         }
+        alert("Profile updated successfully!");
         setShowEdit(false);
       } else {
         alert(data.message || "Failed to update profile");
       }
     } catch (err) {
       alert("Failed to update profile");
+    } finally {
       setUpdating(false);
     }
   }
@@ -292,6 +402,25 @@ export default function ProfileSection() {
                     style={{ color: "#0A2342" }}
                   />
                 </div>
+                <div>
+                  <label className="block text-[15px] font-semibold mb-2 text-[#0A2342]">Password</label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value="************"
+                      disabled
+                      className="w-full border border-gray-300 rounded-md px-4 py-2.5 bg-white text-[15px] font-medium text-[#0A2342] focus:outline-none focus:ring-2 focus:ring-[#0C2D57] transition cursor-not-allowed pr-10"
+                      style={{ color: "#0A2342" }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                </div>
                 <button
                   type="button"
                   className="mt-2 px-5 py-2 bg-[#0C2D57] text-white rounded-md hover:bg-[#0a2342] text-[15px] font-medium shadow-sm transition"
@@ -307,13 +436,6 @@ export default function ProfileSection() {
                   }}
                 >
                   Edit Profile
-                </button>
-                <button
-                  type="button"
-                  className="mt-2 ml-2 px-5 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 text-[15px] font-medium shadow-sm transition"
-                  onClick={() => window.location.href = '/forgot-password'}
-                >
-                  Change Password
                 </button>
               </div>
             </div>
@@ -404,17 +526,30 @@ export default function ProfileSection() {
                     disabled
                     className="w-full border rounded px-3 py-2 bg-gray-100 text-black"
                   />
-                  <p className="text-xs text-gray-500 mt-1">To change your password, use the "Change Password" button on your profile</p>
                 </div>
                 <div>
                   <label className="block text-sm text-gray-800 font-medium mb-1">Phone Number</label>
-                  <input 
-                    name="phone" 
-                    type="text" 
-                    value={editData.phone} 
-                    onChange={handleEditChange} 
-                    className="w-full border rounded px-3 py-2 text-black focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                  <input
+                    name="phone"
+                    type="text"
+                    value={editData.phone}
+                    onChange={handleEditChange}
+                    className="w-full border rounded px-3 py-2 text-black focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-800 font-medium mb-1">New Password (Optional)</label>
+                  <input
+                    name="password"
+                    type="password"
+                    value={editData.password}
+                    onChange={handleEditChange}
+                    placeholder="Enter new password to change"
+                    className="w-full border rounded px-3 py-2 text-black focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  {editData.password && (
+                    <p className="text-xs text-amber-600 mt-1">⚠️ Changing password requires email verification</p>
+                  )}
                 </div>
                 <div className="flex gap-2 mt-6">
                   <button 
@@ -473,6 +608,79 @@ export default function ProfileSection() {
                   disabled={deleting}
                 >
                   Go Back
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* OTP Verification Modal */}
+        {showOtpModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-auto">
+            <div
+              className="absolute inset-0 bg-black/20"
+              onClick={() => !verifyingOtp && setShowOtpModal(false)}
+            ></div>
+            <div className="relative bg-white rounded-lg shadow-2xl p-8 w-full max-w-md border-4" style={{ borderColor: '#0C2D57' }}>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold" style={{ color: '#0C2D57' }}>Email Verification</h2>
+                <button
+                  onClick={() => {
+                    if (!verifyingOtp) {
+                      setShowOtpModal(false);
+                      setOtp("");
+                      setOtpSent(false);
+                    }
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                  disabled={verifyingOtp}
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="mb-6">
+                <p className="text-sm text-gray-700 mb-4">
+                  We've sent a verification code to <strong>{juror?.email}</strong>
+                </p>
+                <p className="text-xs text-gray-500 mb-4">
+                  Please enter the 6-digit code to verify your password change.
+                </p>
+
+                <label className="block text-sm text-gray-800 font-medium mb-2">
+                  Verification Code
+                </label>
+                <input
+                  type="text"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
+                  placeholder="Enter 6-digit code"
+                  maxLength={6}
+                  className="w-full border rounded px-3 py-2 text-black text-center text-lg tracking-widest focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={verifyingOtp}
+                />
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={verifyOtpAndUpdate}
+                  disabled={verifyingOtp || otp.length !== 6}
+                  className="w-full px-4 py-2 bg-[#0C2D57] text-white rounded hover:bg-[#0a2342] disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                >
+                  {verifyingOtp ? "Verifying..." : "Verify and Update"}
+                </button>
+
+                <button
+                  onClick={async () => {
+                    const success = await sendOtp();
+                    if (success) {
+                      alert("New OTP sent to your email!");
+                    }
+                  }}
+                  disabled={verifyingOtp}
+                  className="w-full px-4 py-2 text-[#0C2D57] bg-white border border-[#0C2D57] rounded hover:bg-gray-50 transition-colors font-medium disabled:opacity-50"
+                >
+                  Resend Code
                 </button>
               </div>
             </div>
