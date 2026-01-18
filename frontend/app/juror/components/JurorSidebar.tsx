@@ -27,7 +27,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL
   ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api$/, '')
   : "http://localhost:4000";
 
-type Section = "home" | "profile" | "notifications" | "assigned" | "jobs";
+type Section = "home" | "profile" | "notifications" | "jobs";
 
 interface JurorSidebarProps {
   selectedSection: Section;
@@ -221,7 +221,6 @@ export default function JurorSidebar({ selectedSection, onSectionChange, onColla
 
   const mainNav = [
     { id: "home", label: "Home", icon: <Home className="w-6 h-6" />, requiresVerification: false },
-    { id: "assigned", label: "Assigned Cases", icon: <Briefcase className="w-6 h-6" />, requiresVerification: true },
     { id: "jobs", label: "Job Board", icon: <ClipboardType className="w-6 h-6" />, requiresVerification: true },
   ];
 
