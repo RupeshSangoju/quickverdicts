@@ -32,7 +32,6 @@ export default function ProfileSection() {
   const [editData, setEditData] = useState({ name: "", email: "", password: "", phone: "" });
   const [updating, setUpdating] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     const fetchJuror = async () => {
@@ -293,25 +292,6 @@ export default function ProfileSection() {
                     style={{ color: "#0A2342" }}
                   />
                 </div>
-                <div>
-                  <label className="block text-[15px] font-semibold mb-2 text-[#0A2342]">Password</label>
-                  <div className="relative">
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      value={"************"}
-                      disabled
-                      className="w-full border border-gray-300 rounded-md px-4 py-2.5 bg-white text-[15px] font-medium pr-10 text-[#0A2342] focus:outline-none focus:ring-2 focus:ring-[#0C2D57] transition cursor-not-allowed"
-                      style={{ color: "#0A2342" }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
-                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
-                </div>
                 <button
                   type="button"
                   className="mt-2 px-5 py-2 bg-[#0C2D57] text-white rounded-md hover:bg-[#0a2342] text-[15px] font-medium shadow-sm transition"
@@ -327,6 +307,13 @@ export default function ProfileSection() {
                   }}
                 >
                   Edit Profile
+                </button>
+                <button
+                  type="button"
+                  className="mt-2 ml-2 px-5 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 text-[15px] font-medium shadow-sm transition"
+                  onClick={() => window.location.href = '/forgot-password'}
+                >
+                  Change Password
                 </button>
               </div>
             </div>
@@ -410,24 +397,14 @@ export default function ProfileSection() {
                 </div>
                 <div>
                   <label className="block text-sm text-gray-800 font-medium mb-1">Email Address</label>
-                  <input 
-                    name="email" 
-                    type="email" 
-                    value={editData.email} 
-                    disabled 
-                    className="w-full border rounded px-3 py-2 bg-gray-100 text-black" 
+                  <input
+                    name="email"
+                    type="email"
+                    value={editData.email}
+                    disabled
+                    className="w-full border rounded px-3 py-2 bg-gray-100 text-black"
                   />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-800 font-medium mb-1">Password</label>
-                  <input 
-                    name="password" 
-                    type="password" 
-                    value={editData.password} 
-                    disabled 
-                    className="w-full border rounded px-3 py-2 bg-gray-100 text-black" 
-                    placeholder="Leave blank to keep current password"
-                  />
+                  <p className="text-xs text-gray-500 mt-1">To change your password, use the "Change Password" button on your profile</p>
                 </div>
                 <div>
                   <label className="block text-sm text-gray-800 font-medium mb-1">Phone Number</label>
