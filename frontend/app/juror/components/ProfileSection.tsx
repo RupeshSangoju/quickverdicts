@@ -36,6 +36,8 @@ export default function ProfileSection() {
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   useEffect(() => {
     const fetchJuror = async () => {
@@ -175,7 +177,6 @@ export default function ProfileSection() {
 
       const updateData = await updateRes.json();
       if (updateData.success) {
-        alert("Profile updated successfully!");
         if (updateData.juror) {
           setJuror(updateData.juror);
         } else {
@@ -186,6 +187,9 @@ export default function ProfileSection() {
         setOtp("");
         setOtpSent(false);
         setEditData({ name: "", email: "", password: "", phone: "" });
+        setShowNewPassword(false);
+        setSuccessMessage("Profile updated successfully!");
+        setTimeout(() => setSuccessMessage(""), 5000);
       } else {
         alert(updateData.message || "Failed to update profile");
       }
@@ -254,8 +258,10 @@ export default function ProfileSection() {
         } else {
           setJuror(j => j ? { ...j, name: editData.name, phone: editData.phone } : j);
         }
-        alert("Profile updated successfully!");
         setShowEdit(false);
+        setShowNewPassword(false);
+        setSuccessMessage("Profile updated successfully!");
+        setTimeout(() => setSuccessMessage(""), 5000);
       } else {
         alert(data.message || "Failed to update profile");
       }
@@ -332,6 +338,16 @@ export default function ProfileSection() {
   return (
     <main className="flex-1 min-h-screen overflow-y-auto p-0">
       <div className="p-8 md:p-10 bg-[#FAF9F6] min-h-screen w-full">
+        {/* Success Message */}
+        {successMessage && (
+          <div className="fixed top-4 right-4 z-50 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-2 animate-slide-in">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            <span className="font-medium">{successMessage}</span>
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-2xl font-bold text-[#0C2D57]">Profile</h1>
@@ -487,7 +503,12 @@ export default function ProfileSection() {
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold" style={{ color: '#0C2D57' }}>Edit Profile</h2>
                 <button
-                  onClick={() => !updating && setShowEdit(false)}
+                  onClick={() => {
+                    if (!updating) {
+                      setShowEdit(false);
+                      setShowNewPassword(false);
+                    }
+                  }}
                   className="text-gray-400 hover:text-gray-600"
                   disabled={updating}
                 >
@@ -528,14 +549,25 @@ export default function ProfileSection() {
                 </div>
                 <div>
                   <label className="block text-sm text-gray-800 font-medium mb-1">New Password (Optional)</label>
-                  <input
-                    name="password"
-                    type="password"
-                    value={editData.password}
-                    onChange={handleEditChange}
-                    placeholder="Enter new password to change"
-                    className="w-full border rounded px-3 py-2 text-black focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                  <div className="relative">
+                    <input
+                      name="password"
+                      type={showNewPassword ? "text" : "password"}
+                      value={editData.password}
+                      onChange={handleEditChange}
+                      placeholder="Enter new password to change"
+                      className="w-full border rounded px-3 py-2 text-black focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
+                    />
+                    {editData.password && (
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                      >
+                        {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    )}
+                  </div>
                   {editData.password && (
                     <p className="text-xs text-amber-600 mt-1">⚠️ Changing password requires email verification</p>
                   )}
@@ -548,9 +580,12 @@ export default function ProfileSection() {
                   >
                     {updating ? "Updating..." : "Update"}
                   </button>
-                  <button 
-                    onClick={() => setShowEdit(false)} 
-                    className="px-4 py-2 text-gray-800 bg-gray-200 rounded hover:bg-gray-300 transition-colors" 
+                  <button
+                    onClick={() => {
+                      setShowEdit(false);
+                      setShowNewPassword(false);
+                    }}
+                    className="px-4 py-2 text-gray-800 bg-gray-200 rounded hover:bg-gray-300 transition-colors"
                     disabled={updating}
                   >
                     Cancel
