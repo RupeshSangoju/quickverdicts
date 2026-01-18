@@ -36,7 +36,6 @@ export default function ProfileSection() {
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     const fetchJuror = async () => {
@@ -114,7 +113,6 @@ export default function ProfileSection() {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`,
         },
-        body: JSON.stringify({ email: juror?.email }),
       });
 
       const data = await res.json();
@@ -149,7 +147,6 @@ export default function ProfileSection() {
           "Authorization": `Bearer ${token}`,
         },
         body: JSON.stringify({
-          email: juror?.email,
           otp: otp
         }),
       });
@@ -404,22 +401,14 @@ export default function ProfileSection() {
                 </div>
                 <div>
                   <label className="block text-[15px] font-semibold mb-2 text-[#0A2342]">Password</label>
-                  <div className="relative">
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      value="************"
-                      disabled
-                      className="w-full border border-gray-300 rounded-md px-4 py-2.5 bg-white text-[15px] font-medium text-[#0A2342] focus:outline-none focus:ring-2 focus:ring-[#0C2D57] transition cursor-not-allowed pr-10"
-                      style={{ color: "#0A2342" }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                    >
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
-                  </div>
+                  <input
+                    type="password"
+                    value="************"
+                    disabled
+                    className="w-full border border-gray-300 rounded-md px-4 py-2.5 bg-white text-[15px] font-medium text-[#0A2342] focus:outline-none focus:ring-2 focus:ring-[#0C2D57] transition cursor-not-allowed"
+                    style={{ color: "#0A2342" }}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">For security, passwords cannot be displayed. Use Edit Profile to change your password.</p>
                 </div>
                 <button
                   type="button"

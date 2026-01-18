@@ -36,6 +36,10 @@ const {
   verifyToken,
   getCurrentUser,
   verifyEmailVerificationToken,
+
+  // Authenticated OTP (for profile password changes)
+  sendAuthenticatedOTP,
+  verifyAuthenticatedOTP,
 } = require("../controllers/authController");
 
 /* ===========================================================
@@ -457,6 +461,26 @@ router.get("/check", (req, res) => {
     },
   });
 });
+
+/**
+ * POST /api/auth/send-otp
+ * Send OTP to authenticated user's email (for password change)
+ */
+router.post(
+  "/send-otp",
+  otpLimiter,
+  asyncHandler(sendAuthenticatedOTP)
+);
+
+/**
+ * POST /api/auth/verify-otp
+ * Verify OTP for authenticated user (for password change)
+ */
+router.post(
+  "/verify-otp",
+  otpVerificationLimiter,
+  asyncHandler(verifyAuthenticatedOTP)
+);
 
 /* ===========================================================
    LEGACY ROUTES (for backward compatibility)

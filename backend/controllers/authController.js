@@ -1689,6 +1689,159 @@ async function verifyEmailVerificationToken(req, res) {
 }
 
 /* ===========================================================
+   PROFILE PASSWORD CHANGE - OTP VERIFICATION
+   =========================================================== */
+
+/**
+ * Send OTP for authenticated user (for password change)
+ * This is different from signup OTP - it's for already authenticated users
+ */
+async function sendAuthenticatedOTP(req, res) {
+  try {
+    const user = req.user; // From auth middleware
+
+    if (!user || !user.email) {
+      return res.status(401).json({
+        success: false,
+        error: "Not authenticated",
+        code: "NOT_AUTHENTICATED",
+      });
+    }
+
+    const normalizedEmail = user.email.toLowerCase().trim();
+
+    // Check rate limit
+    const rateCheck = checkOTPRateLimit(normalizedEmail);
+    if (!rateCheck.allowed) {
+      return res.status(429).json({
+        success: false,
+        error: rateCheck.message,
+        code: "RATE_LIMIT_EXCEEDED",
+      });
+    }
+
+    // Generate and store OTP
+    const otp = generateOTP();
+    const otpKey = `profile_change_${normalizedEmail}_${user.type}`; // Different key for profile changes
+
+    otpStore.set(otpKey, {
+      otp,
+      email: normalizedEmail,
+      userType: user.type,
+      userId: user.id,
+      expiresAt: Date.now() + OTP_EXPIRY_MS,
+      attempts: 0,
+    });
+
+    console.log(`✅ Profile change OTP generated for ${normalizedEmail}: ${otp}`);
+
+    // Send OTP email
+    await sendOTPEmail(normalizedEmail, otp, user.type);
+
+    return res.json({
+      success: true,
+      message: "Verification code sent to your email",
+    });
+  } catch (error) {
+    console.error("❌ [Auth.sendAuthenticatedOTP] Error:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Failed to send verification code",
+      code: "INTERNAL_ERROR",
+    });
+  }
+}
+
+/**
+ * Verify OTP for authenticated user (for password change)
+ */
+async function verifyAuthenticatedOTP(req, res) {
+  try {
+    const user = req.user; // From auth middleware
+    const { otp } = req.body;
+
+    if (!user || !user.email) {
+      return res.status(401).json({
+        success: false,
+        error: "Not authenticated",
+        code: "NOT_AUTHENTICATED",
+      });
+    }
+
+    if (!otp) {
+      return res.status(400).json({
+        success: false,
+        error: "OTP is required",
+        code: "OTP_REQUIRED",
+      });
+    }
+
+    const normalizedEmail = user.email.toLowerCase().trim();
+    const otpKey = `profile_change_${normalizedEmail}_${user.type}`;
+
+    // Get OTP record
+    const record = otpStore.get(otpKey);
+
+    if (!record) {
+      return res.status(400).json({
+        success: false,
+        error: "Verification code not found or expired",
+        code: "OTP_NOT_FOUND",
+      });
+    }
+
+    // Check if OTP expired
+    if (Date.now() > record.expiresAt) {
+      otpStore.delete(otpKey);
+      return res.status(400).json({
+        success: false,
+        error: "Verification code expired. Please request a new one",
+        code: "OTP_EXPIRED",
+      });
+    }
+
+    // Increment attempts
+    record.attempts++;
+
+    // Check max attempts
+    if (record.attempts > OTP_MAX_ATTEMPTS) {
+      otpStore.delete(otpKey);
+      return res.status(400).json({
+        success: false,
+        error: "Too many incorrect attempts. Please request a new code",
+        code: "TOO_MANY_ATTEMPTS",
+      });
+    }
+
+    // Verify OTP
+    if (record.otp !== otp.toString().trim()) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid verification code",
+        code: "INVALID_OTP",
+      });
+    }
+
+    // Delete OTP after successful verification
+    otpStore.delete(otpKey);
+
+    console.log(`✅ Profile change OTP verified for ${normalizedEmail}`);
+
+    return res.json({
+      success: true,
+      message: "Verification code verified successfully",
+    });
+  } catch (error) {
+    console.error("❌ [Auth.verifyAuthenticatedOTP] Error:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Failed to verify code",
+      code: "INTERNAL_ERROR",
+    });
+  }
+}
+
+/* ===========================================================
    EXPORTS
    =========================================================== */
 
@@ -1719,4 +1872,8 @@ module.exports = {
   verifyToken,
   getCurrentUser,
   verifyEmailVerificationToken,
+
+  // Authenticated OTP (for profile password changes)
+  sendAuthenticatedOTP,
+  verifyAuthenticatedOTP,
 };
