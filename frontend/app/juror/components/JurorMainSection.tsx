@@ -3,10 +3,9 @@
 import HomeSection from "./HomeSection";
 import ProfileSection from "./ProfileSection";
 import NotificationsSection from "./NotificationsSection";
-import AssignedCasesSection from "./AssignedCasesSection";
 import JobBoardSection from "./JobBoardSection";
 
-type Section = "home" | "profile" | "notifications" | "assigned" | "jobs";
+type Section = "home" | "profile" | "notifications" | "jobs";
 
 export default function JurorMainSection({ selectedSection, sidebarCollapsed }: { selectedSection: Section; sidebarCollapsed: boolean }) {
   let content;
@@ -16,9 +15,6 @@ export default function JurorMainSection({ selectedSection, sidebarCollapsed }: 
       break;
     case "notifications":
       content = <NotificationsSection />;
-      break;
-    case "assigned":
-      content = <AssignedCasesSection />;
       break;
     case "jobs":
       content = <JobBoardSection />;

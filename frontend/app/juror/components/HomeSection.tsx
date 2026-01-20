@@ -479,7 +479,7 @@ export default function HomeSection({ sidebarCollapsed }: { sidebarCollapsed: bo
           </div>
         )}
 
-        {/* Earnings Overview */}
+        {/* Earnings Overview - COMMENTED OUT
         {isVerified && assignmentsCompleted && (
           <section className="mb-8">
             <h2 className="text-lg font-bold text-[#0C2D57] mb-4 flex items-center gap-2">
@@ -535,13 +535,13 @@ export default function HomeSection({ sidebarCollapsed }: { sidebarCollapsed: bo
             )}
           </section>
         )}
+        */}
 
-        {/* Platform Info Section - How It Works */}
+        {/* Platform Info Section - How It Works - COMMENTED OUT
         {isVerified && assignmentsCompleted && (
           <section className="mb-10">
             <div className="bg-gradient-to-br from-slate-50 via-blue-50 to-slate-50 border border-slate-200 rounded-2xl p-8 shadow-sm">
               <div className="max-w-5xl mx-auto">
-                {/* Header */}
                 <div className="text-center mb-8">
                   <h2 className="text-2xl font-bold text-[#0C2D57] mb-2">
                     Earn Money as a Virtual Juror
@@ -551,9 +551,7 @@ export default function HomeSection({ sidebarCollapsed }: { sidebarCollapsed: bo
                   </p>
                 </div>
 
-                {/* Payment Tiers */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                  {/* Tier 1 */}
                   <div className="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-md transition-shadow">
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Tier 1</span>
@@ -570,7 +568,6 @@ export default function HomeSection({ sidebarCollapsed }: { sidebarCollapsed: bo
                     </div>
                   </div>
 
-                  {/* Tier 2 */}
                   <div className="bg-white border-2 border-blue-200 rounded-xl p-5 hover:shadow-md transition-shadow relative">
                     <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
                       <span className="bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-full">POPULAR</span>
@@ -590,7 +587,6 @@ export default function HomeSection({ sidebarCollapsed }: { sidebarCollapsed: bo
                     </div>
                   </div>
 
-                  {/* Tier 3 */}
                   <div className="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-md transition-shadow">
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Tier 3</span>
@@ -608,7 +604,6 @@ export default function HomeSection({ sidebarCollapsed }: { sidebarCollapsed: bo
                   </div>
                 </div>
 
-                {/* Quick Stats */}
                 <div className="grid grid-cols-3 gap-4 pt-6 border-t border-slate-200">
                   <div className="text-center">
                     <div className="flex items-center justify-center mb-1">
@@ -640,6 +635,7 @@ export default function HomeSection({ sidebarCollapsed }: { sidebarCollapsed: bo
             </div>
           </section>
         )}
+        */}
 
         {/* Assigned Cases - Always show if verified and onboarding complete */}
         {isVerified && assignmentsCompleted && (
@@ -732,7 +728,7 @@ export default function HomeSection({ sidebarCollapsed }: { sidebarCollapsed: bo
                         className="w-full px-3 py-1.5 bg-slate-100 text-[#0C2D57] rounded-lg text-xs font-medium hover:bg-slate-200 transition-colors"
                         onClick={() => router.push(`/juror/war-room/${app.CaseId}`)}
                       >
-                        War Room
+                        Jury Charge
                       </button>
                     </div>
                   );

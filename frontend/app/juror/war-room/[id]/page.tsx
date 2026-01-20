@@ -439,25 +439,6 @@ export default function JurorWarRoomPage() {
         </div>
 
         <div className="bg-white rounded-lg shadow border border-[#C6CDD9] p-6 mb-6">
-          <h2 className="text-xl font-bold text-[#0A2342] mb-4">Legal Team</h2>
-          {teamMembers.length === 0 ? (
-            <p className="text-[#455A7C]">No team members listed</p>
-          ) : (
-            <div className="space-y-2">
-              {teamMembers.map((member, idx) => (
-                <div key={idx} className="flex items-center gap-4 p-3 bg-[#FAF9F6] rounded border border-[#C6CDD9]/30">
-                  <div className="flex-1">
-                    <p className="font-semibold text-[#0A2342]">{member.Name}</p>
-                    <p className="text-sm text-[#455A7C]">{member.Role}</p>
-                  </div>
-                  <p className="text-sm text-[#455A7C]">{member.Email}</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="bg-white rounded-lg shadow border border-[#C6CDD9] p-6 mb-6">
           <h2 className="text-xl font-bold text-[#0A2342] mb-4">Witnesses</h2>
           {witnesses.length === 0 ? (
             <p className="text-[#455A7C]">No witnesses listed</p>
