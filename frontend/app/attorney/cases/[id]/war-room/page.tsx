@@ -1265,7 +1265,10 @@ export default function WarRoomPage() {
                 <div>
                   <h2 className="text-xl font-semibold text-white">Team Members</h2>
                   <p className="text-sm text-white/80 mt-0.5">
-                    {teamMembers.length} member{teamMembers.length !== 1 ? 's' : ''} in your team
+                    {showAddTeam
+                      ? `${teamMembers.length + newMembers.filter(m => m.Name || m.Email).length} member${(teamMembers.length + newMembers.filter(m => m.Name || m.Email).length) !== 1 ? 's' : ''} in your team`
+                      : `${teamMembers.length} member${teamMembers.length !== 1 ? 's' : ''} in your team`
+                    }
                   </p>
                 </div>
               </div>
