@@ -728,7 +728,7 @@ export default function HomeSection({ sidebarCollapsed }: { sidebarCollapsed: bo
                         className="w-full px-3 py-1.5 bg-slate-100 text-[#0C2D57] rounded-lg text-xs font-medium hover:bg-slate-200 transition-colors"
                         onClick={() => router.push(`/juror/war-room/${app.CaseId}`)}
                       >
-                        War Room
+                        Jury Charge
                       </button>
                     </div>
                   );
