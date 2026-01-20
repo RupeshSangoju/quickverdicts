@@ -4,7 +4,7 @@ import JurorSidebar from "./components/JurorSidebar";
 import JurorMainSection from "./components/JurorMainSection";
 import { useProtectedRoute } from "@/hooks/useProtectedRoute";
 
-type Section = "home" | "profile" | "notifications" | "assigned" | "jobs";
+type Section = "home" | "profile" | "notifications" | "jobs";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL
   ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api$/, '')
