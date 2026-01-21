@@ -1,734 +1,380 @@
 "use client";
 
-import { useState, useEffect, useCallback, memo } from "react";
-import Image from "next/image";
-import Link from "next/link";
-import dynamic from "next/dynamic";
-import { FaPlay } from "react-icons/fa";
-import { FaGavel, FaMoneyBillWave } from "react-icons/fa";
-import { IoMdClose } from "react-icons/io";
+import React, { useState } from 'react';
+import Link from 'next/link';
+import { Play, Lock, Globe, Mail, Shield, Star, Power, Facebook, Twitter, Linkedin, Youtube } from 'lucide-react';
 
-// Lazy load heavy components
-const Footer = dynamic(() => import("./components/Footer"), {
-  loading: () => <div className="h-64 bg-[#f9f7f2]" />,
-});
-
-const Navbar = dynamic(() => import("./components/Navbar"), {
-  loading: () => <div className="h-16 bg-white" />,
-});
-
-/* ===========================================================
-   CONSTANTS & CONFIGURATION
-   =========================================================== */
-
-const SITE_CONFIG = {
-  name: "Quick Verdicts",
-  tagline: "For Lawyers: Strategic. Expedient. Cost effective.",
-  subtitle: "For Mock Jurors: Get paid to serve remotely",
-  description: "Resolve disputes quickly with Quick Verdicts. Attorneys can start virtual trials, and citizens can get paid to serve as remote jurors.",
-  url: process.env.NEXT_PUBLIC_SITE_URL || "https://quickverdicts.com",
-  image: "/Image1.png",
-  keywords: [
-    "virtual courtroom",
-    "mock trial",
-    "online jury",
-    "quick verdicts",
-    "legal platform",
-    "remote juror",
-    "virtual trial",
-    "online arbitration",
-  ].join(", "),
-} as const;
-
-const VIDEO_CONFIG = {
-  attorney: {
-    id: "Jix-vP5M1R0",
-    title: "How Attorneys Use Quick Verdicts",
-    thumbnail: "/image2.png",
-  },
-  juror: {
-    id: "Lo58uzXStms",
-    title: "How Jurors Serve on Quick Verdicts",
-    thumbnail: "/image3.png",
-  },
-} as const;
-
-const CRITICAL_IMAGES = [
-  "/Image1.png",
-  "/image2.png",
-  "/image3.png",
-  "/image4.png",
-  "/image5.png",
-] as const;
-
-const FAQ_DATA = [
-  {
-    question: "What is Quick Verdicts?",
-    answer: "Quick Verdicts is a mock trial preparation and virtual courtroom platform where attorneys can present disputes to screened, local jurors.",
-  },
-  {
-    question: "What types of cases work best?",
-    answer: "Pre-mediation cases, Stowers issues, single fact-issues and other civil cases under $1M.",
-  },
-  {
-    question: "What does a juror do on Quick Verdicts?",
-    answer: "As a juror, you join a secure virtual courtroom to review real cases. You'll examine evidence, watch video statements, and deliberate with your fellow mock jurors to arrive at a consensus on a Final Verdict.",
-  },
-] as const;
-
-/* ===========================================================
-   TYPES
-   =========================================================== */
-
-// Extend Window interface for gtag
-declare global {
-  interface Window {
-    gtag?: (
-      command: string,
-      action: string,
-      params?: Record<string, unknown>
-    ) => void;
-  }
-}
-
-interface LoadingState {
-  isLoading: boolean;
-  loadedCount: number;
-  totalCount: number;
-  errors: string[];
-}
-
-type UserType = "attorney" | "juror";
-type VideoType = "attorney" | "juror";
-
-/* ===========================================================
-   SUB-COMPONENTS
-   =========================================================== */
-
-// Loading Screen Component
-const LoadingScreen = memo(({ progress, errors }: { progress: number; errors: string[] }) => (
-  <div className="fixed inset-0 bg-[#f9f7f2] flex flex-col items-center justify-center z-50">
-    <div className="text-center max-w-md px-6">
-      {/* Logo */}
-      <h1 className="text-4xl md:text-5xl font-bold text-[#0A2342] mb-6">
-        Quick Verdicts
-      </h1>
-
-      {/* Animated Loader */}
-      <div className="relative w-20 h-20 mx-auto mb-6">
-        <div className="absolute inset-0 border-4 border-[#e3e3e3] rounded-full" />
-        <div className="absolute inset-0 border-4 border-[#0A2342] rounded-full border-t-transparent animate-spin" />
-      </div>
-
-      {/* Loading Progress */}
-      <div className="mb-4">
-        <div className="w-full bg-[#e3e3e3] rounded-full h-2 overflow-hidden">
-          <div
-            className="bg-[#0A2342] h-full transition-all duration-300 ease-out"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-      </div>
-
-      {/* Loading Text */}
-      <p className="text-[#455A7C] font-medium text-lg">
-        Loading... {progress}%
-      </p>
-
-      {/* Error Messages (if any) */}
-      {errors.length > 0 && (
-        <div className="mt-4 text-sm text-red-600">
-          <p>Some images failed to load, but the site will work normally.</p>
-        </div>
-      )}
-    </div>
-  </div>
-));
-LoadingScreen.displayName = "LoadingScreen";
-
-// Video Modal Component
-const VideoModal = memo(({ 
-  video, 
-  onClose 
-}: { 
-  video: { id: string; title: string } | null; 
-  onClose: () => void;
-}) => {
-  if (!video) return null;
+export default function QuickVerdictsLanding() {
+  const [isPlaying, setIsPlaying] = useState(false);
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md bg-black/40"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="video-modal-title"
-    >
-      <div
-        className="relative w-full max-w-4xl bg-black rounded-lg overflow-hidden shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Screen Reader Title */}
-        <h2 id="video-modal-title" className="sr-only">
-          {video.title}
-        </h2>
-
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 z-10 bg-white bg-opacity-90 hover:bg-opacity-100 rounded-full p-2 transition-all duration-200 shadow-lg focus:outline-none focus:ring-2 focus:ring-white"
-          aria-label="Close video modal"
-          type="button"
-        >
-          <IoMdClose className="text-2xl text-gray-800" />
-        </button>
-
-        {/* YouTube Video Embed */}
-        <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
-          <iframe
-            className="absolute top-0 left-0 w-full h-full"
-            src={`https://www.youtube-nocookie.com/embed/${video.id}?autoplay=1&rel=0&modestbranding=1`}
-            title={video.title}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            style={{ border: 0 }}
-          />
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+          <Link href="/" className="flex items-center space-x-2">
+            <div className="w-8 h-8 bg-gray-800 rounded-full flex items-center justify-center">
+              <div className="w-4 h-4 border-2 border-white rounded-full"></div>
+            </div>
+            <span className="text-xl font-semibold">QUICK VERDICTS</span>
+          </Link>
+          <nav className="flex items-center space-x-6">
+            <Link href="/signup/attorney" className="text-gray-700 hover:text-gray-900">
+              Attorney
+            </Link>
+            <Link href="/signup/juror" className="text-gray-700 hover:text-gray-900">
+              Juror
+            </Link>
+            <Link href="/signup" className="bg-blue-900 text-white px-6 py-2 rounded hover:bg-blue-800">
+              Sign up
+            </Link>
+            <Link href="/login" className="text-gray-700 hover:text-gray-900">
+              Login
+            </Link>
+          </nav>
         </div>
-      </div>
-    </div>
-  );
-});
-VideoModal.displayName = "VideoModal";
+      </header>
 
-// CTA Button Component
-const CTAButton = memo(({ 
-  href, 
-  type, 
-  location, 
-  children, 
-  variant = "primary" 
-}: { 
-  href: string; 
-  type: UserType; 
-  location: string; 
-  children: React.ReactNode;
-  variant?: "primary" | "secondary";
-}) => {
-  const handleClick = () => {
-    if (typeof window !== "undefined" && window.gtag) {
-      window.gtag("event", "cta_click", {
-        user_type: type,
-        location: location,
-      });
-    }
-  };
-
-  const styles = variant === "primary"
-    ? "px-5 py-2.5 bg-[#0A2342] text-white font-semibold rounded-md hover:bg-[#1a3666] transition flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-[#0A2342] focus:ring-offset-2"
-    : "px-5 py-2.5 bg-[#e6f4ea] text-[#1a7f37] border border-[#b7e0c3] rounded-md font-semibold hover:bg-[#d2ecd8] transition flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-[#1a7f37] focus:ring-offset-2";
-
-  return (
-    <Link
-      href={href}
-      onClick={handleClick}
-      className={styles}
-      aria-label={type === "attorney" ? "Start a trial as an attorney" : "Sign up to be a paid juror"}
-    >
-      {children}
-    </Link>
-  );
-});
-CTAButton.displayName = "CTAButton";
-
-/* ===========================================================
-   MAIN COMPONENT
-   =========================================================== */
-
-export default function LandingPage() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [currentVideo, setCurrentVideo] = useState<{
-    id: string;
-    title: string;
-  } | null>(null);
-  const [loadingState, setLoadingState] = useState<LoadingState>({
-    isLoading: true,
-    loadedCount: 0,
-    totalCount: CRITICAL_IMAGES.length,
-    errors: [],
-  });
-
-  /* ===========================================================
-     IMAGE PRELOADING
-     =========================================================== */
-
-  useEffect(() => {
-    let mounted = true;
-    let loaded = 0;
-    const errors: string[] = [];
-
-    const loadImage = (src: string): Promise<void> => {
-      return new Promise((resolve) => {
-        const img = new window.Image();
-        img.src = src;
-
-        img.onload = () => {
-          if (mounted) {
-            loaded++;
-            setLoadingState((prev) => ({
-              ...prev,
-              loadedCount: loaded,
-            }));
-          }
-          resolve();
-        };
-
-        img.onerror = () => {
-          if (mounted) {
-            loaded++;
-            errors.push(`Failed to load: ${src}`);
-            setLoadingState((prev) => ({
-              ...prev,
-              loadedCount: loaded,
-              errors: [...prev.errors, `Failed to load: ${src}`],
-            }));
-            console.error(`Failed to load image: ${src}`);
-          }
-          resolve();
-        };
-      });
-    };
-
-    // Load all images
-    Promise.all(CRITICAL_IMAGES.map(loadImage)).then(() => {
-      if (mounted) {
-        // Small delay for smooth transition
-        setTimeout(() => {
-          setLoadingState((prev) => ({
-            ...prev,
-            isLoading: false,
-          }));
-        }, 300);
-      }
-    });
-
-    // Cleanup
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  /* ===========================================================
-     VIDEO MODAL HANDLERS
-     =========================================================== */
-
-  const openVideoModal = useCallback((videoType: VideoType) => {
-    const video = VIDEO_CONFIG[videoType];
-    setCurrentVideo({
-      id: video.id,
-      title: video.title,
-    });
-    setIsModalOpen(true);
-    document.body.style.overflow = "hidden";
-
-    // Track video play event (for analytics)
-    if (typeof window !== "undefined" && window.gtag) {
-      window.gtag("event", "video_play", {
-        video_type: videoType,
-        video_title: video.title,
-      });
-    }
-  }, []);
-
-  const closeModal = useCallback(() => {
-    setIsModalOpen(false);
-    setCurrentVideo(null);
-    document.body.style.overflow = "unset";
-
-    // Track video close event
-    if (typeof window !== "undefined" && window.gtag) {
-      window.gtag("event", "video_close", {
-        video_title: currentVideo?.title,
-      });
-    }
-  }, [currentVideo]);
-
-  // Keyboard navigation for modal
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isModalOpen) {
-        closeModal();
-      }
-    };
-
-    if (isModalOpen) {
-      document.addEventListener("keydown", handleEscape);
-      return () => {
-        document.removeEventListener("keydown", handleEscape);
-      };
-    }
-  }, [isModalOpen, closeModal]);
-
-  // Cleanup scroll lock on unmount
-  useEffect(() => {
-    return () => {
-      document.body.style.overflow = "unset";
-    };
-  }, []);
-
-  /* ===========================================================
-     RENDER
-     =========================================================== */
-
-  // Loading screen
-  if (loadingState.isLoading) {
-    const progress = Math.round(
-      (loadingState.loadedCount / loadingState.totalCount) * 100
-    );
-    return <LoadingScreen progress={progress} errors={loadingState.errors} />;
-  }
-
-  return (
-    <>
-      {/* Video Modal */}
-      {isModalOpen && <VideoModal video={currentVideo} onClose={closeModal} />}
-
-      <div className="bg-[#f9f7f2] text-[#0A2342] font-sans">
-        {/* Navbar */}
-        <Navbar />
-
-        {/* Hero Section */}
-        <section className="pt-42 pb-12 text-center">
-          <p className="text-3xl md:text-4xl font-semibold text-[#0A2342] leading-snug">
-            {SITE_CONFIG.tagline}
-          </p>
-          <p className="mt-2 text-3xl md:text-4xl font-semibold text-[#0A2342] px-4">
-            {SITE_CONFIG.subtitle}
-          </p>
-          <div className="mt-6 flex justify-center gap-4 flex-wrap px-4">
-            <CTAButton href="/signup/attorney" type="attorney" location="hero" variant="primary">
-              <FaGavel aria-hidden="true" />
-              <span>Start a Trial Now</span>
-            </CTAButton>
-            <CTAButton href="/signup/juror" type="juror" location="hero" variant="secondary">
-              <FaMoneyBillWave aria-hidden="true" />
-              <span>Get Paid to be a Juror</span>
-            </CTAButton>
-          </div>
-          <div className="mt-10 mb-20 flex justify-center px-4">
-            <Image
-              src="/Image1.png"
-              alt="Scales of Justice representing fair virtual trials"
-              width={700}
-              height={500}
-              className="rounded-md shadow-md max-w-full h-auto"
-              priority
-            />
-          </div>
-        </section>
-
-        {/* Two Column Intro Heading */}
-        <section className="max-w-8xl mx-auto text-center px-6">
-          <h2 className="text-2xl md:text-4xl font-semibold text-[#0A2342] leading-snug">
-            Start a Trial or Get Paid to Be a Juror—All Online.
-          </h2>
-        </section>
-
-        {/* Two Column Section */}
-        <section
-          id="how-it-works"
-          className="max-w-7xl mx-auto px-6 py-16 grid md:grid-cols-2 gap-8 items-stretch"
-        >
-          {/* Attorneys */}
-          <article className="bg-white border border-[#e3e3e3] rounded-lg p-0 shadow-sm flex flex-col">
-            {/* Video Thumbnail */}
-            <button
-              type="button"
-              className="relative rounded-t-lg overflow-hidden cursor-pointer group w-full h-[300px] bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#0A2342]"
-              onClick={() => openVideoModal("attorney")}
-              aria-label="Play video about how attorneys use Quick Verdicts"
-            >
-              <Image
-                src={VIDEO_CONFIG.attorney.thumbnail}
-                alt="Attorney explaining how to use Quick Verdicts platform"
-                width={520}
-                height={300}
-                className="object-cover w-full h-full"
-                loading="eager"
-              />
-              {/* Play Button Overlay */}
-              <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-b from-transparent via-black/10 to-black/30 group-hover:from-black/10 group-hover:via-black/20 group-hover:to-black/40 transition-all duration-300">
-                <div className="bg-white rounded-full p-5 shadow-2xl transition-all duration-300 group-hover:scale-110">
-                  <FaPlay className="text-[#0A2342] text-3xl pl-1" aria-hidden="true" />
+      {/* Hero Section */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="relative">
+          {/* Decorative Images */}
+          <div className="absolute top-0 left-10 w-32 h-32">
+            <div className="relative">
+              <img src="/api/placeholder/120/120" alt="Legal" className="rounded-full w-full h-full object-cover" />
+              <div className="absolute -left-8 top-1/2 transform -translate-y-1/2">
+                <div className="flex flex-col space-y-1">
+                  {[...Array(8)].map((_, i) => (
+                    <div key={i} className="h-0.5 bg-gray-800" style={{ width: `${20 + i * 3}px` }}></div>
+                  ))}
                 </div>
               </div>
-            </button>
+            </div>
+          </div>
 
-            <div className="p-6 flex flex-col flex-grow">
-              <h3 className="mt-2 text-xl font-semibold text-[#0A2342]">
-                Quick Verdicts is a mock trial preparation and virtual courtroom platform where attorneys can present disputes to screened, local jurors.
-              </h3>
-
-
-              <ol className="mt-4 space-y-4 text-[#0A2342] text-sm list-none">
-                <li>
-                  <p className="font-semibold">1. Start Your Trial</p>
-                  <p>Create an account and open a case in minutes.</p>
-                </li>
-                <li>
-                  <p className="font-semibold">2. Prepare Your Case</p>
-                  <p>
-                    Access your private War Room complete with editable templates for Voir Dire Questions and the Jury Charge.  Upload demonstrative evidence for the jury’s review.  Prepare pre-recorded .mp4 of the trial presentation or plan to appear live. 
-                  </p>
-                </li>
-                <li>
-                  <p className="font-semibold">3. Hold Your Trial Online</p>
-                  <p>
-                    Schedule and conduct your trial with panel of 6-8 jurors - 100% virtually.
-                  </p>
-                </li>
-                <li>
-                  <p className="font-semibold">4. What You Get</p>
-                  <p>
-                  •	Access to War Room                 
-                  </p>
-                  <p>•	6-8 local mock jurors screened for general bias and further screened with your Voir Dire Questions</p>
-                  <p>•	Deliberated Final Verdict</p>
-                  <p>•	Recording of trial and deliberations</p>
-                  <p>•	Debriefing period provided following verdict</p>
-                  <p>•	Witness Evaluations</p>
-                </li>
-                <li>
-                  <p className="font-semibold">5.	Cost effective enough for small cases</p>
-                  <p>* 3 tiers available</p>
-                  <p>•	2.5 hours $3500</p>
-                  <p>•	3.5 hours $4500</p>
-                  <p>•	4.5 hours $5500</p>
-                </li>
-                <li>
-                  <p className="font-semibold">6.	Effective for:</p>
-                  <p>* Pre-mediation analysis</p>
-                  <p>* Stowers demands</p>
-                  <p>* Pivotal fact issues on witness credibility, liability and damages</p>
-                  <p>* Test legal strategies</p>
-                  <p>* Settlement evaluations & negotiations</p>
-                </li>
-
-              </ol>
-              <div className="mt-auto pt-6">
-                <CTAButton href="/signup/attorney" type="attorney" location="attorney_section" variant="primary">
-                  Start a Trial Now
-                </CTAButton>
+          <div className="absolute top-0 right-10 w-32 h-32">
+            <div className="relative">
+              <img src="/api/placeholder/120/120" alt="Legal" className="rounded-full w-full h-full object-cover" />
+              <div className="absolute -right-8 top-1/2 transform -translate-y-1/2">
+                <svg width="60" height="60" viewBox="0 0 60 60" className="text-gray-800">
+                  <circle cx="30" cy="30" r="28" fill="none" stroke="currentColor" strokeWidth="2" />
+                  <circle cx="30" cy="30" r="20" fill="none" stroke="currentColor" strokeWidth="2" />
+                  <circle cx="30" cy="30" r="12" fill="none" stroke="currentColor" strokeWidth="2" />
+                </svg>
               </div>
             </div>
-          </article>
+          </div>
 
-          {/* Jurors */}
-          <article className="bg-white border border-[#e3e3e3] rounded-lg p-0 shadow-sm flex flex-col">
-            {/* Video Thumbnail */}
-            <button
-              type="button"
-              className="relative rounded-t-lg overflow-hidden cursor-pointer group w-full h-[300px] bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#1a7f37]"
-              onClick={() => openVideoModal("juror")}
-              aria-label="Play video about how jurors serve on Quick Verdicts"
-            >
-              <Image
-                src={VIDEO_CONFIG.juror.thumbnail}
-                alt="Juror explaining how to serve on virtual trials"
-                width={520}
-                height={300}
-                className="object-cover w-full h-full"
-                loading="eager"
-              />
-              {/* Play Button Overlay */}
-              <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-b from-transparent via-black/10 to-black/30 group-hover:from-black/10 group-hover:via-black/20 group-hover:to-black/40 transition-all duration-300">
-                <div className="bg-white rounded-full p-5 shadow-2xl transition-all duration-300 group-hover:scale-110">
-                  <FaPlay className="text-[#0A2342] text-3xl pl-1" aria-hidden="true" />
+          <div className="absolute bottom-0 left-10 w-32 h-32">
+            <div className="relative">
+              <img src="/api/placeholder/120/120" alt="Legal" className="rounded-full w-full h-full object-cover" />
+              <div className="absolute -left-8 top-1/2 transform -translate-y-1/2">
+                <div className="flex flex-col space-y-1">
+                  {[...Array(8)].map((_, i) => (
+                    <div key={i} className="h-0.5 bg-gray-800" style={{ width: `${20 + i * 3}px` }}></div>
+                  ))}
                 </div>
               </div>
-            </button>
+            </div>
+          </div>
 
-            <div className="p-6 flex flex-col flex-grow">
-              <h3 className="mt-2 text-xl font-semibold text-[#0A2342]">
-                We Pay Jurors to Deliberate Online
-              </h3>
-              <ol className="mt-4 space-y-4 text-[#0A2342] text-sm list-none">
-                <li>
-                  <p className="font-semibold">1. Sign Up to Serve</p>
-                  <p>
-                    Create a free account and get verified as a potential mock juror for cases in your locale.  You will need to be able to receive payments from either Venmo, PayPal or Zelle.
-                  </p>
-                </li>
-                <li>
-                  <p className="font-semibold">2. Find a Trial to Join</p>
-                  <p>Browse upcoming cases on the Job Board.  Once you select a case, you will be further screened for possible conflicts or bias based on the issues in the case selected.</p>
-                </li>
-                <li>
-                  <p className="font-semibold">3. Join the Live Trial</p>
-                  <p>
-                    Log in on the scheduled date and participate in the virtual trial.
-                  </p>
-                </li>
-                <li>
-                  <p className="font-semibold">4.	What does the Foreperson do?</p>
-                  <p>
-                    After the trial presentation, the Foreperson accesses the Jury Charge in the Chat Box and keeps the conversation on track.  The Foreperson ensures that each mock juror participates in the debate.  The Foreperson enters the consensus answers to the Jury Charge and submits it as a Final Verdict.  
-                  </p>
-                </li>
-                <li>
-                  <p className="font-semibold">5.	What happens during the QV Trial?</p>
-                  <p>
-Everyone will watch the attorneys’ presentations together—full face!  The presentation may be in person or may be by video.  Carefully listen to all sides of the dispute.  You’ll examine evidence, watch video statements of witnesses, and deliberate with your fellow mock jurors to arrive at a consensus to the Final Verdict.                    </p>
-                </li>
-                <li>
-                  <p className="font-semibold">6.	What happens during deliberations?</p>
-                  <p>
-You will review the legal instructions and definitions given to you.  You will review each question in the Jury Charge.  Each juror should express his or her questions, ideas and opinions about each issue.  You may disagree with one another; however, it is important to use reasoning to deliberate and reach a unanimous decision.  The Foreperson submits the Final Verdict contained in the Chat Box.                    </p>
-                </li>
-                <li>
-                  <p className="font-semibold">7.	What happens after the QV Trial?</p>
-                  <p>
-After the QV Trial, jurors remain in the QV Courtroom until the attorneys appear to debrief with you about your Final Verdict.                    </p>
-                </li>
-                <li>
-                  <p className="font-semibold">8.	Get paid.</p>
-                  <p>
-Following the debriefing period you will be paid for your services through Venmo, Zelle or PayPal.  Each case will pay the amount set forth on the Job Board.  We will stop the clock, and you will be released at the end of the allotted time.                  </p>
-                </li>
-                <li>
-                  <p className="font-semibold">9.	Can I sign up for another QV Trial?</p>
-                  <p>
-Yes, you can sign up for another trial!  You may participate in as many as four (4) trials per year.  Remember that each QV Trial is different.  You should not assume a fact or legal issue about any case based on your prior experience with a different case.                  </p>
-                </li>
-                <li>
-                  <p className="font-semibold">10.	Can I talk about the case after the QV Trial?</p>
-                  <p>
-Unless you are otherwise required by a judge or a court order, you cannot talk about the case after the QV Trial to anyone.  Your agreement includes an NDA—a non-disclosure agreement.  If you were to become a party to a lawsuit, you would not want a mock juror revealing anything about you or your case to someone else.                    </p>
-                </li>
-              </ol>
-              <div className="mt-auto pt-6">
-                <CTAButton href="/signup/juror" type="juror" location="juror_section" variant="secondary">
-                  Get Paid to be a Juror
-                </CTAButton>
+          <div className="absolute bottom-0 right-10 w-32 h-32">
+            <div className="relative">
+              <img src="/api/placeholder/120/120" alt="Legal" className="rounded-full w-full h-full object-cover" />
+              <div className="absolute -right-8 top-1/2 transform -translate-y-1/2">
+                <svg width="60" height="60" viewBox="0 0 60 60" className="text-gray-800">
+                  <path d="M0 30 L60 30 M30 0 L30 60 M10 10 L50 50 M50 10 L10 50" stroke="currentColor" strokeWidth="2" fill="none" />
+                </svg>
               </div>
             </div>
-          </article>
-        </section>
-{/*
-        
-        <section className="bg-[#f9f7f2] py-12 px-6">
-          <h2 className="text-3xl md:text-4xl font-semibold text-[#0A2342] text-center mb-10">
-            Learn More About Quick Verdicts
-          </h2>
-          <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-10 items-center">
+          </div>
 
+          {/* Hero Content */}
+          <div className="text-center pt-24 pb-12">
+            <h1 className="text-5xl font-bold text-gray-900 mb-4">
+              Real Cases. Real Impact. Remotely.
+            </h1>
+            <p className="text-gray-600 max-w-2xl mx-auto mb-8">
+              Quick Verdicts connects attorneys with verified jurors to resolve legally binding small claims cases online faster, fairer, and more efficiently.
+            </p>
+            <Link href="/signup" className="bg-blue-900 text-white px-8 py-3 rounded hover:bg-blue-800 font-medium inline-block">
+              Get started
+            </Link>
+          </div>
+        </div>
+
+        {/* Video Section */}
+        <div className="mt-16">
+          <h2 className="text-3xl font-bold text-center text-gray-900 mb-4">
+            Welcome to Quick Verdicts
+          </h2>
+          <p className="text-center text-gray-600 mb-8">
+            Watch this quick video to see how our virtual courtroom helps attorneys and jurors move cases forward fast.
+          </p>
+          <div className="relative bg-gray-900 rounded-lg overflow-hidden max-w-3xl mx-auto">
+            <img src="/api/placeholder/800/450" alt="Video thumbnail" className="w-full" />
+            <button
+              onClick={() => setIsPlaying(!isPlaying)}
+              className="absolute inset-0 flex items-center justify-center"
+            >
+              <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center hover:scale-110 transition-transform">
+                <Play className="w-12 h-12 text-gray-900 ml-2" fill="currentColor" />
+              </div>
+            </button>
+            <div className="absolute bottom-0 left-0 right-0 bg-white p-4">
+              <div className="flex items-center space-x-4">
+                <button className="text-gray-900">
+                  <Play className="w-6 h-6" />
+                </button>
+                <div className="flex-1 h-1 bg-gray-300 rounded-full">
+                  <div className="h-full w-0 bg-blue-900 rounded-full"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Security Section */}
+        <div className="mt-24 grid md:grid-cols-2 gap-12 items-center">
+          <div className="bg-blue-50 p-12 rounded-lg">
+            <h3 className="text-4xl font-bold text-blue-900 mb-6">
+              DIGITAL<br />SECURITY
+            </h3>
+            <div className="space-y-6">
+              <div className="flex items-center space-x-4">
+                <Lock className="w-16 h-16 text-blue-900" />
+                <div className="flex space-x-1">
+                  {[...Array(4)].map((_, i) => (
+                    <Star key={i} className="w-6 h-6 text-blue-900" fill="currentColor" />
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-center space-x-4">
+                <Globe className="w-16 h-16 text-blue-900" />
+                <div className="text-blue-900 font-mono text-sm">
+                  01001101010<br />10101010101
+                </div>
+              </div>
+              <div className="flex items-center space-x-4">
+                <Shield className="w-16 h-16 text-blue-900" />
+                <Mail className="w-16 h-16 text-blue-900" />
+              </div>
+              <Power className="w-12 h-12 text-blue-900" />
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-3xl font-bold text-gray-900 mb-6">
+              Security You Can Trust
+            </h3>
+            <p className="text-gray-600 mb-4">
+              Protecting your case, your data, and your voice.
+            </p>
+            <p className="text-gray-600 mb-6">
+              At Quick Verdicts, your privacy and the integrity of every case are our highest priorities.
+            </p>
+            <p className="text-gray-600 mb-6">
+              That&apos;s why we built our platform with bank-level encryption, secure user authentication, and strict access controls for every participant.
+            </p>
+            <ul className="space-y-3 text-gray-700">
+              <li className="flex items-start">
+                <span className="mr-2">•</span>
+                <span><strong>Data Encryption:</strong> Every piece of data—from user bios to case files—is encrypted in transit and at rest.</span>
+              </li>
+              <li className="flex items-start">
+                <span className="mr-2">•</span>
+                <span><strong>Anonymous Jury Deliberations:</strong> We use advanced masking methods and all juror responses remain anonymous unless legally required.</span>
+              </li>
+              <li className="flex items-start">
+                <span className="mr-2">•</span>
+                <span><strong>Compliance & Integrity:</strong> We follow industry best practices and align with legal standards to ensure digital proceedings are just as secure as in-person trials.</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      {/* Get Started Section */}
+      <section className="bg-white py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid md:grid-cols-2 gap-12 items-center">
             <div>
-              <h3 className="text-2xl font-semibold text-[#0A2342] mb-4">
-                With Quick Verdicts advisory verdicts are faster, more accessible, and more
-                affordable for everyone.
-              </h3>
-              <ul className="mt-4 text-[#455A7C] space-y-4 text-base font-semibold list-none">
-                <li>
-                  Attorney&apos;s access to War Room with preformatted and editable Voir Dire questions and Jury Charge.
-                </li>
-                <li>
-                  Pre-record case or appear live. 3 tiers available, timed trials at set costs:
-                  <ul className="list-disc list-inside mt-2">
-                    <li>2.5 hours $3500</li>
-                    <li>3.5 hours $4500</li>
-                    <li>4.5 hours $5500</li>
-                  </ul>
-                </li>
-                <li>Cost effective enough for multiple trials</li>
-                <li>Recording of trial and deliberations provided</li>
-                <li>6-7 local mock jurors screened for prejudice and bias</li>
-                <li>Demonstrative evidence can be uploaded and accessed by Jurors.</li>
-                <li>Debriefing period provided following verdict</li>
-                <li>Each Juror completes witness evaluations</li>
-              </ul>
+              <h2 className="text-3xl font-bold text-gray-900 mb-6">
+                Get Started with Quick Verdicts
+              </h2>
+              <p className="text-gray-600 mb-6">
+                Whether you&apos;re presenting a case or ready to serve as a juror, Quick Verdicts makes getting started simple. Choose your path below:
+              </p>
+
+              <div className="mb-8">
+                <h3 className="font-bold text-gray-900 mb-3">I&apos;m an Attorney</h3>
+                <ul className="space-y-2 text-gray-700 ml-4">
+                  <li>• Create your profile in minutes</li>
+                  <li>• Submit your case details</li>
+                  <li>• Upload case materials securely</li>
+                  <li>• Receive verdicts and insights in days</li>
+                </ul>
+                <Link href="/signup/attorney" className="inline-block mt-4 bg-blue-900 text-white px-6 py-2 rounded hover:bg-blue-800 font-medium">
+                  Sign up as Attorney
+                </Link>
+              </div>
+
+              <div>
+                <h3 className="font-bold text-gray-900 mb-3">I Want to Be a Juror</h3>
+                <ul className="space-y-2 text-gray-700 ml-4">
+                  <li>• Make your voice count on your own schedule</li>
+                  <li>• Complete a simple vetting process</li>
+                  <li>• Review real, legally-binding cases online</li>
+                  <li>• Deliberate and log your verdict remotely</li>
+                  <li>• Get paid for your time</li>
+                </ul>
+                <Link href="/signup/juror" className="inline-block mt-4 bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 font-medium">
+                  Sign up as Juror
+                </Link>
+              </div>
             </div>
-            <div className="flex justify-center md:justify-end">
-              <Image
-                src="/image4.png"
-                alt="Professional attorney working on Quick Verdicts platform"
-                width={600}
-                height={380}
-                className="rounded-md object-cover shadow-md max-w-full h-auto"
-                loading="lazy"
-              />
+
+            <div className="bg-blue-50 p-12 rounded-lg">
+              <h3 className="text-4xl font-bold text-blue-900 mb-8">STARTED</h3>
+              <div className="space-y-6">
+                <div className="bg-white p-6 rounded-lg shadow-sm">
+                  <div className="w-full h-32 bg-blue-100 rounded flex items-center justify-center mb-4">
+                    <div className="text-6xl text-blue-900">🖼️</div>
+                  </div>
+                </div>
+                <div className="relative">
+                  <div className="absolute left-0 bottom-0 text-6xl">👋</div>
+                  <div className="bg-white p-6 rounded-lg shadow-sm ml-12">
+                    <div className="flex items-center space-x-4 mb-3">
+                      <div className="w-16 h-16 bg-blue-900 rounded flex items-center justify-center">
+                        <Play className="w-8 h-8 text-white" />
+                      </div>
+                      <div className="flex-1 space-y-2">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-6 h-6 border-2 border-blue-900 rounded"></div>
+                          <div className="flex-1 h-2 bg-gray-200 rounded"></div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <div className="w-6 h-6 bg-blue-900 rounded-full flex items-center justify-center text-white text-xs">✓</div>
+                          <div className="flex-1 h-2 bg-gray-200 rounded"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="absolute right-0 top-0 text-4xl">⚙️</div>
+                  <div className="absolute right-0 bottom-0">
+                    <div className="w-12 h-12 bg-blue-900 rounded-full"></div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-        </section>
+        </div>
+      </section>
 
-
-        <section className="px-6 md:px-20 py-16 text-left">
-          <h2 className="text-3xl md:text-4xl font-semibold text-[#0A2342] mb-6">
+      {/* FAQ Section */}
+      <section className="bg-gray-50 py-16">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-3xl font-bold text-gray-900 mb-12">
             Frequently Asked Questions
           </h2>
-          <dl className="space-y-8 divide-y divide-[#C6CDD9]">
-            {FAQ_DATA.map((faq, index) => (
-              <div key={index} className={index === 0 ? "pb-6" : "pt-6 pb-6"}>
-                <dt className="font-semibold text-[#0A2342] text-lg">
-                  {faq.question}
-                </dt>
-                <dd className="text-[#1a3666] mt-2">
-                  {faq.answer}
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </section>
-*/}
-  
-<a
-  href="https://sway.cloud.microsoft/l04vDH5fiMcigqbD?ref=Link"
-  target="_blank"
-  rel="noopener noreferrer"
-  className="inline-block bg-[#0A2342] text-white px-6 py-3 rounded-md font-semibold
-             hover:bg-[#133b6f] transition duration-300 ml-70"
->
-  More Information for Attorneys
-</a>
 
-<a
-  href="https://sway.cloud.microsoft/gSXwTvIo8kEn3rp4?ref=Link"
-  target="_blank"
-  rel="noopener noreferrer"
-  className="inline-block bg-[#0A2342] text-white px-6 py-3 rounded-md font-semibold
-             hover:bg-[#133b6f] transition duration-300 ml-90"
->
-  More Information for Jurors
-</a>
-<section className="bg-[#f9f7f2] py-12 px-6 pb-10"/>
+          <div className="space-y-8">
+            <div>
+              <h3 className="font-bold text-gray-900 mb-2">What is Quick Verdicts?</h3>
+              <p className="text-gray-600">
+                Quick Verdicts is a virtual courtroom platform where attorneys can present small claims cases to real, local jurors, who then review evidence and issue binding verdicts—entirely online.
+              </p>
+            </div>
 
+            <div>
+              <h3 className="font-bold text-gray-900 mb-2">How does it work?</h3>
+              <p className="text-gray-600">
+                Attorneys upload case materials, evidence, and questions. Jurors are selected from the local county, then join a secure virtual courtroom to review the case and render a decision. You receive a full verdict with juror feedback, analysis, and damages recommendations—typically within 48 hours.
+              </p>
+            </div>
 
-  
+            <div>
+              <h3 className="font-bold text-gray-900 mb-2">What types of cases work best?</h3>
+              <p className="text-gray-600">
+                Quick Verdicts is ideal for small claims, personal injury, contract disputes, landlord-tenant cases, and other civil matters under $25,000.
+              </p>
+            </div>
 
-
-        {/* CTA Section */}
-        <section className="bg-[#EEE7D5] py-16 text-center border-t border-[#ede3cf] m-0">
-          <h2 className="text-3xl md:text-4xl font-semibold text-[#0A2342] mb-2">
-            Ready to Join a Trial—or Start One?
-          </h2>
-          <p className="mt-2 text-[#1a3666] font-semibold max-w-4xl mx-auto px-4">
-            Whether you&apos;re here to serve or to try a case, Quick Verdicts is ready
-            when you are. Join us participating in a faster,
-            smarter pretrial resolution system.
-          </p>
-          <div className="mt-6 flex justify-center gap-4 flex-wrap px-4">
-            <CTAButton href="/signup/attorney" type="attorney" location="cta_bottom" variant="primary">
-              <FaGavel aria-hidden="true" />
-              <span>Start a Trial Now</span>
-            </CTAButton>
-            <CTAButton href="/signup/juror" type="juror" location="cta_bottom" variant="secondary">
-              <FaMoneyBillWave aria-hidden="true" />
-              <span>Get Paid to be a Juror</span>
-            </CTAButton>
+            <div>
+              <h3 className="font-bold text-gray-900 mb-2">What does a juror do on Quick Verdicts?</h3>
+              <p className="text-gray-600">
+                As a juror, you join a secure virtual courtroom to review real small claims cases. You&apos;ll examine case files, watch video statements (if available), and answer deliberation questions. Once you deliver your verdict, you might view their case.
+              </p>
+            </div>
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* Footer */}
-        <Footer />
-      </div>
-    </>
+      {/* CTA Section */}
+      <section className="bg-white py-16">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">
+            Ready to Get Started?
+          </h2>
+          <p className="text-gray-600 mb-8">
+            Sign up today and post your first case
+          </p>
+          <Link href="/signup" className="bg-blue-900 text-white px-12 py-3 rounded hover:bg-blue-800 font-medium inline-block w-full max-w-md">
+            Sign up
+          </Link>
+          <div className="mt-4">
+            <Link href="/login" className="text-blue-900 hover:underline">
+              Login
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="bg-blue-950 text-white py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid md:grid-cols-2 gap-8 mb-8">
+            <div>
+              <h3 className="font-bold mb-4">Contact</h3>
+              <p className="text-gray-300">650-762-6574</p>
+              <p className="text-gray-300">hello@QV.com</p>
+            </div>
+            <div>
+              <h3 className="font-bold mb-4">Navigation</h3>
+              <ul className="space-y-2 text-gray-300">
+                <li><Link href="/" className="hover:text-white">Home</Link></li>
+                <li><Link href="/signup/attorney" className="hover:text-white">Attorney</Link></li>
+                <li><Link href="/signup/juror" className="hover:text-white">Juror</Link></li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="border-t border-gray-700 pt-8 flex flex-wrap justify-between items-center">
+            <div className="flex space-x-6 text-sm text-gray-300">
+              <Link href="/" className="hover:text-white">Quick Verdicts®</Link>
+              <Link href="/privacy" className="hover:text-white">Privacy</Link>
+              <Link href="/terms" className="hover:text-white">Terms of Use</Link>
+              <Link href="/consumer-choice" className="hover:text-white">Consumer Choice</Link>
+            </div>
+            <div className="flex items-center space-x-4 mt-4 md:mt-0">
+              <span className="text-sm text-gray-300">Follow Us</span>
+              <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" className="hover:text-white">
+                <Youtube className="w-5 h-5" />
+              </a>
+              <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="hover:text-white">
+                <Twitter className="w-5 h-5" />
+              </a>
+              <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="hover:text-white">
+                <Facebook className="w-5 h-5" />
+              </a>
+              <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="hover:text-white">
+                <Linkedin className="w-5 h-5" />
+              </a>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
   );
 }
