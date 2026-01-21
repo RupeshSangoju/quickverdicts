@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Play, Lock, Globe, Mail, Shield, Star, Power, Facebook, Twitter, Linkedin, Youtube } from 'lucide-react';
+import { Play, Facebook, Twitter, Linkedin, Youtube } from 'lucide-react';
 
 export default function QuickVerdictsLanding() {
   const [isPlaying, setIsPlaying] = useState(false);
@@ -12,11 +12,13 @@ export default function QuickVerdictsLanding() {
       {/* Header */}
       <header className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <Link href="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-gray-800 rounded-full flex items-center justify-center">
-              <div className="w-4 h-4 border-2 border-white rounded-full"></div>
+          <Link href="/" className="flex flex-col items-center">
+            {/* Logo placeholder - will be replaced with your image */}
+            <img src="/api/placeholder/300/150" alt="Quick Verdicts Logo" className="h-24" />
+            <div className="text-center mt-2">
+              <div className="text-2xl font-bold text-blue-900 tracking-wider">QUICK VERDICTS</div>
+              <div className="text-sm text-yellow-600 tracking-wide">VIRTUAL TRIALS • DELIBERATED VERDICTS</div>
             </div>
-            <span className="text-xl font-semibold">QUICK VERDICTS</span>
           </Link>
           <nav className="flex items-center space-x-6">
             <Link href="/signup/attorney" className="text-gray-700 hover:text-gray-900">
@@ -38,55 +40,21 @@ export default function QuickVerdictsLanding() {
       {/* Hero Section */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="relative">
-          {/* Decorative Images */}
+          {/* Four Images - will be replaced with your designs */}
           <div className="absolute top-0 left-10 w-32 h-32">
-            <div className="relative">
-              <img src="/api/placeholder/120/120" alt="Legal" className="rounded-full w-full h-full object-cover" />
-              <div className="absolute -left-8 top-1/2 transform -translate-y-1/2">
-                <div className="flex flex-col space-y-1">
-                  {[...Array(8)].map((_, i) => (
-                    <div key={i} className="h-0.5 bg-gray-800" style={{ width: `${20 + i * 3}px` }}></div>
-                  ))}
-                </div>
-              </div>
-            </div>
+            <img src="/api/placeholder/120/120" alt="Design 1" className="rounded-full w-full h-full object-cover" />
           </div>
 
           <div className="absolute top-0 right-10 w-32 h-32">
-            <div className="relative">
-              <img src="/api/placeholder/120/120" alt="Legal" className="rounded-full w-full h-full object-cover" />
-              <div className="absolute -right-8 top-1/2 transform -translate-y-1/2">
-                <svg width="60" height="60" viewBox="0 0 60 60" className="text-gray-800">
-                  <circle cx="30" cy="30" r="28" fill="none" stroke="currentColor" strokeWidth="2" />
-                  <circle cx="30" cy="30" r="20" fill="none" stroke="currentColor" strokeWidth="2" />
-                  <circle cx="30" cy="30" r="12" fill="none" stroke="currentColor" strokeWidth="2" />
-                </svg>
-              </div>
-            </div>
+            <img src="/api/placeholder/120/120" alt="Design 2" className="rounded-full w-full h-full object-cover" />
           </div>
 
           <div className="absolute bottom-0 left-10 w-32 h-32">
-            <div className="relative">
-              <img src="/api/placeholder/120/120" alt="Legal" className="rounded-full w-full h-full object-cover" />
-              <div className="absolute -left-8 top-1/2 transform -translate-y-1/2">
-                <div className="flex flex-col space-y-1">
-                  {[...Array(8)].map((_, i) => (
-                    <div key={i} className="h-0.5 bg-gray-800" style={{ width: `${20 + i * 3}px` }}></div>
-                  ))}
-                </div>
-              </div>
-            </div>
+            <img src="/api/placeholder/120/120" alt="Design 3" className="rounded-full w-full h-full object-cover" />
           </div>
 
           <div className="absolute bottom-0 right-10 w-32 h-32">
-            <div className="relative">
-              <img src="/api/placeholder/120/120" alt="Legal" className="rounded-full w-full h-full object-cover" />
-              <div className="absolute -right-8 top-1/2 transform -translate-y-1/2">
-                <svg width="60" height="60" viewBox="0 0 60 60" className="text-gray-800">
-                  <path d="M0 30 L60 30 M30 0 L30 60 M10 10 L50 50 M50 10 L10 50" stroke="currentColor" strokeWidth="2" fill="none" />
-                </svg>
-              </div>
-            </div>
+            <img src="/api/placeholder/120/120" alt="Design 4" className="rounded-full w-full h-full object-cover" />
           </div>
 
           {/* Hero Content */}
@@ -136,31 +104,9 @@ export default function QuickVerdictsLanding() {
 
         {/* Security Section */}
         <div className="mt-24 grid md:grid-cols-2 gap-12 items-center">
+          {/* Digital Security Image - will be replaced with your image */}
           <div className="bg-blue-50 p-12 rounded-lg">
-            <h3 className="text-4xl font-bold text-blue-900 mb-6">
-              DIGITAL<br />SECURITY
-            </h3>
-            <div className="space-y-6">
-              <div className="flex items-center space-x-4">
-                <Lock className="w-16 h-16 text-blue-900" />
-                <div className="flex space-x-1">
-                  {[...Array(4)].map((_, i) => (
-                    <Star key={i} className="w-6 h-6 text-blue-900" fill="currentColor" />
-                  ))}
-                </div>
-              </div>
-              <div className="flex items-center space-x-4">
-                <Globe className="w-16 h-16 text-blue-900" />
-                <div className="text-blue-900 font-mono text-sm">
-                  01001101010<br />10101010101
-                </div>
-              </div>
-              <div className="flex items-center space-x-4">
-                <Shield className="w-16 h-16 text-blue-900" />
-                <Mail className="w-16 h-16 text-blue-900" />
-              </div>
-              <Power className="w-12 h-12 text-blue-900" />
-            </div>
+            <img src="/api/placeholder/400/400" alt="Digital Security" className="w-full h-auto" />
           </div>
 
           <div>
@@ -234,39 +180,9 @@ export default function QuickVerdictsLanding() {
               </div>
             </div>
 
+            {/* Started Image - will be replaced with your image */}
             <div className="bg-blue-50 p-12 rounded-lg">
-              <h3 className="text-4xl font-bold text-blue-900 mb-8">STARTED</h3>
-              <div className="space-y-6">
-                <div className="bg-white p-6 rounded-lg shadow-sm">
-                  <div className="w-full h-32 bg-blue-100 rounded flex items-center justify-center mb-4">
-                    <div className="text-6xl text-blue-900">🖼️</div>
-                  </div>
-                </div>
-                <div className="relative">
-                  <div className="absolute left-0 bottom-0 text-6xl">👋</div>
-                  <div className="bg-white p-6 rounded-lg shadow-sm ml-12">
-                    <div className="flex items-center space-x-4 mb-3">
-                      <div className="w-16 h-16 bg-blue-900 rounded flex items-center justify-center">
-                        <Play className="w-8 h-8 text-white" />
-                      </div>
-                      <div className="flex-1 space-y-2">
-                        <div className="flex items-center space-x-2">
-                          <div className="w-6 h-6 border-2 border-blue-900 rounded"></div>
-                          <div className="flex-1 h-2 bg-gray-200 rounded"></div>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <div className="w-6 h-6 bg-blue-900 rounded-full flex items-center justify-center text-white text-xs">✓</div>
-                          <div className="flex-1 h-2 bg-gray-200 rounded"></div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="absolute right-0 top-0 text-4xl">⚙️</div>
-                  <div className="absolute right-0 bottom-0">
-                    <div className="w-12 h-12 bg-blue-900 rounded-full"></div>
-                  </div>
-                </div>
-              </div>
+              <img src="/api/placeholder/400/400" alt="Get Started" className="w-full h-auto" />
             </div>
           </div>
         </div>
