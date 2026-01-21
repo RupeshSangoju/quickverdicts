@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { Play, Facebook, Twitter, Linkedin, Youtube } from 'lucide-react';
+import Image from "next/image";
 
 export default function QuickVerdictsLanding() {
   const [isPlaying, setIsPlaying] = useState(false);
@@ -14,10 +15,10 @@ export default function QuickVerdictsLanding() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <Link href="/" className="flex flex-col items-center">
             {/* Logo placeholder - will be replaced with your image */}
-            <img src="/api/placeholder/300/150" alt="Quick Verdicts Logo" className="h-24" />
+            <img src="/images/qv-logo.png" alt="Quick Verdicts Logo" className="h-12 w-auto"/>
             <div className="text-center mt-2">
-              <div className="text-2xl font-bold text-blue-900 tracking-wider">QUICK VERDICTS</div>
-              <div className="text-sm text-yellow-600 tracking-wide">VIRTUAL TRIALS • DELIBERATED VERDICTS</div>
+              <div className="text-[15px] font-bold text-blue-900 tracking-wider">QUICK VERDICTS</div>
+              <div className="text-[10px] text-yellow-600 tracking-wide">VIRTUAL TRIALS • DELIBERATED VERDICTS</div>
             </div>
           </Link>
           <nav className="flex items-center space-x-6">
@@ -41,35 +42,44 @@ export default function QuickVerdictsLanding() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="relative">
           {/* Four Images - will be replaced with your designs */}
-          <div className="absolute top-0 left-10 w-32 h-32">
-            <img src="/api/placeholder/120/120" alt="Design 1" className="rounded-full w-full h-full object-cover" />
+          <div className="absolute top-0 left-10 w-40 h-40">
+            <img  src="/images/a.png"  alt="Design 1"  className="w-full h-full object-cover" />           
           </div>
 
-          <div className="absolute top-0 right-10 w-32 h-32">
-            <img src="/api/placeholder/120/120" alt="Design 2" className="rounded-full w-full h-full object-cover" />
+          <div className="absolute top-0 right-10 w-40 h-40">
+            <img src="/images/c.png" alt="Design 2" className="w-full h-full object-cover" />
           </div>
 
-          <div className="absolute bottom-0 left-10 w-32 h-32">
-            <img src="/api/placeholder/120/120" alt="Design 3" className="rounded-full w-full h-full object-cover" />
+          <div className="absolute bottom-0 left-10 w-40 h-40">
+            <img src="/images/b.png" alt="Design 3" className="w-full h-full object-cover" />
           </div>
 
-          <div className="absolute bottom-0 right-10 w-32 h-32">
-            <img src="/api/placeholder/120/120" alt="Design 4" className="rounded-full w-full h-full object-cover" />
+          <div className="absolute bottom-0 right-10 w-40 h-40">
+            <img src="/images/d.png" alt="Design 4" className="w-full h-full object-cover" />
           </div>
 
           {/* Hero Content */}
           <div className="text-center pt-24 pb-12">
-            <h1 className="text-5xl font-bold text-gray-900 mb-4">
+            <h1 className="text-[44px] leading-[1.1] font-bold text-gray-900 mb-6">
               Real Cases. Real Impact. Remotely.
             </h1>
-            <p className="text-gray-600 max-w-2xl mx-auto mb-8">
-              Quick Verdicts connects attorneys with verified jurors to resolve legally binding small claims cases online faster, fairer, and more efficiently.
+
+            <p className="text-[18px] leading-[1.6] font-medium text-gray-600 max-w-3xl mx-auto mb-10">
+              Quick Verdicts connects attorneys with verified jurors
+              <br />
+              to resolve legally binding small claims cases online
+              <br />
+              faster, fairer, and more efficiently.
             </p>
-            <Link href="/signup" className="bg-blue-900 text-white px-8 py-3 rounded hover:bg-blue-800 font-medium inline-block">
+
+            <Link
+              href="/signup"
+              className="inline-flex items-center justify-center bg-blue-900 text-white px-10 py-3 rounded-md font-semibold text-[16px] hover:bg-blue-800 transition"
+            >
               Get started
             </Link>
           </div>
-        </div>
+          </div>
 
         {/* Video Section */}
         <div className="mt-16">
@@ -105,8 +115,8 @@ export default function QuickVerdictsLanding() {
         {/* Security Section */}
         <div className="mt-24 grid md:grid-cols-2 gap-12 items-center">
           {/* Digital Security Image - will be replaced with your image */}
-          <div className="bg-blue-50 p-12 rounded-lg">
-            <img src="/api/placeholder/400/400" alt="Digital Security" className="w-full h-auto" />
+          <div className="   p-12 rounded-lg">
+            <img src="/images/e.png" alt="Digital Security" className="w-full h-auto" />
           </div>
 
           <div>
@@ -160,9 +170,6 @@ export default function QuickVerdictsLanding() {
                   <li>• Upload case materials securely</li>
                   <li>• Receive verdicts and insights in days</li>
                 </ul>
-                <Link href="/signup/attorney" className="inline-block mt-4 bg-blue-900 text-white px-6 py-2 rounded hover:bg-blue-800 font-medium">
-                  Sign up as Attorney
-                </Link>
               </div>
 
               <div>
@@ -174,15 +181,12 @@ export default function QuickVerdictsLanding() {
                   <li>• Deliberate and log your verdict remotely</li>
                   <li>• Get paid for your time</li>
                 </ul>
-                <Link href="/signup/juror" className="inline-block mt-4 bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 font-medium">
-                  Sign up as Juror
-                </Link>
               </div>
             </div>
 
             {/* Started Image - will be replaced with your image */}
-            <div className="bg-blue-50 p-12 rounded-lg">
-              <img src="/api/placeholder/400/400" alt="Get Started" className="w-full h-auto" />
+            <div className=" p-12 rounded-lg">
+              <img src="/images/f.png" alt="Get Started" className="w-full h-auto" />
             </div>
           </div>
         </div>
