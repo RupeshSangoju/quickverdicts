@@ -21,7 +21,7 @@ export default function QuickVerdictsLanding() {
             </div>
           </Link>
           <nav className="flex items-center space-x-6">
-            <Link href="/signup/attorney" className="text-gray-700 hover:text-gray-900">
+            <Link href="/for-attorneys" className="text-gray-700 hover:text-gray-900">
               Attorney
             </Link>
             <Link href="/signup/juror" className="text-gray-700 hover:text-gray-900">
@@ -260,7 +260,7 @@ export default function QuickVerdictsLanding() {
               <h3 className="font-bold mb-4">Navigation</h3>
               <ul className="space-y-2 text-gray-300">
                 <li><Link href="/" className="hover:text-white">Home</Link></li>
-                <li><Link href="/signup/attorney" className="hover:text-white">Attorney</Link></li>
+                <li><Link href="/for-attorneys" className="hover:text-white">Attorney</Link></li>
                 <li><Link href="/signup/juror" className="hover:text-white">Juror</Link></li>
               </ul>
             </div>
