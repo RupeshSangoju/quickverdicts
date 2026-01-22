@@ -306,20 +306,49 @@ export default function AdminDashboard() {
         return `${hours.toString().padStart(2, '0')}:${minutes}:00`;
       });
 
-      // Block each time slot
-      const blockPromises = allTimeSlots.map(time =>
-        fetchWithAuth(`${API_BASE}/api/admin-calendar/block`, {
-          method: 'POST',
-          body: JSON.stringify({
-            blockedDate: blockDateForm.date,
-            blockedTime: time,
-            duration: 30,
-            reason: blockDateForm.reason
-          })
+      console.log(`Blocking ${allTimeSlots.length} time slots for ${blockDateForm.date}`);
+
+      // Block each time slot with error checking
+      const blockResults = await Promise.allSettled(
+        allTimeSlots.map(async (time) => {
+          const response = await fetchWithAuth(`${API_BASE}/api/admin-calendar/block`, {
+            method: 'POST',
+            body: JSON.stringify({
+              blockedDate: blockDateForm.date,
+              blockedTime: time,
+              duration: 30,
+              reason: blockDateForm.reason,
+              skipBusinessHoursCheck: true  // Allow blocking outside 9 AM - 5 PM
+            })
+          });
+
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(`Failed to block ${time}: ${error.message || response.statusText}`);
+          }
+
+          return response.json();
         })
       );
 
-      await Promise.all(blockPromises);
+      // Count successes and failures
+      const successful = blockResults.filter(r => r.status === 'fulfilled').length;
+      const failed = blockResults.filter(r => r.status === 'rejected').length;
+
+      console.log(`Blocked ${successful} slots successfully, ${failed} failed`);
+
+      if (failed > 0) {
+        // Log first few failures for debugging
+        const failures = blockResults
+          .filter(r => r.status === 'rejected')
+          .slice(0, 5)
+          .map(r => r.reason.message);
+        console.error('Some slot blocking failures:', failures);
+      }
+
+      if (successful === 0) {
+        throw new Error('Failed to block any time slots');
+      }
 
       // Send notifications to all attorneys and jurors
       const notifyResponse = await fetchWithAuth(`${API_BASE}/api/admin/notify-blocked-date`, {
@@ -331,9 +360,9 @@ export default function AdminDashboard() {
       });
 
       if (notifyResponse.ok) {
-        toast.success(`Date ${blockDateForm.date} blocked successfully! Notifications sent to all users.`);
+        toast.success(`Date ${blockDateForm.date} blocked successfully! ${successful}/48 slots blocked. Notifications sent to all users.`);
       } else {
-        toast.success(`Date ${blockDateForm.date} blocked successfully!`);
+        toast.success(`Date ${blockDateForm.date} blocked successfully! ${successful}/48 slots blocked.`);
       }
 
       // Reset form and close modal
