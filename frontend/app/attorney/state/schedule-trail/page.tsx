@@ -115,8 +115,18 @@ export default function ScheduleTrialPage() {
       const startDateStr = formatDateString(startDate);
       const endDateStr = formatDateString(endDate);
 
+      const token = getToken();
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json'
+      };
+
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch(
-        `${API_BASE}/api/admin-calendar/blocked?startDate=${startDateStr}&endDate=${endDateStr}`
+        `${API_BASE}/api/admin-calendar/blocked?startDate=${startDateStr}&endDate=${endDateStr}`,
+        { headers }
       );
 
       if (response.ok) {
