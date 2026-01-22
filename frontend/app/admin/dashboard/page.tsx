@@ -244,6 +244,13 @@ export default function AdminDashboard() {
   const [deleteJurorCaseId, setDeleteJurorCaseId] = useState<number | null>(null);
   const [deletingJuror, setDeletingJuror] = useState(false);
 
+  // Date blocking modal states
+  const [showBlockDateModal, setShowBlockDateModal] = useState(false);
+  const [blockDateForm, setBlockDateForm] = useState({ date: "", reason: "" });
+  const [blockingDate, setBlockingDate] = useState(false);
+  const [blockedDates, setBlockedDates] = useState<any[]>([]);
+  const [loadingBlockedDates, setLoadingBlockedDates] = useState(false);
+
   // Case delete modal states
   const [showDeleteCaseModal, setShowDeleteCaseModal] = useState(false);
   const [deleteCaseId, setDeleteCaseId] = useState<number | null>(null);
@@ -258,6 +265,116 @@ export default function AdminDashboard() {
   const [rescheduling, setRescheduling] = useState(false);
 
   const [approvalComments, setApprovalComments] = useState("");
+
+  // Date blocking functions
+  const fetchBlockedDates = async () => {
+    setLoadingBlockedDates(true);
+    try {
+      const response = await fetchWithAuth(`${API_BASE}/api/admin-calendar/blocked?startDate=${new Date().toISOString().split('T')[0]}&endDate=${new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}`);
+      if (response.ok) {
+        const data = await response.json();
+        // Group by date to show blocked dates (not individual time slots)
+        const blockedByDate = data.blockedSlots.reduce((acc: any, slot: any) => {
+          const date = new Date(slot.BlockedDate).toISOString().split('T')[0];
+          if (!acc[date]) {
+            acc[date] = { date, reason: slot.Reason, slots: [] };
+          }
+          acc[date].slots.push(slot);
+          return acc;
+        }, {});
+        setBlockedDates(Object.values(blockedByDate));
+      }
+    } catch (error) {
+      console.error("Error fetching blocked dates:", error);
+    } finally {
+      setLoadingBlockedDates(false);
+    }
+  };
+
+  const handleBlockDate = async () => {
+    if (!blockDateForm.date || !blockDateForm.reason) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+
+    setBlockingDate(true);
+    try {
+      // Block all 48 time slots for the day (24 hours)
+      const allTimeSlots = Array.from({ length: 48 }, (_, i) => {
+        const hours = Math.floor(i / 2);
+        const minutes = i % 2 === 0 ? "00" : "30";
+        return `${hours.toString().padStart(2, '0')}:${minutes}:00`;
+      });
+
+      // Block each time slot
+      const blockPromises = allTimeSlots.map(time =>
+        fetchWithAuth(`${API_BASE}/api/admin-calendar/block`, {
+          method: 'POST',
+          body: JSON.stringify({
+            blockedDate: blockDateForm.date,
+            blockedTime: time,
+            duration: 30,
+            reason: blockDateForm.reason
+          })
+        })
+      );
+
+      await Promise.all(blockPromises);
+
+      // Send notifications to all attorneys and jurors
+      const notifyResponse = await fetchWithAuth(`${API_BASE}/api/admin/notify-blocked-date`, {
+        method: 'POST',
+        body: JSON.stringify({
+          date: blockDateForm.date,
+          reason: blockDateForm.reason
+        })
+      });
+
+      if (notifyResponse.ok) {
+        toast.success(`Date ${blockDateForm.date} blocked successfully! Notifications sent to all users.`);
+      } else {
+        toast.success(`Date ${blockDateForm.date} blocked successfully!`);
+      }
+
+      // Reset form and close modal
+      setBlockDateForm({ date: "", reason: "" });
+      setShowBlockDateModal(false);
+      fetchBlockedDates();
+      fetchCasesForDate(selectedDate);
+    } catch (error) {
+      console.error("Error blocking date:", error);
+      toast.error("Failed to block date. Please try again.");
+    } finally {
+      setBlockingDate(false);
+    }
+  };
+
+  const handleUnblockDate = async (date: string) => {
+    if (!confirm(`Are you sure you want to unblock ${date}?`)) return;
+
+    try {
+      // Get all blocked slots for this date
+      const response = await fetchWithAuth(`${API_BASE}/api/admin-calendar/blocked?startDate=${date}&endDate=${date}`);
+      if (response.ok) {
+        const data = await response.json();
+
+        // Unblock all slots for this date
+        const unblockPromises = data.blockedSlots.map((slot: any) =>
+          fetchWithAuth(`${API_BASE}/api/admin-calendar/unblock/${slot.CalendarId}`, {
+            method: 'DELETE'
+          })
+        );
+
+        await Promise.all(unblockPromises);
+        toast.success(`Date ${date} unblocked successfully!`);
+        fetchBlockedDates();
+        fetchCasesForDate(selectedDate);
+      }
+    } catch (error) {
+      console.error("Error unblocking date:", error);
+      toast.error("Failed to unblock date. Please try again.");
+    }
+  };
 
   // Listen for optimistic case status updates (from war-room submit)
   useEffect(() => {
@@ -348,6 +465,12 @@ export default function AdminDashboard() {
       fetchCasesForDate(selectedDate);
     }
   }, [selectedDate, isAuthChecked]);
+
+  useEffect(() => {
+    if (isAuthChecked) {
+      fetchBlockedDates();
+    }
+  }, [isAuthChecked]);
 
   // ✅ LISTEN FOR WITNESS/CASE UPDATES: Refresh when attorneys modify case data
   useEffect(() => {
@@ -1481,6 +1604,24 @@ function formatTime(timeString: string, scheduledDate: string) {
                       {stats.pendingRescheduleRequests > 0 && (
                         <span className="px-2 py-1 bg-amber-500 text-white text-xs font-bold rounded-full">
                           {stats.pendingRescheduleRequests}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </button>
+                <button
+                  className="w-full bg-gradient-to-r from-red-50 to-red-100 rounded-lg p-4 text-left font-medium hover:shadow-md transition-all border border-red-200 group"
+                  onClick={() => setShowBlockDateModal(true)}
+                >
+                  <div className="flex items-center">
+                    <div className="p-2 bg-red-500 rounded-lg mr-3 group-hover:scale-110 transition-transform">
+                      <XCircle className="h-5 w-5 text-white" />
+                    </div>
+                    <div className="flex-1 flex items-center justify-between">
+                      <span className="text-gray-900 group-hover:text-red-600 font-semibold">Block Dates</span>
+                      {blockedDates.length > 0 && (
+                        <span className="px-2 py-1 bg-red-500 text-white text-xs font-bold rounded-full">
+                          {blockedDates.length}
                         </span>
                       )}
                     </div>
@@ -2710,6 +2851,144 @@ function formatTime(timeString: string, scheduledDate: string) {
                     Confirm Approval
                   </>
                 )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Block Date Modal */}
+      {showBlockDateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold" style={{ color: BLUE }}>Block Dates</h2>
+                <button
+                  onClick={() => {
+                    setShowBlockDateModal(false);
+                    setBlockDateForm({ date: "", reason: "" });
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <XCircle className="h-6 w-6" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Block New Date Form */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 className="font-semibold text-gray-900 mb-4">Block a New Date</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Date to Block
+                    </label>
+                    <input
+                      type="date"
+                      value={blockDateForm.date}
+                      onChange={(e) => setBlockDateForm({ ...blockDateForm, date: e.target.value })}
+                      min={new Date().toISOString().split('T')[0]}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-600"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Reason for Blocking
+                    </label>
+                    <select
+                      value={blockDateForm.reason}
+                      onChange={(e) => setBlockDateForm({ ...blockDateForm, reason: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-600"
+                    >
+                      <option value="">Select a reason...</option>
+                      <option value="Holiday">Holiday</option>
+                      <option value="System Maintenance">System Maintenance</option>
+                      <option value="Staff Training">Staff Training</option>
+                      <option value="Emergency Closure">Emergency Closure</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  <button
+                    onClick={handleBlockDate}
+                    disabled={blockingDate || !blockDateForm.date || !blockDateForm.reason}
+                    className="w-full bg-red-600 text-white px-4 py-3 rounded-lg hover:bg-red-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center"
+                  >
+                    {blockingDate ? (
+                      <>
+                        <span className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full mr-2"></span>
+                        Blocking Date...
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="h-5 w-5 mr-2" />
+                        Block This Date
+                      </>
+                    )}
+                  </button>
+                  <p className="text-sm text-gray-600">
+                    ⚠️ This will block all time slots for the selected date and send notifications to all attorneys and jurors.
+                  </p>
+                </div>
+              </div>
+
+              {/* Currently Blocked Dates */}
+              <div>
+                <h3 className="font-semibold text-gray-900 mb-4">Currently Blocked Dates</h3>
+                {loadingBlockedDates ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto"></div>
+                    <p className="text-gray-600 mt-2">Loading blocked dates...</p>
+                  </div>
+                ) : blockedDates.length === 0 ? (
+                  <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
+                    <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                    <p className="text-gray-600">No dates are currently blocked</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {blockedDates.map((blocked: any) => (
+                      <div key={blocked.date} className="bg-white border border-red-200 rounded-lg p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-red-100 rounded-lg">
+                            <Calendar className="h-5 w-5 text-red-600" />
+                          </div>
+                          <div>
+                            <p className="font-semibold text-gray-900">
+                              {formatDateString(blocked.date, {
+                                weekday: 'long',
+                                month: 'long',
+                                day: 'numeric',
+                                year: 'numeric'
+                              })}
+                            </p>
+                            <p className="text-sm text-gray-600">Reason: {blocked.reason}</p>
+                            <p className="text-xs text-gray-500">{blocked.slots.length} time slots blocked</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleUnblockDate(blocked.date)}
+                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium text-sm"
+                        >
+                          Unblock
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-gray-200 flex justify-end">
+              <button
+                onClick={() => {
+                  setShowBlockDateModal(false);
+                  setBlockDateForm({ date: "", reason: "" });
+                }}
+                className="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium"
+              >
+                Close
               </button>
             </div>
           </div>

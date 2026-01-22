@@ -1839,4 +1839,76 @@ router.post("/cases/:caseId/reschedule", authMiddleware, requireAdmin, async (re
   }
 });
 
+// ============================================
+// NOTIFY USERS OF BLOCKED DATES
+// ============================================
+router.post("/notify-blocked-date", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const { date, reason } = req.body;
+
+    if (!date || !reason) {
+      return res.status(400).json({
+        success: false,
+        message: "Date and reason are required"
+      });
+    }
+
+    const pool = await poolPromise;
+
+    // Get all attorneys
+    const attorneysResult = await pool.request()
+      .query(`SELECT AttorneyId, Email, FirstName, LastName FROM Attorneys WHERE IsVerified = 1`);
+
+    // Get all jurors
+    const jurorsResult = await pool.request()
+      .query(`SELECT JurorId, Email, Name FROM Jurors WHERE IsVerified = 1`);
+
+    const attorneys = attorneysResult.recordset;
+    const jurors = jurorsResult.recordset;
+
+    // Create notifications for all attorneys
+    for (const attorney of attorneys) {
+      await Notification.create({
+        userId: attorney.AttorneyId,
+        userType: 'attorney',
+        type: 'SYSTEM_ANNOUNCEMENT',
+        title: `Date Blocked: ${date}`,
+        message: `The date ${date} has been blocked for ${reason}. You will not be able to schedule cases on this date.`,
+        relatedEntityType: 'system',
+        relatedEntityId: null
+      });
+    }
+
+    // Create notifications for all jurors
+    for (const juror of jurors) {
+      await Notification.create({
+        userId: juror.JurorId,
+        userType: 'juror',
+        type: 'SYSTEM_ANNOUNCEMENT',
+        title: `Date Blocked: ${date}`,
+        message: `The date ${date} has been blocked for ${reason}. No trials will be scheduled on this date.`,
+        relatedEntityType: 'system',
+        relatedEntityId: null
+      });
+    }
+
+    console.log(`✅ Sent blocked date notifications to ${attorneys.length} attorneys and ${jurors.length} jurors`);
+
+    res.json({
+      success: true,
+      message: `Notifications sent to ${attorneys.length} attorneys and ${jurors.length} jurors`,
+      attorneysNotified: attorneys.length,
+      jurorsNotified: jurors.length
+    });
+
+  } catch (error) {
+    console.error("Error sending blocked date notifications:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to send notifications",
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;
