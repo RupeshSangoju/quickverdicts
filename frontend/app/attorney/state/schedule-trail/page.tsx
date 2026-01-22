@@ -111,17 +111,20 @@ export default function ScheduleTrialPage() {
     try {
       const startDate = new Date(currentYear, currentMonth, 1);
       const endDate = new Date(currentYear, currentMonth + 1, 0);
-      
+
       const startDateStr = formatDateString(startDate);
       const endDateStr = formatDateString(endDate);
 
       const response = await fetch(
-        `${API_BASE}/api/admin/calendar/blocked?startDate=${startDateStr}&endDate=${endDateStr}`
+        `${API_BASE}/api/admin-calendar/blocked?startDate=${startDateStr}&endDate=${endDateStr}`
       );
 
       if (response.ok) {
         const data = await response.json();
+        console.log('Blocked slots fetched:', data.blockedSlots);
         setBlockedSlots(data.blockedSlots || []);
+      } else {
+        console.error('Failed to fetch blocked slots:', response.status);
       }
     } catch (error) {
       console.error("Error fetching blocked slots:", error);
@@ -157,12 +160,19 @@ export default function ScheduleTrialPage() {
     const blockedTimesForDate = blockedSlots
       .filter(slot => {
         const slotDate = new Date(slot.BlockedDate);
-        return formatDateString(slotDate) === dateStr;
+        const slotDateStr = formatDateString(slotDate);
+        return slotDateStr === dateStr;
       })
       .map(slot => slot.BlockedTime.substring(0, 5));
 
     // If all 48 time slots are blocked, the date is completely blocked by admin
-    return blockedTimesForDate.length === 48;
+    const isBlocked = blockedTimesForDate.length === 48;
+
+    if (blockedTimesForDate.length > 0) {
+      console.log(`Date ${dateStr}: ${blockedTimesForDate.length} slots blocked, isBlocked: ${isBlocked}`);
+    }
+
+    return isBlocked;
   };
 
   const getAvailableTimeSlots = () => {
