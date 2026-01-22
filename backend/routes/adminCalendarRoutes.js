@@ -24,10 +24,9 @@ const {
 // MIDDLEWARE
 // ============================================
 
-// FIXED: Apply authentication and admin role check to ALL routes
-// This is CRITICAL for security - admin calendar routes must be protected
+// Apply authentication to ALL routes (attorneys and admins both need to be logged in)
 router.use(authMiddleware);
-router.use(requireAdmin);
+// Note: requireAdmin is applied selectively below for admin-only operations
 
 // ============================================
 // VALIDATION MIDDLEWARE
@@ -171,26 +170,30 @@ router.get("/check", checkSlotAvailability);
  * GET /api/admin-calendar/cases-by-date
  * Get all cases scheduled for a specific date with full details
  * Query params: date (YYYY-MM-DD)
+ * ADMIN ONLY
  */
-router.get("/cases-by-date", validateDateParams, getCasesByDate);
+router.get("/cases-by-date", requireAdmin, validateDateParams, getCasesByDate);
 
 // ============================================
 // MUTATION ROUTES (POST, PUT, DELETE)
+// ADMIN ONLY - These routes modify calendar data
 // ============================================
 
 /**
  * POST /api/admin-calendar/block
  * Manually block a time slot
  * Body: { blockedDate, blockedTime, reason? }
+ * ADMIN ONLY
  */
-router.post("/block", validateBlockSlotBody, blockSlot);
+router.post("/block", requireAdmin, validateBlockSlotBody, blockSlot);
 
 /**
  * DELETE /api/admin-calendar/unblock/:calendarId
  * Unblock a time slot
  * FIXED: Changed route to /unblock/:calendarId to avoid conflicts
+ * ADMIN ONLY
  */
-router.delete("/unblock/:calendarId", validateCalendarId, unblockSlot);
+router.delete("/unblock/:calendarId", requireAdmin, validateCalendarId, unblockSlot);
 
 // ============================================
 // ERROR HANDLER
