@@ -152,6 +152,19 @@ export default function ScheduleTrialPage() {
     return availableSlots.length > 0;
   };
 
+  const isDateBlockedByAdmin = (date: Date) => {
+    const dateStr = formatDateString(date);
+    const blockedTimesForDate = blockedSlots
+      .filter(slot => {
+        const slotDate = new Date(slot.BlockedDate);
+        return formatDateString(slotDate) === dateStr;
+      })
+      .map(slot => slot.BlockedTime.substring(0, 5));
+
+    // If all 48 time slots are blocked, the date is completely blocked by admin
+    return blockedTimesForDate.length === 48;
+  };
+
   const getAvailableTimeSlots = () => {
     if (!selectedDate) return [];
 
@@ -632,19 +645,22 @@ export default function ScheduleTrialPage() {
                             const day = index + 1;
                             const date = new Date(currentYear, currentMonth, day);
                             const isAvailable = isDateAvailable(date);
+                            const isBlocked = isDateBlockedByAdmin(date);
                             const isTodayDate = isToday(date);
-                            const isSelected = selectedDate && 
-                              selectedDate.getDate() === day && 
+                            const isSelected = selectedDate &&
+                              selectedDate.getDate() === day &&
                               selectedDate.getMonth() === currentMonth &&
                               selectedDate.getFullYear() === currentYear;
-                            
+
                             return (
                               <button
                                 key={day}
                                 type="button"
-                                className={`h-10 rounded-lg text-sm font-medium transition-all ${
+                                className={`h-10 rounded-lg text-sm font-medium transition-all relative ${
                                   isSelected
                                     ? "bg-[#16305B] text-white shadow-md"
+                                    : isBlocked
+                                    ? "bg-red-100 text-red-600 border-2 border-red-500 cursor-not-allowed line-through"
                                     : isAvailable
                                     ? "text-gray-900 hover:bg-blue-50 border border-gray-200"
                                     : "text-gray-300 bg-gray-50 cursor-not-allowed"
@@ -655,8 +671,14 @@ export default function ScheduleTrialPage() {
                                 }`}
                                 disabled={!isAvailable}
                                 onClick={() => handleDateSelect(day)}
+                                title={isBlocked ? "This date has been blocked by admin" : ""}
                               >
-                                {day}
+                                {isBlocked && (
+                                  <span className="absolute inset-0 flex items-center justify-center text-red-600 font-bold">
+                                    ✕
+                                  </span>
+                                )}
+                                <span className={isBlocked ? "opacity-50" : ""}>{day}</span>
                               </button>
                             );
                           })}
@@ -664,10 +686,14 @@ export default function ScheduleTrialPage() {
                       </div>
 
                       {/* Legend */}
-                      <div className="flex gap-4 text-xs text-gray-600 mt-6 pt-6 border-t border-gray-200">
+                      <div className="flex flex-wrap gap-4 text-xs text-gray-600 mt-6 pt-6 border-t border-gray-200">
                         <div className="flex items-center gap-2">
                           <div className="w-4 h-4 border-2 border-[#16305B] rounded"></div>
                           <span>Today</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 bg-red-100 border-2 border-red-500 rounded relative flex items-center justify-center text-red-600 font-bold">✕</div>
+                          <span>Blocked by Admin</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <div className="w-4 h-4 bg-gray-50 border border-gray-200 rounded"></div>

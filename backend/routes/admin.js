@@ -1868,27 +1868,25 @@ router.post("/notify-blocked-date", authMiddleware, requireAdmin, async (req, re
 
     // Create notifications for all attorneys
     for (const attorney of attorneys) {
-      await Notification.create({
+      await Notification.createNotification({
         userId: attorney.AttorneyId,
         userType: 'attorney',
-        type: 'SYSTEM_ANNOUNCEMENT',
+        caseId: null,
+        type: 'date_blocked',
         title: `Date Blocked: ${date}`,
-        message: `The date ${date} has been blocked for ${reason}. You will not be able to schedule cases on this date.`,
-        relatedEntityType: 'system',
-        relatedEntityId: null
+        message: `The date ${date} has been blocked for ${reason}. You will not be able to schedule cases on this date.`
       });
     }
 
     // Create notifications for all jurors
     for (const juror of jurors) {
-      await Notification.create({
+      await Notification.createNotification({
         userId: juror.JurorId,
         userType: 'juror',
-        type: 'SYSTEM_ANNOUNCEMENT',
+        caseId: null,
+        type: 'date_blocked',
         title: `Date Blocked: ${date}`,
-        message: `The date ${date} has been blocked for ${reason}. No trials will be scheduled on this date.`,
-        relatedEntityType: 'system',
-        relatedEntityId: null
+        message: `The date ${date} has been blocked for ${reason}. No trials will be scheduled on this date.`
       });
     }
 
