@@ -20,7 +20,7 @@ export default function ForAttorneys() {
             <Link href="/for-attorneys" className="text-gray-700 hover:text-gray-900">
               Attorney
             </Link>
-            <Link href="/for-juror" className="text-gray-700 hover:text-gray-900">
+            <Link href="/signup/juror" className="text-gray-700 hover:text-gray-900">
               Juror
             </Link>
             <Link href="/signup" className="bg-blue-900 text-white px-6 py-2 rounded hover:bg-blue-800">
@@ -33,10 +33,10 @@ export default function ForAttorneys() {
         </div>
       </header>
 
-      <section
+    <section
         className="relative w-full min-h-[640px] flex items-center justify-center overflow-hidden rounded-xl"
         style={{
-          backgroundImage: "url('/images/h.png')",
+          backgroundImage: "url('/images/j.png')",
           backgroundSize: "cover",
           backgroundPosition: "center top",
           backgroundRepeat: "no-repeat",
@@ -47,71 +47,66 @@ export default function ForAttorneys() {
 
         {/* Glass Container */}
         <div className="relative z-10 w-[90%] max-w-6xl rounded-2xl bg-white/40 backdrop-blur-s border border-white/40 shadow-2xl px-10 py-10">
+        {/* Title */}
+        <h2 className="text-center text-3xl font-bold text-gray-900">
+          Why Become a Quick Verdicts Juror?
+        </h2>
+        <p className="text-center text-gray-600 mt-2">
+          Explore the top benefits of joining our secure, virtual jury platform.
+        </p>
 
-          {/* Heading */}
-          <h2 className="text-center text-3xl md:text-4xl font-bold text-gray-900">
-            Why Become a Quick Verdicts Attorney?
-          </h2>
-
-          <p className="text-center text-gray-700 mt-3 text-base md:text-lg">
-            Explore the top benefits of joining our secure, virtual jury platform.
-          </p>
-
-          {/* Cards */}
-          <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* Card 1 */}
-            <div className="bg-white/95 rounded-xl shadow-lg p-6 border border-gray-200">
-              <div className="w-10 h-10 rounded-lg bg-pink-50 flex items-center justify-center mb-4">
-                <span className="text-pink-500 text-xl">🖥️</span>
-              </div>
-              <h3 className="font-semibold text-gray-900">
-                Resolve Real Cases Digitally
-              </h3>
-              <p className="text-sm text-gray-600 mt-2 leading-relaxed">
-                Submit small claims cases to be heard and decided by verified jurors
-                in your county. Quick Verdict delivers legally binding decisions—
-                without stepping into a physical courtroom.
-              </p>
+        {/* Cards */}
+        <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Card 1 */}
+          <div className="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+            <div className="w-10 h-10 rounded-lg bg-pink-50 flex items-center justify-center mb-4">
+              <span className="text-pink-500 text-xl">🖥️</span>
             </div>
-
-            {/* Card 2 */}
-            <div className="bg-white/95 rounded-xl shadow-lg p-6 border border-gray-200">
-              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center mb-4">
-                <span className="text-blue-600 text-xl">💼</span>
-              </div>
-              <h3 className="font-semibold text-gray-900">Easy Case Upload</h3>
-              <p className="text-sm text-gray-600 mt-2 leading-relaxed">
-                Quickly upload case summaries, exhibits, and legal questions from your
-                dashboard. Our guided format ensures jurors see only what they need.
-                Head back to the home screen when needed with our dashboard.
-              </p>
-            </div>
-
-            {/* Card 3 */}
-            <div className="bg-white/95 rounded-xl shadow-lg p-6 border border-gray-200">
-              <div className="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center mb-4">
-                <span className="text-orange-500 text-xl">⚖️</span>
-              </div>
-              <h3 className="font-semibold text-gray-900">Legally Binding Verdicts</h3>
-              <p className="text-sm text-gray-600 mt-2 leading-relaxed">
-                Jurors are vetted and sworn in virtually, and their decision carries
-                the same legal weight as a traditional in-person small claims trial.
-                Once a verdict is reached, the case is closed.
-              </p>
-            </div>
+            <h3 className="font-semibold text-gray-900">
+              Earn Money for Each Case Completed
+            </h3>
+            <p className="text-sm text-gray-600 mt-2 leading-relaxed">
+                Get paid $25-575 per case you complete. Sessions 
+                typically take 30-60 minutes, and you can participate 
+                anytime, from anywhere
+            </p>
           </div>
 
-          {/* Button */}
-          <div className="mt-10 flex justify-center">
-            <Link href="/signup/attorney">
+          {/* Card 2 */}
+          <div className="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+            <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center mb-4">
+              <span className="text-blue-600 text-xl">💼</span>
+            </div>
+            <h3 className="font-semibold text-gray-900">Access the Juror Job Board</h3>
+            <p className="text-sm text-gray-600 mt-2 leading-relaxed">
+Browse available cases in your area and choose the ones that fit your schedule. Our dedicated job board makes it easy to find and apply for paid jury opportunities with just a few clicks.
+            </p>
+          </div>
+
+          {/* Card 3 */}
+          <div className="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+            <div className="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center mb-4">
+              <span className="text-orange-500 text-xl">⚖️</span>
+            </div>
+            <h3 className="font-semibold text-gray-900">
+              Step Into a Virtual Courtroom
+            </h3>
+            <p className="text-sm text-gray-600 mt-2 leading-relaxed">
+Join real small claims cases from your county. Review case files, weigh in on evidence, and deliver your verdict -no legal background required
+            </p>
+          </div>
+        </div>
+
+        {/* Button */}
+        <div className="mt-10 flex justify-center">
+            <Link href="/signup/juror">
             <button className="bg-[#0B1B3F] text-white px-10 py-2.5 rounded-md shadow-md hover:bg-[#0A1635] transition cursor-pointer">
               Sign up
             </button>
             </Link>
-          </div>
         </div>
-      </section>
-
+      </div>
+    </section>
 
       {/* How It Works Section */}
       <section className="bg-white py-16">
@@ -120,48 +115,48 @@ export default function ForAttorneys() {
             <div>
               {/* Placeholder image - user will replace */}
               <img
-                src="\images\g.png" alt="Attorney in courtroom" className="rounded-lg shadow-lg w-full"
+                src="\images\i.png" alt="Attorney in courtroom" className="rounded-lg shadow-lg w-full"
               />
             </div>
 
             <div>
               <h2 className="text-3xl font-bold text-gray-900 mb-6">
-                How It Works for Attorneys
+                How It Works for Jurors
               </h2>
 
 
               <div className="space-y-4">
                 <div className="flex items-start">
                   <div>
-                    <h3 className="font-bold text-gray-900 mb-1">Create Your Case</h3>
-                    <p className="text-gray-600">Log in to your Quick Verdict dashboard and upload your case summary, exhibits, and key facts.</p>
+                    <h3 className="font-bold text-gray-900 mb-1">Sign Up</h3>
+                    <p className="text-gray-600">Create a free juror profile and verify your location.</p>
                   </div>
                 </div>
 
                 <div className="flex items-start">
                   <div>
-                    <h3 className="font-bold text-gray-900 mb-1">Set Your Jury Criteria</h3>
-                    <p className="text-gray-600">Choose your target audience by county, age range, or demographics. Then upload your voi der questions.</p>
+                    <h3 className="font-bold text-gray-900 mb-1">Get Matched</h3>
+                    <p className="text-gray-600">We'll notify you when a case opens in your county. You can also browse active cases on the Juror Job Board.</p>
+                  </div>
+                </div>
+                <div className="flex items-start">
+                  <div>
+                    <h3 className="font-bold text-gray-900 mb-1">Review the Case</h3>
+                    <p className="text-gray-600">Log into our virtual courtroom to view case summaries, evidence, and attorney arguments.</p>
+                  </div>
+                </div>
+                <div className="flex items-start">
+                  <div>
+                    <h3 className="font-bold text-gray-900 mb-1">Render a Verdict</h3>
+                    <p className="text-gray-600">Answer a series of questions, share your decision, and submit your feedback.</p>
                   </div>
                 </div>
 
-                <div className="flex items-start">
-                  <div>
-                    <h3 className="font-bold text-gray-900 mb-1">Launch in a Virtual Courtroom</h3>
-                    <p className="text-gray-600">Your case is presented to real people in a secure, private virtual environment. Jurors review materials, weigh the facts, and submit a verdict.</p>
-                  </div>
-                </div>
 
                 <div className="flex items-start">
                   <div>
-                    <h3 className="font-bold text-gray-900 mb-1">Verdict Gets Rendered</h3>
-                    <p className="text-gray-600">Jurors you selected will render a verdict based on evidence submitted and witness testimony</p>
-                  </div>
-                </div>
-                <div className="flex items-start">
-                  <div>
-                    <h3 className="font-bold text-gray-900 mb-1">Case Closed</h3>
-                    <p className="text-gray-600">Review material before it gets removed and open another case.</p>
+                    <h3 className="font-bold text-gray-900 mb-1">Get Paid</h3>
+                    <p className="text-gray-600">Compensation is sent directly to your account once your feedback is reviewed.</p>
                   </div>
                 </div>
 
@@ -202,7 +197,7 @@ export default function ForAttorneys() {
               /* YouTube iframe */
               <iframe
                 className="w-full h-full"
-                src={`https://www.youtube.com/embed/Jix-vP5M1R0?start=1&autoplay=1`}
+                src={`https://www.youtube.com/embed/Lo58uzXStms?start=1&autoplay=1`}
                 title="YouTube video player"
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -226,7 +221,7 @@ export default function ForAttorneys() {
             <Link href="/signup/attorney" className="bg-blue-900 text-white px-12 py-3 rounded hover:bg-blue-800 font-medium">
               Sign up as Attorney
             </Link>
-            <Link href="/login/attorney" className="bg-white text-blue-900 border-2 border-blue-900 px-12 py-3 rounded hover:bg-blue-50 font-medium">
+            <Link href="/login" className="bg-white text-blue-900 border-2 border-blue-900 px-12 py-3 rounded hover:bg-blue-50 font-medium">
               Already have an account? Login
             </Link>
           </div>
