@@ -374,7 +374,7 @@ app.get("/api/test-db", async (req, res) => {
 console.log("📍 Registering API routes...\n");
 
 app.use("/api/auth", authRoutes);
-app.use("/api/admin/calendar", adminCalendarRoutes);
+app.use("/api/admin-calendar", adminCalendarRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/attorney", attorneyRoutes);
