@@ -207,6 +207,13 @@ async function blockSlot(slotData) {
     // Convert time string to Date object for SQL Server
     const timeDate = convertTimeToDateObject(slotData.blockedTime);
 
+    // Debug logging
+    console.log(`🔍 Blocking slot for ${slotData.blockedDate} ${slotData.blockedTime}`);
+    console.log(`   - Parsed date: ${date.toISOString()}`);
+    console.log(`   - Day of week: ${date.getDay()} (0=Sun, 1=Mon, ..., 6=Sat)`);
+    console.log(`   - skipBusinessHoursCheck: ${slotData.skipBusinessHoursCheck}`);
+    console.log(`   - isWeekday: ${isWeekday(date)}`);
+
     // Check if it's a weekday (only for manual blocks, not case approvals)
     if (!slotData.skipBusinessHoursCheck && !isWeekday(date)) {
       throw new Error("Cannot block slots on weekends");

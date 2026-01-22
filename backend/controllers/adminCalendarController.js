@@ -74,7 +74,7 @@ async function getAvailableSlots(req, res) {
  */
 async function blockSlot(req, res) {
   try {
-    const { blockedDate, blockedTime, duration, reason } = req.body;
+    const { blockedDate, blockedTime, duration, reason, skipBusinessHoursCheck } = req.body;
 
     if (!blockedDate || !blockedTime) {
       return res.status(400).json({
@@ -100,6 +100,7 @@ async function blockSlot(req, res) {
       blockedTime,
       duration: duration || 480,
       reason: reason || "Manually blocked by admin",
+      skipBusinessHoursCheck: skipBusinessHoursCheck || false,
     });
 
     res.json({
