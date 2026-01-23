@@ -419,7 +419,7 @@ router.get("/calendar/cases-by-date", async (req, res) => {
           .request()
           .input("caseId", sql.Int, caseItem.CaseId)
           .query(
-            "SELECT QuestionId, QuestionText, QuestionType, Options FROM dbo.JuryChargeQuestions WHERE CaseId = @caseId ORDER BY QuestionOrder ASC"
+            "SELECT QuestionId, QuestionText, QuestionType, Options, OrderIndex FROM dbo.JuryChargeQuestions WHERE CaseId = @caseId ORDER BY OrderIndex ASC"
           );
 
         // Fetch juror applications for this case
