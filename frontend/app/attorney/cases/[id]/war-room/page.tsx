@@ -401,20 +401,20 @@ export default function WarRoomPage() {
 
         // Show success/error messages
         if (data.addedCount > 0) {
-          alert(`Successfully added ${data.addedCount} team member(s)`);
+          toast.success(`Successfully added ${data.addedCount} team member(s)`);
         }
         if (data.errors && data.errors.length > 0) {
-          const errorMessages = data.errors.map((e: any) =>
-            `${e.member.Name || e.member.name || 'Unknown'}: ${e.error}`
-          ).join('\n');
-          alert(`Some team members could not be added:\n\n${errorMessages}`);
+          data.errors.forEach((e: any) => {
+            const name = e.member.Name || e.member.name || 'Unknown';
+            toast.error(`${name}: ${e.error}`);
+          });
         }
       } else {
-        alert(data.message || "Failed to add team members");
+        toast.error(data.message || "Failed to add team members");
       }
     } catch (error) {
       console.error("Error adding team members:", error);
-      alert("Failed to add team members. Please try again.");
+      toast.error("Failed to add team members. Please try again.");
     } finally {
       setIsAddingTeam(false);
     }

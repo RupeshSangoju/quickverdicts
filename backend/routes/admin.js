@@ -442,6 +442,27 @@ router.get("/calendar/cases-by-date", async (req, res) => {
             ORDER BY ja.AppliedAt DESC`
           );
 
+        // Fetch team members for this case
+        let teamMembersResult = { recordset: [] };
+        try {
+          teamMembersResult = await pool
+            .request()
+            .input("caseId", sql.Int, caseItem.CaseId)
+            .query(
+              `SELECT
+                Id,
+                Name,
+                Email,
+                Role,
+                AddedAt
+              FROM dbo.WarRoomTeamMembers
+              WHERE CaseId = @caseId
+              ORDER BY AddedAt ASC`
+            );
+        } catch (err) {
+          console.warn(`⚠️ Could not fetch team members for case ${caseItem.CaseId}:`, err.message);
+        }
+
         // Parse JSON options if present
         const juryQuestions = questionsResult.recordset.map((q) => ({
           ...q,
@@ -457,9 +478,10 @@ router.get("/calendar/cases-by-date", async (req, res) => {
           witnesses: witnessesResult.recordset || [],
           juryQuestions: juryQuestions || [],
           jurors: jurorsResult.recordset || [],
+          teamMembers: teamMembersResult.recordset || [],
         };
 
-        console.log(`🔍 [DEBUG] Case ${caseItem.CaseId}: witnesses=${caseData.witnesses.length}, jurors=${caseData.jurors.length}, questions=${caseData.juryQuestions.length}`);
+        console.log(`🔍 [DEBUG] Case ${caseItem.CaseId}: witnesses=${caseData.witnesses.length}, jurors=${caseData.jurors.length}, questions=${caseData.juryQuestions.length}, teamMembers=${caseData.teamMembers.length}`);
 
         return caseData;
       })
