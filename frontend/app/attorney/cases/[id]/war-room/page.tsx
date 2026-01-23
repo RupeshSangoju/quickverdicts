@@ -905,7 +905,7 @@ export default function WarRoomPage() {
                       {caseData.CaseTitle || "Case Management"}
                     </p>
                     <p className="text-xs text-white/60 mt-0.5">
-                      Case ID: {caseData.Id}
+                      Case ID: {(caseData as any).CaseId || caseData.Id || caseId}
                     </p>
                   </div>
                 </div>
