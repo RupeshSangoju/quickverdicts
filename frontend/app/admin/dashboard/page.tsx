@@ -127,6 +127,13 @@ type JurorApplication = {
   State: string;
 };
 
+type TeamMember = {
+  Id: number;
+  Name: string;
+  Email: string;
+  Role: string;
+};
+
 type CaseDetail = {
   CaseId: number;
   CaseTitle: string;
@@ -149,6 +156,7 @@ type CaseDetail = {
   witnesses: Witness[];
   juryQuestions: JuryQuestion[];
   jurors: JurorApplication[];
+  teamMembers: TeamMember[];
   approvedJurorCount: number;
   canJoin: boolean;
 };
@@ -1753,10 +1761,6 @@ function formatTime(timeString: string, scheduledDate: string) {
                         <Briefcase className="h-3.5 w-3.5 text-orange-500" />
                         <span>{caseItem.CaseType}</span>
                       </div>
-                      <div className="flex items-center gap-1.5 text-gray-700 col-span-2">
-                        <UserIcon className="h-3.5 w-3.5 text-blue-500" />
-                        <span className="truncate">{caseItem.AttorneyName} ({caseItem.AttorneyEmail})</span>
-                      </div>
                     </div>
 
                     <div className="flex flex-wrap gap-2">
@@ -1923,10 +1927,6 @@ function formatTime(timeString: string, scheduledDate: string) {
                       <div className="flex items-center gap-1.5 text-gray-700">
                         <Briefcase className="h-3.5 w-3.5 text-orange-500" />
                         <span>{trial.CaseType}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-gray-700 col-span-2">
-                        <UserIcon className="h-3.5 w-3.5 text-blue-500" />
-                        <span className="truncate">{trial.AttorneyName} ({trial.AttorneyEmail})</span>
                       </div>
                     </div>
 
@@ -2331,6 +2331,50 @@ function formatTime(timeString: string, scheduledDate: string) {
                   </div>
                 </div>
               )}
+
+              {/* Team Members Section */}
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
+                <div className="flex items-center mb-3">
+                  <Users className="h-5 w-5 mr-2 text-indigo-600" />
+                  <h3 className="font-semibold text-indigo-900">Team Members ({selectedCase.teamMembers?.length || 0})</h3>
+                </div>
+                {!selectedCase.teamMembers || selectedCase.teamMembers.length === 0 ? (
+                  <div className="text-center py-6 bg-white rounded-lg border-2 border-dashed border-indigo-200">
+                    <div className="inline-flex items-center justify-center w-12 h-12 bg-indigo-100 rounded-full mb-2">
+                      <Users className="w-6 h-6 text-indigo-600" />
+                    </div>
+                    <p className="text-indigo-700 font-medium text-sm">No Team Members</p>
+                    <p className="text-indigo-600 text-xs mt-1">Attorney hasn't added team members yet</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {selectedCase.teamMembers.map((member) => (
+                      <div
+                        key={member.Id}
+                        className="bg-white rounded-lg p-3 border border-indigo-200 hover:border-indigo-400 transition-all"
+                      >
+                        <div className="flex items-start gap-2">
+                          <div className="p-1.5 bg-indigo-100 rounded">
+                            <UserIcon className="w-4 h-4 text-indigo-600" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-1">
+                              <h4 className="font-semibold text-gray-900 text-sm truncate">{member.Name}</h4>
+                              <span className="px-2 py-0.5 bg-indigo-100 rounded text-xs font-semibold text-indigo-700 ml-2 shrink-0">
+                                {member.Role}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5 text-xs text-gray-600">
+                              <Mail className="w-3 h-3" />
+                              <span className="truncate">{member.Email}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               <div>
                 <div className="flex items-center justify-between mb-3">

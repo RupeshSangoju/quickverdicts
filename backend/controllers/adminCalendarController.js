@@ -307,6 +307,29 @@ async function getCasesByDate(req, res) {
             }
           }
 
+          // Get team members
+          let teamMembersResult = { recordset: [] };
+          try {
+            teamMembersResult = await pool
+              .request()
+              .input("caseId", sql.Int, caseItem.CaseId).query(`
+                SELECT
+                  Id,
+                  Name,
+                  Email,
+                  Role
+                FROM dbo.TeamMembers
+                WHERE CaseId = @caseId
+                ORDER BY CreatedAt ASC
+              `);
+          } catch (err) {
+            if (err.number === 208) {
+              console.warn('⚠️ TeamMembers table does not exist yet');
+            } else {
+              throw err;
+            }
+          }
+
           return {
             ...caseItem,
             State: caseItem.AttorneyState,
@@ -316,6 +339,7 @@ async function getCasesByDate(req, res) {
               Options: q.Options ? (typeof q.Options === 'string' ? JSON.parse(q.Options) : q.Options) : [],
             })),
             jurors: jurorApplicationsResult.recordset,
+            teamMembers: teamMembersResult.recordset,
             approvedJurorCount:
               jurorsResult.recordset[0]?.ApprovedJurorCount || 0,
             canJoin:
@@ -332,6 +356,8 @@ async function getCasesByDate(req, res) {
             State: caseItem.AttorneyState,
             witnesses: [],
             juryQuestions: [],
+            jurors: [],
+            teamMembers: [],
             approvedJurorCount: 0,
             canJoin: false,
             error: "Failed to load some case details",
