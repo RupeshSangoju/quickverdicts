@@ -392,13 +392,29 @@ export default function WarRoomPage() {
         body: JSON.stringify({ teamMembers: members })
       });
 
+      const data = await response.json();
+
       if (response.ok) {
         await fetchWarRoomData();
         setShowAddTeam(false);
         setNewMembers([{ Name: "", Role: "", Email: "" }]);
+
+        // Show success/error messages
+        if (data.addedCount > 0) {
+          alert(`Successfully added ${data.addedCount} team member(s)`);
+        }
+        if (data.errors && data.errors.length > 0) {
+          const errorMessages = data.errors.map((e: any) =>
+            `${e.member.Name || e.member.name || 'Unknown'}: ${e.error}`
+          ).join('\n');
+          alert(`Some team members could not be added:\n\n${errorMessages}`);
+        }
+      } else {
+        alert(data.message || "Failed to add team members");
       }
     } catch (error) {
       console.error("Error adding team members:", error);
+      alert("Failed to add team members. Please try again.");
     } finally {
       setIsAddingTeam(false);
     }

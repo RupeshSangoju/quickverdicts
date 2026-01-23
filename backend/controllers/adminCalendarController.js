@@ -317,14 +317,15 @@ async function getCasesByDate(req, res) {
                   Id,
                   Name,
                   Email,
-                  Role
-                FROM dbo.TeamMembers
+                  Role,
+                  AddedAt
+                FROM dbo.WarRoomTeamMembers
                 WHERE CaseId = @caseId
-                ORDER BY CreatedAt ASC
+                ORDER BY AddedAt ASC
               `);
           } catch (err) {
             if (err.number === 208) {
-              console.warn('⚠️ TeamMembers table does not exist yet');
+              console.warn('⚠️ WarRoomTeamMembers table does not exist yet');
             } else {
               throw err;
             }
