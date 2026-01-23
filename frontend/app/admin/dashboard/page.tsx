@@ -1753,6 +1753,10 @@ function formatTime(timeString: string, scheduledDate: string) {
                         <Briefcase className="h-3.5 w-3.5 text-orange-500" />
                         <span>{caseItem.CaseType}</span>
                       </div>
+                      <div className="flex items-center gap-1.5 text-gray-700 col-span-2">
+                        <UserIcon className="h-3.5 w-3.5 text-blue-500" />
+                        <span className="truncate">{caseItem.AttorneyName} ({caseItem.AttorneyEmail})</span>
+                      </div>
                     </div>
 
                     <div className="flex flex-wrap gap-2">
@@ -1919,6 +1923,10 @@ function formatTime(timeString: string, scheduledDate: string) {
                       <div className="flex items-center gap-1.5 text-gray-700">
                         <Briefcase className="h-3.5 w-3.5 text-orange-500" />
                         <span>{trial.CaseType}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-gray-700 col-span-2">
+                        <UserIcon className="h-3.5 w-3.5 text-blue-500" />
+                        <span className="truncate">{trial.AttorneyName} ({trial.AttorneyEmail})</span>
                       </div>
                     </div>
 

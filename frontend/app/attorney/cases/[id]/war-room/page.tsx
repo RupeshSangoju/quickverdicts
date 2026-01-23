@@ -904,6 +904,9 @@ export default function WarRoomPage() {
                     <p className="text-sm text-white/80 mt-0.5">
                       {caseData.CaseTitle || "Case Management"}
                     </p>
+                    <p className="text-xs text-white/60 mt-0.5">
+                      Case ID: {caseData.Id}
+                    </p>
                   </div>
                 </div>
               </div>

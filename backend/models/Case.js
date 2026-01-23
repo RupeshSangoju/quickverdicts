@@ -1039,6 +1039,85 @@ async function softDeleteCase(caseId) {
   }
 }
 
+/**
+ * Hard delete a case - permanently removes the case and all related data from the database
+ * WARNING: This action cannot be undone!
+ */
+async function hardDeleteCase(caseId) {
+  try {
+    const id = parseInt(caseId, 10);
+    if (isNaN(id) || id <= 0) throw new Error("Valid case ID is required");
+
+    console.log(`🗑️  [Case.hardDeleteCase] Starting hard delete for case ${id}`);
+
+    await executeQuery(async (pool) => {
+      const transaction = pool.transaction();
+
+      try {
+        await transaction.begin();
+
+        // Delete related data first (to avoid foreign key constraints)
+
+        // Delete juror applications
+        await transaction.request()
+          .input("caseId", sql.Int, id)
+          .query("DELETE FROM dbo.JurorApplications WHERE CaseId = @caseId");
+        console.log(`  ✅ Deleted juror applications for case ${id}`);
+
+        // Delete witnesses
+        await transaction.request()
+          .input("caseId", sql.Int, id)
+          .query("DELETE FROM dbo.CaseWitnesses WHERE CaseId = @caseId");
+        console.log(`  ✅ Deleted witnesses for case ${id}`);
+
+        // Delete jury charge questions
+        await transaction.request()
+          .input("caseId", sql.Int, id)
+          .query("DELETE FROM dbo.JuryChargeQuestions WHERE CaseId = @caseId");
+        console.log(`  ✅ Deleted jury questions for case ${id}`);
+
+        // Delete trial meetings
+        await transaction.request()
+          .input("caseId", sql.Int, id)
+          .query("DELETE FROM dbo.TrialMeetings WHERE CaseId = @caseId");
+        console.log(`  ✅ Deleted trial meetings for case ${id}`);
+
+        // Delete reschedule requests
+        await transaction.request()
+          .input("caseId", sql.Int, id)
+          .query("DELETE FROM dbo.CaseReschedules WHERE CaseId = @caseId");
+        console.log(`  ✅ Deleted reschedule requests for case ${id}`);
+
+        // Delete notifications
+        await transaction.request()
+          .input("caseId", sql.Int, id)
+          .query("DELETE FROM dbo.Notifications WHERE CaseId = @caseId");
+        console.log(`  ✅ Deleted notifications for case ${id}`);
+
+        // Finally, delete the case itself
+        await transaction.request()
+          .input("caseId", sql.Int, id)
+          .query("DELETE FROM dbo.Cases WHERE CaseId = @caseId");
+        console.log(`  ✅ Deleted case ${id} from Cases table`);
+
+        await transaction.commit();
+        console.log(`✅ [Case.hardDeleteCase] Successfully hard deleted case ${id}`);
+
+        return true;
+      } catch (error) {
+        await transaction.rollback();
+        console.error(`❌ [Case.hardDeleteCase] Transaction failed:`, error.message);
+        throw error;
+      }
+    });
+
+    return true;
+  } catch (error) {
+    console.error("❌ [Case.hardDeleteCase] Error:", error.message);
+    throw error;
+  }
+}
+
 // ============================================
 // RESCHEDULE METHODS
 // ============================================
@@ -1381,6 +1460,7 @@ module.exports = {
   updateCaseStatus,
   updateCaseDetails,
   softDeleteCase,
+  hardDeleteCase,
 
   // Reschedule
   checkSlotAvailability,
