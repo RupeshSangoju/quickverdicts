@@ -258,6 +258,10 @@ export default function AdminDashboard() {
   const [blockingDate, setBlockingDate] = useState(false);
   const [blockedDates, setBlockedDates] = useState<any[]>([]);
   const [loadingBlockedDates, setLoadingBlockedDates] = useState(false);
+  const [selectedTimeSlots, setSelectedTimeSlots] = useState<string[]>([]);
+  const [blockWholeDay, setBlockWholeDay] = useState(true);
+  const [calendarMonth, setCalendarMonth] = useState(new Date().getMonth());
+  const [calendarYear, setCalendarYear] = useState(new Date().getFullYear());
 
   // Case delete modal states
   const [showDeleteCaseModal, setShowDeleteCaseModal] = useState(false);
@@ -305,20 +309,27 @@ export default function AdminDashboard() {
       return;
     }
 
+    if (!blockWholeDay && selectedTimeSlots.length === 0) {
+      toast.error("Please select at least one time slot to block");
+      return;
+    }
+
     setBlockingDate(true);
     try {
-      // Block all 48 time slots for the day (24 hours)
-      const allTimeSlots = Array.from({ length: 48 }, (_, i) => {
-        const hours = Math.floor(i / 2);
-        const minutes = i % 2 === 0 ? "00" : "30";
-        return `${hours.toString().padStart(2, '0')}:${minutes}:00`;
-      });
+      // Determine which time slots to block
+      const timeSlotsToBlock = blockWholeDay
+        ? Array.from({ length: 48 }, (_, i) => {
+            const hours = Math.floor(i / 2);
+            const minutes = i % 2 === 0 ? "00" : "30";
+            return `${hours.toString().padStart(2, '0')}:${minutes}:00`;
+          })
+        : selectedTimeSlots;
 
-      console.log(`Blocking ${allTimeSlots.length} time slots for ${blockDateForm.date}`);
+      console.log(`Blocking ${timeSlotsToBlock.length} time slots for ${blockDateForm.date}`);
 
       // Block each time slot with error checking
       const blockResults = await Promise.allSettled(
-        allTimeSlots.map(async (time) => {
+        timeSlotsToBlock.map(async (time) => {
           const response = await fetchWithAuth(`${API_BASE}/api/admin-calendar/block`, {
             method: 'POST',
             body: JSON.stringify({
@@ -367,14 +378,19 @@ export default function AdminDashboard() {
         })
       });
 
+      const totalSlots = blockWholeDay ? 48 : selectedTimeSlots.length;
+      const blockType = blockWholeDay ? "whole day" : `${selectedTimeSlots.length} time slot(s)`;
+
       if (notifyResponse.ok) {
-        toast.success(`Date ${blockDateForm.date} blocked successfully! ${successful}/48 slots blocked. Notifications sent to all users.`);
+        toast.success(`${blockType} blocked for ${blockDateForm.date}! ${successful}/${totalSlots} slots blocked. Notifications sent to all users.`);
       } else {
-        toast.success(`Date ${blockDateForm.date} blocked successfully! ${successful}/48 slots blocked.`);
+        toast.success(`${blockType} blocked for ${blockDateForm.date}! ${successful}/${totalSlots} slots blocked.`);
       }
 
       // Reset form and close modal
       setBlockDateForm({ date: "", reason: "" });
+      setSelectedTimeSlots([]);
+      setBlockWholeDay(true);
       setShowBlockDateModal(false);
       fetchBlockedDates();
       fetchCasesForDate(selectedDate);
@@ -2949,6 +2965,8 @@ function formatTime(timeString: string, scheduledDate: string) {
                   onClick={() => {
                     setShowBlockDateModal(false);
                     setBlockDateForm({ date: "", reason: "" });
+                    setSelectedTimeSlots([]);
+                    setBlockWholeDay(true);
                   }}
                   className="text-gray-400 hover:text-gray-600"
                 >
@@ -2960,20 +2978,142 @@ function formatTime(timeString: string, scheduledDate: string) {
             <div className="p-6 space-y-6">
               {/* Block New Date Form */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h3 className="font-semibold text-gray-900 mb-4">Block a New Date</h3>
+                <h3 className="font-semibold text-gray-900 mb-4">Block Date/Time Slots</h3>
                 <div className="space-y-4">
+                  {/* Calendar Month Navigation */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Date to Block
-                    </label>
-                    <input
-                      type="date"
-                      value={blockDateForm.date}
-                      onChange={(e) => setBlockDateForm({ ...blockDateForm, date: e.target.value })}
-                      min={new Date().toISOString().split('T')[0]}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-600"
-                    />
+                    <div className="flex items-center justify-between mb-2">
+                      <button
+                        onClick={() => {
+                          if (calendarMonth === 0) {
+                            setCalendarMonth(11);
+                            setCalendarYear(calendarYear - 1);
+                          } else {
+                            setCalendarMonth(calendarMonth - 1);
+                          }
+                        }}
+                        className="p-2 hover:bg-blue-100 rounded-lg"
+                      >
+                        ←
+                      </button>
+                      <h4 className="font-semibold text-gray-900">
+                        {new Date(calendarYear, calendarMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                      </h4>
+                      <button
+                        onClick={() => {
+                          if (calendarMonth === 11) {
+                            setCalendarMonth(0);
+                            setCalendarYear(calendarYear + 1);
+                          } else {
+                            setCalendarMonth(calendarMonth + 1);
+                          }
+                        }}
+                        className="p-2 hover:bg-blue-100 rounded-lg"
+                      >
+                        →
+                      </button>
+                    </div>
+
+                    {/* Calendar Grid */}
+                    <div className="grid grid-cols-7 gap-1 text-center text-sm mb-2">
+                      {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                        <div key={day} className="font-semibold text-gray-600 py-2">{day}</div>
+                      ))}
+                      {(() => {
+                        const firstDay = new Date(calendarYear, calendarMonth, 1).getDay();
+                        const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
+                        const days = [];
+
+                        // Empty cells for days before month starts
+                        for (let i = 0; i < firstDay; i++) {
+                          days.push(<div key={`empty-${i}`} className="py-2"></div>);
+                        }
+
+                        // Days of the month
+                        for (let day = 1; day <= daysInMonth; day++) {
+                          const dateStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                          const isSelected = blockDateForm.date === dateStr;
+                          const isPast = new Date(dateStr) < new Date(new Date().toDateString());
+
+                          days.push(
+                            <button
+                              key={day}
+                              type="button"
+                              onClick={() => !isPast && setBlockDateForm({ ...blockDateForm, date: dateStr })}
+                              disabled={isPast}
+                              className={`py-2 rounded-lg ${isSelected ? 'bg-blue-600 text-white font-bold' : isPast ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-blue-100'}`}
+                            >
+                              {day}
+                            </button>
+                          );
+                        }
+
+                        return days;
+                      })()}
+                    </div>
+
+                    {blockDateForm.date && (
+                      <p className="text-sm text-blue-700 font-medium">
+                        Selected: {new Date(blockDateForm.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+                      </p>
+                    )}
                   </div>
+
+                  {/* Whole Day Checkbox */}
+                  <div className="flex items-center gap-2 bg-white p-3 rounded-lg border border-blue-300">
+                    <input
+                      type="checkbox"
+                      id="blockWholeDay"
+                      checked={blockWholeDay}
+                      onChange={(e) => {
+                        setBlockWholeDay(e.target.checked);
+                        if (e.target.checked) {
+                          setSelectedTimeSlots([]);
+                        }
+                      }}
+                      className="w-4 h-4 text-blue-600"
+                    />
+                    <label htmlFor="blockWholeDay" className="text-sm font-medium text-gray-900 cursor-pointer">
+                      Block Whole Day (All 48 time slots)
+                    </label>
+                  </div>
+
+                  {/* Time Slot Selector (only shown if not blocking whole day) */}
+                  {!blockWholeDay && blockDateForm.date && (
+                    <div className="bg-white p-3 rounded-lg border border-blue-300 max-h-64 overflow-y-auto">
+                      <h4 className="font-semibold text-gray-900 mb-2 text-sm">Select Time Slots to Block:</h4>
+                      <div className="grid grid-cols-4 gap-2">
+                        {Array.from({ length: 48 }, (_, i) => {
+                          const hours = Math.floor(i / 2);
+                          const minutes = i % 2 === 0 ? "00" : "30";
+                          const timeSlot = `${hours.toString().padStart(2, '0')}:${minutes}:00`;
+                          const displayTime = `${hours % 12 || 12}:${minutes} ${hours < 12 ? 'AM' : 'PM'}`;
+                          const isSelected = selectedTimeSlots.includes(timeSlot);
+
+                          return (
+                            <button
+                              key={timeSlot}
+                              type="button"
+                              onClick={() => {
+                                if (isSelected) {
+                                  setSelectedTimeSlots(selectedTimeSlots.filter(t => t !== timeSlot));
+                                } else {
+                                  setSelectedTimeSlots([...selectedTimeSlots, timeSlot]);
+                                }
+                              }}
+                              className={`text-xs py-1.5 px-2 rounded-lg border ${isSelected ? 'bg-red-600 text-white border-red-700' : 'bg-white text-gray-700 border-gray-300 hover:bg-red-50'}`}
+                            >
+                              {displayTime}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <p className="text-xs text-gray-600 mt-2">
+                        {selectedTimeSlots.length} slot(s) selected
+                      </p>
+                    </div>
+                  )}
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Reason for Blocking
@@ -2993,23 +3133,23 @@ function formatTime(timeString: string, scheduledDate: string) {
                   </div>
                   <button
                     onClick={handleBlockDate}
-                    disabled={blockingDate || !blockDateForm.date || !blockDateForm.reason}
+                    disabled={blockingDate || !blockDateForm.date || !blockDateForm.reason || (!blockWholeDay && selectedTimeSlots.length === 0)}
                     className="w-full bg-red-600 text-white px-4 py-3 rounded-lg hover:bg-red-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center"
                   >
                     {blockingDate ? (
                       <>
                         <span className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full mr-2"></span>
-                        Blocking Date...
+                        Blocking...
                       </>
                     ) : (
                       <>
                         <XCircle className="h-5 w-5 mr-2" />
-                        Block This Date
+                        Block {blockWholeDay ? 'Whole Day' : `${selectedTimeSlots.length} Slot(s)`}
                       </>
                     )}
                   </button>
                   <p className="text-sm text-gray-600">
-                    ⚠️ This will block all time slots for the selected date and send notifications to all attorneys and jurors.
+                    ⚠️ This will {blockWholeDay ? 'block all time slots' : `block ${selectedTimeSlots.length} selected time slot(s)`} for {blockDateForm.date && new Date(blockDateForm.date).toLocaleDateString()} and send notifications to all attorneys and jurors.
                   </p>
                 </div>
               </div>
@@ -3066,6 +3206,8 @@ function formatTime(timeString: string, scheduledDate: string) {
                 onClick={() => {
                   setShowBlockDateModal(false);
                   setBlockDateForm({ date: "", reason: "" });
+                  setSelectedTimeSlots([]);
+                  setBlockWholeDay(true);
                 }}
                 className="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium"
               >

@@ -165,24 +165,27 @@ export default function ScheduleTrialPage() {
     return availableSlots.length > 0;
   };
 
-  const isDateBlockedByAdmin = (date: Date) => {
+  const getBlockedSlotsForDate = (date: Date) => {
     const dateStr = formatDateString(date);
-    const blockedTimesForDate = blockedSlots
+    return blockedSlots
       .filter(slot => {
         const slotDate = new Date(slot.BlockedDate);
         const slotDateStr = formatDateString(slotDate);
         return slotDateStr === dateStr;
       })
       .map(slot => slot.BlockedTime.substring(0, 5));
+  };
 
+  const isDateBlockedByAdmin = (date: Date) => {
+    const blockedTimesForDate = getBlockedSlotsForDate(date);
     // If all 48 time slots are blocked, the date is completely blocked by admin
-    const isBlocked = blockedTimesForDate.length === 48;
+    return blockedTimesForDate.length === 48;
+  };
 
-    if (blockedTimesForDate.length > 0) {
-      console.log(`Date ${dateStr}: ${blockedTimesForDate.length} slots blocked, isBlocked: ${isBlocked}`);
-    }
-
-    return isBlocked;
+  const isDatePartiallyBlocked = (date: Date) => {
+    const blockedTimesForDate = getBlockedSlotsForDate(date);
+    // If some time slots are blocked but not all 48
+    return blockedTimesForDate.length > 0 && blockedTimesForDate.length < 48;
   };
 
   const getAvailableTimeSlots = () => {
@@ -666,11 +669,18 @@ export default function ScheduleTrialPage() {
                             const date = new Date(currentYear, currentMonth, day);
                             const isAvailable = isDateAvailable(date);
                             const isBlocked = isDateBlockedByAdmin(date);
+                            const isPartiallyBlocked = isDatePartiallyBlocked(date);
                             const isTodayDate = isToday(date);
                             const isSelected = selectedDate &&
                               selectedDate.getDate() === day &&
                               selectedDate.getMonth() === currentMonth &&
                               selectedDate.getFullYear() === currentYear;
+
+                            // Get blocked time slots for partially blocked dates
+                            const blockedTimesForDate = isPartiallyBlocked ? getBlockedSlotsForDate(date) : [];
+                            const partialBlockTooltip = isPartiallyBlocked
+                              ? `Some hours blocked by admin: ${blockedTimesForDate.join(', ')}`
+                              : '';
 
                             return (
                               <button
@@ -681,6 +691,8 @@ export default function ScheduleTrialPage() {
                                     ? "bg-[#16305B] text-white shadow-md"
                                     : isBlocked
                                     ? "bg-red-100 text-red-600 border-2 border-red-500 cursor-not-allowed line-through"
+                                    : isPartiallyBlocked
+                                    ? "bg-orange-50 text-orange-700 border-2 border-orange-400 hover:bg-orange-100"
                                     : isAvailable
                                     ? "text-gray-900 hover:bg-blue-50 border border-gray-200"
                                     : "text-gray-300 bg-gray-50 cursor-not-allowed"
@@ -691,11 +703,16 @@ export default function ScheduleTrialPage() {
                                 }`}
                                 disabled={!isAvailable}
                                 onClick={() => handleDateSelect(day)}
-                                title={isBlocked ? "This date has been blocked by admin" : ""}
+                                title={isBlocked ? "This date has been blocked by admin" : partialBlockTooltip}
                               >
                                 {isBlocked && (
                                   <span className="absolute inset-0 flex items-center justify-center text-red-600 font-bold">
                                     ✕
+                                  </span>
+                                )}
+                                {isPartiallyBlocked && !isBlocked && (
+                                  <span className="absolute top-0 right-0 text-orange-600 font-bold text-xs">
+                                    ⚠
                                   </span>
                                 )}
                                 <span className={isBlocked ? "opacity-50" : ""}>{day}</span>
@@ -713,7 +730,11 @@ export default function ScheduleTrialPage() {
                         </div>
                         <div className="flex items-center gap-2">
                           <div className="w-4 h-4 bg-red-100 border-2 border-red-500 rounded relative flex items-center justify-center text-red-600 font-bold">✕</div>
-                          <span>Blocked by Admin</span>
+                          <span>Fully Blocked by Admin</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 bg-orange-50 border-2 border-orange-400 rounded relative flex items-center justify-center text-orange-600 font-bold text-xs">⚠</div>
+                          <span>Partially Blocked (Some Hours)</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <div className="w-4 h-4 bg-gray-50 border border-gray-200 rounded"></div>
