@@ -62,6 +62,7 @@ const { poolPromise } = require("./config/db");
 // JOB SCHEDULER
 // ============================================
 const { startScheduler, stopScheduler } = require("./jobs/trialScheduler");
+const { startReminderScheduler, stopReminderScheduler } = require("./jobs/trialReminderScheduler");
 
 // ============================================
 // WEBSOCKET SERVICE
@@ -496,6 +497,10 @@ async function startServer() {
       // ✅ Start trial scheduler
       console.log("🕐 Initializing trial scheduler...");
       startScheduler();
+
+      // ✅ Start trial reminder scheduler
+      console.log("📧 Initializing trial reminder scheduler...");
+      startReminderScheduler();
     });
 
     const shutdown = (signal) => {
@@ -503,6 +508,9 @@ async function startServer() {
 
       // ✅ Stop trial scheduler
       stopScheduler();
+
+      // ✅ Stop reminder scheduler
+      stopReminderScheduler();
 
       server.close(async () => {
         console.log("✅ HTTP server closed");
