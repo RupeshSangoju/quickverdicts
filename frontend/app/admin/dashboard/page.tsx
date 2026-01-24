@@ -263,6 +263,11 @@ export default function AdminDashboard() {
   const [calendarMonth, setCalendarMonth] = useState(new Date().getMonth());
   const [calendarYear, setCalendarYear] = useState(new Date().getFullYear());
 
+  // Unblock confirmation modal states
+  const [showUnblockModal, setShowUnblockModal] = useState(false);
+  const [unblockDate, setUnblockDate] = useState<string>("");
+  const [unblocking, setUnblocking] = useState(false);
+
   // Case delete modal states
   const [showDeleteCaseModal, setShowDeleteCaseModal] = useState(false);
   const [deleteCaseId, setDeleteCaseId] = useState<number | null>(null);
@@ -374,7 +379,9 @@ export default function AdminDashboard() {
         method: 'POST',
         body: JSON.stringify({
           date: blockDateForm.date,
-          reason: blockDateForm.reason
+          reason: blockDateForm.reason,
+          blockedTimeSlots: timeSlotsToBlock,
+          isWholeDay: blockWholeDay
         })
       });
 
@@ -403,29 +410,53 @@ export default function AdminDashboard() {
   };
 
   const handleUnblockDate = async (date: string) => {
-    if (!confirm(`Are you sure you want to unblock ${date}?`)) return;
+    setUnblockDate(date);
+    setShowUnblockModal(true);
+  };
 
+  const confirmUnblock = async () => {
+    setUnblocking(true);
     try {
       // Get all blocked slots for this date
-      const response = await fetchWithAuth(`${API_BASE}/api/admin-calendar/blocked?startDate=${date}&endDate=${date}`);
+      const response = await fetchWithAuth(`${API_BASE}/api/admin-calendar/blocked?startDate=${unblockDate}&endDate=${unblockDate}`);
       if (response.ok) {
         const data = await response.json();
+        const slotsToUnblock = data.blockedSlots || [];
 
         // Unblock all slots for this date
-        const unblockPromises = data.blockedSlots.map((slot: any) =>
+        const unblockPromises = slotsToUnblock.map((slot: any) =>
           fetchWithAuth(`${API_BASE}/api/admin-calendar/unblock/${slot.CalendarId}`, {
             method: 'DELETE'
           })
         );
 
         await Promise.all(unblockPromises);
-        toast.success(`Date ${date} unblocked successfully!`);
+
+        // Send notifications to all attorneys and jurors
+        const notifyResponse = await fetchWithAuth(`${API_BASE}/api/admin/notify-unblocked-date`, {
+          method: 'POST',
+          body: JSON.stringify({
+            date: unblockDate,
+            unblockCount: slotsToUnblock.length
+          })
+        });
+
+        if (notifyResponse.ok) {
+          toast.success(`Date ${unblockDate} unblocked successfully! Notifications sent to all users.`);
+        } else {
+          toast.success(`Date ${unblockDate} unblocked successfully!`);
+        }
+
+        setShowUnblockModal(false);
+        setUnblockDate("");
         fetchBlockedDates();
         fetchCasesForDate(selectedDate);
       }
     } catch (error) {
       console.error("Error unblocking date:", error);
       toast.error("Failed to unblock date. Please try again.");
+    } finally {
+      setUnblocking(false);
     }
   };
 
@@ -2764,6 +2795,60 @@ function formatTime(timeString: string, scheduledDate: string) {
                   <>
                     <Trash2 className="h-4 w-4 mr-2" />
                     Delete Case
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Unblock Date Confirmation Modal */}
+      {showUnblockModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/10 backdrop-blur-md">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md">
+            <div className="flex items-center mb-4">
+              <Calendar className="h-6 w-6 text-green-600 mr-3" />
+              <h3 className="text-xl font-semibold text-gray-900">Unblock Date</h3>
+            </div>
+            <p className="text-gray-600 mb-4">
+              Are you sure you want to unblock <span className="font-semibold">{unblockDate}</span>?
+            </p>
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+              <p className="text-sm text-green-800 font-medium">
+                ✅ This will make the date available again:
+              </p>
+              <ul className="text-sm text-green-700 mt-2 ml-4 list-disc space-y-1">
+                <li>All attorneys will be notified</li>
+                <li>All jurors will be notified</li>
+                <li>The date will be available for case scheduling</li>
+              </ul>
+            </div>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowUnblockModal(false);
+                  setUnblockDate("");
+                }}
+                disabled={unblocking}
+                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmUnblock}
+                disabled={unblocking}
+                className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 font-medium disabled:opacity-50 inline-flex items-center"
+              >
+                {unblocking ? (
+                  <>
+                    <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></span>
+                    Unblocking...
+                  </>
+                ) : (
+                  <>
+                    <Calendar className="h-4 w-4 mr-2" />
+                    Unblock Date
                   </>
                 )}
               </button>

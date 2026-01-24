@@ -173,7 +173,18 @@ export default function ScheduleTrialPage() {
         const slotDateStr = formatDateString(slotDate);
         return slotDateStr === dateStr;
       })
-      .map(slot => slot.BlockedTime.substring(0, 5));
+      .map(slot => {
+        // BlockedTime comes as ISO string like "1970-01-01T10:30:00.000Z"
+        // Extract just the time part (HH:MM)
+        const timeStr = slot.BlockedTime;
+        if (timeStr.includes('T')) {
+          // ISO format: extract time after 'T' and before '.'
+          const timePart = timeStr.split('T')[1].split('.')[0]; // "10:30:00"
+          return timePart.substring(0, 5); // "10:30"
+        }
+        // Fallback for simple time strings
+        return timeStr.substring(0, 5);
+      });
   };
 
   const isDateBlockedByAdmin = (date: Date) => {
