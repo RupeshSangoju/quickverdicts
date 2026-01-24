@@ -174,16 +174,9 @@ export default function ScheduleTrialPage() {
         return slotDateStr === dateStr;
       })
       .map(slot => {
-        // BlockedTime comes as ISO string like "1970-01-01T10:30:00.000Z"
-        // Extract just the time part (HH:MM)
-        const timeStr = slot.BlockedTime;
-        if (timeStr.includes('T')) {
-          // ISO format: extract time after 'T' and before '.'
-          const timePart = timeStr.split('T')[1].split('.')[0]; // "10:30:00"
-          return timePart.substring(0, 5); // "10:30"
-        }
-        // Fallback for simple time strings
-        return timeStr.substring(0, 5);
+        // BlockedTime is now in "HH:MM:SS" format from backend
+        // Extract just HH:MM
+        return slot.BlockedTime.substring(0, 5);
       });
   };
 

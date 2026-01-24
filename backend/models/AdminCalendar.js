@@ -157,10 +157,10 @@ async function getBlockedSlots(startDate, endDate) {
       .request()
       .input("startDate", sql.Date, startDate)
       .input("endDate", sql.Date, endDate).query(`
-        SELECT 
+        SELECT
           ac.CalendarId,
           ac.BlockedDate,
-          ac.BlockedTime,
+          CONVERT(VARCHAR(8), ac.BlockedTime, 108) as BlockedTime,
           ac.Duration,
           ac.CaseId,
           ac.Reason,
@@ -472,10 +472,10 @@ async function getSlotsForCase(caseId) {
 
     const pool = await poolPromise;
     const result = await pool.request().input("caseId", sql.Int, caseId).query(`
-        SELECT 
+        SELECT
           CalendarId,
           BlockedDate,
-          BlockedTime,
+          CONVERT(VARCHAR(8), BlockedTime, 108) as BlockedTime,
           Duration,
           Reason,
           CreatedAt
