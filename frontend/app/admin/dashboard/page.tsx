@@ -292,7 +292,8 @@ export default function AdminDashboard() {
         const data = await response.json();
         // Group by date to show blocked dates (not individual time slots)
         const blockedByDate = data.blockedSlots.reduce((acc: any, slot: any) => {
-          const date = new Date(slot.BlockedDate).toISOString().split('T')[0];
+          // Extract date string directly without timezone conversion
+          const date = slot.BlockedDate.substring(0, 10);
           if (!acc[date]) {
             acc[date] = { date, reason: slot.Reason, slots: [] };
           }

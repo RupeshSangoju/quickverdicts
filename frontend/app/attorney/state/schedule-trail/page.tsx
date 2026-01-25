@@ -156,8 +156,9 @@ export default function ScheduleTrialPage() {
     const dateStr = formatDateString(date);
     const blockedTimesForDate = blockedSlots
       .filter(slot => {
-        const slotDate = new Date(slot.BlockedDate);
-        return formatDateString(slotDate) === dateStr;
+        // Extract date string directly without timezone conversion
+        const slotDateStr = slot.BlockedDate.substring(0, 10);
+        return slotDateStr === dateStr;
       })
       .map(slot => slot.BlockedTime.substring(0, 5));
 
@@ -169,8 +170,10 @@ export default function ScheduleTrialPage() {
     const dateStr = formatDateString(date);
     const blocked = blockedSlots
       .filter(slot => {
-        const slotDate = new Date(slot.BlockedDate);
-        const slotDateStr = formatDateString(slotDate);
+        // Extract date string directly without timezone conversion
+        // BlockedDate comes as "2026-01-26T00:00:00.000Z" - just take the date part
+        const slotDateStr = slot.BlockedDate.substring(0, 10); // "2026-01-26"
+        console.log(`   Comparing: ${slotDateStr} === ${dateStr}`, slotDateStr === dateStr);
         return slotDateStr === dateStr;
       })
       .map(slot => {
@@ -206,8 +209,8 @@ export default function ScheduleTrialPage() {
 
     const blockedTimesForDate = blockedSlots
       .filter(slot => {
-        const slotDate = new Date(slot.BlockedDate);
-        const slotDateStr = formatDateString(slotDate);
+        // Extract date string directly without timezone conversion
+        const slotDateStr = slot.BlockedDate.substring(0, 10);
         console.log(`   Comparing: ${slotDateStr} === ${dateStr}`, slotDateStr === dateStr);
         return slotDateStr === dateStr;
       })
