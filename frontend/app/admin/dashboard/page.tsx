@@ -3158,7 +3158,11 @@ function formatTime(timeString: string, scheduledDate: string) {
 
                     {blockDateForm.date && (
                       <p className="text-sm text-blue-700 font-medium">
-                        Selected: {new Date(blockDateForm.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+                        Selected: {(() => {
+                          const [year, month, day] = blockDateForm.date.split('-').map(Number);
+                          const date = new Date(year, month - 1, day);
+                          return date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+                        })()}
                       </p>
                     )}
                   </div>
