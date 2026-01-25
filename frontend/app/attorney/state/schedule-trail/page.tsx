@@ -725,7 +725,7 @@ export default function ScheduleTrialPage() {
                                     ? "bg-orange-50 text-orange-700 border-2 border-orange-400 hover:bg-orange-100"
                                     : isAvailable
                                     ? "text-gray-900 hover:bg-blue-50 border border-gray-200"
-                                    : "text-gray-300 bg-gray-50 cursor-not-allowed"
+                                    : "text-gray-400 bg-gray-100 cursor-not-allowed opacity-50"
                                 } ${
                                   isTodayDate && !isSelected
                                     ? "border-2 border-[#16305B]"

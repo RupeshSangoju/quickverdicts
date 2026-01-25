@@ -171,6 +171,7 @@ async function getBlockedSlots(startDate, endDate) {
         FROM dbo.AdminCalendar ac
         LEFT JOIN dbo.Cases c ON ac.CaseId = c.CaseId
         WHERE ac.BlockedDate BETWEEN @startDate AND @endDate
+          AND ac.BlockedDate >= CAST(GETUTCDATE() AS DATE)
         ORDER BY ac.BlockedDate, ac.BlockedTime
       `);
 

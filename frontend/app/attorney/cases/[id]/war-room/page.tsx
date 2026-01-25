@@ -719,7 +719,7 @@ export default function WarRoomPage() {
   const jurorCountMessage = !isAdminApproved
     ? `⏳ Waiting for admin approval`
     : !isWarRoomStatus
-    ? `✓ War room submitted (Status: ${caseData?.AttorneyStatus})`
+    ? `✓ War room submitted (Status: ${caseData?.AttorneyStatus?.replace(/_/g, ' ')})`
     : pendingRescheduleRequest
     ? `⏳ Waiting for admin to approve reschedule request`
     : approvedCount < requiredJurors
