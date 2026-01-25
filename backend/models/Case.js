@@ -1117,6 +1117,9 @@ async function hardDeleteCase(caseId) {
         // Delete events archive
         await safeDelete('EventsArchive', 'CaseId = @caseId');
 
+        // Delete admin calendar blocked slots
+        await safeDelete('AdminCalendar', 'CaseId = @caseId');
+
         // Finally, delete the case itself
         await transaction.request()
           .input("caseId", sql.Int, id)
