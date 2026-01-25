@@ -167,7 +167,7 @@ export default function ScheduleTrialPage() {
 
   const getBlockedSlotsForDate = (date: Date) => {
     const dateStr = formatDateString(date);
-    return blockedSlots
+    const blocked = blockedSlots
       .filter(slot => {
         const slotDate = new Date(slot.BlockedDate);
         const slotDateStr = formatDateString(slotDate);
@@ -178,6 +178,11 @@ export default function ScheduleTrialPage() {
         // Extract just HH:MM
         return slot.BlockedTime.substring(0, 5);
       });
+
+    if (blocked.length > 0) {
+      console.log(`📅 Date ${dateStr} has ${blocked.length} blocked slots:`, blocked);
+    }
+    return blocked;
   };
 
   const isDateBlockedByAdmin = (date: Date) => {
@@ -196,14 +201,26 @@ export default function ScheduleTrialPage() {
     if (!selectedDate) return [];
 
     const dateStr = formatDateString(selectedDate);
+    console.log('🔍 Getting available time slots for:', dateStr);
+    console.log('📊 Total blocked slots in state:', blockedSlots.length);
+
     const blockedTimesForDate = blockedSlots
       .filter(slot => {
         const slotDate = new Date(slot.BlockedDate);
-        return formatDateString(slotDate) === dateStr;
+        const slotDateStr = formatDateString(slotDate);
+        console.log(`   Comparing: ${slotDateStr} === ${dateStr}`, slotDateStr === dateStr);
+        return slotDateStr === dateStr;
       })
-      .map(slot => slot.BlockedTime.substring(0, 5));
+      .map(slot => {
+        const time = slot.BlockedTime.substring(0, 5);
+        console.log(`   Blocked time extracted: ${slot.BlockedTime} -> ${time}`);
+        return time;
+      });
 
-    return allTimeSlots.filter(time => !blockedTimesForDate.includes(time));
+    console.log('🚫 Blocked times for this date:', blockedTimesForDate);
+    const available = allTimeSlots.filter(time => !blockedTimesForDate.includes(time));
+    console.log('✅ Available time slots:', available.length, 'out of', allTimeSlots.length);
+    return available;
   };
 
   const handlePrevMonth = () => {
