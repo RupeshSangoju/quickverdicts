@@ -1057,90 +1057,65 @@ async function hardDeleteCase(caseId) {
         await transaction.begin();
 
         // Delete related data first (to avoid foreign key constraints)
+        // Order matters: delete child records before parent records
 
-        // Delete juror applications
-        await transaction.request()
-          .input("caseId", sql.Int, id)
-          .query("DELETE FROM dbo.JurorApplications WHERE CaseId = @caseId");
-        console.log(`  ✅ Deleted juror applications for case ${id}`);
+        // Helper function to safely delete from a table (handles missing tables)
+        const safeDelete = async (tableName, whereClause) => {
+          try {
+            await transaction.request()
+              .input("caseId", sql.Int, id)
+              .query(`DELETE FROM dbo.${tableName} WHERE ${whereClause}`);
+            console.log(`  ✅ Deleted from ${tableName} for case ${id}`);
+          } catch (error) {
+            if (error.number === 208) {
+              console.log(`  ⚠️  ${tableName} table does not exist - skipping`);
+            } else {
+              throw error;
+            }
+          }
+        };
 
-        // Delete witnesses
-        await transaction.request()
-          .input("caseId", sql.Int, id)
-          .query("DELETE FROM dbo.CaseWitnesses WHERE CaseId = @caseId");
-        console.log(`  ✅ Deleted witnesses for case ${id}`);
-
-        // Delete jury charge questions
-        await transaction.request()
-          .input("caseId", sql.Int, id)
-          .query("DELETE FROM dbo.JuryChargeQuestions WHERE CaseId = @caseId");
-        console.log(`  ✅ Deleted jury questions for case ${id}`);
-
-        // Delete trial meetings
-        await transaction.request()
-          .input("caseId", sql.Int, id)
-          .query("DELETE FROM dbo.TrialMeetings WHERE CaseId = @caseId");
-        console.log(`  ✅ Deleted trial meetings for case ${id}`);
-
-        // Delete reschedule requests
-        await transaction.request()
-          .input("caseId", sql.Int, id)
-          .query("DELETE FROM dbo.CaseReschedules WHERE CaseId = @caseId");
-        console.log(`  ✅ Deleted reschedule requests for case ${id}`);
-
-        // Delete notifications
-        await transaction.request()
-          .input("caseId", sql.Int, id)
-          .query("DELETE FROM dbo.Notifications WHERE CaseId = @caseId");
-        console.log(`  ✅ Deleted notifications for case ${id}`);
+        // Delete jury charge responses BEFORE jury charge questions (FK constraint)
+        await safeDelete('JuryChargeResponses', 'QuestionId IN (SELECT QuestionId FROM dbo.JuryChargeQuestions WHERE CaseId = @caseId)');
 
         // Delete verdicts
-        await transaction.request()
-          .input("caseId", sql.Int, id)
-          .query("DELETE FROM dbo.Verdicts WHERE CaseId = @caseId");
-        console.log(`  ✅ Deleted verdicts for case ${id}`);
+        await safeDelete('Verdicts', 'CaseId = @caseId');
 
-        // Delete war room voir dire
-        await transaction.request()
-          .input("caseId", sql.Int, id)
-          .query("DELETE FROM dbo.WarRoomVoirDire WHERE CaseId = @caseId");
-        console.log(`  ✅ Deleted war room voir dire for case ${id}`);
+        // Delete juror applications
+        await safeDelete('JurorApplications', 'CaseId = @caseId');
 
-        // Delete war room team members
-        await transaction.request()
-          .input("caseId", sql.Int, id)
-          .query("DELETE FROM dbo.WarRoomTeamMembers WHERE CaseId = @caseId");
-        console.log(`  ✅ Deleted war room team members for case ${id}`);
+        // Delete witnesses
+        await safeDelete('CaseWitnesses', 'CaseId = @caseId');
 
-        // Delete case documents
-        await transaction.request()
-          .input("caseId", sql.Int, id)
-          .query("DELETE FROM dbo.CaseDocuments WHERE CaseId = @caseId");
-        console.log(`  ✅ Deleted case documents for case ${id}`);
+        // Delete jury charge questions (after responses deleted)
+        await safeDelete('JuryChargeQuestions', 'CaseId = @caseId');
 
-        // Delete payments
-        await transaction.request()
-          .input("caseId", sql.Int, id)
-          .query("DELETE FROM dbo.Payments WHERE CaseId = @caseId");
-        console.log(`  ✅ Deleted payments for case ${id}`);
-
-        // Delete events archive
-        await transaction.request()
-          .input("caseId", sql.Int, id)
-          .query("DELETE FROM dbo.EventsArchive WHERE CaseId = @caseId");
-        console.log(`  ✅ Deleted events archive for case ${id}`);
+        // Delete trial meetings
+        await safeDelete('TrialMeetings', 'CaseId = @caseId');
 
         // Delete trial recordings
-        await transaction.request()
-          .input("caseId", sql.Int, id)
-          .query("DELETE FROM dbo.TrialRecordings WHERE CaseId = @caseId");
-        console.log(`  ✅ Deleted trial recordings for case ${id}`);
+        await safeDelete('TrialRecordings', 'CaseId = @caseId');
 
-        // Delete jury charge responses (cascade from JuryChargeQuestions should handle this, but being explicit)
-        await transaction.request()
-          .input("caseId", sql.Int, id)
-          .query("DELETE FROM dbo.JuryChargeResponses WHERE QuestionId IN (SELECT QuestionId FROM dbo.JuryChargeQuestions WHERE CaseId = @caseId)");
-        console.log(`  ✅ Deleted jury charge responses for case ${id}`);
+        // Delete reschedule requests
+        await safeDelete('CaseReschedules', 'CaseId = @caseId');
+
+        // Delete notifications
+        await safeDelete('Notifications', 'CaseId = @caseId');
+
+        // Delete war room voir dire
+        await safeDelete('WarRoomVoirDire', 'CaseId = @caseId');
+
+        // Delete war room team members
+        await safeDelete('WarRoomTeamMembers', 'CaseId = @caseId');
+
+        // Delete case documents
+        await safeDelete('CaseDocuments', 'CaseId = @caseId');
+
+        // Delete payments
+        await safeDelete('Payments', 'CaseId = @caseId');
+
+        // Delete events archive
+        await safeDelete('EventsArchive', 'CaseId = @caseId');
 
         // Finally, delete the case itself
         await transaction.request()
