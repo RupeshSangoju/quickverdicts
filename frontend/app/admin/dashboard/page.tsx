@@ -322,13 +322,34 @@ export default function AdminDashboard() {
     setBlockingDate(true);
     try {
       // Determine which time slots to block
-      const timeSlotsToBlock = blockWholeDay
+      let timeSlotsToBlock = blockWholeDay
         ? Array.from({ length: 48 }, (_, i) => {
             const hours = Math.floor(i / 2);
             const minutes = i % 2 === 0 ? "00" : "30";
             return `${hours.toString().padStart(2, '0')}:${minutes}:00`;
           })
         : selectedTimeSlots;
+
+      // Filter out past time slots if blocking today
+      const isToday = blockDateForm.date === new Date().toISOString().split('T')[0];
+      if (isToday && blockWholeDay) {
+        const now = new Date();
+        const currentHours = now.getHours();
+        const currentMinutes = now.getMinutes();
+        const currentTotalMinutes = currentHours * 60 + currentMinutes;
+
+        timeSlotsToBlock = timeSlotsToBlock.filter(timeSlot => {
+          const [hours, minutes] = timeSlot.split(':').map(Number);
+          const slotTotalMinutes = hours * 60 + minutes;
+          return slotTotalMinutes >= currentTotalMinutes;
+        });
+
+        if (timeSlotsToBlock.length === 0) {
+          toast.error("No future time slots available to block for today");
+          setBlockingDate(false);
+          return;
+        }
+      }
 
       console.log(`Blocking ${timeSlotsToBlock.length} time slots for ${blockDateForm.date}`);
 
@@ -3118,7 +3139,12 @@ function formatTime(timeString: string, scheduledDate: string) {
                         for (let day = 1; day <= daysInMonth; day++) {
                           const dateStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                           const isSelected = blockDateForm.date === dateStr;
-                          const isPast = new Date(dateStr) < new Date(new Date().toDateString());
+
+                          // Allow today and future dates, disable past dates
+                          const today = new Date();
+                          today.setHours(0, 0, 0, 0);
+                          const dateObj = new Date(dateStr + 'T00:00:00');
+                          const isPast = dateObj < today;
 
                           // Check if this date has any blocked slots
                           const blockedForDate = blockedDates.find((b: any) => b.date === dateStr);
@@ -3198,18 +3224,39 @@ function formatTime(timeString: string, scheduledDate: string) {
                           const displayTime = `${hours % 12 || 12}:${minutes} ${hours < 12 ? 'AM' : 'PM'}`;
                           const isSelected = selectedTimeSlots.includes(timeSlot);
 
+                          // Check if this time slot is in the past for today's date
+                          const isToday = blockDateForm.date === new Date().toISOString().split('T')[0];
+                          const isPastTime = isToday && (() => {
+                            const now = new Date();
+                            const currentHours = now.getHours();
+                            const currentMinutes = now.getMinutes();
+                            const slotTotalMinutes = hours * 60 + parseInt(minutes);
+                            const currentTotalMinutes = currentHours * 60 + currentMinutes;
+                            return slotTotalMinutes < currentTotalMinutes;
+                          })();
+
                           return (
                             <button
                               key={timeSlot}
                               type="button"
+                              disabled={isPastTime}
                               onClick={() => {
-                                if (isSelected) {
-                                  setSelectedTimeSlots(selectedTimeSlots.filter(t => t !== timeSlot));
-                                } else {
-                                  setSelectedTimeSlots([...selectedTimeSlots, timeSlot]);
+                                if (!isPastTime) {
+                                  if (isSelected) {
+                                    setSelectedTimeSlots(selectedTimeSlots.filter(t => t !== timeSlot));
+                                  } else {
+                                    setSelectedTimeSlots([...selectedTimeSlots, timeSlot]);
+                                  }
                                 }
                               }}
-                              className={`text-xs py-1.5 px-2 rounded-lg border ${isSelected ? 'bg-red-600 text-white border-red-700' : 'bg-white text-gray-700 border-gray-300 hover:bg-red-50'}`}
+                              className={`text-xs py-1.5 px-2 rounded-lg border ${
+                                isPastTime
+                                  ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                                  : isSelected
+                                  ? 'bg-red-600 text-white border-red-700'
+                                  : 'bg-white text-gray-700 border-gray-300 hover:bg-red-50'
+                              }`}
+                              title={isPastTime ? 'This time has already passed' : ''}
                             >
                               {displayTime}
                             </button>
