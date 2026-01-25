@@ -1094,6 +1094,54 @@ async function hardDeleteCase(caseId) {
           .query("DELETE FROM dbo.Notifications WHERE CaseId = @caseId");
         console.log(`  ✅ Deleted notifications for case ${id}`);
 
+        // Delete verdicts
+        await transaction.request()
+          .input("caseId", sql.Int, id)
+          .query("DELETE FROM dbo.Verdicts WHERE CaseId = @caseId");
+        console.log(`  ✅ Deleted verdicts for case ${id}`);
+
+        // Delete war room voir dire
+        await transaction.request()
+          .input("caseId", sql.Int, id)
+          .query("DELETE FROM dbo.WarRoomVoirDire WHERE CaseId = @caseId");
+        console.log(`  ✅ Deleted war room voir dire for case ${id}`);
+
+        // Delete war room team members
+        await transaction.request()
+          .input("caseId", sql.Int, id)
+          .query("DELETE FROM dbo.WarRoomTeamMembers WHERE CaseId = @caseId");
+        console.log(`  ✅ Deleted war room team members for case ${id}`);
+
+        // Delete case documents
+        await transaction.request()
+          .input("caseId", sql.Int, id)
+          .query("DELETE FROM dbo.CaseDocuments WHERE CaseId = @caseId");
+        console.log(`  ✅ Deleted case documents for case ${id}`);
+
+        // Delete payments
+        await transaction.request()
+          .input("caseId", sql.Int, id)
+          .query("DELETE FROM dbo.Payments WHERE CaseId = @caseId");
+        console.log(`  ✅ Deleted payments for case ${id}`);
+
+        // Delete events archive
+        await transaction.request()
+          .input("caseId", sql.Int, id)
+          .query("DELETE FROM dbo.EventsArchive WHERE CaseId = @caseId");
+        console.log(`  ✅ Deleted events archive for case ${id}`);
+
+        // Delete trial recordings
+        await transaction.request()
+          .input("caseId", sql.Int, id)
+          .query("DELETE FROM dbo.TrialRecordings WHERE CaseId = @caseId");
+        console.log(`  ✅ Deleted trial recordings for case ${id}`);
+
+        // Delete jury charge responses (cascade from JuryChargeQuestions should handle this, but being explicit)
+        await transaction.request()
+          .input("caseId", sql.Int, id)
+          .query("DELETE FROM dbo.JuryChargeResponses WHERE QuestionId IN (SELECT QuestionId FROM dbo.JuryChargeQuestions WHERE CaseId = @caseId)");
+        console.log(`  ✅ Deleted jury charge responses for case ${id}`);
+
         // Finally, delete the case itself
         await transaction.request()
           .input("caseId", sql.Int, id)
