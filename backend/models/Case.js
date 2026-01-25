@@ -1070,6 +1070,15 @@ async function hardDeleteCase(caseId) {
             if (error.number === 208) {
               console.log(`  ⚠️  ${tableName} table does not exist - skipping`);
             } else {
+              console.error(`  ❌ Error deleting from ${tableName}:`, {
+                message: error.message,
+                number: error.number,
+                state: error.state,
+                class: error.class,
+                lineNumber: error.lineNumber,
+                serverName: error.serverName,
+                procName: error.procName
+              });
               throw error;
             }
           }
@@ -1132,7 +1141,13 @@ async function hardDeleteCase(caseId) {
         return true;
       } catch (error) {
         await transaction.rollback();
-        console.error(`❌ [Case.hardDeleteCase] Transaction failed:`, error.message);
+        console.error(`❌ [Case.hardDeleteCase] Transaction failed:`, {
+          message: error.message,
+          number: error.number,
+          state: error.state,
+          class: error.class,
+          stack: error.stack
+        });
         throw error;
       }
     });
