@@ -2805,7 +2805,7 @@ function formatTime(timeString: string, scheduledDate: string) {
 
       {/* Unblock Date Confirmation Modal */}
       {showUnblockModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/10 backdrop-blur-md">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md">
             <div className="flex items-center mb-4">
               <Calendar className="h-6 w-6 text-green-600 mr-3" />
@@ -3120,15 +3120,34 @@ function formatTime(timeString: string, scheduledDate: string) {
                           const isSelected = blockDateForm.date === dateStr;
                           const isPast = new Date(dateStr) < new Date(new Date().toDateString());
 
+                          // Check if this date has any blocked slots
+                          const blockedForDate = blockedDates.find((b: any) => b.date === dateStr);
+                          const hasBlockedSlots = !!blockedForDate;
+                          const blockedSlotsCount = blockedForDate?.slots?.length || 0;
+
                           days.push(
                             <button
                               key={day}
                               type="button"
                               onClick={() => !isPast && setBlockDateForm({ ...blockDateForm, date: dateStr })}
                               disabled={isPast}
-                              className={`py-2 rounded-lg ${isSelected ? 'bg-blue-600 text-white font-bold' : isPast ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-blue-100'}`}
+                              className={`py-2 rounded-lg relative ${
+                                isSelected
+                                  ? 'bg-blue-600 text-white font-bold'
+                                  : isPast
+                                  ? 'text-gray-300 cursor-not-allowed'
+                                  : hasBlockedSlots
+                                  ? 'bg-red-50 text-red-700 border border-red-300 hover:bg-red-100 font-semibold'
+                                  : 'hover:bg-blue-100'
+                              }`}
+                              title={hasBlockedSlots ? `${blockedSlotsCount} slot(s) already blocked` : ''}
                             >
                               {day}
+                              {hasBlockedSlots && !isSelected && (
+                                <span className="absolute top-0 right-0 inline-flex items-center justify-center px-1 text-xs font-bold text-white bg-red-600 rounded-full">
+                                  {blockedSlotsCount}
+                                </span>
+                              )}
                             </button>
                           );
                         }
@@ -3270,7 +3289,31 @@ function formatTime(timeString: string, scheduledDate: string) {
                               })}
                             </p>
                             <p className="text-sm text-gray-600">Reason: {blocked.reason}</p>
-                            <p className="text-xs text-gray-500">{blocked.slots.length} time slots blocked</p>
+                            <p className="text-xs text-gray-500">{blocked.slots.length} time slot(s) blocked</p>
+                            {blocked.slots.length <= 10 && (
+                              <p className="text-xs text-red-600 mt-1">
+                                🕐 {blocked.slots.map((slot: any) => {
+                                  const time = slot.BlockedTime.substring(0, 5);
+                                  const [hours, minutes] = time.split(':');
+                                  const hour = parseInt(hours);
+                                  const period = hour >= 12 ? 'PM' : 'AM';
+                                  const displayHour = hour % 12 || 12;
+                                  return `${displayHour}:${minutes} ${period}`;
+                                }).join(', ')}
+                              </p>
+                            )}
+                            {blocked.slots.length > 10 && (
+                              <p className="text-xs text-red-600 mt-1">
+                                🕐 {blocked.slots.slice(0, 5).map((slot: any) => {
+                                  const time = slot.BlockedTime.substring(0, 5);
+                                  const [hours, minutes] = time.split(':');
+                                  const hour = parseInt(hours);
+                                  const period = hour >= 12 ? 'PM' : 'AM';
+                                  const displayHour = hour % 12 || 12;
+                                  return `${displayHour}:${minutes} ${period}`;
+                                }).join(', ')} + {blocked.slots.length - 5} more
+                              </p>
+                            )}
                           </div>
                         </div>
                         <button
