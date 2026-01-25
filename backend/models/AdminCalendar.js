@@ -64,6 +64,7 @@ function validateTime(timeString) {
 /**
  * Convert time string (HH:MM:SS) to Date object for SQL Server TIME type
  * SQL Server's tedious driver requires Date objects for TIME columns
+ * Uses UTC to avoid timezone conversion
  */
 function convertTimeToDateObject(timeString) {
   if (!timeString) {
@@ -71,8 +72,8 @@ function convertTimeToDateObject(timeString) {
   }
 
   const [hours, minutes, seconds] = timeString.split(":").map(Number);
-  const timeDate = new Date();
-  timeDate.setHours(hours, minutes, seconds, 0);
+  // Use UTC to avoid timezone conversion - set to 1970-01-01 UTC
+  const timeDate = new Date(Date.UTC(1970, 0, 1, hours, minutes, seconds || 0, 0));
 
   return timeDate;
 }

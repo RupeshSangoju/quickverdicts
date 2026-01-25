@@ -223,6 +223,12 @@ export default function ScheduleTrialPage() {
     return available;
   };
 
+  const isTimeSlotBlocked = (time: string) => {
+    if (!selectedDate) return false;
+    const blockedTimesForDate = getBlockedSlotsForDate(selectedDate);
+    return blockedTimesForDate.includes(time);
+  };
+
   const handlePrevMonth = () => {
     const newDate = new Date(currentYear, currentMonth - 1, 1);
     setCurrentDate(newDate);
@@ -796,20 +802,28 @@ export default function ScheduleTrialPage() {
                             </div>
                           ) : (
                             <div className="grid grid-cols-2 gap-3 max-h-96 overflow-y-auto pr-2">
-                              {availableTimeSlots.map((slot) => (
-                                <button
-                                  key={slot}
-                                  type="button"
-                                  className={`py-3 px-4 text-center border-2 rounded-lg font-medium transition-all ${
-                                    selectedTime === slot
-                                      ? "bg-[#16305B] text-white border-[#16305B] shadow-md"
-                                      : "bg-white text-gray-900 border-gray-200 hover:border-[#16305B] hover:bg-blue-50"
-                                  }`}
-                                  onClick={() => handleTimeSelect(slot)}
-                                >
-                                  {slot}
-                                </button>
-                              ))}
+                              {allTimeSlots.map((slot) => {
+                                const isBlocked = isTimeSlotBlocked(slot);
+                                const isSelected = selectedTime === slot;
+                                return (
+                                  <button
+                                    key={slot}
+                                    type="button"
+                                    disabled={isBlocked}
+                                    className={`py-3 px-4 text-center border-2 rounded-lg font-medium transition-all ${
+                                      isBlocked
+                                        ? "bg-red-100 text-red-600 border-red-400 cursor-not-allowed line-through"
+                                        : isSelected
+                                        ? "bg-[#16305B] text-white border-[#16305B] shadow-md"
+                                        : "bg-white text-gray-900 border-gray-200 hover:border-[#16305B] hover:bg-blue-50"
+                                    }`}
+                                    onClick={() => !isBlocked && handleTimeSelect(slot)}
+                                    title={isBlocked ? "This time slot has been blocked by admin" : ""}
+                                  >
+                                    {slot}
+                                  </button>
+                                );
+                              })}
                             </div>
                           )}
                         </>
