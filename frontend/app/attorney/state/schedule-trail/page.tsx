@@ -465,9 +465,9 @@ export default function ScheduleTrialPage() {
       console.log("✅ Case created successfully:", data);
 
       // Success! Show toast notification
-      toast.success("Trial Scheduled Successfully! A confirmation has been sent to your email address.", {
-        duration: 3000,
-        icon: "✅",
+      toast.success("Trial date pending QV confirmation. War Room will be accessible upon confirmation of trial setting.", {
+        duration: 4000,
+        icon: "⏳",
       });
 
       // ✅ TRIGGER CALENDAR REFRESH: Notify calendar to update
@@ -576,8 +576,10 @@ export default function ScheduleTrialPage() {
             <h1 className="text-3xl font-bold text-[#16305B] mb-2">
               Schedule Trial
             </h1>
-            <p className="text-gray-600 text-base">
-              Choose your preferred date and time for this trial.
+            <p className={`text-base ${scheduled ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>
+              {scheduled
+                ? "Thank you! Confirmation of your requested trial date is pending."
+                : "Choose your preferred date and time for this trial."}
             </p>
           </div>
 
