@@ -584,9 +584,11 @@ export default function ScheduleTrialPage() {
           </div>
 
           {/* Right message */}
-          <div className="ml-1 mt-6 whitespace-nowrap text-lg font-bold text-red-600 text-right">
-            Please schedule case at least four (4) weeks from today.
-          </div>
+          {!scheduled && (
+            <div className="ml-1 mt-6 whitespace-nowrap text-lg font-bold text-red-600 text-right">
+              Please schedule case at least four (4) weeks from today.
+            </div>
+          )}
         </div>
       </div>
 
