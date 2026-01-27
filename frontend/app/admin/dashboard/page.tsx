@@ -221,7 +221,10 @@ export default function AdminDashboard() {
   const [jurorFilter, setJurorFilter] = useState<"all" | "verified" | "not_verified" | "declined">("all");
   const [attorneyPage, setAttorneyPage] = useState(1);
   const [jurorPage, setJurorPage] = useState(1);
-  const PAGE_SIZE = 5;
+  const PAGE_SIZE = 10;
+  const [attorneySearchQuery, setAttorneySearchQuery] = useState("");
+  const [attorneySortBy, setAttorneySortBy] = useState<"name" | "email" | "lawFirm" | "status" | "date">("date");
+  const [attorneySortOrder, setAttorneySortOrder] = useState<"asc" | "desc">("desc");
 
   const [showCaseRejectModal, setShowCaseRejectModal] = useState(false);
   const [rejectCaseId, setRejectCaseId] = useState<number | null>(null);
@@ -1127,13 +1130,64 @@ export default function AdminDashboard() {
     }
   };
 
-  const filteredAttorneys = attorneys.filter((a) => {
-    if (attorneyFilter === "verified") return a.IsVerified;
-    if (attorneyFilter === "not_verified") return !a.IsVerified && a.VerificationStatus !== "declined";
-    if (attorneyFilter === "declined") return a.VerificationStatus === "declined";
-    return true;
-  });
+  const filteredAttorneys = attorneys
+    .filter((a) => {
+      // Filter by verification status
+      if (attorneyFilter === "verified") return a.IsVerified;
+      if (attorneyFilter === "not_verified") return !a.IsVerified && a.VerificationStatus !== "declined";
+      if (attorneyFilter === "declined") return a.VerificationStatus === "declined";
+      return true;
+    })
+    .filter((a) => {
+      // Filter by search query
+      if (!attorneySearchQuery) return true;
+      const query = attorneySearchQuery.toLowerCase();
+      const fullName = `${a.FirstName} ${a.LastName}`.toLowerCase();
+      return (
+        fullName.includes(query) ||
+        a.Email.toLowerCase().includes(query) ||
+        a.LawFirmName.toLowerCase().includes(query) ||
+        a.StateBarNumber.toLowerCase().includes(query)
+      );
+    })
+    .sort((a, b) => {
+      // Sort by selected field
+      let comparison = 0;
+      switch (attorneySortBy) {
+        case "name":
+          const nameA = `${a.FirstName} ${a.LastName}`.toLowerCase();
+          const nameB = `${b.FirstName} ${b.LastName}`.toLowerCase();
+          comparison = nameA.localeCompare(nameB);
+          break;
+        case "email":
+          comparison = a.Email.toLowerCase().localeCompare(b.Email.toLowerCase());
+          break;
+        case "lawFirm":
+          comparison = a.LawFirmName.toLowerCase().localeCompare(b.LawFirmName.toLowerCase());
+          break;
+        case "status":
+          const statusA = a.VerificationStatus === "declined" ? 2 : (a.IsVerified ? 0 : 1);
+          const statusB = b.VerificationStatus === "declined" ? 2 : (b.IsVerified ? 0 : 1);
+          comparison = statusA - statusB;
+          break;
+        case "date":
+          comparison = new Date(a.CreatedAt).getTime() - new Date(b.CreatedAt).getTime();
+          break;
+      }
+      return attorneySortOrder === "asc" ? comparison : -comparison;
+    });
   const paginatedAttorneys = filteredAttorneys.slice((attorneyPage - 1) * PAGE_SIZE, attorneyPage * PAGE_SIZE);
+
+  const handleAttorneySortChange = (column: "name" | "email" | "lawFirm" | "status" | "date") => {
+    if (attorneySortBy === column) {
+      // Toggle sort order if clicking the same column
+      setAttorneySortOrder(attorneySortOrder === "asc" ? "desc" : "asc");
+    } else {
+      // Set new column and default to ascending
+      setAttorneySortBy(column);
+      setAttorneySortOrder("asc");
+    }
+  };
 
   const filteredJurors = jurors.filter((j) => {
     if (jurorFilter === "verified") return j.IsVerified;
@@ -2056,9 +2110,16 @@ function formatTime(timeString: string, scheduledDate: string) {
                 </div>
               </div>
               <div className="flex items-center space-x-4">
-                <select 
-                  className="border-2 border-gray-300 rounded-lg px-4 py-2 text-sm text-black bg-white font-medium focus:border-blue-500 focus:outline-none cursor-pointer" 
-                  value={attorneyFilter} 
+                <input
+                  type="text"
+                  placeholder="Search by name, email, law firm, or bar number..."
+                  className="border-2 border-gray-300 rounded-lg px-4 py-2 text-sm text-black bg-white focus:border-blue-500 focus:outline-none w-96"
+                  value={attorneySearchQuery}
+                  onChange={(e) => { setAttorneySearchQuery(e.target.value); setAttorneyPage(1); }}
+                />
+                <select
+                  className="border-2 border-gray-300 rounded-lg px-4 py-2 text-sm text-black bg-white font-medium focus:border-blue-500 focus:outline-none"
+                  value={attorneyFilter}
                   onChange={(e) => { setAttorneyFilter(e.target.value as any); setAttorneyPage(1); }}
                 >
                   <option value="all">All Attorneys</option>
@@ -2073,12 +2134,62 @@ function formatTime(timeString: string, scheduledDate: string) {
             <table className="w-full">
               <thead className="bg-gray-100">
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Attorney Info</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Contact</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Law Firm</th>
+                  <th
+                    className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none"
+                    onClick={() => handleAttorneySortChange("name")}
+                  >
+                    <div className="flex items-center gap-2">
+                      Attorney Info
+                      {attorneySortBy === "name" && (
+                        <span className="text-blue-600">{attorneySortOrder === "asc" ? "↑" : "↓"}</span>
+                      )}
+                    </div>
+                  </th>
+                  <th
+                    className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none"
+                    onClick={() => handleAttorneySortChange("email")}
+                  >
+                    <div className="flex items-center gap-2">
+                      Contact
+                      {attorneySortBy === "email" && (
+                        <span className="text-blue-600">{attorneySortOrder === "asc" ? "↑" : "↓"}</span>
+                      )}
+                    </div>
+                  </th>
+                  <th
+                    className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none"
+                    onClick={() => handleAttorneySortChange("lawFirm")}
+                  >
+                    <div className="flex items-center gap-2">
+                      Law Firm
+                      {attorneySortBy === "lawFirm" && (
+                        <span className="text-blue-600">{attorneySortOrder === "asc" ? "↑" : "↓"}</span>
+                      )}
+                    </div>
+                  </th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Bar Number</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-4 text-sm text-gray-600">Joined</th>
+                  <th
+                    className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none"
+                    onClick={() => handleAttorneySortChange("status")}
+                  >
+                    <div className="flex items-center gap-2">
+                      Status
+                      {attorneySortBy === "status" && (
+                        <span className="text-blue-600">{attorneySortOrder === "asc" ? "↑" : "↓"}</span>
+                      )}
+                    </div>
+                  </th>
+                  <th
+                    className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none"
+                    onClick={() => handleAttorneySortChange("date")}
+                  >
+                    <div className="flex items-center gap-2">
+                      Joined
+                      {attorneySortBy === "date" && (
+                        <span className="text-blue-600">{attorneySortOrder === "asc" ? "↑" : "↓"}</span>
+                      )}
+                    </div>
+                  </th>
                   <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
@@ -2163,24 +2274,74 @@ function formatTime(timeString: string, scheduledDate: string) {
               </tbody>
             </table>
           </div>
-          <div className="flex justify-between items-center px-6 py-4 bg-gray-50 border-t border-gray-200">
-            <button 
-              className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 transition-colors" 
-              disabled={attorneyPage === 1} 
-              onClick={() => setAttorneyPage(attorneyPage - 1)}
-            >
-              Previous
-            </button>
-            <span className="text-sm font-semibold text-black">
-              Page {attorneyPage} of {Math.max(1, Math.ceil(filteredAttorneys.length / PAGE_SIZE))}
-            </span>
-            <button 
-              className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 transition-colors cursor-pointer" 
-              disabled={attorneyPage * PAGE_SIZE >= filteredAttorneys.length} 
-              onClick={() => setAttorneyPage(attorneyPage + 1)}
-            >
-              Next
-            </button>
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 px-6 py-4 bg-gray-50 border-t border-gray-200">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">
+                Showing {filteredAttorneys.length === 0 ? 0 : (attorneyPage - 1) * PAGE_SIZE + 1} to{" "}
+                {Math.min(attorneyPage * PAGE_SIZE, filteredAttorneys.length)} of {filteredAttorneys.length} results
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                disabled={attorneyPage === 1}
+                onClick={() => setAttorneyPage(attorneyPage - 1)}
+              >
+                Previous
+              </button>
+              <div className="flex items-center gap-1">
+                {(() => {
+                  const totalPages = Math.max(1, Math.ceil(filteredAttorneys.length / PAGE_SIZE));
+                  const pages = [];
+
+                  if (totalPages <= 7) {
+                    // Show all pages if 7 or fewer
+                    for (let i = 1; i <= totalPages; i++) {
+                      pages.push(i);
+                    }
+                  } else {
+                    // Show first page, last page, current page and neighbors
+                    if (attorneyPage <= 3) {
+                      pages.push(1, 2, 3, 4, -1, totalPages);
+                    } else if (attorneyPage >= totalPages - 2) {
+                      pages.push(1, -1, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+                    } else {
+                      pages.push(1, -1, attorneyPage - 1, attorneyPage, attorneyPage + 1, -2, totalPages);
+                    }
+                  }
+
+                  return pages.map((page, index) => {
+                    if (page === -1 || page === -2) {
+                      return (
+                        <span key={`ellipsis-${index}`} className="px-2 text-gray-500">
+                          ...
+                        </span>
+                      );
+                    }
+                    return (
+                      <button
+                        key={page}
+                        onClick={() => setAttorneyPage(page)}
+                        className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
+                          attorneyPage === page
+                            ? "bg-blue-600 text-white"
+                            : "bg-gray-200 text-black hover:bg-gray-300"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    );
+                  });
+                })()}
+              </div>
+              <button
+                className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                disabled={attorneyPage * PAGE_SIZE >= filteredAttorneys.length}
+                onClick={() => setAttorneyPage(attorneyPage + 1)}
+              >
+                Next
+              </button>
+            </div>
           </div>
         </div>
 
