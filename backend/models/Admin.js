@@ -642,10 +642,10 @@ async function getDashboardStats() {
     return await executeQuery(async (pool) => {
       const result = await pool.request().query(`
         SELECT
-          (SELECT COUNT(*) FROM dbo.Attorneys WHERE IsVerified = 1 AND IsDeleted = 0) AS VerifiedAttorneys,
-          (SELECT COUNT(*) FROM dbo.Attorneys WHERE IsVerified = 0 AND IsDeleted = 0) AS PendingAttorneys,
-          (SELECT COUNT(*) FROM dbo.Jurors WHERE IsVerified = 1 AND IsDeleted = 0) AS VerifiedJurors,
-          (SELECT COUNT(*) FROM dbo.Jurors WHERE IsVerified = 0 AND IsDeleted = 0) AS PendingJurors,
+          (SELECT COUNT(*) FROM dbo.Attorneys WHERE IsVerified = 1 AND IsDeleted = 0 AND IsActive = 1) AS VerifiedAttorneys,
+          (SELECT COUNT(*) FROM dbo.Attorneys WHERE IsVerified = 0 AND IsDeleted = 0 AND IsActive = 1) AS PendingAttorneys,
+          (SELECT COUNT(*) FROM dbo.Jurors WHERE IsVerified = 1 AND IsDeleted = 0 AND IsActive = 1) AS VerifiedJurors,
+          (SELECT COUNT(*) FROM dbo.Jurors WHERE IsVerified = 0 AND IsDeleted = 0 AND IsActive = 1) AS PendingJurors,
           (SELECT COUNT(*) FROM dbo.Cases WHERE AdminApprovalStatus = 'pending' AND IsDeleted = 0) AS PendingCases,
           (SELECT COUNT(*) FROM dbo.Cases WHERE AdminApprovalStatus = 'approved' AND IsDeleted = 0) AS ApprovedCases,
           (SELECT COUNT(*) FROM dbo.TrialMeetings WHERE Status = 'active') AS ActiveTrials,
