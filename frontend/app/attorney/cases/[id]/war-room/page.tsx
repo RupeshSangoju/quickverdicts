@@ -1490,7 +1490,7 @@ export default function WarRoomPage() {
                   <DocumentTextIcon className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-semibold text-white">Documentation</h2>
+                  <h2 className="text-xl font-semibold text-white">Videos and Documents</h2>
                   <p className="text-sm text-white/80 mt-0.5">Case files and evidence</p>
                 </div>
               </div>
@@ -1500,7 +1500,7 @@ export default function WarRoomPage() {
                 className="px-4 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg font-semibold text-sm transition-all flex items-center gap-1.5"
               >
                 <PlusIcon className="w-4 h-4" />
-                Upload Document
+                Upload Videos and Documents
               </button>
             </div>
           </div>

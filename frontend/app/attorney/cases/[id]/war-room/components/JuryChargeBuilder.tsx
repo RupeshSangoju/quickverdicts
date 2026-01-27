@@ -392,7 +392,7 @@ export default function JuryChargeBuilder({
                     Locked - Released to jurors (cannot edit)
                   </span>
                 ) : (
-                  "Build custom questions for jurors to answer"
+                  "Build custom Instructions and Questions for Jurors."
                 )}
               </p>
             </div>

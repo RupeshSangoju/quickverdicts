@@ -466,7 +466,7 @@ export default function ScheduleTrialPage() {
 
       // Success! Show toast notification
       toast.success("Trial date pending QV confirmation. War Room will be accessible upon confirmation of trial setting.", {
-        duration: 4000,
+        duration: 3000,
         icon: "⏳",
       });
 

@@ -235,7 +235,7 @@ async function deleteNotification(req, res) {
     }
 
     // Delete notification
-    await Notification.deleteNotification(notificationId);
+    await Notification.deleteNotification(notificationId,userId);
 
     res.json({
       success: true,

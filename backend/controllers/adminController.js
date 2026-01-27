@@ -429,7 +429,18 @@ async function deleteCase(req, res) {
 
     console.log(`👥 [deleteCase] Found ${allApplications.length} juror applications for case ${caseId}`);
 
-    // Prepare notifications array for bulk creation (MUST be done BEFORE hard delete)
+    // Soft delete the case
+    await Case.softDeleteCase(caseId);
+
+    console.log(`✅ [deleteCase] Soft delete completed for case ${caseId}`);
+
+    // Verify deletion
+    const deletedCase = await Case.findById(caseId, { includeDeleted: true });
+    console.log(
+      `🔍 [deleteCase] Verification after deletion: IsDeleted=${deletedCase?.IsDeleted} for case ${caseId}`
+    );
+
+    // Prepare notifications array for bulk creation
     const notifications = [];
 
     // Notify the attorney
@@ -440,7 +451,7 @@ async function deleteCase(req, res) {
         caseId: parseInt(caseId),
         type: "case_deleted",
         title: "Case Deleted by Admin",
-        message: `Your case "${caseData.CaseTitle}" has been permanently deleted by the administrator. If you have questions, please contact support.`,
+        message: `Your case "${caseData.CaseTitle}" has been deleted by the administrator. If you have questions, please contact support.`,
       });
     }
 
@@ -452,21 +463,15 @@ async function deleteCase(req, res) {
         caseId: parseInt(caseId),
         type: "case_deleted",
         title: "Case Deleted",
-        message: `The case "${caseData.CaseTitle}" you applied to has been permanently deleted by the administrator.`,
+        message: `The case "${caseData.CaseTitle}" you applied to has been deleted by the administrator.`,
       });
     });
 
-    // Send all notifications BEFORE hard delete (since case-related notifications will be deleted)
+    // Send all notifications at once using bulk insert
     if (notifications.length > 0) {
       await Notification.createBulkNotifications(notifications);
-      console.log(`📧 Sent ${notifications.length} notifications for case ${caseId} before deletion`);
+      console.log(`📧 Sent ${notifications.length} notifications for deleted case ${caseId}`);
     }
-
-    // Hard delete the case (permanently removes from database)
-    await Case.hardDeleteCase(caseId);
-
-    console.log(`✅ [deleteCase] Hard delete completed for case ${caseId} - case permanently removed from database`);
-
 
     // Log admin action
     const Admin = require("../models/Admin");
