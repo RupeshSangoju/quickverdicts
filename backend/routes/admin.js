@@ -1367,7 +1367,7 @@ router.get("/attorneys", async (req, res) => {
 
     console.log("Fetching attorneys - Page:", page, "Limit:", limit);
 
-    const result = await Attorney.getAllAttorneys(page, limit);
+    const result = await Attorney.getAllAttorneys({ page, limit });
 
     res.json({
       success: true,
