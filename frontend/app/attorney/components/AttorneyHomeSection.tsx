@@ -561,7 +561,7 @@ export default function AttorneyHomeSection() {
             <span className="text-sm font-medium">Refresh</span>
           </button>
           <button 
-            className="text-[#16305B] hover:text-[#1e417a] transition-colors font-semibold" 
+            className="text-[#16305B] hover:text-[#1e417a] transition-colors font-semibold cursor-pointer" 
             onClick={() => setShowHelp(true)}
           >
             Help & Support

@@ -386,7 +386,7 @@ export default function AttorneyProfileSection({ onBack }: AttorneyProfileSectio
                 </div>
                 <button
                   type="button"
-                  className="mt-4 px-6 py-3 bg-[#16305B] text-white rounded-lg hover:bg-[#1e417a] text-[15px] font-semibold shadow-sm transition-all hover:shadow-md"
+                  className="mt-4 px-6 py-3 bg-[#16305B] text-white rounded-lg hover:bg-[#1e417a] text-[15px] font-semibold shadow-sm transition-all hover:shadow-md cursor-pointer"
                   style={{ width: 'fit-content' }}
                   onClick={() => {
                     setEditData({
@@ -416,7 +416,7 @@ export default function AttorneyProfileSection({ onBack }: AttorneyProfileSectio
                   </p>
                 </div>
                 <button
-                  className="w-full border-2 border-red-300 text-red-600 rounded-lg py-3 hover:bg-red-50 transition-colors text-[15px] font-semibold flex items-center justify-center gap-2 group"
+                  className="w-full border-2 border-red-300 text-red-600 rounded-lg py-3 hover:bg-red-50 transition-colors text-[15px] font-semibold flex items-center justify-center gap-2 group cursor-pointer"
                   onClick={() => setShowDelete(true)}
                 >
                   <AlertCircle className="w-5 h-5 group-hover:scale-110 transition-transform" />
@@ -457,7 +457,7 @@ export default function AttorneyProfileSection({ onBack }: AttorneyProfileSectio
                         setShowAddPayment(true);
                         setErrorMessage(null);
                       }}
-                      className="w-full border-2 border-[#16305B] text-[#16305B] rounded-lg py-3 hover:bg-blue-50 transition-colors text-[15px] font-semibold"
+                      className="w-full border-2 border-[#16305B] text-[#16305B] rounded-lg py-3 hover:bg-blue-50 transition-colors text-[15px] font-semibold cursor-pointer"
                     >
                       Add Payment Method
                     </button>

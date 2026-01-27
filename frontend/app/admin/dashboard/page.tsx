@@ -1586,11 +1586,11 @@ function formatTime(timeString: string, scheduledDate: string) {
 
       <div className="max-w-7xl mx-auto px-8 py-8 space-y-8">
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl hover:scale-105 transition-all border border-gray-200">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 ">
+          <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl hover:scale-105 transition-all border border-gray-200 cursor-pointer">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-sm font-medium">Total Attorneys</p>
+                <p className="text-gray-600 text-sm font-medium ">Total Attorneys</p>
                 <p className="text-4xl font-bold mt-2" style={{ color: BLUE }}>{stats.totalAttorneys}</p>
                 <p className="text-gray-500 text-xs mt-1">{stats.verifiedAttorneys} verified</p>
               </div>
@@ -1600,7 +1600,7 @@ function formatTime(timeString: string, scheduledDate: string) {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl hover:scale-105 transition-all border border-gray-200">
+          <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl hover:scale-105 transition-all border border-gray-200 cursor-pointer">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 text-sm font-medium">Total Jurors</p>
@@ -1613,7 +1613,7 @@ function formatTime(timeString: string, scheduledDate: string) {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl hover:scale-105 transition-all border border-gray-200">
+          <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl hover:scale-105 transition-all border border-gray-200 cursor-pointer">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 text-sm font-medium">Pending Cases</p>
@@ -1626,7 +1626,7 @@ function formatTime(timeString: string, scheduledDate: string) {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl hover:scale-105 transition-all border border-gray-200">
+          <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl hover:scale-105 transition-all border border-gray-200 cursor-pointer">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 text-sm font-medium">Active Trials</p>
@@ -1672,7 +1672,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                     <div className="p-2 bg-blue-500 rounded-lg mr-3 group-hover:scale-110 transition-transform">
                       <Building2 className="h-5 w-5 text-white" />
                     </div>
-                    <span className="text-gray-900 group-hover:text-blue-600 font-semibold">Attorneys Management</span>
+                    <span className="text-gray-900 group-hover:text-blue-600 font-semibold cursor-pointer">Attorneys Management</span>
                   </div>
                 </button>
                 <button 
@@ -1683,7 +1683,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                     <div className="p-2 bg-green-500 rounded-lg mr-3 group-hover:scale-110 transition-transform">
                       <Users className="h-5 w-5 text-white" />
                     </div>
-                    <span className="text-gray-900 group-hover:text-green-600 font-semibold">Jurors Management</span>
+                    <span className="text-gray-900 group-hover:text-green-600 font-semibold cursor-pointer">Jurors Management</span>
                   </div>
                 </button>
                 <button
@@ -1694,7 +1694,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                     <div className="p-2 bg-yellow-500 rounded-lg mr-3 group-hover:scale-110 transition-transform">
                       <FileText className="h-5 w-5 text-white" />
                     </div>
-                    <span className="text-gray-900 group-hover:text-yellow-600 font-semibold">Pending Cases</span>
+                    <span className="text-gray-900 group-hover:text-yellow-600 font-semibold cursor-pointer">Pending Cases</span>
                   </div>
                 </button>
                 <button
@@ -1706,7 +1706,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                       <Calendar className="h-5 w-5 text-white" />
                     </div>
                     <div className="flex-1 flex items-center justify-between">
-                      <span className="text-gray-900 group-hover:text-amber-600 font-semibold">Reschedule Requests</span>
+                      <span className="text-gray-900 group-hover:text-amber-600 font-semibold cursor-pointer">Reschedule Requests</span>
                       {stats.pendingRescheduleRequests > 0 && (
                         <span className="px-2 py-1 bg-amber-500 text-white text-xs font-bold rounded-full">
                           {stats.pendingRescheduleRequests}
@@ -1724,7 +1724,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                       <XCircle className="h-5 w-5 text-white" />
                     </div>
                     <div className="flex-1 flex items-center justify-between">
-                      <span className="text-gray-900 group-hover:text-red-600 font-semibold">Block Dates</span>
+                      <span className="text-gray-900 group-hover:text-red-600 font-semibold cursor-pointer">Block Dates</span>
                       {blockedDates.length > 0 && (
                         <span className="px-2 py-1 bg-red-500 text-white text-xs font-bold rounded-full">
                           {blockedDates.length}
@@ -1748,7 +1748,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                 type="date"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-600 text-gray-900 text-lg font-medium hover:border-blue-400 transition-colors"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-600 text-gray-900 text-lg font-medium hover:border-blue-400 transition-colors cursor-pointer"
               />
               <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
                 <p className="text-sm text-gray-700">
@@ -1904,7 +1904,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                       <button 
                         onClick={() => handleApproveCase(caseItem.CaseId)}
                         disabled={caseActionLoading === caseItem.CaseId}
-                        className="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-bold disabled:opacity-50 inline-flex items-center gap-2 shadow-lg hover:shadow-xl transition-all"
+                        className="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-bold disabled:opacity-50 inline-flex items-center gap-2 shadow-lg hover:shadow-xl transition-all cursor-pointer"
                       >
                         {caseActionLoading === caseItem.CaseId ? (
                           <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
@@ -1918,7 +1918,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                       <button 
                         onClick={() => handleRejectCase(caseItem.CaseId)}
                         disabled={caseActionLoading === caseItem.CaseId}
-                        className="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-bold disabled:opacity-50 inline-flex items-center gap-2 shadow-lg hover:shadow-xl transition-all"
+                        className="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-bold disabled:opacity-50 inline-flex items-center gap-2 shadow-lg hover:shadow-xl transition-all cursor-pointer"
                       >
                         <XCircle className="h-5 w-5" />
                         Reject
@@ -2034,7 +2034,7 @@ function formatTime(timeString: string, scheduledDate: string) {
           <div className="flex justify-center">
             <button
               onClick={() => router.push('/admin/reschedule-requests')}
-              className="bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all flex items-center gap-2"
+              className="bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all flex items-center gap-2 cursor-pointer"
             >
               <Calendar className="h-5 w-5" />
               View All Reschedule Requests
@@ -2057,7 +2057,7 @@ function formatTime(timeString: string, scheduledDate: string) {
               </div>
               <div className="flex items-center space-x-4">
                 <select 
-                  className="border-2 border-gray-300 rounded-lg px-4 py-2 text-sm text-black bg-white font-medium focus:border-blue-500 focus:outline-none" 
+                  className="border-2 border-gray-300 rounded-lg px-4 py-2 text-sm text-black bg-white font-medium focus:border-blue-500 focus:outline-none cursor-pointer" 
                   value={attorneyFilter} 
                   onChange={(e) => { setAttorneyFilter(e.target.value as any); setAttorneyPage(1); }}
                 >
@@ -2139,7 +2139,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                             <button 
                               onClick={() => handleVerifyAttorney(attorney.AttorneyId)} 
                               disabled={actionLoading === attorney.AttorneyId} 
-                              className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold text-white bg-green-600 hover:bg-green-700 hover:shadow-lg disabled:opacity-50 transition-all"
+                              className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold text-white bg-green-600 hover:bg-green-700 hover:shadow-lg disabled:opacity-50 transition-all cursor-pointer"
                             >
                               {actionLoading === attorney.AttorneyId ? (
                                 <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
@@ -2150,7 +2150,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                             <button 
                               onClick={() => handleDeclineAttorney(attorney.AttorneyId)} 
                               disabled={actionLoading === attorney.AttorneyId} 
-                              className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold text-white bg-red-600 hover:bg-red-700 hover:shadow-lg disabled:opacity-50 transition-all"
+                              className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold text-white bg-red-600 hover:bg-red-700 hover:shadow-lg disabled:opacity-50 transition-all cursor-pointer"
                             >
                               <XCircle className="h-4 w-4 mr-1" />Decline
                             </button>
@@ -2175,7 +2175,7 @@ function formatTime(timeString: string, scheduledDate: string) {
               Page {attorneyPage} of {Math.max(1, Math.ceil(filteredAttorneys.length / PAGE_SIZE))}
             </span>
             <button 
-              className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 transition-colors" 
+              className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 transition-colors cursor-pointer" 
               disabled={attorneyPage * PAGE_SIZE >= filteredAttorneys.length} 
               onClick={() => setAttorneyPage(attorneyPage + 1)}
             >
@@ -2199,7 +2199,7 @@ function formatTime(timeString: string, scheduledDate: string) {
               </div>
               <div className="flex items-center space-x-4">
                 <select 
-                  className="border-2 border-gray-300 rounded-lg px-4 py-2 text-sm text-black bg-white font-medium focus:border-green-500 focus:outline-none" 
+                  className="border-2 border-gray-300 rounded-lg px-4 py-2 text-sm text-black bg-white font-medium focus:border-green-500 focus:outline-none cursor-pointer" 
                   value={jurorFilter} 
                   onChange={(e) => { setJurorFilter(e.target.value as any); setJurorPage(1); }}
                 >
@@ -2332,7 +2332,7 @@ function formatTime(timeString: string, scheduledDate: string) {
               Page {jurorPage} of {Math.max(1, Math.ceil(filteredJurors.length / PAGE_SIZE))}
             </span>
             <button 
-              className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 transition-colors" 
+              className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 transition-colors cursor-pointer" 
               disabled={jurorPage * PAGE_SIZE >= filteredJurors.length} 
               onClick={() => setJurorPage(jurorPage + 1)}
             >

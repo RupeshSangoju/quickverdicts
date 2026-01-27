@@ -119,7 +119,7 @@ export default function AttorneyHelp({ onContact }: { onContact: () => void }) {
           </div>
 
           {/* Title + Search Bar */}
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 cursor-pointer">
             <div>
               <h1 className="text-4xl font-bold text-[#16305B] mb-2">Help & Support</h1>
               <p className="text-gray-600">Find answers, tutorials, and get in touch with our team</p>
