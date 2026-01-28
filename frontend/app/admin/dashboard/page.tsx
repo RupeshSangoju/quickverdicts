@@ -2283,7 +2283,7 @@ function formatTime(timeString: string, scheduledDate: string) {
             </div>
             <div className="flex items-center gap-2">
               <button
-                className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 disabled={attorneyPage === 1}
                 onClick={() => setAttorneyPage(attorneyPage - 1)}
               >
@@ -2335,7 +2335,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                 })()}
               </div>
               <button
-                className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer "
                 disabled={attorneyPage * PAGE_SIZE >= filteredAttorneys.length}
                 onClick={() => setAttorneyPage(attorneyPage + 1)}
               >
@@ -2483,7 +2483,7 @@ function formatTime(timeString: string, scheduledDate: string) {
           </div>
           <div className="flex justify-between items-center px-6 py-4 bg-gray-50 border-t border-gray-200">
             <button 
-              className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 transition-colors" 
+              className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer" 
               disabled={jurorPage === 1} 
               onClick={() => setJurorPage(jurorPage - 1)}
             >
@@ -2493,7 +2493,7 @@ function formatTime(timeString: string, scheduledDate: string) {
               Page {jurorPage} of {Math.max(1, Math.ceil(filteredJurors.length / PAGE_SIZE))}
             </span>
             <button 
-              className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 transition-colors cursor-pointer" 
+              className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer" 
               disabled={jurorPage * PAGE_SIZE >= filteredJurors.length} 
               onClick={() => setJurorPage(jurorPage + 1)}
             >
