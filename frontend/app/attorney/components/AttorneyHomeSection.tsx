@@ -561,7 +561,7 @@ export default function AttorneyHomeSection() {
             <span className="text-sm font-medium">Refresh</span>
           </button>
           <button 
-            className="text-[#16305B] hover:text-[#1e417a] transition-colors font-semibold" 
+            className="text-[#16305B] hover:text-[#1e417a] transition-colors font-semibold cursor-pointer" 
             onClick={() => setShowHelp(true)}
           >
             Help & Support
@@ -593,84 +593,9 @@ export default function AttorneyHomeSection() {
         </section>
       )}
 
-      {/* Tier Information Section */}
-      <section className="mb-8">
-        <h2 className="text-lg font-bold text-[#16305B] mb-4">Understanding Our Tiers & Case Types</h2>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Tiers Card */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-xl font-bold text-[#16305B] mb-4 flex items-center gap-2">
-              <Briefcase size={20} />
-              Trial Tiers
-            </h3>
-            <p className="text-sm text-gray-600 mb-4">Choose the tier that matches your case needs. Higher tiers provide more trial time and support larger claim amounts.</p>
-            <div className="space-y-3">
-              <div className="border-l-4 border-blue-400 bg-blue-50 p-3 rounded">
-                <div className="flex justify-between items-start mb-1">
-                  <h4 className="font-bold text-blue-900">Tier 1</h4>
-                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded font-semibold">$3500</span>
-                </div>
-                <p className="text-sm text-blue-800"><strong>2.5 hours</strong> trial duration</p>
-                <p className="text-sm text-blue-800">Max claim: <strong>$3,500</strong></p>
-                <p className="text-xs text-blue-600 mt-2">Perfect for small claims and disputes</p>
-              </div>
-              <div className="border-l-4 border-green-400 bg-green-50 p-3 rounded">
-                <div className="flex justify-between items-start mb-1">
-                  <h4 className="font-bold text-green-900">Tier 2</h4>
-                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded font-semibold">$4500</span>
-                </div>
-                <p className="text-sm text-green-800"><strong>3.5 hours</strong> trial duration</p>
-                <p className="text-sm text-green-800">Max claim: <strong>$4,500</strong></p>
-                <p className="text-xs text-green-600 mt-2">Ideal for medium complexity cases</p>
-              </div>
-              <div className="border-l-4 border-purple-400 bg-purple-50 p-3 rounded">
-                <div className="flex justify-between items-start mb-1">
-                  <h4 className="font-bold text-purple-900">Tier 3</h4>
-                  <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded font-semibold">$5500</span>
-                </div>
-                <p className="text-sm text-purple-800"><strong>4.5 hours</strong> trial duration</p>
-                <p className="text-sm text-purple-800">Max claim: <strong>$5,500</strong></p>
-                <p className="text-xs text-purple-600 mt-2">Best for complex cases requiring extended time</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Case Types Card */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-xl font-bold text-[#16305B] mb-4 flex items-center gap-2">
-              <Calendar size={20} />
-              Case Types
-            </h3>
-            <p className="text-sm text-gray-600 mb-4">Quick Verdicts handles two main categories of cases. Understanding the difference helps you prepare appropriately.</p>
-            <div className="space-y-4">
-              <div className="border-l-4 border-[#16305B] bg-blue-50 p-4 rounded">
-                <h4 className="font-bold text-[#16305B] mb-2">Civil Cases</h4>
-                <p className="text-sm text-gray-700 mb-2">
-                  Disputes between individuals or organizations where the plaintiff seeks compensation or specific performance.
-                </p>
-                <div className="text-xs text-gray-600 space-y-1">
-                  <p><strong>Examples:</strong> Contract disputes, property disputes, personal injury claims, landlord-tenant issues</p>
-                  <p><strong>Outcome:</strong> Monetary damages or court orders</p>
-                  <p><strong>Burden of Proof:</strong> Preponderance of evidence (more likely than not)</p>
-                </div>
-              </div>
-              <div className="border-l-4 border-red-500 bg-red-50 p-4 rounded">
-                <h4 className="font-bold text-red-900 mb-2">Criminal Cases</h4>
-                <p className="text-sm text-gray-700 mb-2">
-                  Proceedings where the state prosecutes an individual for violating criminal law.
-                </p>
-                <div className="text-xs text-gray-600 space-y-1">
-                  <p><strong>Examples:</strong> Theft, assault, fraud, driving under influence, minor criminal violations</p>
-                  <p><strong>Outcome:</strong> Fines, community service, or other penalties</p>
-                  <p><strong>Burden of Proof:</strong> Beyond a reasonable doubt</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* Payment Statistics Section */}
+{/* 
       {isVerified && (
         <section className="mb-8">
           <h2 className="text-lg font-bold text-[#16305B] mb-4 flex items-center gap-2">
@@ -726,7 +651,7 @@ export default function AttorneyHomeSection() {
           )}
         </section>
       )}
-
+*/}
       <section className="mb-8">
         <div className="flex justify-between items-center mb-4">
           <div className="flex items-center gap-3">

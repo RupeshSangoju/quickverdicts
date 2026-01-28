@@ -419,7 +419,7 @@ router.get("/calendar/cases-by-date", async (req, res) => {
           .request()
           .input("caseId", sql.Int, caseItem.CaseId)
           .query(
-            "SELECT QuestionId, QuestionText, QuestionType, Options FROM dbo.JuryChargeQuestions WHERE CaseId = @caseId ORDER BY QuestionOrder ASC"
+            "SELECT QuestionId, QuestionText, QuestionType, Options, OrderIndex FROM dbo.JuryChargeQuestions WHERE CaseId = @caseId ORDER BY OrderIndex ASC"
           );
 
         // Fetch juror applications for this case
@@ -442,6 +442,27 @@ router.get("/calendar/cases-by-date", async (req, res) => {
             ORDER BY ja.AppliedAt DESC`
           );
 
+        // Fetch team members for this case
+        let teamMembersResult = { recordset: [] };
+        try {
+          teamMembersResult = await pool
+            .request()
+            .input("caseId", sql.Int, caseItem.CaseId)
+            .query(
+              `SELECT
+                Id,
+                Name,
+                Email,
+                Role,
+                AddedAt
+              FROM dbo.WarRoomTeamMembers
+              WHERE CaseId = @caseId
+              ORDER BY AddedAt ASC`
+            );
+        } catch (err) {
+          console.warn(`⚠️ Could not fetch team members for case ${caseItem.CaseId}:`, err.message);
+        }
+
         // Parse JSON options if present
         const juryQuestions = questionsResult.recordset.map((q) => ({
           ...q,
@@ -457,9 +478,10 @@ router.get("/calendar/cases-by-date", async (req, res) => {
           witnesses: witnessesResult.recordset || [],
           juryQuestions: juryQuestions || [],
           jurors: jurorsResult.recordset || [],
+          teamMembers: teamMembersResult.recordset || [],
         };
 
-        console.log(`🔍 [DEBUG] Case ${caseItem.CaseId}: witnesses=${caseData.witnesses.length}, jurors=${caseData.jurors.length}, questions=${caseData.juryQuestions.length}`);
+        console.log(`🔍 [DEBUG] Case ${caseItem.CaseId}: witnesses=${caseData.witnesses.length}, jurors=${caseData.jurors.length}, questions=${caseData.juryQuestions.length}, teamMembers=${caseData.teamMembers.length}`);
 
         return caseData;
       })
@@ -1345,7 +1367,7 @@ router.get("/attorneys", async (req, res) => {
 
     console.log("Fetching attorneys - Page:", page, "Limit:", limit);
 
-    const result = await Attorney.getAllAttorneys(page, limit);
+    const result = await Attorney.getAllAttorneys({ page, limit });
 
     res.json({
       success: true,
@@ -1835,6 +1857,172 @@ router.post("/cases/:caseId/reschedule", authMiddleware, requireAdmin, async (re
       success: false,
       message: "Failed to reschedule case",
       error: error.message,
+    });
+  }
+});
+
+// ============================================
+// NOTIFY USERS OF BLOCKED DATES
+// ============================================
+router.post("/notify-blocked-date", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const { date, reason, blockedTimeSlots, isWholeDay } = req.body;
+
+    if (!date || !reason) {
+      return res.status(400).json({
+        success: false,
+        message: "Date and reason are required"
+      });
+    }
+
+    const pool = await poolPromise;
+
+    // Get all attorneys
+    const attorneysResult = await pool.request()
+      .query(`SELECT AttorneyId, Email, FirstName, LastName FROM Attorneys WHERE IsVerified = 1`);
+
+    // Get all jurors
+    const jurorsResult = await pool.request()
+      .query(`SELECT JurorId, Email, Name FROM Jurors WHERE IsVerified = 1`);
+
+    const attorneys = attorneysResult.recordset;
+    const jurors = jurorsResult.recordset;
+
+    // Format time slots for display if partial blocking
+    let timeDetails = '';
+    if (!isWholeDay && blockedTimeSlots && blockedTimeSlots.length > 0) {
+      // Convert 24-hour format to 12-hour format for display
+      const formattedTimes = blockedTimeSlots.map(time => {
+        const [hours, minutes] = time.split(':');
+        const hour = parseInt(hours);
+        const period = hour >= 12 ? 'PM' : 'AM';
+        const displayHour = hour % 12 || 12;
+        return `${displayHour}:${minutes} ${period}`;
+      }).join(', ');
+      timeDetails = ` (Blocked hours: ${formattedTimes})`;
+    }
+
+    // Create notifications for all attorneys
+    for (const attorney of attorneys) {
+      const message = isWholeDay
+        ? `The date ${date} has been blocked for ${reason}. You will not be able to schedule cases on this date.`
+        : `Specific time slots on ${date} have been blocked for ${reason}${timeDetails}. These hours will not be available for case scheduling.`;
+
+      await Notification.createNotification({
+        userId: attorney.AttorneyId,
+        userType: 'attorney',
+        caseId: null,
+        type: 'date_blocked',
+        title: `Date Blocked: ${date}`,
+        message: message
+      });
+    }
+
+    // Create notifications for all jurors
+    for (const juror of jurors) {
+      const message = isWholeDay
+        ? `The date ${date} has been blocked for ${reason}. No trials will be scheduled on this date.`
+        : `Specific time slots on ${date} have been blocked for ${reason}${timeDetails}. Some hours may still be available.`;
+
+      await Notification.createNotification({
+        userId: juror.JurorId,
+        userType: 'juror',
+        caseId: null,
+        type: 'date_blocked',
+        title: `Date Blocked: ${date}`,
+        message: message
+      });
+    }
+
+    console.log(`✅ Sent blocked date notifications to ${attorneys.length} attorneys and ${jurors.length} jurors`);
+
+    res.json({
+      success: true,
+      message: `Notifications sent to ${attorneys.length} attorneys and ${jurors.length} jurors`,
+      attorneysNotified: attorneys.length,
+      jurorsNotified: jurors.length
+    });
+
+  } catch (error) {
+    console.error("Error sending blocked date notifications:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to send notifications",
+      error: error.message
+    });
+  }
+});
+
+// ============================================
+// NOTIFY USERS OF UNBLOCKED DATES
+// ============================================
+router.post("/notify-unblocked-date", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const { date, unblockCount } = req.body;
+
+    if (!date) {
+      return res.status(400).json({
+        success: false,
+        message: "Date is required"
+      });
+    }
+
+    const pool = await poolPromise;
+
+    // Get all attorneys
+    const attorneysResult = await pool.request()
+      .query(`SELECT AttorneyId, Email, FirstName, LastName FROM Attorneys WHERE IsVerified = 1`);
+
+    // Get all jurors
+    const jurorsResult = await pool.request()
+      .query(`SELECT JurorId, Email, Name FROM Jurors WHERE IsVerified = 1`);
+
+    const attorneys = attorneysResult.recordset;
+    const jurors = jurorsResult.recordset;
+
+    const blockDetail = unblockCount > 1
+      ? ` (${unblockCount} time slots unblocked)`
+      : '';
+
+    // Create notifications for all attorneys
+    for (const attorney of attorneys) {
+      await Notification.createNotification({
+        userId: attorney.AttorneyId,
+        userType: 'attorney',
+        caseId: null,
+        type: 'date_unblocked',
+        title: `Date Unblocked: ${date}`,
+        message: `The date ${date} has been unblocked by the administrator${blockDetail}. You can now schedule cases on this date.`
+      });
+    }
+
+    // Create notifications for all jurors
+    for (const juror of jurors) {
+      await Notification.createNotification({
+        userId: juror.JurorId,
+        userType: 'juror',
+        caseId: null,
+        type: 'date_unblocked',
+        title: `Date Unblocked: ${date}`,
+        message: `The date ${date} has been unblocked by the administrator${blockDetail}. Trials may be scheduled on this date.`
+      });
+    }
+
+    console.log(`✅ Sent unblocked date notifications to ${attorneys.length} attorneys and ${jurors.length} jurors`);
+
+    res.json({
+      success: true,
+      message: `Notifications sent to ${attorneys.length} attorneys and ${jurors.length} jurors`,
+      attorneysNotified: attorneys.length,
+      jurorsNotified: jurors.length
+    });
+
+  } catch (error) {
+    console.error("Error sending unblocked date notifications:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to send notifications",
+      error: error.message
     });
   }
 });

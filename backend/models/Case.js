@@ -1039,6 +1039,126 @@ async function softDeleteCase(caseId) {
   }
 }
 
+/**
+ * Hard delete a case - permanently removes the case and all related data from the database
+ * WARNING: This action cannot be undone!
+ */
+async function hardDeleteCase(caseId) {
+  try {
+    const id = parseInt(caseId, 10);
+    if (isNaN(id) || id <= 0) throw new Error("Valid case ID is required");
+
+    console.log(`🗑️  [Case.hardDeleteCase] Starting hard delete for case ${id}`);
+
+    await executeQuery(async (pool) => {
+      const transaction = pool.transaction();
+
+      try {
+        await transaction.begin();
+
+        // Delete related data first (to avoid foreign key constraints)
+        // Order matters: delete child records before parent records
+
+        // Helper function to safely delete from a table (handles missing tables)
+        const safeDelete = async (tableName, whereClause) => {
+          try {
+            await transaction.request()
+              .input("caseId", sql.Int, id)
+              .query(`DELETE FROM dbo.${tableName} WHERE ${whereClause}`);
+            console.log(`  ✅ Deleted from ${tableName} for case ${id}`);
+          } catch (error) {
+            if (error.number === 208) {
+              console.log(`  ⚠️  ${tableName} table does not exist - skipping`);
+            } else {
+              console.error(`  ❌ Error deleting from ${tableName}:`, {
+                message: error.message,
+                number: error.number,
+                state: error.state,
+                class: error.class,
+                lineNumber: error.lineNumber,
+                serverName: error.serverName,
+                procName: error.procName
+              });
+              throw error;
+            }
+          }
+        };
+
+        // Delete jury charge responses BEFORE jury charge questions (FK constraint)
+        await safeDelete('JuryChargeResponses', 'QuestionId IN (SELECT QuestionId FROM dbo.JuryChargeQuestions WHERE CaseId = @caseId)');
+
+        // Delete verdicts
+        await safeDelete('Verdicts', 'CaseId = @caseId');
+
+        // Delete juror applications
+        await safeDelete('JurorApplications', 'CaseId = @caseId');
+
+        // Delete witnesses
+        await safeDelete('CaseWitnesses', 'CaseId = @caseId');
+
+        // Delete jury charge questions (after responses deleted)
+        await safeDelete('JuryChargeQuestions', 'CaseId = @caseId');
+
+        // Delete trial meetings
+        await safeDelete('TrialMeetings', 'CaseId = @caseId');
+
+        // Delete trial recordings
+        await safeDelete('TrialRecordings', 'CaseId = @caseId');
+
+        // Delete reschedule requests
+        await safeDelete('CaseReschedules', 'CaseId = @caseId');
+
+        // Delete notifications
+        await safeDelete('Notifications', 'CaseId = @caseId');
+
+        // Delete war room voir dire
+        await safeDelete('WarRoomVoirDire', 'CaseId = @caseId');
+
+        // Delete war room team members
+        await safeDelete('WarRoomTeamMembers', 'CaseId = @caseId');
+
+        // Delete case documents
+        await safeDelete('CaseDocuments', 'CaseId = @caseId');
+
+        // Delete payments
+        await safeDelete('Payments', 'CaseId = @caseId');
+
+        // Delete events archive
+        await safeDelete('EventsArchive', 'CaseId = @caseId');
+
+        // Delete admin calendar blocked slots
+        await safeDelete('AdminCalendar', 'CaseId = @caseId');
+
+        // Finally, delete the case itself
+        await transaction.request()
+          .input("caseId", sql.Int, id)
+          .query("DELETE FROM dbo.Cases WHERE CaseId = @caseId");
+        console.log(`  ✅ Deleted case ${id} from Cases table`);
+
+        await transaction.commit();
+        console.log(`✅ [Case.hardDeleteCase] Successfully hard deleted case ${id}`);
+
+        return true;
+      } catch (error) {
+        await transaction.rollback();
+        console.error(`❌ [Case.hardDeleteCase] Transaction failed:`, {
+          message: error.message,
+          number: error.number,
+          state: error.state,
+          class: error.class,
+          stack: error.stack
+        });
+        throw error;
+      }
+    });
+
+    return true;
+  } catch (error) {
+    console.error("❌ [Case.hardDeleteCase] Error:", error.message);
+    throw error;
+  }
+}
+
 // ============================================
 // RESCHEDULE METHODS
 // ============================================
@@ -1381,6 +1501,7 @@ module.exports = {
   updateCaseStatus,
   updateCaseDetails,
   softDeleteCase,
+  hardDeleteCase,
 
   // Reschedule
   checkSlotAvailability,

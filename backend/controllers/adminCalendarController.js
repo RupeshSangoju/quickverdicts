@@ -74,7 +74,7 @@ async function getAvailableSlots(req, res) {
  */
 async function blockSlot(req, res) {
   try {
-    const { blockedDate, blockedTime, duration, reason } = req.body;
+    const { blockedDate, blockedTime, duration, reason, skipBusinessHoursCheck } = req.body;
 
     if (!blockedDate || !blockedTime) {
       return res.status(400).json({
@@ -100,6 +100,7 @@ async function blockSlot(req, res) {
       blockedTime,
       duration: duration || 480,
       reason: reason || "Manually blocked by admin",
+      skipBusinessHoursCheck: skipBusinessHoursCheck || false,
     });
 
     res.json({
@@ -306,6 +307,30 @@ async function getCasesByDate(req, res) {
             }
           }
 
+          // Get team members
+          let teamMembersResult = { recordset: [] };
+          try {
+            teamMembersResult = await pool
+              .request()
+              .input("caseId", sql.Int, caseItem.CaseId).query(`
+                SELECT
+                  Id,
+                  Name,
+                  Email,
+                  Role,
+                  AddedAt
+                FROM dbo.WarRoomTeamMembers
+                WHERE CaseId = @caseId
+                ORDER BY AddedAt ASC
+              `);
+          } catch (err) {
+            if (err.number === 208) {
+              console.warn('⚠️ WarRoomTeamMembers table does not exist yet');
+            } else {
+              throw err;
+            }
+          }
+
           return {
             ...caseItem,
             State: caseItem.AttorneyState,
@@ -315,6 +340,7 @@ async function getCasesByDate(req, res) {
               Options: q.Options ? (typeof q.Options === 'string' ? JSON.parse(q.Options) : q.Options) : [],
             })),
             jurors: jurorApplicationsResult.recordset,
+            teamMembers: teamMembersResult.recordset,
             approvedJurorCount:
               jurorsResult.recordset[0]?.ApprovedJurorCount || 0,
             canJoin:
@@ -331,6 +357,8 @@ async function getCasesByDate(req, res) {
             State: caseItem.AttorneyState,
             witnesses: [],
             juryQuestions: [],
+            jurors: [],
+            teamMembers: [],
             approvedJurorCount: 0,
             canJoin: false,
             error: "Failed to load some case details",

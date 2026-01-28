@@ -335,9 +335,9 @@ export default function CaseDetailsPage() {
                   Number of Required Jurors <span className="text-red-500">*</span>
                 </label>
                 <div className="w-full px-4 py-2 border border-[#bfc6d1] rounded-md bg-gray-100 text-[#16305B] font-semibold">
-                  7 Jurors (Standard)
+                  Minimum 6 to Maximum 10
                 </div>
-                <p className="text-xs text-gray-500 mt-1">All cases require exactly 7 jurors</p>
+                <p className="text-xs text-gray-500 mt-1">All cases require Minimum 6 to Maximum 10 jurors</p>
               </div>
 
               {/* Case Description */}

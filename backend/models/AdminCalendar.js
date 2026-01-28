@@ -64,6 +64,7 @@ function validateTime(timeString) {
 /**
  * Convert time string (HH:MM:SS) to Date object for SQL Server TIME type
  * SQL Server's tedious driver requires Date objects for TIME columns
+ * Uses UTC to avoid timezone conversion
  */
 function convertTimeToDateObject(timeString) {
   if (!timeString) {
@@ -71,8 +72,8 @@ function convertTimeToDateObject(timeString) {
   }
 
   const [hours, minutes, seconds] = timeString.split(":").map(Number);
-  const timeDate = new Date();
-  timeDate.setHours(hours, minutes, seconds, 0);
+  // Use UTC to avoid timezone conversion - set to 1970-01-01 UTC
+  const timeDate = new Date(Date.UTC(1970, 0, 1, hours, minutes, seconds || 0, 0));
 
   return timeDate;
 }
@@ -157,10 +158,10 @@ async function getBlockedSlots(startDate, endDate) {
       .request()
       .input("startDate", sql.Date, startDate)
       .input("endDate", sql.Date, endDate).query(`
-        SELECT 
+        SELECT
           ac.CalendarId,
           ac.BlockedDate,
-          ac.BlockedTime,
+          CONVERT(VARCHAR(8), ac.BlockedTime, 108) as BlockedTime,
           ac.Duration,
           ac.CaseId,
           ac.Reason,
@@ -170,6 +171,7 @@ async function getBlockedSlots(startDate, endDate) {
         FROM dbo.AdminCalendar ac
         LEFT JOIN dbo.Cases c ON ac.CaseId = c.CaseId
         WHERE ac.BlockedDate BETWEEN @startDate AND @endDate
+          AND ac.BlockedDate >= CAST(GETUTCDATE() AS DATE)
         ORDER BY ac.BlockedDate, ac.BlockedTime
       `);
 
@@ -206,6 +208,13 @@ async function blockSlot(slotData) {
 
     // Convert time string to Date object for SQL Server
     const timeDate = convertTimeToDateObject(slotData.blockedTime);
+
+    // Debug logging
+    console.log(`🔍 Blocking slot for ${slotData.blockedDate} ${slotData.blockedTime}`);
+    console.log(`   - Parsed date: ${date.toISOString()}`);
+    console.log(`   - Day of week: ${date.getDay()} (0=Sun, 1=Mon, ..., 6=Sat)`);
+    console.log(`   - skipBusinessHoursCheck: ${slotData.skipBusinessHoursCheck}`);
+    console.log(`   - isWeekday: ${isWeekday(date)}`);
 
     // Check if it's a weekday (only for manual blocks, not case approvals)
     if (!slotData.skipBusinessHoursCheck && !isWeekday(date)) {
@@ -465,10 +474,10 @@ async function getSlotsForCase(caseId) {
 
     const pool = await poolPromise;
     const result = await pool.request().input("caseId", sql.Int, caseId).query(`
-        SELECT 
+        SELECT
           CalendarId,
           BlockedDate,
-          BlockedTime,
+          CONVERT(VARCHAR(8), BlockedTime, 108) as BlockedTime,
           Duration,
           Reason,
           CreatedAt

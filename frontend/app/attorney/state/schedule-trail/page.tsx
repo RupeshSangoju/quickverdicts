@@ -111,17 +111,30 @@ export default function ScheduleTrialPage() {
     try {
       const startDate = new Date(currentYear, currentMonth, 1);
       const endDate = new Date(currentYear, currentMonth + 1, 0);
-      
+
       const startDateStr = formatDateString(startDate);
       const endDateStr = formatDateString(endDate);
 
+      const token = getToken();
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json'
+      };
+
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch(
-        `${API_BASE}/api/admin/calendar/blocked?startDate=${startDateStr}&endDate=${endDateStr}`
+        `${API_BASE}/api/admin-calendar/blocked?startDate=${startDateStr}&endDate=${endDateStr}`,
+        { headers }
       );
 
       if (response.ok) {
         const data = await response.json();
+        console.log('Blocked slots fetched:', data.blockedSlots);
         setBlockedSlots(data.blockedSlots || []);
+      } else {
+        console.error('Failed to fetch blocked slots:', response.status);
       }
     } catch (error) {
       console.error("Error fetching blocked slots:", error);
@@ -143,8 +156,9 @@ export default function ScheduleTrialPage() {
     const dateStr = formatDateString(date);
     const blockedTimesForDate = blockedSlots
       .filter(slot => {
-        const slotDate = new Date(slot.BlockedDate);
-        return formatDateString(slotDate) === dateStr;
+        // Extract date string directly without timezone conversion
+        const slotDateStr = slot.BlockedDate.substring(0, 10);
+        return slotDateStr === dateStr;
       })
       .map(slot => slot.BlockedTime.substring(0, 5));
 
@@ -152,18 +166,70 @@ export default function ScheduleTrialPage() {
     return availableSlots.length > 0;
   };
 
+  const getBlockedSlotsForDate = (date: Date) => {
+    const dateStr = formatDateString(date);
+    const blocked = blockedSlots
+      .filter(slot => {
+        // Extract date string directly without timezone conversion
+        // BlockedDate comes as "2026-01-26T00:00:00.000Z" - just take the date part
+        const slotDateStr = slot.BlockedDate.substring(0, 10); // "2026-01-26"
+        console.log(`   Comparing: ${slotDateStr} === ${dateStr}`, slotDateStr === dateStr);
+        return slotDateStr === dateStr;
+      })
+      .map(slot => {
+        // BlockedTime is now in "HH:MM:SS" format from backend
+        // Extract just HH:MM
+        return slot.BlockedTime.substring(0, 5);
+      });
+
+    if (blocked.length > 0) {
+      console.log(`📅 Date ${dateStr} has ${blocked.length} blocked slots:`, blocked);
+    }
+    return blocked;
+  };
+
+  const isDateBlockedByAdmin = (date: Date) => {
+    const blockedTimesForDate = getBlockedSlotsForDate(date);
+    // If all 48 time slots are blocked, the date is completely blocked by admin
+    return blockedTimesForDate.length === 48;
+  };
+
+  const isDatePartiallyBlocked = (date: Date) => {
+    const blockedTimesForDate = getBlockedSlotsForDate(date);
+    // If some time slots are blocked but not all 48
+    return blockedTimesForDate.length > 0 && blockedTimesForDate.length < 48;
+  };
+
   const getAvailableTimeSlots = () => {
     if (!selectedDate) return [];
 
     const dateStr = formatDateString(selectedDate);
+    console.log('🔍 Getting available time slots for:', dateStr);
+    console.log('📊 Total blocked slots in state:', blockedSlots.length);
+
     const blockedTimesForDate = blockedSlots
       .filter(slot => {
-        const slotDate = new Date(slot.BlockedDate);
-        return formatDateString(slotDate) === dateStr;
+        // Extract date string directly without timezone conversion
+        const slotDateStr = slot.BlockedDate.substring(0, 10);
+        console.log(`   Comparing: ${slotDateStr} === ${dateStr}`, slotDateStr === dateStr);
+        return slotDateStr === dateStr;
       })
-      .map(slot => slot.BlockedTime.substring(0, 5));
+      .map(slot => {
+        const time = slot.BlockedTime.substring(0, 5);
+        console.log(`   Blocked time extracted: ${slot.BlockedTime} -> ${time}`);
+        return time;
+      });
 
-    return allTimeSlots.filter(time => !blockedTimesForDate.includes(time));
+    console.log('🚫 Blocked times for this date:', blockedTimesForDate);
+    const available = allTimeSlots.filter(time => !blockedTimesForDate.includes(time));
+    console.log('✅ Available time slots:', available.length, 'out of', allTimeSlots.length);
+    return available;
+  };
+
+  const isTimeSlotBlocked = (time: string) => {
+    if (!selectedDate) return false;
+    const blockedTimesForDate = getBlockedSlotsForDate(selectedDate);
+    return blockedTimesForDate.includes(time);
   };
 
   const handlePrevMonth = () => {
@@ -399,9 +465,9 @@ export default function ScheduleTrialPage() {
       console.log("✅ Case created successfully:", data);
 
       // Success! Show toast notification
-      toast.success("Trial Scheduled Successfully! A confirmation has been sent to your email address.", {
+      toast.success("Trial date pending QV confirmation. War Room will be accessible upon confirmation of trial setting.", {
         duration: 3000,
-        icon: "✅",
+        icon: "⏳",
       });
 
       // ✅ TRIGGER CALENDAR REFRESH: Notify calendar to update
@@ -510,15 +576,19 @@ export default function ScheduleTrialPage() {
             <h1 className="text-3xl font-bold text-[#16305B] mb-2">
               Schedule Trial
             </h1>
-            <p className="text-gray-600 text-base">
-              Choose your preferred date and time for this trial.
+            <p className={`text-base ${scheduled ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>
+              {scheduled
+                ? "Thank you! Confirmation of your requested trial date is pending."
+                : "Choose your preferred date and time for this trial."}
             </p>
           </div>
 
           {/* Right message */}
-          <div className="ml-1 mt-6 whitespace-nowrap text-lg font-bold text-red-600 text-right">
-            Please schedule case at least four (4) weeks from today.
-          </div>
+          {!scheduled && (
+            <div className="ml-1 mt-6 whitespace-nowrap text-lg font-bold text-red-600 text-right">
+              Please schedule case at least four (4) weeks from today.
+            </div>
+          )}
         </div>
       </div>
 
@@ -632,22 +702,34 @@ export default function ScheduleTrialPage() {
                             const day = index + 1;
                             const date = new Date(currentYear, currentMonth, day);
                             const isAvailable = isDateAvailable(date);
+                            const isBlocked = isDateBlockedByAdmin(date);
+                            const isPartiallyBlocked = isDatePartiallyBlocked(date);
                             const isTodayDate = isToday(date);
-                            const isSelected = selectedDate && 
-                              selectedDate.getDate() === day && 
+                            const isSelected = selectedDate &&
+                              selectedDate.getDate() === day &&
                               selectedDate.getMonth() === currentMonth &&
                               selectedDate.getFullYear() === currentYear;
-                            
+
+                            // Get blocked time slots for partially blocked dates
+                            const blockedTimesForDate = isPartiallyBlocked ? getBlockedSlotsForDate(date) : [];
+                            const partialBlockTooltip = isPartiallyBlocked
+                              ? `Some hours blocked by admin: ${blockedTimesForDate.join(', ')}`
+                              : '';
+
                             return (
                               <button
                                 key={day}
                                 type="button"
-                                className={`h-10 rounded-lg text-sm font-medium transition-all ${
+                                className={`h-10 rounded-lg text-sm font-medium transition-all relative ${
                                   isSelected
                                     ? "bg-[#16305B] text-white shadow-md"
+                                    : isBlocked
+                                    ? "bg-red-100 text-red-600 border-2 border-red-500 cursor-not-allowed line-through"
+                                    : isPartiallyBlocked
+                                    ? "bg-orange-50 text-orange-700 border-2 border-orange-400 hover:bg-orange-100"
                                     : isAvailable
                                     ? "text-gray-900 hover:bg-blue-50 border border-gray-200"
-                                    : "text-gray-300 bg-gray-50 cursor-not-allowed"
+                                    : "text-gray-400 bg-gray-100 cursor-not-allowed opacity-50"
                                 } ${
                                   isTodayDate && !isSelected
                                     ? "border-2 border-[#16305B]"
@@ -655,8 +737,19 @@ export default function ScheduleTrialPage() {
                                 }`}
                                 disabled={!isAvailable}
                                 onClick={() => handleDateSelect(day)}
+                                title={isBlocked ? "This date has been blocked by admin" : partialBlockTooltip}
                               >
-                                {day}
+                                {isBlocked && (
+                                  <span className="absolute inset-0 flex items-center justify-center text-red-600 font-bold">
+                                    ✕
+                                  </span>
+                                )}
+                                {isPartiallyBlocked && !isBlocked && (
+                                  <span className="absolute top-0 right-0 text-orange-600 font-bold text-xs">
+                                    ⚠
+                                  </span>
+                                )}
+                                <span className={isBlocked ? "opacity-50" : ""}>{day}</span>
                               </button>
                             );
                           })}
@@ -664,10 +757,18 @@ export default function ScheduleTrialPage() {
                       </div>
 
                       {/* Legend */}
-                      <div className="flex gap-4 text-xs text-gray-600 mt-6 pt-6 border-t border-gray-200">
+                      <div className="flex flex-wrap gap-4 text-xs text-gray-600 mt-6 pt-6 border-t border-gray-200">
                         <div className="flex items-center gap-2">
                           <div className="w-4 h-4 border-2 border-[#16305B] rounded"></div>
                           <span>Today</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 bg-red-100 border-2 border-red-500 rounded relative flex items-center justify-center text-red-600 font-bold">✕</div>
+                          <span>Fully Blocked by Admin</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 bg-orange-50 border-2 border-orange-400 rounded relative flex items-center justify-center text-orange-600 font-bold text-xs">⚠</div>
+                          <span>Partially Blocked (Some Hours)</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <div className="w-4 h-4 bg-gray-50 border border-gray-200 rounded"></div>
@@ -708,20 +809,23 @@ export default function ScheduleTrialPage() {
                             </div>
                           ) : (
                             <div className="grid grid-cols-2 gap-3 max-h-96 overflow-y-auto pr-2">
-                              {availableTimeSlots.map((slot) => (
-                                <button
-                                  key={slot}
-                                  type="button"
-                                  className={`py-3 px-4 text-center border-2 rounded-lg font-medium transition-all ${
-                                    selectedTime === slot
-                                      ? "bg-[#16305B] text-white border-[#16305B] shadow-md"
-                                      : "bg-white text-gray-900 border-gray-200 hover:border-[#16305B] hover:bg-blue-50"
-                                  }`}
-                                  onClick={() => handleTimeSelect(slot)}
-                                >
-                                  {slot}
-                                </button>
-                              ))}
+                              {availableTimeSlots.map((slot) => {
+                                const isSelected = selectedTime === slot;
+                                return (
+                                  <button
+                                    key={slot}
+                                    type="button"
+                                    className={`py-3 px-4 text-center border-2 rounded-lg font-medium transition-all ${
+                                      isSelected
+                                        ? "bg-[#16305B] text-white border-[#16305B] shadow-md"
+                                        : "bg-white text-gray-900 border-gray-200 hover:border-[#16305B] hover:bg-blue-50"
+                                    }`}
+                                    onClick={() => handleTimeSelect(slot)}
+                                  >
+                                    {slot}
+                                  </button>
+                                );
+                              })}
                             </div>
                           )}
                         </>

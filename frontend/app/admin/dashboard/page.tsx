@@ -127,6 +127,13 @@ type JurorApplication = {
   State: string;
 };
 
+type TeamMember = {
+  Id: number;
+  Name: string;
+  Email: string;
+  Role: string;
+};
+
 type CaseDetail = {
   CaseId: number;
   CaseTitle: string;
@@ -149,6 +156,7 @@ type CaseDetail = {
   witnesses: Witness[];
   juryQuestions: JuryQuestion[];
   jurors: JurorApplication[];
+  teamMembers: TeamMember[];
   approvedJurorCount: number;
   canJoin: boolean;
 };
@@ -213,7 +221,10 @@ export default function AdminDashboard() {
   const [jurorFilter, setJurorFilter] = useState<"all" | "verified" | "not_verified" | "declined">("all");
   const [attorneyPage, setAttorneyPage] = useState(1);
   const [jurorPage, setJurorPage] = useState(1);
-  const PAGE_SIZE = 5;
+  const PAGE_SIZE = 10;
+  const [attorneySearchQuery, setAttorneySearchQuery] = useState("");
+  const [attorneySortBy, setAttorneySortBy] = useState<"name" | "email" | "lawFirm" | "status" | "date">("date");
+  const [attorneySortOrder, setAttorneySortOrder] = useState<"asc" | "desc">("desc");
 
   const [showCaseRejectModal, setShowCaseRejectModal] = useState(false);
   const [rejectCaseId, setRejectCaseId] = useState<number | null>(null);
@@ -244,6 +255,22 @@ export default function AdminDashboard() {
   const [deleteJurorCaseId, setDeleteJurorCaseId] = useState<number | null>(null);
   const [deletingJuror, setDeletingJuror] = useState(false);
 
+  // Date blocking modal states
+  const [showBlockDateModal, setShowBlockDateModal] = useState(false);
+  const [blockDateForm, setBlockDateForm] = useState({ date: "", reason: "" });
+  const [blockingDate, setBlockingDate] = useState(false);
+  const [blockedDates, setBlockedDates] = useState<any[]>([]);
+  const [loadingBlockedDates, setLoadingBlockedDates] = useState(false);
+  const [selectedTimeSlots, setSelectedTimeSlots] = useState<string[]>([]);
+  const [blockWholeDay, setBlockWholeDay] = useState(true);
+  const [calendarMonth, setCalendarMonth] = useState(new Date().getMonth());
+  const [calendarYear, setCalendarYear] = useState(new Date().getFullYear());
+
+  // Unblock confirmation modal states
+  const [showUnblockModal, setShowUnblockModal] = useState(false);
+  const [unblockDate, setUnblockDate] = useState<string>("");
+  const [unblocking, setUnblocking] = useState(false);
+
   // Case delete modal states
   const [showDeleteCaseModal, setShowDeleteCaseModal] = useState(false);
   const [deleteCaseId, setDeleteCaseId] = useState<number | null>(null);
@@ -258,6 +285,205 @@ export default function AdminDashboard() {
   const [rescheduling, setRescheduling] = useState(false);
 
   const [approvalComments, setApprovalComments] = useState("");
+
+  // Date blocking functions
+  const fetchBlockedDates = async () => {
+    setLoadingBlockedDates(true);
+    try {
+      const response = await fetchWithAuth(`${API_BASE}/api/admin-calendar/blocked?startDate=${new Date().toISOString().split('T')[0]}&endDate=${new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}`);
+      if (response.ok) {
+        const data = await response.json();
+        // Group by date to show blocked dates (not individual time slots)
+        const blockedByDate = data.blockedSlots.reduce((acc: any, slot: any) => {
+          // Extract date string directly without timezone conversion
+          const date = slot.BlockedDate.substring(0, 10);
+          if (!acc[date]) {
+            acc[date] = { date, reason: slot.Reason, slots: [] };
+          }
+          acc[date].slots.push(slot);
+          return acc;
+        }, {});
+        setBlockedDates(Object.values(blockedByDate));
+      }
+    } catch (error) {
+      console.error("Error fetching blocked dates:", error);
+    } finally {
+      setLoadingBlockedDates(false);
+    }
+  };
+
+  const handleBlockDate = async () => {
+    if (!blockDateForm.date || !blockDateForm.reason) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+
+    if (!blockWholeDay && selectedTimeSlots.length === 0) {
+      toast.error("Please select at least one time slot to block");
+      return;
+    }
+
+    setBlockingDate(true);
+    try {
+      // Determine which time slots to block
+      let timeSlotsToBlock = blockWholeDay
+        ? Array.from({ length: 48 }, (_, i) => {
+            const hours = Math.floor(i / 2);
+            const minutes = i % 2 === 0 ? "00" : "30";
+            return `${hours.toString().padStart(2, '0')}:${minutes}:00`;
+          })
+        : selectedTimeSlots;
+
+      // Filter out past time slots if blocking today
+      const isToday = blockDateForm.date === new Date().toISOString().split('T')[0];
+      if (isToday && blockWholeDay) {
+        const now = new Date();
+        const currentHours = now.getHours();
+        const currentMinutes = now.getMinutes();
+        const currentTotalMinutes = currentHours * 60 + currentMinutes;
+
+        timeSlotsToBlock = timeSlotsToBlock.filter(timeSlot => {
+          const [hours, minutes] = timeSlot.split(':').map(Number);
+          const slotTotalMinutes = hours * 60 + minutes;
+          return slotTotalMinutes >= currentTotalMinutes;
+        });
+
+        if (timeSlotsToBlock.length === 0) {
+          toast.error("No future time slots available to block for today");
+          setBlockingDate(false);
+          return;
+        }
+      }
+
+      console.log(`Blocking ${timeSlotsToBlock.length} time slots for ${blockDateForm.date}`);
+
+      // Block each time slot with error checking
+      const blockResults = await Promise.allSettled(
+        timeSlotsToBlock.map(async (time) => {
+          const response = await fetchWithAuth(`${API_BASE}/api/admin-calendar/block`, {
+            method: 'POST',
+            body: JSON.stringify({
+              blockedDate: blockDateForm.date,
+              blockedTime: time,
+              duration: 30,
+              reason: blockDateForm.reason,
+              skipBusinessHoursCheck: true  // Allow blocking outside 9 AM - 5 PM
+            })
+          });
+
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(`Failed to block ${time}: ${error.message || response.statusText}`);
+          }
+
+          return response.json();
+        })
+      );
+
+      // Count successes and failures
+      const successful = blockResults.filter(r => r.status === 'fulfilled').length;
+      const failed = blockResults.filter(r => r.status === 'rejected').length;
+
+      console.log(`Blocked ${successful} slots successfully, ${failed} failed`);
+
+      if (failed > 0) {
+        // Log first few failures for debugging
+        const failures = blockResults
+          .filter(r => r.status === 'rejected')
+          .slice(0, 5)
+          .map(r => r.reason.message);
+        console.error('Some slot blocking failures:', failures);
+      }
+
+      if (successful === 0) {
+        throw new Error('Failed to block any time slots');
+      }
+
+      // Send notifications to all attorneys and jurors
+      const notifyResponse = await fetchWithAuth(`${API_BASE}/api/admin/notify-blocked-date`, {
+        method: 'POST',
+        body: JSON.stringify({
+          date: blockDateForm.date,
+          reason: blockDateForm.reason,
+          blockedTimeSlots: timeSlotsToBlock,
+          isWholeDay: blockWholeDay
+        })
+      });
+
+      const totalSlots = blockWholeDay ? 48 : selectedTimeSlots.length;
+      const blockType = blockWholeDay ? "whole day" : `${selectedTimeSlots.length} time slot(s)`;
+
+      if (notifyResponse.ok) {
+        toast.success(`${blockType} blocked for ${blockDateForm.date}! ${successful}/${totalSlots} slots blocked. Notifications sent to all users.`);
+      } else {
+        toast.success(`${blockType} blocked for ${blockDateForm.date}! ${successful}/${totalSlots} slots blocked.`);
+      }
+
+      // Reset form and close modal
+      setBlockDateForm({ date: "", reason: "" });
+      setSelectedTimeSlots([]);
+      setBlockWholeDay(true);
+      setShowBlockDateModal(false);
+      fetchBlockedDates();
+      fetchCasesForDate(selectedDate);
+    } catch (error) {
+      console.error("Error blocking date:", error);
+      toast.error("Failed to block date. Please try again.");
+    } finally {
+      setBlockingDate(false);
+    }
+  };
+
+  const handleUnblockDate = async (date: string) => {
+    setUnblockDate(date);
+    setShowUnblockModal(true);
+  };
+
+  const confirmUnblock = async () => {
+    setUnblocking(true);
+    try {
+      // Get all blocked slots for this date
+      const response = await fetchWithAuth(`${API_BASE}/api/admin-calendar/blocked?startDate=${unblockDate}&endDate=${unblockDate}`);
+      if (response.ok) {
+        const data = await response.json();
+        const slotsToUnblock = data.blockedSlots || [];
+
+        // Unblock all slots for this date
+        const unblockPromises = slotsToUnblock.map((slot: any) =>
+          fetchWithAuth(`${API_BASE}/api/admin-calendar/unblock/${slot.CalendarId}`, {
+            method: 'DELETE'
+          })
+        );
+
+        await Promise.all(unblockPromises);
+
+        // Send notifications to all attorneys and jurors
+        const notifyResponse = await fetchWithAuth(`${API_BASE}/api/admin/notify-unblocked-date`, {
+          method: 'POST',
+          body: JSON.stringify({
+            date: unblockDate,
+            unblockCount: slotsToUnblock.length
+          })
+        });
+
+        if (notifyResponse.ok) {
+          toast.success(`Date ${unblockDate} unblocked successfully! Notifications sent to all users.`);
+        } else {
+          toast.success(`Date ${unblockDate} unblocked successfully!`);
+        }
+
+        setShowUnblockModal(false);
+        setUnblockDate("");
+        fetchBlockedDates();
+        fetchCasesForDate(selectedDate);
+      }
+    } catch (error) {
+      console.error("Error unblocking date:", error);
+      toast.error("Failed to unblock date. Please try again.");
+    } finally {
+      setUnblocking(false);
+    }
+  };
 
   // Listen for optimistic case status updates (from war-room submit)
   useEffect(() => {
@@ -348,6 +574,12 @@ export default function AdminDashboard() {
       fetchCasesForDate(selectedDate);
     }
   }, [selectedDate, isAuthChecked]);
+
+  useEffect(() => {
+    if (isAuthChecked) {
+      fetchBlockedDates();
+    }
+  }, [isAuthChecked]);
 
   // ✅ LISTEN FOR WITNESS/CASE UPDATES: Refresh when attorneys modify case data
   useEffect(() => {
@@ -898,13 +1130,64 @@ export default function AdminDashboard() {
     }
   };
 
-  const filteredAttorneys = attorneys.filter((a) => {
-    if (attorneyFilter === "verified") return a.IsVerified;
-    if (attorneyFilter === "not_verified") return !a.IsVerified && a.VerificationStatus !== "declined";
-    if (attorneyFilter === "declined") return a.VerificationStatus === "declined";
-    return true;
-  });
+  const filteredAttorneys = attorneys
+    .filter((a) => {
+      // Filter by verification status
+      if (attorneyFilter === "verified") return a.IsVerified;
+      if (attorneyFilter === "not_verified") return !a.IsVerified && a.VerificationStatus !== "declined";
+      if (attorneyFilter === "declined") return a.VerificationStatus === "declined";
+      return true;
+    })
+    .filter((a) => {
+      // Filter by search query
+      if (!attorneySearchQuery) return true;
+      const query = attorneySearchQuery.toLowerCase();
+      const fullName = `${a.FirstName} ${a.LastName}`.toLowerCase();
+      return (
+        fullName.includes(query) ||
+        a.Email.toLowerCase().includes(query) ||
+        a.LawFirmName.toLowerCase().includes(query) ||
+        a.StateBarNumber.toLowerCase().includes(query)
+      );
+    })
+    .sort((a, b) => {
+      // Sort by selected field
+      let comparison = 0;
+      switch (attorneySortBy) {
+        case "name":
+          const nameA = `${a.FirstName} ${a.LastName}`.toLowerCase();
+          const nameB = `${b.FirstName} ${b.LastName}`.toLowerCase();
+          comparison = nameA.localeCompare(nameB);
+          break;
+        case "email":
+          comparison = a.Email.toLowerCase().localeCompare(b.Email.toLowerCase());
+          break;
+        case "lawFirm":
+          comparison = a.LawFirmName.toLowerCase().localeCompare(b.LawFirmName.toLowerCase());
+          break;
+        case "status":
+          const statusA = a.VerificationStatus === "declined" ? 2 : (a.IsVerified ? 0 : 1);
+          const statusB = b.VerificationStatus === "declined" ? 2 : (b.IsVerified ? 0 : 1);
+          comparison = statusA - statusB;
+          break;
+        case "date":
+          comparison = new Date(a.CreatedAt).getTime() - new Date(b.CreatedAt).getTime();
+          break;
+      }
+      return attorneySortOrder === "asc" ? comparison : -comparison;
+    });
   const paginatedAttorneys = filteredAttorneys.slice((attorneyPage - 1) * PAGE_SIZE, attorneyPage * PAGE_SIZE);
+
+  const handleAttorneySortChange = (column: "name" | "email" | "lawFirm" | "status" | "date") => {
+    if (attorneySortBy === column) {
+      // Toggle sort order if clicking the same column
+      setAttorneySortOrder(attorneySortOrder === "asc" ? "desc" : "asc");
+    } else {
+      // Set new column and default to ascending
+      setAttorneySortBy(column);
+      setAttorneySortOrder("asc");
+    }
+  };
 
   const filteredJurors = jurors.filter((j) => {
     if (jurorFilter === "verified") return j.IsVerified;
@@ -1357,11 +1640,11 @@ function formatTime(timeString: string, scheduledDate: string) {
 
       <div className="max-w-7xl mx-auto px-8 py-8 space-y-8">
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl hover:scale-105 transition-all border border-gray-200">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 ">
+          <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl hover:scale-105 transition-all border border-gray-200 cursor-pointer">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-sm font-medium">Total Attorneys</p>
+                <p className="text-gray-600 text-sm font-medium ">Total Attorneys</p>
                 <p className="text-4xl font-bold mt-2" style={{ color: BLUE }}>{stats.totalAttorneys}</p>
                 <p className="text-gray-500 text-xs mt-1">{stats.verifiedAttorneys} verified</p>
               </div>
@@ -1371,7 +1654,7 @@ function formatTime(timeString: string, scheduledDate: string) {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl hover:scale-105 transition-all border border-gray-200">
+          <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl hover:scale-105 transition-all border border-gray-200 cursor-pointer">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 text-sm font-medium">Total Jurors</p>
@@ -1384,7 +1667,7 @@ function formatTime(timeString: string, scheduledDate: string) {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl hover:scale-105 transition-all border border-gray-200">
+          <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl hover:scale-105 transition-all border border-gray-200 cursor-pointer">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 text-sm font-medium">Pending Cases</p>
@@ -1397,7 +1680,7 @@ function formatTime(timeString: string, scheduledDate: string) {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl hover:scale-105 transition-all border border-gray-200">
+          <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl hover:scale-105 transition-all border border-gray-200 cursor-pointer">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 text-sm font-medium">Active Trials</p>
@@ -1443,7 +1726,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                     <div className="p-2 bg-blue-500 rounded-lg mr-3 group-hover:scale-110 transition-transform">
                       <Building2 className="h-5 w-5 text-white" />
                     </div>
-                    <span className="text-gray-900 group-hover:text-blue-600 font-semibold">Attorneys Management</span>
+                    <span className="text-gray-900 group-hover:text-blue-600 font-semibold cursor-pointer">Attorneys Management</span>
                   </div>
                 </button>
                 <button 
@@ -1454,7 +1737,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                     <div className="p-2 bg-green-500 rounded-lg mr-3 group-hover:scale-110 transition-transform">
                       <Users className="h-5 w-5 text-white" />
                     </div>
-                    <span className="text-gray-900 group-hover:text-green-600 font-semibold">Jurors Management</span>
+                    <span className="text-gray-900 group-hover:text-green-600 font-semibold cursor-pointer">Jurors Management</span>
                   </div>
                 </button>
                 <button
@@ -1465,7 +1748,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                     <div className="p-2 bg-yellow-500 rounded-lg mr-3 group-hover:scale-110 transition-transform">
                       <FileText className="h-5 w-5 text-white" />
                     </div>
-                    <span className="text-gray-900 group-hover:text-yellow-600 font-semibold">Pending Cases</span>
+                    <span className="text-gray-900 group-hover:text-yellow-600 font-semibold cursor-pointer">Pending Cases</span>
                   </div>
                 </button>
                 <button
@@ -1477,10 +1760,28 @@ function formatTime(timeString: string, scheduledDate: string) {
                       <Calendar className="h-5 w-5 text-white" />
                     </div>
                     <div className="flex-1 flex items-center justify-between">
-                      <span className="text-gray-900 group-hover:text-amber-600 font-semibold">Reschedule Requests</span>
+                      <span className="text-gray-900 group-hover:text-amber-600 font-semibold cursor-pointer">Reschedule Requests</span>
                       {stats.pendingRescheduleRequests > 0 && (
                         <span className="px-2 py-1 bg-amber-500 text-white text-xs font-bold rounded-full">
                           {stats.pendingRescheduleRequests}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </button>
+                <button
+                  className="w-full bg-gradient-to-r from-red-50 to-red-100 rounded-lg p-4 text-left font-medium hover:shadow-md transition-all border border-red-200 group"
+                  onClick={() => setShowBlockDateModal(true)}
+                >
+                  <div className="flex items-center">
+                    <div className="p-2 bg-red-500 rounded-lg mr-3 group-hover:scale-110 transition-transform">
+                      <XCircle className="h-5 w-5 text-white" />
+                    </div>
+                    <div className="flex-1 flex items-center justify-between">
+                      <span className="text-gray-900 group-hover:text-red-600 font-semibold cursor-pointer">Block Dates</span>
+                      {blockedDates.length > 0 && (
+                        <span className="px-2 py-1 bg-red-500 text-white text-xs font-bold rounded-full">
+                          {blockedDates.length}
                         </span>
                       )}
                     </div>
@@ -1501,7 +1802,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                 type="date"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-600 text-gray-900 text-lg font-medium hover:border-blue-400 transition-colors"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-600 text-gray-900 text-lg font-medium hover:border-blue-400 transition-colors cursor-pointer"
               />
               <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
                 <p className="text-sm text-gray-700">
@@ -1657,7 +1958,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                       <button 
                         onClick={() => handleApproveCase(caseItem.CaseId)}
                         disabled={caseActionLoading === caseItem.CaseId}
-                        className="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-bold disabled:opacity-50 inline-flex items-center gap-2 shadow-lg hover:shadow-xl transition-all"
+                        className="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-bold disabled:opacity-50 inline-flex items-center gap-2 shadow-lg hover:shadow-xl transition-all cursor-pointer"
                       >
                         {caseActionLoading === caseItem.CaseId ? (
                           <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
@@ -1671,7 +1972,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                       <button 
                         onClick={() => handleRejectCase(caseItem.CaseId)}
                         disabled={caseActionLoading === caseItem.CaseId}
-                        className="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-bold disabled:opacity-50 inline-flex items-center gap-2 shadow-lg hover:shadow-xl transition-all"
+                        className="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-bold disabled:opacity-50 inline-flex items-center gap-2 shadow-lg hover:shadow-xl transition-all cursor-pointer"
                       >
                         <XCircle className="h-5 w-5" />
                         Reject
@@ -1787,7 +2088,7 @@ function formatTime(timeString: string, scheduledDate: string) {
           <div className="flex justify-center">
             <button
               onClick={() => router.push('/admin/reschedule-requests')}
-              className="bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all flex items-center gap-2"
+              className="bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all flex items-center gap-2 cursor-pointer"
             >
               <Calendar className="h-5 w-5" />
               View All Reschedule Requests
@@ -1809,9 +2110,16 @@ function formatTime(timeString: string, scheduledDate: string) {
                 </div>
               </div>
               <div className="flex items-center space-x-4">
-                <select 
-                  className="border-2 border-gray-300 rounded-lg px-4 py-2 text-sm text-black bg-white font-medium focus:border-blue-500 focus:outline-none" 
-                  value={attorneyFilter} 
+                <input
+                  type="text"
+                  placeholder="Search by name, email, law firm, or bar number..."
+                  className="border-2 border-gray-300 rounded-lg px-4 py-2 text-sm text-black bg-white focus:border-blue-500 focus:outline-none w-96"
+                  value={attorneySearchQuery}
+                  onChange={(e) => { setAttorneySearchQuery(e.target.value); setAttorneyPage(1); }}
+                />
+                <select
+                  className="border-2 border-gray-300 rounded-lg px-4 py-2 text-sm text-black bg-white font-medium focus:border-blue-500 focus:outline-none"
+                  value={attorneyFilter}
                   onChange={(e) => { setAttorneyFilter(e.target.value as any); setAttorneyPage(1); }}
                 >
                   <option value="all">All Attorneys</option>
@@ -1826,12 +2134,62 @@ function formatTime(timeString: string, scheduledDate: string) {
             <table className="w-full">
               <thead className="bg-gray-100">
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Attorney Info</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Contact</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Law Firm</th>
+                  <th
+                    className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none"
+                    onClick={() => handleAttorneySortChange("name")}
+                  >
+                    <div className="flex items-center gap-2">
+                      Attorney Info
+                      {attorneySortBy === "name" && (
+                        <span className="text-blue-600">{attorneySortOrder === "asc" ? "↑" : "↓"}</span>
+                      )}
+                    </div>
+                  </th>
+                  <th
+                    className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none"
+                    onClick={() => handleAttorneySortChange("email")}
+                  >
+                    <div className="flex items-center gap-2">
+                      Contact
+                      {attorneySortBy === "email" && (
+                        <span className="text-blue-600">{attorneySortOrder === "asc" ? "↑" : "↓"}</span>
+                      )}
+                    </div>
+                  </th>
+                  <th
+                    className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none"
+                    onClick={() => handleAttorneySortChange("lawFirm")}
+                  >
+                    <div className="flex items-center gap-2">
+                      Law Firm
+                      {attorneySortBy === "lawFirm" && (
+                        <span className="text-blue-600">{attorneySortOrder === "asc" ? "↑" : "↓"}</span>
+                      )}
+                    </div>
+                  </th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Bar Number</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-4 text-sm text-gray-600">Joined</th>
+                  <th
+                    className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none"
+                    onClick={() => handleAttorneySortChange("status")}
+                  >
+                    <div className="flex items-center gap-2">
+                      Status
+                      {attorneySortBy === "status" && (
+                        <span className="text-blue-600">{attorneySortOrder === "asc" ? "↑" : "↓"}</span>
+                      )}
+                    </div>
+                  </th>
+                  <th
+                    className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none"
+                    onClick={() => handleAttorneySortChange("date")}
+                  >
+                    <div className="flex items-center gap-2">
+                      Joined
+                      {attorneySortBy === "date" && (
+                        <span className="text-blue-600">{attorneySortOrder === "asc" ? "↑" : "↓"}</span>
+                      )}
+                    </div>
+                  </th>
                   <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
@@ -1892,7 +2250,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                             <button 
                               onClick={() => handleVerifyAttorney(attorney.AttorneyId)} 
                               disabled={actionLoading === attorney.AttorneyId} 
-                              className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold text-white bg-green-600 hover:bg-green-700 hover:shadow-lg disabled:opacity-50 transition-all"
+                              className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold text-white bg-green-600 hover:bg-green-700 hover:shadow-lg disabled:opacity-50 transition-all cursor-pointer"
                             >
                               {actionLoading === attorney.AttorneyId ? (
                                 <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
@@ -1903,7 +2261,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                             <button 
                               onClick={() => handleDeclineAttorney(attorney.AttorneyId)} 
                               disabled={actionLoading === attorney.AttorneyId} 
-                              className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold text-white bg-red-600 hover:bg-red-700 hover:shadow-lg disabled:opacity-50 transition-all"
+                              className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold text-white bg-red-600 hover:bg-red-700 hover:shadow-lg disabled:opacity-50 transition-all cursor-pointer"
                             >
                               <XCircle className="h-4 w-4 mr-1" />Decline
                             </button>
@@ -1916,24 +2274,74 @@ function formatTime(timeString: string, scheduledDate: string) {
               </tbody>
             </table>
           </div>
-          <div className="flex justify-between items-center px-6 py-4 bg-gray-50 border-t border-gray-200">
-            <button 
-              className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 transition-colors" 
-              disabled={attorneyPage === 1} 
-              onClick={() => setAttorneyPage(attorneyPage - 1)}
-            >
-              Previous
-            </button>
-            <span className="text-sm font-semibold text-black">
-              Page {attorneyPage} of {Math.max(1, Math.ceil(filteredAttorneys.length / PAGE_SIZE))}
-            </span>
-            <button 
-              className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 transition-colors" 
-              disabled={attorneyPage * PAGE_SIZE >= filteredAttorneys.length} 
-              onClick={() => setAttorneyPage(attorneyPage + 1)}
-            >
-              Next
-            </button>
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 px-6 py-4 bg-gray-50 border-t border-gray-200">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">
+                Showing {filteredAttorneys.length === 0 ? 0 : (attorneyPage - 1) * PAGE_SIZE + 1} to{" "}
+                {Math.min(attorneyPage * PAGE_SIZE, filteredAttorneys.length)} of {filteredAttorneys.length} results
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                disabled={attorneyPage === 1}
+                onClick={() => setAttorneyPage(attorneyPage - 1)}
+              >
+                Previous
+              </button>
+              <div className="flex items-center gap-1">
+                {(() => {
+                  const totalPages = Math.max(1, Math.ceil(filteredAttorneys.length / PAGE_SIZE));
+                  const pages = [];
+
+                  if (totalPages <= 7) {
+                    // Show all pages if 7 or fewer
+                    for (let i = 1; i <= totalPages; i++) {
+                      pages.push(i);
+                    }
+                  } else {
+                    // Show first page, last page, current page and neighbors
+                    if (attorneyPage <= 3) {
+                      pages.push(1, 2, 3, 4, -1, totalPages);
+                    } else if (attorneyPage >= totalPages - 2) {
+                      pages.push(1, -1, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+                    } else {
+                      pages.push(1, -1, attorneyPage - 1, attorneyPage, attorneyPage + 1, -2, totalPages);
+                    }
+                  }
+
+                  return pages.map((page, index) => {
+                    if (page === -1 || page === -2) {
+                      return (
+                        <span key={`ellipsis-${index}`} className="px-2 text-gray-500">
+                          ...
+                        </span>
+                      );
+                    }
+                    return (
+                      <button
+                        key={page}
+                        onClick={() => setAttorneyPage(page)}
+                        className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
+                          attorneyPage === page
+                            ? "bg-blue-600 text-white"
+                            : "bg-gray-200 text-black hover:bg-gray-300"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    );
+                  });
+                })()}
+              </div>
+              <button
+                className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer "
+                disabled={attorneyPage * PAGE_SIZE >= filteredAttorneys.length}
+                onClick={() => setAttorneyPage(attorneyPage + 1)}
+              >
+                Next
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1952,7 +2360,7 @@ function formatTime(timeString: string, scheduledDate: string) {
               </div>
               <div className="flex items-center space-x-4">
                 <select 
-                  className="border-2 border-gray-300 rounded-lg px-4 py-2 text-sm text-black bg-white font-medium focus:border-green-500 focus:outline-none" 
+                  className="border-2 border-gray-300 rounded-lg px-4 py-2 text-sm text-black bg-white font-medium focus:border-green-500 focus:outline-none cursor-pointer" 
                   value={jurorFilter} 
                   onChange={(e) => { setJurorFilter(e.target.value as any); setJurorPage(1); }}
                 >
@@ -2075,7 +2483,7 @@ function formatTime(timeString: string, scheduledDate: string) {
           </div>
           <div className="flex justify-between items-center px-6 py-4 bg-gray-50 border-t border-gray-200">
             <button 
-              className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 transition-colors" 
+              className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer" 
               disabled={jurorPage === 1} 
               onClick={() => setJurorPage(jurorPage - 1)}
             >
@@ -2085,7 +2493,7 @@ function formatTime(timeString: string, scheduledDate: string) {
               Page {jurorPage} of {Math.max(1, Math.ceil(filteredJurors.length / PAGE_SIZE))}
             </span>
             <button 
-              className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 transition-colors" 
+              className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer" 
               disabled={jurorPage * PAGE_SIZE >= filteredJurors.length} 
               onClick={() => setJurorPage(jurorPage + 1)}
             >
@@ -2153,6 +2561,50 @@ function formatTime(timeString: string, scheduledDate: string) {
                   </div>
                 </div>
               )}
+
+              {/* Team Members Section */}
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
+                <div className="flex items-center mb-3">
+                  <Users className="h-5 w-5 mr-2 text-indigo-600" />
+                  <h3 className="font-semibold text-indigo-900">Team Members ({selectedCase.teamMembers?.length || 0})</h3>
+                </div>
+                {!selectedCase.teamMembers || selectedCase.teamMembers.length === 0 ? (
+                  <div className="text-center py-6 bg-white rounded-lg border-2 border-dashed border-indigo-200">
+                    <div className="inline-flex items-center justify-center w-12 h-12 bg-indigo-100 rounded-full mb-2">
+                      <Users className="w-6 h-6 text-indigo-600" />
+                    </div>
+                    <p className="text-indigo-700 font-medium text-sm">No Team Members</p>
+                    <p className="text-indigo-600 text-xs mt-1">Attorney hasn't added team members yet</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {selectedCase.teamMembers.map((member) => (
+                      <div
+                        key={member.Id}
+                        className="bg-white rounded-lg p-3 border border-indigo-200 hover:border-indigo-400 transition-all"
+                      >
+                        <div className="flex items-start gap-2">
+                          <div className="p-1.5 bg-indigo-100 rounded">
+                            <UserIcon className="w-4 h-4 text-indigo-600" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-1">
+                              <h4 className="font-semibold text-gray-900 text-sm truncate">{member.Name}</h4>
+                              <span className="px-2 py-0.5 bg-indigo-100 rounded text-xs font-semibold text-indigo-700 ml-2 shrink-0">
+                                {member.Role}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5 text-xs text-gray-600">
+                              <Mail className="w-3 h-3" />
+                              <span className="truncate">{member.Email}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               <div>
                 <div className="flex items-center justify-between mb-3">
@@ -2534,6 +2986,60 @@ function formatTime(timeString: string, scheduledDate: string) {
         </div>
       )}
 
+      {/* Unblock Date Confirmation Modal */}
+      {showUnblockModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md">
+            <div className="flex items-center mb-4">
+              <Calendar className="h-6 w-6 text-green-600 mr-3" />
+              <h3 className="text-xl font-semibold text-gray-900">Unblock Date</h3>
+            </div>
+            <p className="text-gray-600 mb-4">
+              Are you sure you want to unblock <span className="font-semibold">{unblockDate}</span>?
+            </p>
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+              <p className="text-sm text-green-800 font-medium">
+                ✅ This will make the date available again:
+              </p>
+              <ul className="text-sm text-green-700 mt-2 ml-4 list-disc space-y-1">
+                <li>All attorneys will be notified</li>
+                <li>All jurors will be notified</li>
+                <li>The date will be available for case scheduling</li>
+              </ul>
+            </div>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowUnblockModal(false);
+                  setUnblockDate("");
+                }}
+                disabled={unblocking}
+                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmUnblock}
+                disabled={unblocking}
+                className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 font-medium disabled:opacity-50 inline-flex items-center"
+              >
+                {unblocking ? (
+                  <>
+                    <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></span>
+                    Unblocking...
+                  </>
+                ) : (
+                  <>
+                    <Calendar className="h-4 w-4 mr-2" />
+                    Unblock Date
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Criteria Popup */}
       {showCriteriaPopup && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/10 backdrop-blur-md">
@@ -2710,6 +3216,343 @@ function formatTime(timeString: string, scheduledDate: string) {
                     Confirm Approval
                   </>
                 )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Block Date Modal */}
+      {showBlockDateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold" style={{ color: BLUE }}>Block Dates</h2>
+                <button
+                  onClick={() => {
+                    setShowBlockDateModal(false);
+                    setBlockDateForm({ date: "", reason: "" });
+                    setSelectedTimeSlots([]);
+                    setBlockWholeDay(true);
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <XCircle className="h-6 w-6" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Block New Date Form */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 className="font-semibold text-gray-900 mb-4">Block Date/Time Slots</h3>
+                <div className="space-y-4">
+                  {/* Calendar Month Navigation */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <button
+                        onClick={() => {
+                          if (calendarMonth === 0) {
+                            setCalendarMonth(11);
+                            setCalendarYear(calendarYear - 1);
+                          } else {
+                            setCalendarMonth(calendarMonth - 1);
+                          }
+                        }}
+                        className="p-2 hover:bg-blue-100 rounded-lg"
+                      >
+                        ←
+                      </button>
+                      <h4 className="font-semibold text-gray-900">
+                        {new Date(calendarYear, calendarMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                      </h4>
+                      <button
+                        onClick={() => {
+                          if (calendarMonth === 11) {
+                            setCalendarMonth(0);
+                            setCalendarYear(calendarYear + 1);
+                          } else {
+                            setCalendarMonth(calendarMonth + 1);
+                          }
+                        }}
+                        className="p-2 hover:bg-blue-100 rounded-lg"
+                      >
+                        →
+                      </button>
+                    </div>
+
+                    {/* Calendar Grid */}
+                    <div className="grid grid-cols-7 gap-1 text-center text-sm mb-2">
+                      {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                        <div key={day} className="font-semibold text-gray-600 py-2">{day}</div>
+                      ))}
+                      {(() => {
+                        const firstDay = new Date(calendarYear, calendarMonth, 1).getDay();
+                        const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
+                        const days = [];
+
+                        // Empty cells for days before month starts
+                        for (let i = 0; i < firstDay; i++) {
+                          days.push(<div key={`empty-${i}`} className="py-2"></div>);
+                        }
+
+                        // Days of the month
+                        for (let day = 1; day <= daysInMonth; day++) {
+                          const dateStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                          const isSelected = blockDateForm.date === dateStr;
+
+                          // Allow today and future dates, disable past dates
+                          const today = new Date();
+                          today.setHours(0, 0, 0, 0);
+                          const dateObj = new Date(dateStr + 'T00:00:00');
+                          const isPast = dateObj < today;
+
+                          // Check if this date has any blocked slots
+                          const blockedForDate = blockedDates.find((b: any) => b.date === dateStr);
+                          const hasBlockedSlots = !!blockedForDate;
+                          const blockedSlotsCount = blockedForDate?.slots?.length || 0;
+
+                          days.push(
+                            <button
+                              key={day}
+                              type="button"
+                              onClick={() => !isPast && setBlockDateForm({ ...blockDateForm, date: dateStr })}
+                              disabled={isPast}
+                              className={`py-2 rounded-lg relative ${
+                                isSelected
+                                  ? 'bg-blue-600 text-white font-bold'
+                                  : isPast
+                                  ? 'text-gray-300 cursor-not-allowed'
+                                  : hasBlockedSlots
+                                  ? 'bg-red-50 text-red-700 border border-red-300 hover:bg-red-100 font-semibold'
+                                  : 'hover:bg-blue-100'
+                              }`}
+                              title={hasBlockedSlots ? `${blockedSlotsCount} slot(s) already blocked` : ''}
+                            >
+                              {day}
+                              {hasBlockedSlots && !isSelected && (
+                                <span className="absolute top-0 right-0 inline-flex items-center justify-center px-1 text-xs font-bold text-white bg-red-600 rounded-full">
+                                  {blockedSlotsCount}
+                                </span>
+                              )}
+                            </button>
+                          );
+                        }
+
+                        return days;
+                      })()}
+                    </div>
+
+                    {blockDateForm.date && (
+                      <p className="text-sm text-blue-700 font-medium">
+                        Selected: {(() => {
+                          const [year, month, day] = blockDateForm.date.split('-').map(Number);
+                          const date = new Date(year, month - 1, day);
+                          return date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+                        })()}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Whole Day Checkbox */}
+                  <div className="flex items-center gap-2 bg-white p-3 rounded-lg border border-blue-300">
+                    <input
+                      type="checkbox"
+                      id="blockWholeDay"
+                      checked={blockWholeDay}
+                      onChange={(e) => {
+                        setBlockWholeDay(e.target.checked);
+                        if (e.target.checked) {
+                          setSelectedTimeSlots([]);
+                        }
+                      }}
+                      className="w-4 h-4 text-blue-600"
+                    />
+                    <label htmlFor="blockWholeDay" className="text-sm font-medium text-gray-900 cursor-pointer">
+                      Block Whole Day (All 48 time slots)
+                    </label>
+                  </div>
+
+                  {/* Time Slot Selector (only shown if not blocking whole day) */}
+                  {!blockWholeDay && blockDateForm.date && (
+                    <div className="bg-white p-3 rounded-lg border border-blue-300 max-h-64 overflow-y-auto">
+                      <h4 className="font-semibold text-gray-900 mb-2 text-sm">Select Time Slots to Block:</h4>
+                      <div className="grid grid-cols-4 gap-2">
+                        {Array.from({ length: 48 }, (_, i) => {
+                          const hours = Math.floor(i / 2);
+                          const minutes = i % 2 === 0 ? "00" : "30";
+                          const timeSlot = `${hours.toString().padStart(2, '0')}:${minutes}:00`;
+                          const displayTime = `${hours % 12 || 12}:${minutes} ${hours < 12 ? 'AM' : 'PM'}`;
+                          const isSelected = selectedTimeSlots.includes(timeSlot);
+
+                          // Check if this time slot is in the past for today's date
+                          const isToday = blockDateForm.date === new Date().toISOString().split('T')[0];
+                          const isPastTime = isToday && (() => {
+                            const now = new Date();
+                            const currentHours = now.getHours();
+                            const currentMinutes = now.getMinutes();
+                            const slotTotalMinutes = hours * 60 + parseInt(minutes);
+                            const currentTotalMinutes = currentHours * 60 + currentMinutes;
+                            return slotTotalMinutes < currentTotalMinutes;
+                          })();
+
+                          return (
+                            <button
+                              key={timeSlot}
+                              type="button"
+                              disabled={isPastTime}
+                              onClick={() => {
+                                if (!isPastTime) {
+                                  if (isSelected) {
+                                    setSelectedTimeSlots(selectedTimeSlots.filter(t => t !== timeSlot));
+                                  } else {
+                                    setSelectedTimeSlots([...selectedTimeSlots, timeSlot]);
+                                  }
+                                }
+                              }}
+                              className={`text-xs py-1.5 px-2 rounded-lg border ${
+                                isPastTime
+                                  ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                                  : isSelected
+                                  ? 'bg-red-600 text-white border-red-700'
+                                  : 'bg-white text-gray-700 border-gray-300 hover:bg-red-50'
+                              }`}
+                              title={isPastTime ? 'This time has already passed' : ''}
+                            >
+                              {displayTime}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <p className="text-xs text-gray-600 mt-2">
+                        {selectedTimeSlots.length} slot(s) selected
+                      </p>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Reason for Blocking
+                    </label>
+                    <select
+                      value={blockDateForm.reason}
+                      onChange={(e) => setBlockDateForm({ ...blockDateForm, reason: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-600"
+                    >
+                      <option value="">Select a reason...</option>
+                      <option value="Holiday">Holiday</option>
+                      <option value="System Maintenance">System Maintenance</option>
+                      <option value="Staff Training">Staff Training</option>
+                      <option value="Emergency Closure">Emergency Closure</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  <button
+                    onClick={handleBlockDate}
+                    disabled={blockingDate || !blockDateForm.date || !blockDateForm.reason || (!blockWholeDay && selectedTimeSlots.length === 0)}
+                    className="w-full bg-red-600 text-white px-4 py-3 rounded-lg hover:bg-red-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center"
+                  >
+                    {blockingDate ? (
+                      <>
+                        <span className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full mr-2"></span>
+                        Blocking...
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="h-5 w-5 mr-2" />
+                        Block {blockWholeDay ? 'Whole Day' : `${selectedTimeSlots.length} Slot(s)`}
+                      </>
+                    )}
+                  </button>
+                  <p className="text-sm text-gray-600">
+                    ⚠️ This will {blockWholeDay ? 'block all time slots' : `block ${selectedTimeSlots.length} selected time slot(s)`} for {blockDateForm.date && new Date(blockDateForm.date).toLocaleDateString()} and send notifications to all attorneys and jurors.
+                  </p>
+                </div>
+              </div>
+
+              {/* Currently Blocked Dates */}
+              <div>
+                <h3 className="font-semibold text-gray-900 mb-4">Currently Blocked Dates</h3>
+                {loadingBlockedDates ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto"></div>
+                    <p className="text-gray-600 mt-2">Loading blocked dates...</p>
+                  </div>
+                ) : blockedDates.length === 0 ? (
+                  <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
+                    <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                    <p className="text-gray-600">No dates are currently blocked</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {blockedDates.map((blocked: any) => (
+                      <div key={blocked.date} className="bg-white border border-red-200 rounded-lg p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-red-100 rounded-lg">
+                            <Calendar className="h-5 w-5 text-red-600" />
+                          </div>
+                          <div>
+                            <p className="font-semibold text-gray-900">
+                              {formatDateString(blocked.date, {
+                                weekday: 'long',
+                                month: 'long',
+                                day: 'numeric',
+                                year: 'numeric'
+                              })}
+                            </p>
+                            <p className="text-sm text-gray-600">Reason: {blocked.reason}</p>
+                            <p className="text-xs text-gray-500">{blocked.slots.length} time slot(s) blocked</p>
+                            {blocked.slots.length <= 10 && (
+                              <p className="text-xs text-red-600 mt-1">
+                                🕐 {blocked.slots.map((slot: any) => {
+                                  const time = slot.BlockedTime.substring(0, 5);
+                                  const [hours, minutes] = time.split(':');
+                                  const hour = parseInt(hours);
+                                  const period = hour >= 12 ? 'PM' : 'AM';
+                                  const displayHour = hour % 12 || 12;
+                                  return `${displayHour}:${minutes} ${period}`;
+                                }).join(', ')}
+                              </p>
+                            )}
+                            {blocked.slots.length > 10 && (
+                              <p className="text-xs text-red-600 mt-1">
+                                🕐 {blocked.slots.slice(0, 5).map((slot: any) => {
+                                  const time = slot.BlockedTime.substring(0, 5);
+                                  const [hours, minutes] = time.split(':');
+                                  const hour = parseInt(hours);
+                                  const period = hour >= 12 ? 'PM' : 'AM';
+                                  const displayHour = hour % 12 || 12;
+                                  return `${displayHour}:${minutes} ${period}`;
+                                }).join(', ')} + {blocked.slots.length - 5} more
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleUnblockDate(blocked.date)}
+                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium text-sm"
+                        >
+                          Unblock
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-gray-200 flex justify-end">
+              <button
+                onClick={() => {
+                  setShowBlockDateModal(false);
+                  setBlockDateForm({ date: "", reason: "" });
+                  setSelectedTimeSlots([]);
+                  setBlockWholeDay(true);
+                }}
+                className="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium"
+              >
+                Close
               </button>
             </div>
           </div>

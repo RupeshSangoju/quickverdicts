@@ -392,13 +392,29 @@ export default function WarRoomPage() {
         body: JSON.stringify({ teamMembers: members })
       });
 
+      const data = await response.json();
+
       if (response.ok) {
         await fetchWarRoomData();
         setShowAddTeam(false);
         setNewMembers([{ Name: "", Role: "", Email: "" }]);
+
+        // Show success/error messages
+        if (data.addedCount > 0) {
+          toast.success(`Successfully added ${data.addedCount} team member(s)`);
+        }
+        if (data.errors && data.errors.length > 0) {
+          data.errors.forEach((e: any) => {
+            const name = e.member.Name || e.member.name || 'Unknown';
+            toast.error(`${name}: ${e.error}`);
+          });
+        }
+      } else {
+        toast.error(data.message || "Failed to add team members");
       }
     } catch (error) {
       console.error("Error adding team members:", error);
+      toast.error("Failed to add team members. Please try again.");
     } finally {
       setIsAddingTeam(false);
     }
@@ -703,7 +719,7 @@ export default function WarRoomPage() {
   const jurorCountMessage = !isAdminApproved
     ? `⏳ Waiting for admin approval`
     : !isWarRoomStatus
-    ? `✓ War room submitted (Status: ${caseData?.AttorneyStatus})`
+    ? `✓ War room submitted (Status: ${caseData?.AttorneyStatus?.replace(/_/g, ' ')})`
     : pendingRescheduleRequest
     ? `⏳ Waiting for admin to approve reschedule request`
     : approvedCount < requiredJurors
@@ -903,6 +919,9 @@ export default function WarRoomPage() {
                     <h1 className="text-xl font-semibold text-white">War Room</h1>
                     <p className="text-sm text-white/80 mt-0.5">
                       {caseData.CaseTitle || "Case Management"}
+                    </p>
+                    <p className="text-xs text-white/60 mt-0.5">
+                      Case ID: {(caseData as any).CaseId || caseData.Id || caseId}
                     </p>
                   </div>
                 </div>
@@ -1471,7 +1490,7 @@ export default function WarRoomPage() {
                   <DocumentTextIcon className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-semibold text-white">Documentation</h2>
+                  <h2 className="text-xl font-semibold text-white">Videos and Documents</h2>
                   <p className="text-sm text-white/80 mt-0.5">Case files and evidence</p>
                 </div>
               </div>
@@ -1481,7 +1500,7 @@ export default function WarRoomPage() {
                 className="px-4 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg font-semibold text-sm transition-all flex items-center gap-1.5"
               >
                 <PlusIcon className="w-4 h-4" />
-                Upload Document
+                Upload Videos and Documents
               </button>
             </div>
           </div>

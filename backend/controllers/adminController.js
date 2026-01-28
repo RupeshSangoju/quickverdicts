@@ -510,7 +510,7 @@ async function deleteCase(req, res) {
  */
 async function getAttorneysPendingVerification(req, res) {
   try {
-    const { attorneys } = await Attorney.getAllAttorneys(1, 100);
+    const { attorneys } = await Attorney.getAllAttorneys({ page: 1, limit: 100 });
     const pendingVerification = attorneys.filter(
       (attorney) => !attorney.IsVerified
     );
@@ -620,7 +620,7 @@ async function verifyAttorney(req, res) {
  */
 async function getJurorsPendingVerification(req, res) {
   try {
-    const { jurors } = await Juror.getAllJurors(1, 100);
+    const { jurors } = await Juror.getAllJurors({ page: 1, limit: 100 });
     const pendingVerification = jurors.filter((juror) => !juror.IsVerified);
 
     res.json({
@@ -730,8 +730,8 @@ async function getAdminDashboard(req, res) {
   try {
     // Get overview statistics
     const pendingCases = await Case.getCasesPendingAdminApproval();
-    const { attorneys } = await Attorney.getAllAttorneys(1, 100);
-    const { jurors } = await Juror.getAllJurors(1, 100);
+    const { attorneys } = await Attorney.getAllAttorneys({ page: 1, limit: 100 });
+    const { jurors } = await Juror.getAllJurors({ page: 1, limit: 100 });
     const recentEvents = await Event.getRecentEvents(10);
 
     const stats = {

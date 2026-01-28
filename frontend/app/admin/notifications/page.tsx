@@ -255,7 +255,7 @@ export default function AdminNotificationsPage() {
             <div className="flex items-center gap-3">
               <button
                 onClick={fetchNotifications}
-                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center gap-2 transition-colors"
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center gap-2 transition-colors cursor-pointer"
                 title="Refresh notifications"
               >
                 <RefreshCw className="h-4 w-4" />
