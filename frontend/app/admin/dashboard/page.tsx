@@ -522,6 +522,7 @@ export default function AdminDashboard() {
   const attorneySectionRef = useRef<HTMLDivElement>(null);
   const jurorSectionRef = useRef<HTMLDivElement>(null);
   const casesSectionRef = useRef<HTMLDivElement>(null);
+  const rescheduleRequestsSectionRef = useRef<HTMLDivElement>(null);
 
   const REJECTION_REASONS = [
     { value: "scheduling_conflict", label: "🔄 Scheduling Conflict - I'm unavailable at this time" },
@@ -1640,8 +1641,8 @@ function formatTime(timeString: string, scheduledDate: string) {
 
       <div className="max-w-7xl mx-auto px-8 py-8 space-y-8">
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 ">
-          <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl hover:scale-105 transition-all border border-gray-200 cursor-pointer">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 ">
+          <div className="bg-white rounded-xl shadow-lg p-6 transition-all border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 text-sm font-medium ">Total Attorneys</p>
@@ -1654,7 +1655,7 @@ function formatTime(timeString: string, scheduledDate: string) {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl hover:scale-105 transition-all border border-gray-200 cursor-pointer">
+          <div className="bg-white rounded-xl shadow-lg p-6 transition-all border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 text-sm font-medium">Total Jurors</p>
@@ -1667,7 +1668,7 @@ function formatTime(timeString: string, scheduledDate: string) {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl hover:scale-105 transition-all border border-gray-200 cursor-pointer">
+          <div className="bg-white rounded-xl shadow-lg p-6 transition-all border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 text-sm font-medium">Pending Cases</p>
@@ -1680,7 +1681,7 @@ function formatTime(timeString: string, scheduledDate: string) {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl hover:scale-105 transition-all border border-gray-200 cursor-pointer">
+          <div className="bg-white rounded-xl shadow-lg p-6 transition-all border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 text-sm font-medium">Active Trials</p>
@@ -1693,7 +1694,7 @@ function formatTime(timeString: string, scheduledDate: string) {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl hover:scale-105 transition-all border border-gray-200 cursor-pointer" onClick={() => router.push('/admin/reschedule-requests')}>
+          <div className="bg-white rounded-xl shadow-lg p-6 transition-all border border-gray-200 ">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 text-sm font-medium">Reschedule Requests</p>
@@ -1753,7 +1754,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                 </button>
                 <button
                   className="w-full bg-gradient-to-r from-amber-50 to-amber-100 rounded-lg p-4 text-left font-medium hover:shadow-md transition-all border border-amber-200 group"
-                  onClick={() => router.push('/admin/reschedule-requests')}
+                  onClick={() => rescheduleRequestsSectionRef.current?.scrollIntoView({ behavior: "smooth" })}
                 >
                   <div className="flex items-center">
                     <div className="p-2 bg-amber-500 rounded-lg mr-3 group-hover:scale-110 transition-transform">
@@ -2067,7 +2068,7 @@ function formatTime(timeString: string, scheduledDate: string) {
           </div>
 
         {/* Reschedule Requests */}
-        <div className="bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 rounded-xl shadow-lg p-6 border-2 border-orange-300">
+        <div ref={rescheduleRequestsSectionRef} className="bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 rounded-xl shadow-lg p-6 border-2 border-orange-300">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center">
               <div className="p-3 bg-gradient-to-r from-orange-600 to-amber-600 rounded-lg mr-3">
