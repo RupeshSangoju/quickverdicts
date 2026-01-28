@@ -221,9 +221,13 @@ export default function AdminDashboard() {
   const [jurorFilter, setJurorFilter] = useState<"all" | "verified" | "not_verified" | "declined">("all");
   const [attorneyPage, setAttorneyPage] = useState(1);
   const [jurorPage, setJurorPage] = useState(1);
+  const [attorneyPageSize, setAttorneyPageSize] = useState(5);
+  const [attorneyTotalPages, setAttorneyTotalPages] = useState(1);
+  const [attorneyTotal, setAttorneyTotal] = useState(0);
+  const [loadingAttorneys, setLoadingAttorneys] = useState(false);
   const PAGE_SIZE = 10;
   const [attorneySearchQuery, setAttorneySearchQuery] = useState("");
-  const [attorneySortBy, setAttorneySortBy] = useState<"name" | "email" | "lawFirm" | "status" | "date">("date");
+  const [attorneySortBy, setAttorneySortBy] = useState<"name" | "email" | "lawFirm" | "status" | "date" | "default">("default");
   const [attorneySortOrder, setAttorneySortOrder] = useState<"asc" | "desc">("desc");
 
   const [showCaseRejectModal, setShowCaseRejectModal] = useState(false);
@@ -607,6 +611,24 @@ export default function AdminDashboard() {
     };
   }, [isAuthChecked, selectedDate]);
 
+  // Fetch attorneys with server-side pagination, sorting, and filtering
+  useEffect(() => {
+    if (isAuthChecked) {
+      fetchAttorneys();
+    }
+  }, [isAuthChecked, attorneyPage, attorneyPageSize, attorneySortBy, attorneySortOrder, attorneyFilter]);
+
+  // Debounce search query to avoid excessive API calls
+  useEffect(() => {
+    if (!isAuthChecked) return;
+
+    const timer = setTimeout(() => {
+      fetchAttorneys();
+    }, 500); // 500ms delay
+
+    return () => clearTimeout(timer);
+  }, [attorneySearchQuery]);
+
   // Enhanced fetch with error handling
   const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
     const headers = getAuthHeaders();
@@ -711,9 +733,8 @@ export default function AdminDashboard() {
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      const [dashboardRes, attRes, jurRes, casesRes, statsRes, rescheduleRes] = await Promise.all([
+      const [dashboardRes, jurRes, casesRes, statsRes, rescheduleRes] = await Promise.all([
         fetchWithAuth(`${API_BASE}/api/admin/dashboard`),
-        fetchWithAuth(`${API_BASE}/api/admin/attorneys`),
         fetchWithAuth(`${API_BASE}/api/admin/jurors`),
         fetchWithAuth(`${API_BASE}/api/admin/cases/pending`),
         fetchWithAuth(`${API_BASE}/api/admin/stats/comprehensive`),
@@ -721,7 +742,6 @@ export default function AdminDashboard() {
       ]);
 
       const dashboardData = await dashboardRes.json();
-      const attData = await attRes.json();
       const jurData = await jurRes.json();
       const casesData = await casesRes.json();
       const statsData = await statsRes.json();
@@ -749,12 +769,6 @@ export default function AdminDashboard() {
         });
       }
 
-      const attorneysList = Array.isArray(attData.attorneys) 
-        ? attData.attorneys 
-        : (Array.isArray(attData) ? attData : []);
-
-      setAttorneys(attorneysList);
-
       const jurorsList = Array.isArray(jurData.jurors) 
         ? jurData.jurors 
         : (Array.isArray(jurData) ? jurData : []);
@@ -777,6 +791,43 @@ export default function AdminDashboard() {
       console.error("Error fetching dashboard data:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAttorneys = async () => {
+    setLoadingAttorneys(true);
+    try {
+      const params = new URLSearchParams({
+        page: attorneyPage.toString(),
+        limit: attorneyPageSize.toString(),
+        sortBy: attorneySortBy,
+        sortOrder: attorneySortOrder,
+      });
+
+      if (attorneySearchQuery) {
+        params.append("search", attorneySearchQuery);
+      }
+
+      if (attorneyFilter !== "all") {
+        params.append("verificationStatus", attorneyFilter === "verified" ? "verified" : attorneyFilter === "declined" ? "declined" : "pending");
+      }
+
+      const response = await fetchWithAuth(`${API_BASE}/api/admin/attorneys?${params.toString()}`);
+      const data = await response.json();
+
+      if (data.success) {
+        const attorneysList = Array.isArray(data.attorneys) ? data.attorneys : [];
+        setAttorneys(attorneysList);
+        setAttorneyTotal(data.total || 0);
+        setAttorneyTotalPages(data.totalPages || 1);
+      }
+    } catch (error) {
+      console.error("Error fetching attorneys:", error);
+      setAttorneys([]);
+      setAttorneyTotal(0);
+      setAttorneyTotalPages(1);
+    } finally {
+      setLoadingAttorneys(false);
     }
   };
 
@@ -1022,11 +1073,9 @@ export default function AdminDashboard() {
         body: JSON.stringify({ status: "verified" }),
       });
       if (response.ok) {
-        // Update attorney in local state
-        setAttorneys((prev) =>
-          prev.map((a) => a.AttorneyId === attorneyId ? { ...a, VerificationStatus: "verified", IsVerified: true } : a)
-        );
-        // Update stats locally instead of refetching all data
+        // Refetch attorneys to update the list with server-side filtering
+        await fetchAttorneys();
+        // Update stats locally
         setStats((prev) => ({
           ...prev,
           verifiedAttorneys: prev.verifiedAttorneys + 1,
@@ -1105,9 +1154,8 @@ export default function AdminDashboard() {
       });
       if (response.ok) {
         if (declineType === "attorney") {
-          setAttorneys((prev) =>
-            prev.map((a) => a.AttorneyId === declineId ? { ...a, VerificationStatus: "declined", IsVerified: false } : a)
-          );
+          // Refetch attorneys to update the list with server-side filtering
+          await fetchAttorneys();
           toast.success("Attorney declined successfully.", {
             duration: 3000,
           });
@@ -1131,60 +1179,19 @@ export default function AdminDashboard() {
     }
   };
 
-  const filteredAttorneys = attorneys
-    .filter((a) => {
-      // Filter by verification status
-      if (attorneyFilter === "verified") return a.IsVerified;
-      if (attorneyFilter === "not_verified") return !a.IsVerified && a.VerificationStatus !== "declined";
-      if (attorneyFilter === "declined") return a.VerificationStatus === "declined";
-      return true;
-    })
-    .filter((a) => {
-      // Filter by search query
-      if (!attorneySearchQuery) return true;
-      const query = attorneySearchQuery.toLowerCase();
-      const fullName = `${a.FirstName} ${a.LastName}`.toLowerCase();
-      return (
-        fullName.includes(query) ||
-        a.Email.toLowerCase().includes(query) ||
-        a.LawFirmName.toLowerCase().includes(query) ||
-        a.StateBarNumber.toLowerCase().includes(query)
-      );
-    })
-    .sort((a, b) => {
-      // Sort by selected field
-      let comparison = 0;
-      switch (attorneySortBy) {
-        case "name":
-          const nameA = `${a.FirstName} ${a.LastName}`.toLowerCase();
-          const nameB = `${b.FirstName} ${b.LastName}`.toLowerCase();
-          comparison = nameA.localeCompare(nameB);
-          break;
-        case "email":
-          comparison = a.Email.toLowerCase().localeCompare(b.Email.toLowerCase());
-          break;
-        case "lawFirm":
-          comparison = a.LawFirmName.toLowerCase().localeCompare(b.LawFirmName.toLowerCase());
-          break;
-        case "status":
-          const statusA = a.VerificationStatus === "declined" ? 2 : (a.IsVerified ? 0 : 1);
-          const statusB = b.VerificationStatus === "declined" ? 2 : (b.IsVerified ? 0 : 1);
-          comparison = statusA - statusB;
-          break;
-        case "date":
-          comparison = new Date(a.CreatedAt).getTime() - new Date(b.CreatedAt).getTime();
-          break;
-      }
-      return attorneySortOrder === "asc" ? comparison : -comparison;
-    });
-  const paginatedAttorneys = filteredAttorneys.slice((attorneyPage - 1) * PAGE_SIZE, attorneyPage * PAGE_SIZE);
-
-  const handleAttorneySortChange = (column: "name" | "email" | "lawFirm" | "status" | "date") => {
+  const handleAttorneySortChange = (column: "name" | "email" | "lawFirm" | "status" | "date" | "default") => {
+    setAttorneyPage(1); // Reset to first page when sorting changes
     if (attorneySortBy === column) {
-      // Toggle sort order if clicking the same column
-      setAttorneySortOrder(attorneySortOrder === "asc" ? "desc" : "asc");
+      // Cycle through: asc -> desc -> default
+      if (attorneySortOrder === "asc") {
+        setAttorneySortOrder("desc");
+      } else if (attorneySortOrder === "desc") {
+        // Go back to default sorting (by entry time)
+        setAttorneySortBy("default");
+        setAttorneySortOrder("desc");
+      }
     } else {
-      // Set new column and default to ascending
+      // Set new column and start with ascending
       setAttorneySortBy(column);
       setAttorneySortOrder("asc");
     }
@@ -2107,7 +2114,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold" style={{ color: BLUE }}>Attorneys Management</h2>
-                  <p className="text-gray-600 text-sm">{filteredAttorneys.length} attorneys total</p>
+                  <p className="text-gray-600 text-sm">{attorneyTotal} attorneys total</p>
                 </div>
               </div>
               <div className="flex items-center space-x-4">
@@ -2131,7 +2138,7 @@ function formatTime(timeString: string, scheduledDate: string) {
               </div>
             </div>
           </div>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" style={{ maxHeight: '600px', overflowY: 'auto' }}>
             <table className="w-full">
               <thead className="bg-gray-100">
                 <tr>
@@ -2141,8 +2148,10 @@ function formatTime(timeString: string, scheduledDate: string) {
                   >
                     <div className="flex items-center gap-2">
                       Attorney Info
-                      {attorneySortBy === "name" && (
-                        <span className="text-blue-600">{attorneySortOrder === "asc" ? "↑" : "↓"}</span>
+                      {attorneySortBy === "name" ? (
+                        <span className="text-blue-600 font-bold">{attorneySortOrder === "asc" ? "↑" : "↓"}</span>
+                      ) : (
+                        <span className="text-gray-400">⇅</span>
                       )}
                     </div>
                   </th>
@@ -2152,8 +2161,10 @@ function formatTime(timeString: string, scheduledDate: string) {
                   >
                     <div className="flex items-center gap-2">
                       Contact
-                      {attorneySortBy === "email" && (
-                        <span className="text-blue-600">{attorneySortOrder === "asc" ? "↑" : "↓"}</span>
+                      {attorneySortBy === "email" ? (
+                        <span className="text-blue-600 font-bold">{attorneySortOrder === "asc" ? "↑" : "↓"}</span>
+                      ) : (
+                        <span className="text-gray-400">⇅</span>
                       )}
                     </div>
                   </th>
@@ -2163,8 +2174,10 @@ function formatTime(timeString: string, scheduledDate: string) {
                   >
                     <div className="flex items-center gap-2">
                       Law Firm
-                      {attorneySortBy === "lawFirm" && (
-                        <span className="text-blue-600">{attorneySortOrder === "asc" ? "↑" : "↓"}</span>
+                      {attorneySortBy === "lawFirm" ? (
+                        <span className="text-blue-600 font-bold">{attorneySortOrder === "asc" ? "↑" : "↓"}</span>
+                      ) : (
+                        <span className="text-gray-400">⇅</span>
                       )}
                     </div>
                   </th>
@@ -2175,8 +2188,10 @@ function formatTime(timeString: string, scheduledDate: string) {
                   >
                     <div className="flex items-center gap-2">
                       Status
-                      {attorneySortBy === "status" && (
-                        <span className="text-blue-600">{attorneySortOrder === "asc" ? "↑" : "↓"}</span>
+                      {attorneySortBy === "status" ? (
+                        <span className="text-blue-600 font-bold">{attorneySortOrder === "asc" ? "↑" : "↓"}</span>
+                      ) : (
+                        <span className="text-gray-400">⇅</span>
                       )}
                     </div>
                   </th>
@@ -2186,8 +2201,10 @@ function formatTime(timeString: string, scheduledDate: string) {
                   >
                     <div className="flex items-center gap-2">
                       Joined
-                      {attorneySortBy === "date" && (
-                        <span className="text-blue-600">{attorneySortOrder === "asc" ? "↑" : "↓"}</span>
+                      {attorneySortBy === "date" || attorneySortBy === "default" ? (
+                        <span className="text-blue-600 font-bold">{attorneySortOrder === "asc" ? "↑" : "↓"}</span>
+                      ) : (
+                        <span className="text-gray-400">⇅</span>
                       )}
                     </div>
                   </th>
@@ -2195,7 +2212,16 @@ function formatTime(timeString: string, scheduledDate: string) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 bg-white">
-                {paginatedAttorneys.length === 0 ? (
+                {loadingAttorneys ? (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-16 text-center">
+                      <div className="flex flex-col items-center justify-center">
+                        <div className="animate-spin h-12 w-12 border-4 border-blue-500 border-t-transparent rounded-full mb-4"></div>
+                        <p className="text-gray-500 font-medium text-lg">Loading attorneys...</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : attorneys.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-6 py-16 text-center">
                       <Building2 className="h-16 w-16 text-gray-300 mx-auto mb-4" />
@@ -2203,7 +2229,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                     </td>
                   </tr>
                 ) : (
-                  paginatedAttorneys.map((attorney) => (
+                  attorneys.map((attorney) => (
                     <tr key={attorney.AttorneyId} className="hover:bg-blue-50 transition-colors">
                       <td className="px-6 py-4">
                         <div className="font-bold text-gray-900 text-lg">{attorney.FirstName} {attorney.LastName}</div>
@@ -2276,10 +2302,24 @@ function formatTime(timeString: string, scheduledDate: string) {
             </table>
           </div>
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4 px-6 py-4 bg-gray-50 border-t border-gray-200">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600 font-medium">Rows per page:</span>
+                <select
+                  className="border-2 border-gray-300 rounded-lg px-3 py-1.5 text-sm text-black bg-white font-medium focus:border-blue-500 focus:outline-none"
+                  value={attorneyPageSize}
+                  onChange={(e) => { setAttorneyPageSize(Number(e.target.value)); setAttorneyPage(1); }}
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={15}>15</option>
+                  <option value={20}>20</option>
+                  <option value={25}>25</option>
+                </select>
+              </div>
               <span className="text-sm text-gray-600">
-                Showing {filteredAttorneys.length === 0 ? 0 : (attorneyPage - 1) * PAGE_SIZE + 1} to{" "}
-                {Math.min(attorneyPage * PAGE_SIZE, filteredAttorneys.length)} of {filteredAttorneys.length} results
+                Showing {attorneyTotal === 0 ? 0 : (attorneyPage - 1) * attorneyPageSize + 1} to{" "}
+                {Math.min(attorneyPage * attorneyPageSize, attorneyTotal)} of {attorneyTotal} results
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -2292,7 +2332,7 @@ function formatTime(timeString: string, scheduledDate: string) {
               </button>
               <div className="flex items-center gap-1">
                 {(() => {
-                  const totalPages = Math.max(1, Math.ceil(filteredAttorneys.length / PAGE_SIZE));
+                  const totalPages = Math.max(1, attorneyTotalPages);
                   const pages = [];
 
                   if (totalPages <= 7) {
@@ -2336,8 +2376,8 @@ function formatTime(timeString: string, scheduledDate: string) {
                 })()}
               </div>
               <button
-                className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer "
-                disabled={attorneyPage * PAGE_SIZE >= filteredAttorneys.length}
+                className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                disabled={attorneyPage >= attorneyTotalPages}
                 onClick={() => setAttorneyPage(attorneyPage + 1)}
               >
                 Next

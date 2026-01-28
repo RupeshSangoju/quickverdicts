@@ -1363,11 +1363,30 @@ router.post(
 router.get("/attorneys", async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = Math.min(100, parseInt(req.query.limit) || 20);
+    const limit = Math.min(100, parseInt(req.query.limit) || 5);
+    const sortBy = req.query.sortBy || "default";
+    const sortOrder = req.query.sortOrder || "desc";
+    const search = req.query.search || "";
+    const verificationStatus = req.query.verificationStatus || "";
 
-    console.log("Fetching attorneys - Page:", page, "Limit:", limit);
+    console.log("Fetching attorneys - Page:", page, "Limit:", limit, "SortBy:", sortBy, "SortOrder:", sortOrder);
 
-    const result = await Attorney.getAllAttorneys({ page, limit });
+    const options = {
+      page,
+      limit,
+      sortBy,
+      sortOrder,
+    };
+
+    if (search) {
+      options.search = search;
+    }
+
+    if (verificationStatus && verificationStatus !== "all") {
+      options.verificationStatus = verificationStatus;
+    }
+
+    const result = await Attorney.getAllAttorneys(options);
 
     res.json({
       success: true,

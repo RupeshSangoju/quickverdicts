@@ -545,7 +545,7 @@ async function getAllAttorneys(options = {}) {
       if (options.search) {
         const searchTerm = `%${options.search}%`;
         whereClauses.push(
-          "(FirstName LIKE @search OR LastName LIKE @search OR Email LIKE @search OR LawFirmName LIKE @search)"
+          "(FirstName LIKE @search OR LastName LIKE @search OR Email LIKE @search OR LawFirmName LIKE @search OR StateBarNumber LIKE @search)"
         );
         request.input("search", sql.NVarChar, searchTerm);
       }
@@ -553,19 +553,36 @@ async function getAllAttorneys(options = {}) {
       const whereClause =
         whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
 
+      // Map frontend sort fields to database columns
+      const sortFieldMap = {
+        name: "(FirstName + ' ' + ISNULL(MiddleName + ' ', '') + LastName)",
+        email: "Email",
+        lawFirm: "LawFirmName",
+        status: "VerificationStatus",
+        date: "CreatedAt",
+        default: "CreatedAt",
+      };
+
+      const sortBy = options.sortBy || "default";
+      const sortOrder =
+        options.sortOrder && options.sortOrder.toUpperCase() === "ASC"
+          ? "ASC"
+          : "DESC";
+      const sortColumn = sortFieldMap[sortBy] || sortFieldMap.default;
+
       const query = `
-        SELECT 
-          AttorneyId, FirstName, MiddleName, LastName, Email, PhoneNumber, 
+        SELECT
+          AttorneyId, FirstName, MiddleName, LastName, Email, PhoneNumber,
           State, LawFirmName, StateBarNumber,
           VerificationStatus, IsVerified, TierLevel, IsActive,
           CreatedAt, LastLoginAt, UpdatedAt
         FROM dbo.Attorneys
         ${whereClause}
-        ORDER BY CreatedAt DESC
+        ORDER BY ${sortColumn} ${sortOrder}
         OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY;
 
-        SELECT COUNT(*) AS total 
-        FROM dbo.Attorneys 
+        SELECT COUNT(*) AS total
+        FROM dbo.Attorneys
         ${whereClause};
       `;
 
