@@ -230,6 +230,15 @@ export default function AdminDashboard() {
   const [attorneySortBy, setAttorneySortBy] = useState<"name" | "email" | "lawFirm" | "status" | "date" | "default">("default");
   const [attorneySortOrder, setAttorneySortOrder] = useState<"asc" | "desc">("desc");
 
+  // Juror pagination, sorting, and filtering states
+  const [jurorPageSize, setJurorPageSize] = useState(5);
+  const [jurorTotalPages, setJurorTotalPages] = useState(1);
+  const [jurorTotal, setJurorTotal] = useState(0);
+  const [loadingJurors, setLoadingJurors] = useState(false);
+  const [jurorSearchQuery, setJurorSearchQuery] = useState("");
+  const [jurorSortBy, setJurorSortBy] = useState<"name" | "email" | "county" | "state" | "status" | "date" | "default">("default");
+  const [jurorSortOrder, setJurorSortOrder] = useState<"asc" | "desc">("desc");
+
   const [showCaseRejectModal, setShowCaseRejectModal] = useState(false);
   const [rejectCaseId, setRejectCaseId] = useState<number | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
@@ -629,6 +638,24 @@ export default function AdminDashboard() {
     return () => clearTimeout(timer);
   }, [attorneySearchQuery]);
 
+  // Fetch jurors with server-side pagination, sorting, and filtering
+  useEffect(() => {
+    if (isAuthChecked) {
+      fetchJurors();
+    }
+  }, [isAuthChecked, jurorPage, jurorPageSize, jurorSortBy, jurorSortOrder, jurorFilter]);
+
+  // Debounce juror search query to avoid excessive API calls
+  useEffect(() => {
+    if (!isAuthChecked) return;
+
+    const timer = setTimeout(() => {
+      fetchJurors();
+    }, 500); // 500ms delay
+
+    return () => clearTimeout(timer);
+  }, [jurorSearchQuery]);
+
   // Enhanced fetch with error handling
   const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
     const headers = getAuthHeaders();
@@ -828,6 +855,56 @@ export default function AdminDashboard() {
       setAttorneyTotalPages(1);
     } finally {
       setLoadingAttorneys(false);
+    }
+  };
+
+  const fetchJurors = async () => {
+    setLoadingJurors(true);
+    try {
+      const params = new URLSearchParams({
+        page: jurorPage.toString(),
+        limit: jurorPageSize.toString(),
+        sortBy: jurorSortBy,
+        sortOrder: jurorSortOrder,
+      });
+
+      if (jurorSearchQuery) {
+        params.append("search", jurorSearchQuery);
+      }
+
+      if (jurorFilter !== "all") {
+        params.append("verificationStatus", jurorFilter === "verified" ? "verified" : jurorFilter === "declined" ? "declined" : "pending");
+      }
+
+      const response = await fetchWithAuth(`${API_BASE}/api/admin/jurors?${params.toString()}`);
+      const data = await response.json();
+
+      if (data.success) {
+        const jurorsList = Array.isArray(data.jurors) ? data.jurors : [];
+        setJurors(jurorsList.map((j: any) => ({
+          JurorId: j.JurorId ?? j.id,
+          Name: j.Name ?? j.name,
+          Email: j.Email ?? j.email,
+          County: j.County ?? j.county,
+          State: j.State ?? j.state,
+          IsVerified: j.IsVerified ?? j.verified,
+          Status: j.Status ?? j.status,
+          IsActive: j.IsActive ?? j.isActive,
+          OnboardingCompleted: j.OnboardingCompleted ?? j.onboardingCompleted,
+          CreatedAt: j.CreatedAt ?? j.createdAt,
+          VerificationStatus: j.VerificationStatus,
+          CriteriaResponses: j.CriteriaResponses ?? j.criteriaResponses ?? [],
+        })));
+        setJurorTotal(data.total || 0);
+        setJurorTotalPages(data.totalPages || 1);
+      }
+    } catch (error) {
+      console.error("Error fetching jurors:", error);
+      setJurors([]);
+      setJurorTotal(0);
+      setJurorTotalPages(1);
+    } finally {
+      setLoadingJurors(false);
     }
   };
 
@@ -1110,11 +1187,9 @@ export default function AdminDashboard() {
         body: JSON.stringify({ status: "verified" }),
       });
       if (response.ok) {
-        // Update juror in local state
-        setJurors((prev) =>
-          prev.map((j) => j.JurorId === jurorId ? { ...j, VerificationStatus: "verified", IsVerified: true } : j)
-        );
-        // Update stats locally instead of refetching all data
+        // Refetch jurors to update the list with server-side filtering
+        await fetchJurors();
+        // Update stats locally
         setStats((prev) => ({
           ...prev,
           verifiedJurors: prev.verifiedJurors + 1,
@@ -1160,9 +1235,8 @@ export default function AdminDashboard() {
             duration: 3000,
           });
         } else {
-          setJurors((prev) =>
-            prev.map((j) => j.JurorId === declineId ? { ...j, VerificationStatus: "declined", IsVerified: false } : j)
-          );
+          // Refetch jurors to update the list with server-side filtering
+          await fetchJurors();
           toast.success("Juror declined successfully.", {
             duration: 3000,
           });
@@ -1197,13 +1271,23 @@ export default function AdminDashboard() {
     }
   };
 
-  const filteredJurors = jurors.filter((j) => {
-    if (jurorFilter === "verified") return j.IsVerified;
-    if (jurorFilter === "not_verified") return !j.IsVerified && j.VerificationStatus !== "declined";
-    if (jurorFilter === "declined") return j.VerificationStatus === "declined";
-    return true;
-  });
-  const paginatedJurors = filteredJurors.slice((jurorPage - 1) * PAGE_SIZE, jurorPage * PAGE_SIZE);
+  const handleJurorSortChange = (column: "name" | "email" | "county" | "state" | "status" | "date" | "default") => {
+    setJurorPage(1); // Reset to first page when sorting changes
+    if (jurorSortBy === column) {
+      // Cycle through: asc -> desc -> default
+      if (jurorSortOrder === "asc") {
+        setJurorSortOrder("desc");
+      } else if (jurorSortOrder === "desc") {
+        // Go back to default sorting (by entry time)
+        setJurorSortBy("default");
+        setJurorSortOrder("desc");
+      }
+    } else {
+      // Set new column and start with ascending
+      setJurorSortBy(column);
+      setJurorSortOrder("asc");
+    }
+  };
 
   // Show auth error screen
   if (authError) {
@@ -2396,13 +2480,20 @@ function formatTime(timeString: string, scheduledDate: string) {
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold" style={{ color: BLUE }}>Jurors Management</h2>
-                  <p className="text-gray-600 text-sm">{filteredJurors.length} jurors total</p>
+                  <p className="text-gray-600 text-sm">{jurorTotal} jurors total</p>
                 </div>
               </div>
               <div className="flex items-center space-x-4">
-                <select 
-                  className="border-2 border-gray-300 rounded-lg px-4 py-2 text-sm text-black bg-white font-medium focus:border-green-500 focus:outline-none cursor-pointer" 
-                  value={jurorFilter} 
+                <input
+                  type="text"
+                  placeholder="Search by name, email, county, or state..."
+                  className="border-2 border-gray-300 rounded-lg px-4 py-2 text-sm text-black bg-white focus:border-green-500 focus:outline-none w-96"
+                  value={jurorSearchQuery}
+                  onChange={(e) => { setJurorSearchQuery(e.target.value); setJurorPage(1); }}
+                />
+                <select
+                  className="border-2 border-gray-300 rounded-lg px-4 py-2 text-sm text-black bg-white font-medium focus:border-green-500 focus:outline-none cursor-pointer"
+                  value={jurorFilter}
                   onChange={(e) => { setJurorFilter(e.target.value as any); setJurorPage(1); }}
                 >
                   <option value="all">All Jurors</option>
@@ -2413,21 +2504,78 @@ function formatTime(timeString: string, scheduledDate: string) {
               </div>
             </div>
           </div>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" style={{ maxHeight: '600px', overflowY: 'auto' }}>
             <table className="w-full">
               <thead className="bg-gray-100">
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Juror Info</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Location</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Verification</th>
+                  <th
+                    className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none"
+                    onClick={() => handleJurorSortChange("name")}
+                  >
+                    <div className="flex items-center gap-2">
+                      Juror Info
+                      {jurorSortBy === "name" ? (
+                        <span className="text-green-600 font-bold">{jurorSortOrder === "asc" ? "↑" : "↓"}</span>
+                      ) : (
+                        <span className="text-gray-400">⇅</span>
+                      )}
+                    </div>
+                  </th>
+                  <th
+                    className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none"
+                    onClick={() => handleJurorSortChange("county")}
+                  >
+                    <div className="flex items-center gap-2">
+                      Location
+                      {jurorSortBy === "county" ? (
+                        <span className="text-green-600 font-bold">{jurorSortOrder === "asc" ? "↑" : "↓"}</span>
+                      ) : (
+                        <span className="text-gray-400">⇅</span>
+                      )}
+                    </div>
+                  </th>
+                  <th
+                    className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none"
+                    onClick={() => handleJurorSortChange("status")}
+                  >
+                    <div className="flex items-center gap-2">
+                      Verification
+                      {jurorSortBy === "status" ? (
+                        <span className="text-green-600 font-bold">{jurorSortOrder === "asc" ? "↑" : "↓"}</span>
+                      ) : (
+                        <span className="text-gray-400">⇅</span>
+                      )}
+                    </div>
+                  </th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Status</th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Onboarding</th>
-                  <th className="px-6 py-4 text-sm text-gray-600">Joined</th>
+                  <th
+                    className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none"
+                    onClick={() => handleJurorSortChange("date")}
+                  >
+                    <div className="flex items-center gap-2">
+                      Joined
+                      {jurorSortBy === "date" || jurorSortBy === "default" ? (
+                        <span className="text-green-600 font-bold">{jurorSortOrder === "asc" ? "↑" : "↓"}</span>
+                      ) : (
+                        <span className="text-gray-400">⇅</span>
+                      )}
+                    </div>
+                  </th>
                   <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 bg-white">
-                {paginatedJurors.length === 0 ? (
+                {loadingJurors ? (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-16 text-center">
+                      <div className="flex flex-col items-center justify-center">
+                        <div className="animate-spin h-12 w-12 border-4 border-green-500 border-t-transparent rounded-full mb-4"></div>
+                        <p className="text-gray-500 font-medium text-lg">Loading jurors...</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : jurors.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-6 py-16 text-center">
                       <Users className="h-16 w-16 text-gray-300 mx-auto mb-4" />
@@ -2435,7 +2583,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                     </td>
                   </tr>
                 ) : (
-                  paginatedJurors.map((juror) => (
+                  jurors.map((juror) => (
                     <tr key={juror.JurorId} className="hover:bg-green-50 transition-colors">
                       <td className="px-6 py-4">
                         <div className="font-bold text-gray-900 text-lg">{juror.Name}</div>
@@ -2522,24 +2670,88 @@ function formatTime(timeString: string, scheduledDate: string) {
               </tbody>
             </table>
           </div>
-          <div className="flex justify-between items-center px-6 py-4 bg-gray-50 border-t border-gray-200">
-            <button 
-              className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer" 
-              disabled={jurorPage === 1} 
-              onClick={() => setJurorPage(jurorPage - 1)}
-            >
-              Previous
-            </button>
-            <span className="text-sm font-semibold text-black">
-              Page {jurorPage} of {Math.max(1, Math.ceil(filteredJurors.length / PAGE_SIZE))}
-            </span>
-            <button 
-              className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer" 
-              disabled={jurorPage * PAGE_SIZE >= filteredJurors.length} 
-              onClick={() => setJurorPage(jurorPage + 1)}
-            >
-              Next
-            </button>
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 px-6 py-4 bg-gray-50 border-t border-gray-200">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600 font-medium">Rows per page:</span>
+                <select
+                  className="border-2 border-gray-300 rounded-lg px-3 py-1.5 text-sm text-black bg-white font-medium focus:border-green-500 focus:outline-none"
+                  value={jurorPageSize}
+                  onChange={(e) => { setJurorPageSize(Number(e.target.value)); setJurorPage(1); }}
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={15}>15</option>
+                  <option value={20}>20</option>
+                  <option value={25}>25</option>
+                </select>
+              </div>
+              <span className="text-sm text-gray-600">
+                Showing {jurorTotal === 0 ? 0 : (jurorPage - 1) * jurorPageSize + 1} to{" "}
+                {Math.min(jurorPage * jurorPageSize, jurorTotal)} of {jurorTotal} results
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                disabled={jurorPage === 1}
+                onClick={() => setJurorPage(jurorPage - 1)}
+              >
+                Previous
+              </button>
+              <div className="flex items-center gap-1">
+                {(() => {
+                  const totalPages = Math.max(1, jurorTotalPages);
+                  const pages = [];
+
+                  if (totalPages <= 7) {
+                    // Show all pages if 7 or fewer
+                    for (let i = 1; i <= totalPages; i++) {
+                      pages.push(i);
+                    }
+                  } else {
+                    // Show first page, last page, current page and neighbors
+                    if (jurorPage <= 3) {
+                      pages.push(1, 2, 3, 4, -1, totalPages);
+                    } else if (jurorPage >= totalPages - 2) {
+                      pages.push(1, -1, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+                    } else {
+                      pages.push(1, -1, jurorPage - 1, jurorPage, jurorPage + 1, -2, totalPages);
+                    }
+                  }
+
+                  return pages.map((page, index) => {
+                    if (page === -1 || page === -2) {
+                      return (
+                        <span key={`ellipsis-${index}`} className="px-2 text-gray-500">
+                          ...
+                        </span>
+                      );
+                    }
+                    return (
+                      <button
+                        key={page}
+                        onClick={() => setJurorPage(page)}
+                        className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
+                          jurorPage === page
+                            ? "bg-green-600 text-white"
+                            : "bg-gray-200 text-black hover:bg-gray-300"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    );
+                  });
+                })()}
+              </div>
+              <button
+                className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                disabled={jurorPage >= jurorTotalPages}
+                onClick={() => setJurorPage(jurorPage + 1)}
+              >
+                Next
+              </button>
+            </div>
           </div>
         </div>
       </div>
