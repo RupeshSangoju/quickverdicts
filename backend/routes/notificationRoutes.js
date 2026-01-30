@@ -141,6 +141,50 @@ const validateNotificationFilter = (req, res, next) => {
 // ============================================
 
 /**
+ * GET /api/notifications/health
+ * Health check for notification service
+ * MUST come before parameterized routes
+ */
+router.get("/health", (req, res) => {
+  res.json({
+    success: true,
+    status: "healthy",
+    service: "notifications",
+    timestamp: new Date().toISOString(),
+  });
+});
+
+/**
+ * GET /api/notifications/stats
+ * Get notification statistics
+ * MUST come before parameterized routes
+ */
+router.get(
+  "/stats",
+  notificationReadLimiter,
+  async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const userType = req.user.type;
+
+      const Notification = require("../models/Notification");
+      const stats = await Notification.getNotificationStats(userId, userType);
+
+      res.json({
+        success: true,
+        stats,
+      });
+    } catch (error) {
+      console.error("Get notification stats error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch notification statistics",
+      });
+    }
+  }
+);
+
+/**
  * GET /api/notifications/unread-count
  * Get count of unread notifications
  * ✅ Available to both attorneys and jurors
@@ -293,48 +337,6 @@ router.post(
     }
   }
 );
-
-/**
- * GET /api/notifications/stats
- * Get notification statistics
- */
-router.get(
-  "/stats",
-  notificationReadLimiter,
-  async (req, res) => {
-    try {
-      const userId = req.user.id;
-      const userType = req.user.type;
-
-      const Notification = require("../models/Notification");
-      const stats = await Notification.getNotificationStats(userId, userType);
-
-      res.json({
-        success: true,
-        stats,
-      });
-    } catch (error) {
-      console.error("Get notification stats error:", error);
-      res.status(500).json({
-        success: false,
-        message: "Failed to fetch notification statistics",
-      });
-    }
-  }
-);
-
-/**
- * GET /api/notifications/health
- * Health check for notification service
- */
-router.get("/health", (req, res) => {
-  res.json({
-    success: true,
-    status: "healthy",
-    service: "notifications",
-    timestamp: new Date().toISOString(),
-  });
-});
 
 // ============================================
 // ERROR HANDLER
