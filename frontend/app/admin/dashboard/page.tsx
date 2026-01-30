@@ -11,6 +11,7 @@ import {
 import ConflictModal from "@/components/modals/ConflictModal";
 import { formatDateString, formatTime, formatDateTime, getDayOfWeek } from "@/lib/dateUtils";
 import { getToken, getUser, isAdmin, clearAuth } from "@/lib/apiClient";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 const BLUE = "#0A2342";
 const BG = "#FAF9F6";
@@ -231,7 +232,7 @@ export default function AdminDashboard() {
   const [attorneySortOrder, setAttorneySortOrder] = useState<"asc" | "desc">("desc");
 
   // Juror pagination, sorting, and filtering states
-  const [jurorPageSize, setJurorPageSize] = useState(5);
+  const [jurorPageSize, setJurorPageSize] = useState(10);
   const [jurorTotalPages, setJurorTotalPages] = useState(1);
   const [jurorTotal, setJurorTotal] = useState(0);
   const [loadingJurors, setLoadingJurors] = useState(false);
@@ -2222,7 +2223,7 @@ function formatTime(timeString: string, scheduledDate: string) {
               </div>
             </div>
           </div>
-          <div className="overflow-x-auto" style={{ maxHeight: '600px', overflowY: 'auto' }}>
+          <div className="overflow-x-auto" style={{ maxHeight: '500px', overflowY: 'auto' }}>
             <table className="w-full">
               <thead className="bg-gray-100 sticky top-0 z-20">
                 <tr>
@@ -2265,7 +2266,23 @@ function formatTime(timeString: string, scheduledDate: string) {
                       )}
                     </div>
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Bar Number</th>
+                  <th
+                    className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider
+                              cursor-pointer hover:bg-gray-200 transition-colors select-none whitespace-nowrap"
+                    onClick={() => handleAttorneySortChange("barNumber")}
+                  >
+                    <div className="flex items-center gap-2 whitespace-nowrap">
+                      Bar Number
+                      {attorneySortBy === "barNumber" ? (
+                        <span className="text-blue-600 font-bold">
+                          {attorneySortOrder === "asc" ? "↑" : "↓"}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">⇅</span>
+                      )}
+                    </div>
+                  </th>
+
                   <th
                     className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none"
                     onClick={() => handleAttorneySortChange("status")}
@@ -2280,18 +2297,22 @@ function formatTime(timeString: string, scheduledDate: string) {
                     </div>
                   </th>
                   <th
-                    className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none"
+                    className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider
+                              cursor-pointer hover:bg-gray-200 transition-colors select-none whitespace-nowrap"
                     onClick={() => handleAttorneySortChange("date")}
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 whitespace-nowrap">
                       Joined
-                      {attorneySortBy === "date" || attorneySortBy === "default" ? (
-                        <span className="text-blue-600 font-bold">{attorneySortOrder === "asc" ? "↑" : "↓"}</span>
+                      {attorneySortBy === "date" ? (
+                        <span className="text-blue-600 font-bold">
+                          {attorneySortOrder === "asc" ? "↑" : "↓"}
+                        </span>
                       ) : (
                         <span className="text-gray-400">⇅</span>
                       )}
                     </div>
                   </th>
+
                   <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
@@ -2334,8 +2355,8 @@ function formatTime(timeString: string, scheduledDate: string) {
                       <td className="px-6 py-4">
                         <div className="text-sm font-medium text-gray-800 leading-tight">{attorney.LawFirmName}</div>
                       </td>
-                      <td className="px-6 py-4">
-                        <span className="font-mono text-sm  text-gray-800 px-3 py-1.5 rounded">{attorney.StateBarNumber}</span>
+                      <td className="px-6 py-3 text-left font-mono text-sm font-semibold text-gray-900 whitespace-nowrap">
+                        {attorney.StateBarNumber}
                       </td>
                       <td className="px-6 py-4">
                         {attorney.VerificationStatus === "declined" ? (
@@ -2412,7 +2433,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                 disabled={attorneyPage === 1}
                 onClick={() => setAttorneyPage(attorneyPage - 1)}
               >
-                Previous
+                <ChevronLeft className="h-5 w-5" />
               </button>
               <div className="flex items-center gap-1">
                 {(() => {
@@ -2464,7 +2485,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                 disabled={attorneyPage >= attorneyTotalPages}
                 onClick={() => setAttorneyPage(attorneyPage + 1)}
               >
-                Next
+                <ChevronRight className="h-5 w-5" />
               </button>
             </div>
           </div>
