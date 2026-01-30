@@ -22,7 +22,9 @@ import {
 import toast from "react-hot-toast";
 import { getToken as getAuthToken, getUser, isAdmin } from "@/lib/apiClient";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL
+  ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api$/, '')
+  : 'http://localhost:4000';
 
 type Notification = {
   NotificationId: number;
@@ -78,10 +80,10 @@ export default function AdminNotificationsPage() {
 
     setLoading(true);
     try {
-      // ✅ Use correct backend endpoint (API_BASE already includes /api)
+      // ✅ Use correct backend endpoint
       const url = filter === "unread"
-        ? `${API_BASE}/notifications?unreadOnly=true`
-        : `${API_BASE}/notifications`;
+        ? `${API_BASE}/api/notifications?unreadOnly=true`
+        : `${API_BASE}/api/notifications`;
 
       const response = await fetch(url, {
         headers: createAuthHeaders(token),
@@ -120,7 +122,7 @@ export default function AdminNotificationsPage() {
 
     try {
       const response = await fetch(
-        `${API_BASE}/notifications/${notificationId}/read`,
+        `${API_BASE}/api/notifications/${notificationId}/read`,
         {
           method: "PUT",
           headers: createAuthHeaders(token),
@@ -148,8 +150,8 @@ export default function AdminNotificationsPage() {
     if (!token) return;
 
     try {
-      // ✅ Use correct backend endpoint (API_BASE already includes /api)
-      const response = await fetch(`${API_BASE}/notifications/read-all`, {
+      // ✅ Use correct backend endpoint
+      const response = await fetch(`${API_BASE}/api/notifications/read-all`, {
         method: "PUT",
         headers: createAuthHeaders(token),
       });
@@ -172,7 +174,7 @@ export default function AdminNotificationsPage() {
 
     try {
       const response = await fetch(
-        `${API_BASE}/notifications/${notificationId}`,
+        `${API_BASE}/api/notifications/${notificationId}`,
         {
           method: "DELETE",
           headers: createAuthHeaders(token),
