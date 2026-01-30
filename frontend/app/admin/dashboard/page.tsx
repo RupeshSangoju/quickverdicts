@@ -221,7 +221,7 @@ export default function AdminDashboard() {
   const [jurorFilter, setJurorFilter] = useState<"all" | "verified" | "not_verified" | "declined">("all");
   const [attorneyPage, setAttorneyPage] = useState(1);
   const [jurorPage, setJurorPage] = useState(1);
-  const [attorneyPageSize, setAttorneyPageSize] = useState(5);
+  const [attorneyPageSize, setAttorneyPageSize] = useState(10);
   const [attorneyTotalPages, setAttorneyTotalPages] = useState(1);
   const [attorneyTotal, setAttorneyTotal] = useState(0);
   const [loadingAttorneys, setLoadingAttorneys] = useState(false);
@@ -1253,7 +1253,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleAttorneySortChange = (column: "name" | "email" | "lawFirm" | "status" | "date" | "default") => {
+  const handleAttorneySortChange = (column: "name" | "email" | "lawFirm" | "barNumber" | "status" | "date" | "default") => {
     setAttorneyPage(1); // Reset to first page when sorting changes
     if (attorneySortBy === column) {
       // Cycle through: asc -> desc -> default
@@ -2224,10 +2224,10 @@ function formatTime(timeString: string, scheduledDate: string) {
           </div>
           <div className="overflow-x-auto" style={{ maxHeight: '600px', overflowY: 'auto' }}>
             <table className="w-full">
-              <thead className="bg-gray-100">
+              <thead className="bg-gray-100 sticky top-0 z-20">
                 <tr>
                   <th
-                    className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none"
+                    className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none whitespace-nowrap"
                     onClick={() => handleAttorneySortChange("name")}
                   >
                     <div className="flex items-center gap-2">
@@ -2316,8 +2316,8 @@ function formatTime(timeString: string, scheduledDate: string) {
                   attorneys.map((attorney) => (
                     <tr key={attorney.AttorneyId} className="hover:bg-blue-50 transition-colors">
                       <td className="px-6 py-4">
-                        <div className="font-bold text-gray-900 text-lg">{attorney.FirstName} {attorney.LastName}</div>
-                        <div className="text-sm text-gray-600">{attorney.State}</div>
+                        <div className="font-bold text-gray-900 text-base">{attorney.FirstName} {attorney.LastName}</div>
+                        <div className="text-xs text-gray-600">{attorney.State}</div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2 text-sm text-gray-700 mb-1">
@@ -2332,10 +2332,10 @@ function formatTime(timeString: string, scheduledDate: string) {
                         )}
                       </td>
                       <td className="px-6 py-4">
-                        <div className="font-medium text-gray-900">{attorney.LawFirmName}</div>
+                        <div className="text-sm font-medium text-gray-800 leading-tight">{attorney.LawFirmName}</div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="font-mono text-sm font-semibold bg-gray-200 text-gray-900 px-3 py-1.5 rounded">{attorney.StateBarNumber}</span>
+                        <span className="font-mono text-sm  text-gray-800 px-3 py-1.5 rounded">{attorney.StateBarNumber}</span>
                       </td>
                       <td className="px-6 py-4">
                         {attorney.VerificationStatus === "declined" ? (
