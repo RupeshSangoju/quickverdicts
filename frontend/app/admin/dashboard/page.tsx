@@ -763,7 +763,7 @@ export default function AdminDashboard() {
     try {
       const [dashboardRes, jurRes, casesRes, statsRes, rescheduleRes] = await Promise.all([
         fetchWithAuth(`${API_BASE}/api/admin/dashboard`),
-        fetchWithAuth(`${API_BASE}/api/admin/jurors`),
+        fetchWithAuth(`${API_BASE}/api/admin/jurors?limit=10`),
         fetchWithAuth(`${API_BASE}/api/admin/cases/pending`),
         fetchWithAuth(`${API_BASE}/api/admin/stats/comprehensive`),
         fetchWithAuth(`${API_BASE}/api/admin/reschedule-requests`),
