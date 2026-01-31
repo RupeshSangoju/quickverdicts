@@ -2409,7 +2409,7 @@ function formatTime(timeString: string, scheduledDate: string) {
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4 px-6 py-4 bg-gray-50 border-t border-gray-200">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600 font-medium">Rows per page:</span>
+                <span className="text-sm text-gray-600 font-medium">Show per page:</span>
                 <select
                   className="border-2 border-gray-300 rounded-lg px-3 py-1.5 text-sm text-black bg-white font-medium focus:border-blue-500 focus:outline-none"
                   value={attorneyPageSize}
@@ -2423,8 +2423,10 @@ function formatTime(timeString: string, scheduledDate: string) {
                 </select>
               </div>
               <span className="text-sm text-gray-600">
+                {/*
                 Showing {attorneyTotal === 0 ? 0 : (attorneyPage - 1) * attorneyPageSize + 1} to{" "}
-                {Math.min(attorneyPage * attorneyPageSize, attorneyTotal)} of {attorneyTotal} results
+                {Math.min(attorneyPage * attorneyPageSize, attorneyTotal)} of {attorneyTotal} results */}
+                of {attorneyTotal} results
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -2694,7 +2696,7 @@ function formatTime(timeString: string, scheduledDate: string) {
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4 px-6 py-4 bg-gray-50 border-t border-gray-200">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600 font-medium">Rows per page:</span>
+                <span className="text-sm text-gray-600 font-medium">Show per page:</span>
                 <select
                   className="border-2 border-gray-300 rounded-lg px-3 py-1.5 text-sm text-black bg-white font-medium focus:border-green-500 focus:outline-none"
                   value={jurorPageSize}
@@ -2708,8 +2710,10 @@ function formatTime(timeString: string, scheduledDate: string) {
                 </select>
               </div>
               <span className="text-sm text-gray-600">
+                {/*
                 Showing {jurorTotal === 0 ? 0 : (jurorPage - 1) * jurorPageSize + 1} to{" "}
-                {Math.min(jurorPage * jurorPageSize, jurorTotal)} of {jurorTotal} results
+                {Math.min(jurorPage * jurorPageSize, jurorTotal)} of {jurorTotal} results  */}
+                of {jurorTotal} results
               </span>
             </div>
             <div className="flex items-center gap-2">
