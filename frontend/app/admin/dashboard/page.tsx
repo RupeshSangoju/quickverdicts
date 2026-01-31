@@ -6,7 +6,7 @@ import {
   Users, UserCheck, Calendar, FileText, CheckCircle2, Clock, Building2,
   XCircle, Video, UserIcon, Download, ExternalLink, Bell, Activity,
   Phone, Mail, AlertCircle, TrendingUp, Eye, PlayCircle, PauseCircle,
-  MapPin, Briefcase, Trash2
+  MapPin, Briefcase, Trash2, LogOut
 } from "lucide-react";
 import ConflictModal from "@/components/modals/ConflictModal";
 import { formatDateString, formatTime, formatDateTime, getDayOfWeek } from "@/lib/dateUtils";
@@ -1670,6 +1670,10 @@ function formatTime(timeString: string, scheduledDate: string) {
               </p>
             </div>
             <div className="flex items-center gap-4">
+              <div className="text-sm text-gray-500 text-right">
+                <div className="font-semibold">Last updated</div>
+                <div>{new Date().toLocaleString()}</div>
+              </div>
               <div className="relative">
                 <button
                   onClick={() => router.push('/admin/notifications')}
@@ -1684,9 +1688,17 @@ function formatTime(timeString: string, scheduledDate: string) {
                   )}
                 </button>
               </div>
-              <div className="text-sm text-gray-500 text-right">
-                <div className="font-semibold">Last updated</div>
-                <div>{new Date().toLocaleString()}</div>
+              <div className="relative">
+                <button
+                  onClick={() => {
+                    clearAuth();
+                    router.push('/');
+                  }}
+                  className="relative p-3 rounded-full hover:bg-red-50 transition-colors"
+                  title="Sign out"
+                >
+                  <LogOut className="h-6 w-6 text-gray-700 hover:text-red-600" />
+                </button>
               </div>
             </div>
           </div>
@@ -1734,67 +1746,67 @@ function formatTime(timeString: string, scheduledDate: string) {
       <div className="max-w-7xl mx-auto px-8 py-8 space-y-8">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 ">
-          <div className="bg-white rounded-xl shadow-lg p-6 transition-all border border-gray-200">
+          <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl shadow-lg p-6 transition-all border border-blue-200 hover:shadow-xl">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-sm font-medium ">Total Attorneys</p>
-                <p className="text-4xl font-bold mt-2" style={{ color: BLUE }}>{stats.totalAttorneys}</p>
-                <p className="text-gray-500 text-xs mt-1">{stats.verifiedAttorneys} verified</p>
+                <p className="text-gray-700 text-sm font-medium ">Total Attorneys</p>
+                <p className="text-4xl font-bold mt-2 text-blue-600">{stats.totalAttorneys}</p>
+                <p className="text-gray-600 text-xs mt-1">{stats.verifiedAttorneys} verified</p>
               </div>
-              <div className="p-3 rounded-xl" style={{ backgroundColor: LIGHT_BLUE }}>
-                <Building2 className="h-8 w-8" style={{ color: BLUE }} />
+              <div className="p-3 rounded-xl bg-blue-500">
+                <Building2 className="h-8 w-8 text-white" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg p-6 transition-all border border-gray-200">
+          <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-xl shadow-lg p-6 transition-all border border-green-200 hover:shadow-xl">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-sm font-medium">Total Jurors</p>
-                <p className="text-4xl font-bold mt-2" style={{ color: BLUE }}>{stats.totalJurors}</p>
-                <p className="text-gray-500 text-xs mt-1">{stats.verifiedJurors} verified</p>
+                <p className="text-gray-700 text-sm font-medium">Total Jurors</p>
+                <p className="text-4xl font-bold mt-2 text-green-600">{stats.totalJurors}</p>
+                <p className="text-gray-600 text-xs mt-1">{stats.verifiedJurors} verified</p>
               </div>
-              <div className="p-3 rounded-xl" style={{ backgroundColor: LIGHT_BLUE }}>
-                <Users className="h-8 w-8" style={{ color: BLUE }} />
+              <div className="p-3 rounded-xl bg-green-500">
+                <Users className="h-8 w-8 text-white" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg p-6 transition-all border border-gray-200">
+          <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 rounded-xl shadow-lg p-6 transition-all border border-yellow-200 hover:shadow-xl">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-sm font-medium">Pending Cases</p>
-                <p className="text-4xl font-bold mt-2" style={{ color: BLUE }}>{stats.pendingCases}</p>
-                <p className="text-gray-500 text-xs mt-1">Need approval</p>
+                <p className="text-gray-700 text-sm font-medium">Pending Cases</p>
+                <p className="text-4xl font-bold mt-2 text-yellow-600">{stats.pendingCases}</p>
+                <p className="text-gray-600 text-xs mt-1">Need approval</p>
               </div>
-              <div className="p-3 rounded-xl" style={{ backgroundColor: LIGHT_BLUE }}>
-                <Clock className="h-8 w-8" style={{ color: BLUE }} />
+              <div className="p-3 rounded-xl bg-yellow-500">
+                <Clock className="h-8 w-8 text-white" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg p-6 transition-all border border-gray-200">
+          <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-xl shadow-lg p-6 transition-all border border-purple-200 hover:shadow-xl">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-sm font-medium">Active Trials</p>
-                <p className="text-4xl font-bold mt-2" style={{ color: BLUE }}>{stats.activeTrials}</p>
-                <p className="text-gray-500 text-xs mt-1">{stats.scheduledTrials} scheduled</p>
+                <p className="text-gray-700 text-sm font-medium">Active Trials</p>
+                <p className="text-4xl font-bold mt-2 text-purple-600">{stats.activeTrials}</p>
+                <p className="text-gray-600 text-xs mt-1">{stats.scheduledTrials} scheduled</p>
               </div>
-              <div className="p-3 rounded-xl" style={{ backgroundColor: LIGHT_BLUE }}>
-                <Video className="h-8 w-8" style={{ color: BLUE }} />
+              <div className="p-3 rounded-xl bg-purple-500">
+                <Video className="h-8 w-8 text-white" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg p-6 transition-all border border-gray-200 ">
+          <div className="bg-gradient-to-r from-amber-50 to-amber-100 rounded-xl shadow-lg p-6 transition-all border border-amber-200 hover:shadow-xl">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-sm font-medium">Reschedule Requests</p>
-                <p className="text-4xl font-bold mt-2" style={{ color: BLUE }}>{stats.pendingRescheduleRequests}</p>
-                <p className="text-gray-500 text-xs mt-1">Need review</p>
+                <p className="text-gray-700 text-sm font-medium">Reschedule Requests</p>
+                <p className="text-4xl font-bold mt-2 text-amber-600">{stats.pendingRescheduleRequests}</p>
+                <p className="text-gray-600 text-xs mt-1">Need review</p>
               </div>
-              <div className="p-3 rounded-xl" style={{ backgroundColor: LIGHT_BLUE }}>
-                <Calendar className="h-8 w-8" style={{ color: BLUE }} />
+              <div className="p-3 rounded-xl bg-amber-500">
+                <Calendar className="h-8 w-8 text-white" />
               </div>
             </div>
           </div>
