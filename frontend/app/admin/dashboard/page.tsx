@@ -231,7 +231,7 @@ export default function AdminDashboard() {
   const [attorneySortOrder, setAttorneySortOrder] = useState<"asc" | "desc">("desc");
 
   // Juror pagination, sorting, and filtering states
-  const [jurorPageSize, setJurorPageSize] = useState(5);
+  const [jurorPageSize, setJurorPageSize] = useState(10);
   const [jurorTotalPages, setJurorTotalPages] = useState(1);
   const [jurorTotal, setJurorTotal] = useState(0);
   const [loadingJurors, setLoadingJurors] = useState(false);
