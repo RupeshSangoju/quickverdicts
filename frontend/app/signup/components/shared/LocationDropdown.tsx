@@ -194,6 +194,11 @@ export function LocationDropdown({
 
       if (!isOpen) setIsOpen(true);
 
+      // If user clears the input completely, clear the selection
+      if (val === "" && value) {
+        onChange({ value: "", label: "" });
+      }
+
       // Track search (debounced via analytics)
       if (
         val.length >= 2 &&
@@ -206,7 +211,7 @@ export function LocationDropdown({
         });
       }
     },
-    [isOpen, label]
+    [isOpen, label, value, onChange]
   );
 
   const handleKeyDown = useCallback(
@@ -325,7 +330,7 @@ export function LocationDropdown({
                   : "cursor-pointer hover:border-gray-400"
               }
             `}
-            value={isOpen ? (searchTerm || selectedLabel) : selectedLabel}
+            value={isOpen ? searchTerm : selectedLabel}
             onChange={handleSearchChange}
             onClick={handleInputClick}
             onKeyDown={handleKeyDown}
