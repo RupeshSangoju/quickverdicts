@@ -2525,7 +2525,7 @@ function formatTime(timeString: string, scheduledDate: string) {
               </div>
             </div>
           </div>
-          <div className="overflow-x-auto" style={{ maxHeight: '600px', overflowY: 'auto' }}>
+          <div className="overflow-x-auto" style={{ maxHeight: '450px', overflowY: 'auto' }}>
             <table className="w-full">
               <thead className="bg-gray-100">
                 <tr>
@@ -2718,7 +2718,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                 disabled={jurorPage === 1}
                 onClick={() => setJurorPage(jurorPage - 1)}
               >
-                Previous
+                <ChevronLeft className="h-5 w-5" />
               </button>
               <div className="flex items-center gap-1">
                 {(() => {
@@ -2770,7 +2770,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                 disabled={jurorPage >= jurorTotalPages}
                 onClick={() => setJurorPage(jurorPage + 1)}
               >
-                Next
+                <ChevronRight className="h-5 w-5" />
               </button>
             </div>
           </div>
