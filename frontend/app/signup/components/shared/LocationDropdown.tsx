@@ -167,28 +167,21 @@ export function LocationDropdown({
   );
 
   const handleInputClick = useCallback(() => {
-    if (!disabled) {
-      if (!isOpen) {
-        // Opening dropdown - keep current selection visible and select text
-        setIsOpen(true);
-        setFocusedIndex(-1);
+    if (!disabled && !isOpen) {
+      // Only open if closed - don't toggle when already open
+      setIsOpen(true);
+      setFocusedIndex(-1);
 
-        // Select all text so user can start typing to search
-        setTimeout(() => {
-          inputRef.current?.select();
-        }, 0);
+      // Select all text so user can start typing to search
+      setTimeout(() => {
+        inputRef.current?.select();
+      }, 0);
 
-        // Track dropdown open
-        if (typeof window !== "undefined" && (window as any).gtag) {
-          (window as any).gtag("event", "location_dropdown_opened", {
-            location_type: label.toLowerCase(),
-          });
-        }
-      } else {
-        // Closing dropdown - reset search
-        setIsOpen(false);
-        setSearchTerm("");
-        setFocusedIndex(-1);
+      // Track dropdown open
+      if (typeof window !== "undefined" && (window as any).gtag) {
+        (window as any).gtag("event", "location_dropdown_opened", {
+          location_type: label.toLowerCase(),
+        });
       }
     }
   }, [disabled, isOpen, label]);
@@ -288,12 +281,9 @@ export function LocationDropdown({
   return (
     <div className={`mb-4 ${className}`}>
       {/* Label */}
-      <label
-        htmlFor={fieldId}
-        className="block mb-2 text-base font-medium text-[#16305B]"
-      >
+      <div className="block mb-2 text-base font-medium text-[#16305B]">
         {label} {required && <span className="text-red-500">*</span>}
-      </label>
+      </div>
 
       {/* Dropdown Container */}
       <div className="relative" ref={dropdownRef}>
