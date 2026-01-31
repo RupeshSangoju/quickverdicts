@@ -166,20 +166,32 @@ export function LocationDropdown({
     [onChange, label]
   );
 
-  const handleInputFocus = useCallback(() => {
+  const handleInputClick = useCallback(() => {
     if (!disabled) {
-      setIsOpen(true);
-      setSearchTerm("");
-      setFocusedIndex(-1);
+      if (!isOpen) {
+        // Opening dropdown - keep current selection visible and select text
+        setIsOpen(true);
+        setFocusedIndex(-1);
 
-      // Track dropdown open
-      if (typeof window !== "undefined" && (window as any).gtag) {
-        (window as any).gtag("event", "location_dropdown_opened", {
-          location_type: label.toLowerCase(),
-        });
+        // Select all text so user can start typing to search
+        setTimeout(() => {
+          inputRef.current?.select();
+        }, 0);
+
+        // Track dropdown open
+        if (typeof window !== "undefined" && (window as any).gtag) {
+          (window as any).gtag("event", "location_dropdown_opened", {
+            location_type: label.toLowerCase(),
+          });
+        }
+      } else {
+        // Closing dropdown - reset search
+        setIsOpen(false);
+        setSearchTerm("");
+        setFocusedIndex(-1);
       }
     }
-  }, [disabled, label]);
+  }, [disabled, isOpen, label]);
 
   const handleSearchChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -323,9 +335,9 @@ export function LocationDropdown({
                   : "cursor-pointer hover:border-gray-400"
               }
             `}
-            value={isOpen ? searchTerm : selectedLabel}
+            value={isOpen ? (searchTerm || selectedLabel) : selectedLabel}
             onChange={handleSearchChange}
-            onFocus={handleInputFocus}
+            onClick={handleInputClick}
             onKeyDown={handleKeyDown}
             disabled={disabled || loading}
             autoComplete="off"
