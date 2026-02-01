@@ -26,27 +26,29 @@ interface AttorneyNotificationsSectionProps {
 export default function AttorneyNotificationsSection({ onBack }: AttorneyNotificationsSectionProps) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const [refreshing, setRefreshing] = useState(false);
-  const [offset, setOffset] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [hasMore, setHasMore] = useState(false);
+  const ITEMS_PER_PAGE = 50;
 
   useEffect(() => {
-    // Reset and fetch from beginning when filter changes
-    setOffset(0);
-    setNotifications([]);
-    fetchNotifications(false, 0, true);
+    // Reset to page 1 when filter changes
+    setCurrentPage(1);
+    fetchNotifications(1);
   }, [filter]);
 
-  const fetchNotifications = async (showRefreshIndicator = false, currentOffset = offset, reset = false) => {
+  useEffect(() => {
+    fetchNotifications(currentPage);
+  }, [currentPage]);
+
+  const fetchNotifications = async (page: number, showRefreshIndicator = false) => {
     if (showRefreshIndicator) {
       setRefreshing(true);
-    } else if (reset) {
-      setLoading(true);
     } else {
-      setLoadingMore(true);
+      setLoading(true);
     }
     setError(null);
 
@@ -57,9 +59,10 @@ export default function AttorneyNotificationsSection({ onBack }: AttorneyNotific
         throw new Error("Authentication token not found. Please login again.");
       }
 
-      // Build query params
+      // Calculate offset from page number
+      const offset = (page - 1) * ITEMS_PER_PAGE;
       const unreadParam = filter === "unread" ? "&unreadOnly=true" : "";
-      const res = await fetch(`${API_BASE}/api/notifications?limit=50&offset=${currentOffset}${unreadParam}`, {
+      const res = await fetch(`${API_BASE}/api/notifications?limit=${ITEMS_PER_PAGE}&offset=${offset}${unreadParam}`, {
         headers: {
           "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json"
@@ -76,32 +79,46 @@ export default function AttorneyNotificationsSection({ onBack }: AttorneyNotific
       const data = await res.json();
 
       if (data.success) {
-        if (reset || showRefreshIndicator) {
-          setNotifications(data.notifications || []);
-        } else {
-          setNotifications(prev => [...prev, ...(data.notifications || [])]);
-        }
+        setNotifications(data.notifications || []);
         setHasMore(data.pagination?.hasMore || false);
-        setOffset(currentOffset + (data.notifications?.length || 0));
+
+        // Estimate total pages based on whether there are more results
+        if (data.pagination?.hasMore) {
+          setTotalPages(page + 1); // At least one more page
+        } else {
+          setTotalPages(page); // This is the last page
+        }
       } else {
         throw new Error(data.message || "Failed to fetch notifications");
       }
     } catch (err) {
       console.error("Failed to fetch notifications:", err);
       setError(err instanceof Error ? err.message : "Failed to load notifications");
-      if (reset) {
-        setNotifications([]);
-      }
+      setNotifications([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
-      setLoadingMore(false);
     }
   };
 
-  const loadMore = () => {
-    if (!loadingMore && hasMore) {
-      fetchNotifications(false, offset, false);
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const goToNextPage = () => {
+    if (hasMore) {
+      setCurrentPage(prev => prev + 1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const goToPrevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(prev => prev - 1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
@@ -186,8 +203,7 @@ export default function AttorneyNotificationsSection({ onBack }: AttorneyNotific
   };
 
   const handleRefresh = () => {
-    setOffset(0);
-    fetchNotifications(true, 0, true);
+    fetchNotifications(currentPage, true);
   };
 
   const formatDate = (dateString: string) => {
@@ -371,22 +387,45 @@ export default function AttorneyNotificationsSection({ onBack }: AttorneyNotific
               ))}
             </div>
 
-            {hasMore && (
-              <div className="p-4 border-t border-gray-200">
-                <button
-                  onClick={loadMore}
-                  disabled={loadingMore}
-                  className="w-full px-4 py-2.5 bg-[#16305B] text-white rounded-lg hover:bg-[#1e417a] transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loadingMore ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
-                      Loading more...
-                    </span>
-                  ) : (
-                    "Load More Notifications"
-                  )}
-                </button>
+            {totalPages > 1 && (
+              <div className="p-4 border-t border-gray-200 bg-gray-50">
+                <div className="flex items-center justify-between">
+                  <button
+                    onClick={goToPrevPage}
+                    disabled={currentPage === 1}
+                    className="px-4 py-2.5 bg-white border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+
+                  <div className="flex items-center gap-2">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                      <button
+                        key={page}
+                        onClick={() => goToPage(page)}
+                        className={`px-4 py-2 rounded-lg transition-all font-semibold ${
+                          currentPage === page
+                            ? "bg-[#16305B] text-white shadow-md"
+                            : "bg-white border-2 border-gray-300 text-gray-700 hover:bg-gray-100"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={goToNextPage}
+                    disabled={!hasMore}
+                    className="px-4 py-2.5 bg-white border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                </div>
+
+                <p className="text-center text-sm text-gray-600 mt-3 font-medium">
+                  Page {currentPage} of {totalPages} · Showing {notifications.length} notifications
+                </p>
               </div>
             )}
           </>

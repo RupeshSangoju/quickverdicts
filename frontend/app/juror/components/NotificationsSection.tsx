@@ -22,54 +22,70 @@ type Notification = {
 export default function NotificationsSection() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [filter, setFilter] = useState<"all" | "unread">("all");
-  const [offset, setOffset] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [hasMore, setHasMore] = useState(false);
+  const ITEMS_PER_PAGE = 50;
 
   useEffect(() => {
-    // Reset and fetch from beginning when filter changes
-    setOffset(0);
-    setNotifications([]);
-    fetchNotifications(0, true);
+    // Reset to page 1 when filter changes
+    setCurrentPage(1);
+    fetchNotifications(1);
   }, [filter]);
 
-  const fetchNotifications = async (currentOffset = offset, reset = false) => {
-    if (reset) {
-      setLoading(true);
-    } else {
-      setLoadingMore(true);
-    }
+  useEffect(() => {
+    fetchNotifications(currentPage);
+  }, [currentPage]);
 
+  const fetchNotifications = async (page: number) => {
+    setLoading(true);
     try {
       const token = getToken();
+      const offset = (page - 1) * ITEMS_PER_PAGE;
       const unreadParam = filter === "unread" ? "&unreadOnly=true" : "";
-      const res = await fetch(`${API_BASE}/api/notifications?limit=50&offset=${currentOffset}${unreadParam}`, {
+      const res = await fetch(`${API_BASE}/api/notifications?limit=${ITEMS_PER_PAGE}&offset=${offset}${unreadParam}`, {
         headers: {
           "Authorization": `Bearer ${token}`,
         },
       });
       const data = await res.json();
       if (data.success) {
-        if (reset) {
-          setNotifications(data.notifications);
-        } else {
-          setNotifications(prev => [...prev, ...data.notifications]);
-        }
+        setNotifications(data.notifications);
         setHasMore(data.pagination?.hasMore || false);
-        setOffset(currentOffset + data.notifications.length);
+
+        // Estimate total pages based on whether there are more results
+        if (data.pagination?.hasMore) {
+          setTotalPages(page + 1); // At least one more page
+        } else {
+          setTotalPages(page); // This is the last page
+        }
       }
     } catch (error) {
       console.error("Failed to fetch notifications:", error);
     } finally {
       setLoading(false);
-      setLoadingMore(false);
     }
   };
 
-  const loadMore = () => {
-    if (!loadingMore && hasMore) {
-      fetchNotifications(offset, false);
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const goToNextPage = () => {
+    if (hasMore) {
+      setCurrentPage(prev => prev + 1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const goToPrevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(prev => prev - 1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
@@ -220,22 +236,45 @@ export default function NotificationsSection() {
                 ))}
               </div>
 
-              {hasMore && (
-                <div className="p-4 border-t">
-                  <button
-                    onClick={loadMore}
-                    disabled={loadingMore}
-                    className="w-full px-4 py-2 bg-[#0C2D57] text-white rounded hover:bg-[#0a2345] transition disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {loadingMore ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
-                        Loading more...
-                      </span>
-                    ) : (
-                      "Load More Notifications"
-                    )}
-                  </button>
+              {totalPages > 1 && (
+                <div className="p-4 border-t bg-gray-50">
+                  <div className="flex items-center justify-between">
+                    <button
+                      onClick={goToPrevPage}
+                      disabled={currentPage === 1}
+                      className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Previous
+                    </button>
+
+                    <div className="flex items-center gap-2">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                        <button
+                          key={page}
+                          onClick={() => goToPage(page)}
+                          className={`px-3 py-2 rounded transition ${
+                            currentPage === page
+                              ? "bg-[#0C2D57] text-white font-semibold"
+                              : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={goToNextPage}
+                      disabled={!hasMore}
+                      className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
+                  </div>
+
+                  <p className="text-center text-sm text-gray-600 mt-3">
+                    Page {currentPage} of {totalPages} · Showing {notifications.length} notifications
+                  </p>
                 </div>
               )}
             </>
