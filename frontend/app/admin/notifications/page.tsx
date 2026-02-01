@@ -48,6 +48,8 @@ export default function AdminNotificationsPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "unread" | "read">("all");
   const [selectedType, setSelectedType] = useState<string | null>(null);
+  const [selectedNotifications, setSelectedNotifications] = useState<Set<number>>(new Set());
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     // Check authentication on mount
@@ -193,6 +195,79 @@ export default function AdminNotificationsPage() {
     }
   }
 
+  function toggleNotificationSelection(notificationId: number) {
+    setSelectedNotifications((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(notificationId)) {
+        newSet.delete(notificationId);
+      } else {
+        newSet.add(notificationId);
+      }
+      return newSet;
+    });
+  }
+
+  function toggleSelectAll() {
+    const displayed = selectedType
+      ? notifications.filter((n) => n.Type === selectedType)
+      : notifications;
+
+    if (selectedNotifications.size === displayed.length && displayed.length > 0) {
+      setSelectedNotifications(new Set());
+    } else {
+      setSelectedNotifications(
+        new Set(displayed.map((n) => n.NotificationId))
+      );
+    }
+  }
+
+  async function deleteSelectedNotifications() {
+    if (selectedNotifications.size === 0) {
+      toast.error("No notifications selected");
+      return;
+    }
+
+    const token = getAuthToken();
+    if (!token) return;
+
+    setIsDeleting(true);
+    try {
+      const deletePromises = Array.from(selectedNotifications).map(
+        (notificationId) =>
+          fetch(`${API_BASE}/api/notifications/${notificationId}`, {
+            method: "DELETE",
+            headers: createAuthHeaders(token),
+          })
+      );
+
+      const results = await Promise.all(deletePromises);
+      const successCount = results.filter((r) => r.ok).length;
+
+      if (successCount > 0) {
+        setNotifications((prev) =>
+          prev.filter((n) => !selectedNotifications.has(n.NotificationId))
+        );
+        setSelectedNotifications(new Set());
+        toast.success(
+          `${successCount} notification${successCount > 1 ? "s" : ""} deleted`
+        );
+      }
+
+      if (successCount < results.length) {
+        toast.error(
+          `Failed to delete ${results.length - successCount} notification${
+            results.length - successCount > 1 ? "s" : ""
+          }`
+        );
+      }
+    } catch (error) {
+      console.error("Error deleting notifications:", error);
+      toast.error("Failed to delete notifications");
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
   function getNotificationIcon(type: string) {
     switch (type) {
       case "war_room_ready":
@@ -255,11 +330,30 @@ export default function AdminNotificationsPage() {
               </div>
             </div>
             <div className="flex items-center gap-3">
+              {selectedNotifications.size > 0 && (
+                <button
+                  onClick={deleteSelectedNotifications}
+                  disabled={isDeleting}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50"
+                >
+                  {isDeleting ? (
+                    <>
+                      <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="h-4 w-4" />
+                      Delete ({selectedNotifications.size})
+                    </>
+                  )}
+                </button>
+              )}
               <button
                 onClick={fetchNotifications}
                 className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center gap-2 transition-colors cursor-pointer"
                 title="Refresh notifications"
-              > 
+              >
                 <RefreshCw className="h-4 w-4" />
                 Refresh
               </button>
@@ -281,40 +375,61 @@ export default function AdminNotificationsPage() {
       <div className="max-w-7xl mx-auto px-6 py-6">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Filter className="h-5 w-5 text-gray-600" />
-              <span className="font-semibold text-gray-700">Filter:</span>
-              <div className="flex gap-2 ml-2">
-                <button
-                  onClick={() => setFilter("all")}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                    filter === "all"
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  }`}
-                >
-                  All ({notifications.length})
-                </button>
-                <button
-                  onClick={() => setFilter("unread")}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                    filter === "unread"
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  }`}
-                >
-                  Unread ({unreadCount})
-                </button>
-                <button
-                  onClick={() => setFilter("read")}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                    filter === "read"
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  }`}
-                >
-                  Read
-                </button>
+            <div className="flex items-center gap-4">
+              {displayedNotifications.length > 0 && (
+                <div className="flex items-center gap-2 pr-4 border-r border-gray-300">
+                  <input
+                    type="checkbox"
+                    checked={
+                      selectedNotifications.size === displayedNotifications.length &&
+                      displayedNotifications.length > 0
+                    }
+                    onChange={toggleSelectAll}
+                    className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    title="Select all notifications"
+                  />
+                  <span className="text-sm text-gray-600 font-medium">
+                    {selectedNotifications.size > 0
+                      ? `${selectedNotifications.size} selected`
+                      : "Select all"}
+                  </span>
+                </div>
+              )}
+              <div className="flex items-center gap-2">
+                <Filter className="h-5 w-5 text-gray-600" />
+                <span className="font-semibold text-gray-700">Filter:</span>
+                <div className="flex gap-2 ml-2">
+                  <button
+                    onClick={() => setFilter("all")}
+                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                      filter === "all"
+                        ? "bg-blue-600 text-white"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
+                  >
+                    All ({notifications.length})
+                  </button>
+                  <button
+                    onClick={() => setFilter("unread")}
+                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                      filter === "unread"
+                        ? "bg-blue-600 text-white"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
+                  >
+                    Unread ({unreadCount})
+                  </button>
+                  <button
+                    onClick={() => setFilter("read")}
+                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                      filter === "read"
+                        ? "bg-blue-600 text-white"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
+                  >
+                    Read
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -349,11 +464,22 @@ export default function AdminNotificationsPage() {
                   notification.IsRead
                     ? "border-gray-200"
                     : "border-blue-300 bg-blue-50/50"
+                } ${
+                  selectedNotifications.has(notification.NotificationId)
+                    ? "ring-2 ring-blue-500"
+                    : ""
                 }`}
               >
                 <div className="p-6">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-start gap-4 flex-1">
+                      <input
+                        type="checkbox"
+                        checked={selectedNotifications.has(notification.NotificationId)}
+                        onChange={() => toggleNotificationSelection(notification.NotificationId)}
+                        className="mt-1 h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer flex-shrink-0"
+                        onClick={(e) => e.stopPropagation()}
+                      />
                       <div
                         className={`p-3 rounded-xl ${
                           notification.IsRead ? "bg-gray-100" : "bg-blue-100"

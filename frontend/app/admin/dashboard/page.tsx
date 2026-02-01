@@ -237,7 +237,7 @@ export default function AdminDashboard() {
   const [jurorTotal, setJurorTotal] = useState(0);
   const [loadingJurors, setLoadingJurors] = useState(false);
   const [jurorSearchQuery, setJurorSearchQuery] = useState("");
-  const [jurorSortBy, setJurorSortBy] = useState<"name" | "email" | "county" | "state" | "status" | "date" | "default">("default");
+  const [jurorSortBy, setJurorSortBy] = useState<"name" | "email" | "county" | "state" | "status" | "jurorStatus" | "onboarding" | "date" | "default">("default");
   const [jurorSortOrder, setJurorSortOrder] = useState<"asc" | "desc">("desc");
 
   const [showCaseRejectModal, setShowCaseRejectModal] = useState(false);
@@ -1272,7 +1272,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleJurorSortChange = (column: "name" | "email" | "county" | "state" | "status" | "date" | "default") => {
+  const handleJurorSortChange = (column: "name" | "email" | "county" | "state" | "status" | "jurorStatus" | "onboarding" | "date" | "default") => {
     setJurorPage(1); // Reset to first page when sorting changes
     if (jurorSortBy === column) {
       // Cycle through: asc -> desc -> default
@@ -2585,8 +2585,32 @@ function formatTime(timeString: string, scheduledDate: string) {
                       )}
                     </div>
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Onboarding</th>
+                  <th
+                    className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none"
+                    onClick={() => handleJurorSortChange("jurorStatus")}
+                  >
+                    <div className="flex items-center gap-2">
+                      Status
+                      {jurorSortBy === "jurorStatus" ? (
+                        <span className="text-green-600 font-bold">{jurorSortOrder === "asc" ? "↑" : "↓"}</span>
+                      ) : (
+                        <span className="text-gray-400">⇅</span>
+                      )}
+                    </div>
+                  </th>
+                  <th
+                    className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none"
+                    onClick={() => handleJurorSortChange("onboarding")}
+                  >
+                    <div className="flex items-center gap-2">
+                      Onboarding
+                      {jurorSortBy === "onboarding" ? (
+                        <span className="text-green-600 font-bold">{jurorSortOrder === "asc" ? "↑" : "↓"}</span>
+                      ) : (
+                        <span className="text-gray-400">⇅</span>
+                      )}
+                    </div>
+                  </th>
                   <th
                     className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none"
                     onClick={() => handleJurorSortChange("date")}
