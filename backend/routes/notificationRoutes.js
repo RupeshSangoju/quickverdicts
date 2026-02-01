@@ -338,6 +338,124 @@ router.post(
   }
 );
 
+/**
+ * POST /api/notifications/test/create-71
+ * Create 71 test notifications for pagination testing
+ * NOTE: Only available in development mode
+ */
+router.post("/test/create-71", notificationWriteLimiter, async (req, res) => {
+  try {
+    // Only allow in development
+    if (process.env.NODE_ENV === "production") {
+      return res.status(403).json({
+        success: false,
+        message: "Test endpoints not available in production",
+      });
+    }
+
+    const userId = req.user.id;
+    const userType = req.user.type;
+
+    const Notification = require("../models/Notification");
+
+    // Notification templates
+    const notificationMessages = [
+      {
+        type: Notification.NOTIFICATION_TYPES.CASE_SUBMITTED,
+        title: "New Case Submitted",
+        message: "Your case has been successfully submitted for review.",
+      },
+      {
+        type: Notification.NOTIFICATION_TYPES.APPLICATION_RECEIVED,
+        title: "Application Received",
+        message:
+          "We have received your jury application and will review it shortly.",
+      },
+      {
+        type: Notification.NOTIFICATION_TYPES.WAR_ROOM_READY,
+        title: "War Room Ready",
+        message:
+          "Your trial war room is now ready. You can access it from your dashboard.",
+      },
+      {
+        type: Notification.NOTIFICATION_TYPES.VERDICT_NEEDED,
+        title: "Verdict Required",
+        message: "Please submit your verdict for the ongoing case.",
+      },
+      {
+        type: Notification.NOTIFICATION_TYPES.CASE_APPROVED,
+        title: "Case Approved",
+        message: "Great news! Your case has been approved and scheduled.",
+      },
+      {
+        type: Notification.NOTIFICATION_TYPES.TRIAL_STARTING,
+        title: "Trial Starting Soon",
+        message: "Your trial will begin in 30 minutes. Please be ready.",
+      },
+      {
+        type: Notification.NOTIFICATION_TYPES.PAYMENT_PROCESSED,
+        title: "Payment Processed",
+        message: "Your payment has been successfully processed.",
+      },
+      {
+        type: Notification.NOTIFICATION_TYPES.VERDICT_SUBMITTED,
+        title: "Verdict Submitted",
+        message: "Thank you for submitting your verdict.",
+      },
+      {
+        type: Notification.NOTIFICATION_TYPES.CASE_COMPLETED,
+        title: "Case Completed",
+        message: "Your case has been completed successfully.",
+      },
+      {
+        type: Notification.NOTIFICATION_TYPES.ACCOUNT_VERIFIED,
+        title: "Account Verified",
+        message: "Your account has been verified and is now active.",
+      },
+    ];
+
+    // Create array of 71 notifications
+    const notifications = [];
+    for (let i = 1; i <= 71; i++) {
+      const template =
+        notificationMessages[(i - 1) % notificationMessages.length];
+
+      notifications.push({
+        userId: userId,
+        userType: userType,
+        caseId: i <= 50 ? i : null, // First 50 have case IDs
+        type: template.type,
+        title: `${template.title} #${i}`,
+        message: `${template.message} (Test notification ${i})`,
+      });
+    }
+
+    // Create notifications in bulk
+    const created = await Notification.createBulkNotifications(notifications);
+
+    res.json({
+      success: true,
+      message: `Successfully created ${created} test notifications`,
+      details: {
+        userId,
+        userType,
+        totalCreated: created,
+        pagination: {
+          page1: "50 notifications",
+          page2: "21 notifications",
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Create test notifications error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to create test notifications",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+});
+
 // ============================================
 // ERROR HANDLER
 // ============================================
