@@ -2240,8 +2240,9 @@ function formatTime(timeString: string, scheduledDate: string) {
               <thead className="bg-gray-100 sticky top-0 z-20">
                 <tr>
                   <th
-                    className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none whitespace-nowrap"
+                    className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none whitespace-nowrap sticky left-0 z-30 bg-gray-100"
                     onClick={() => handleAttorneySortChange("name")}
+                    style={{ minWidth: '200px', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.1)' }}
                   >
                     <div className="flex items-center gap-2">
                       Attorney Info
@@ -2253,8 +2254,9 @@ function formatTime(timeString: string, scheduledDate: string) {
                     </div>
                   </th>
                   <th
-                    className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none"
+                    className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none sticky z-30 bg-gray-100"
                     onClick={() => handleAttorneySortChange("email")}
+                    style={{ left: '200px', minWidth: '280px', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.1)' }}
                   >
                     <div className="flex items-center gap-2">
                       Contact
@@ -2347,12 +2349,12 @@ function formatTime(timeString: string, scheduledDate: string) {
                   </tr>
                 ) : (
                   attorneys.map((attorney) => (
-                    <tr key={attorney.AttorneyId} className="hover:bg-blue-50 transition-colors">
-                      <td className="px-6 py-4">
+                    <tr key={attorney.AttorneyId} className="group hover:bg-blue-50 transition-colors">
+                      <td className="px-6 py-4 sticky left-0 z-10 bg-white group-hover:bg-blue-50" style={{ minWidth: '200px', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.1)' }}>
                         <div className="font-bold text-gray-900 text-base">{attorney.FirstName} {attorney.LastName}</div>
                         <div className="text-xs text-gray-600">{attorney.State}</div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-6 py-4 sticky z-10 bg-white group-hover:bg-blue-50" style={{ left: '200px', minWidth: '280px', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.1)' }}>
                         <div className="flex items-center gap-2 text-sm text-gray-700 mb-1">
                           <Mail className="h-4 w-4 text-blue-500" />
                           <span>{attorney.Email}</span>
@@ -2541,11 +2543,12 @@ function formatTime(timeString: string, scheduledDate: string) {
           </div>
           <div className="overflow-x-auto" style={{ maxHeight: '450px', overflowY: 'auto' }}>
             <table className="w-full">
-              <thead className="bg-gray-100">
+              <thead className="bg-gray-100 sticky top-0 z-20">
                 <tr>
                   <th
-                    className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none"
+                    className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none sticky left-0 z-30 bg-gray-100"
                     onClick={() => handleJurorSortChange("name")}
+                    style={{ minWidth: '280px', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.1)' }}
                   >
                     <div className="flex items-center gap-2">
                       Juror Info
@@ -2619,8 +2622,8 @@ function formatTime(timeString: string, scheduledDate: string) {
                   </tr>
                 ) : (
                   jurors.map((juror) => (
-                    <tr key={juror.JurorId} className="hover:bg-green-50 transition-colors">
-                      <td className="px-6 py-4">
+                    <tr key={juror.JurorId} className="group hover:bg-green-50 transition-colors">
+                      <td className="px-6 py-4 sticky left-0 z-10 bg-white group-hover:bg-green-50" style={{ minWidth: '280px', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.1)' }}>
                         <div className="font-bold text-gray-900 text-lg">{juror.Name}</div>
                         <div className="text-sm text-gray-600">{juror.Email}</div>
                       </td>
