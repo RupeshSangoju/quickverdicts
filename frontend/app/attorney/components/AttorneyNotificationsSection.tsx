@@ -26,19 +26,27 @@ interface AttorneyNotificationsSectionProps {
 export default function AttorneyNotificationsSection({ onBack }: AttorneyNotificationsSectionProps) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const [refreshing, setRefreshing] = useState(false);
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
 
   useEffect(() => {
-    fetchNotifications();
+    // Reset and fetch from beginning when filter changes
+    setOffset(0);
+    setNotifications([]);
+    fetchNotifications(false, 0, true);
   }, [filter]);
 
-  const fetchNotifications = async (showRefreshIndicator = false) => {
+  const fetchNotifications = async (showRefreshIndicator = false, currentOffset = offset, reset = false) => {
     if (showRefreshIndicator) {
       setRefreshing(true);
-    } else {
+    } else if (reset) {
       setLoading(true);
+    } else {
+      setLoadingMore(true);
     }
     setError(null);
 
@@ -49,9 +57,9 @@ export default function AttorneyNotificationsSection({ onBack }: AttorneyNotific
         throw new Error("Authentication token not found. Please login again.");
       }
 
-      // ✅ CORRECT: Use query param for filtering
-      const unreadParam = filter === "unread" ? "?unreadOnly=true" : "";
-      const res = await fetch(`${API_BASE}/api/notifications${unreadParam}`, {
+      // Build query params
+      const unreadParam = filter === "unread" ? "&unreadOnly=true" : "";
+      const res = await fetch(`${API_BASE}/api/notifications?limit=50&offset=${currentOffset}${unreadParam}`, {
         headers: {
           "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json"
@@ -66,19 +74,34 @@ export default function AttorneyNotificationsSection({ onBack }: AttorneyNotific
       }
 
       const data = await res.json();
-      
+
       if (data.success) {
-        setNotifications(data.notifications || []);
+        if (reset || showRefreshIndicator) {
+          setNotifications(data.notifications || []);
+        } else {
+          setNotifications(prev => [...prev, ...(data.notifications || [])]);
+        }
+        setHasMore(data.pagination?.hasMore || false);
+        setOffset(currentOffset + (data.notifications?.length || 0));
       } else {
         throw new Error(data.message || "Failed to fetch notifications");
       }
     } catch (err) {
       console.error("Failed to fetch notifications:", err);
       setError(err instanceof Error ? err.message : "Failed to load notifications");
-      setNotifications([]);
+      if (reset) {
+        setNotifications([]);
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
+      setLoadingMore(false);
+    }
+  };
+
+  const loadMore = () => {
+    if (!loadingMore && hasMore) {
+      fetchNotifications(false, offset, false);
     }
   };
 
@@ -163,7 +186,8 @@ export default function AttorneyNotificationsSection({ onBack }: AttorneyNotific
   };
 
   const handleRefresh = () => {
-    fetchNotifications(true);
+    setOffset(0);
+    fetchNotifications(true, 0, true);
   };
 
   const formatDate = (dateString: string) => {
@@ -290,61 +314,82 @@ export default function AttorneyNotificationsSection({ onBack }: AttorneyNotific
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-200">
-            {notifications.map((notification) => (
-              <div
-                key={notification.NotificationId}
-                className={`p-5 hover:bg-gray-50 transition-colors ${
-                  !notification.IsRead ? "bg-blue-50 border-l-4 border-blue-500" : ""
-                }`}
-              >
-                <div className="flex items-start gap-4">
-                  <div className="flex-shrink-0 mt-1">
-                    {getNotificationIcon(notification.Type)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-4 mb-2">
-                      <h3 className="font-semibold text-[#16305B] flex items-center gap-2">
-                        {notification.Title}
-                        {!notification.IsRead && (
-                          <span className="w-2 h-2 bg-blue-600 rounded-full"></span>
-                        )}
-                      </h3>
-                      <span className="text-xs text-gray-500 whitespace-nowrap">
-                        {formatDate(notification.CreatedAt)}
-                      </span>
+          <>
+            <div className="divide-y divide-gray-200">
+              {notifications.map((notification) => (
+                <div
+                  key={notification.NotificationId}
+                  className={`p-5 hover:bg-gray-50 transition-colors ${
+                    !notification.IsRead ? "bg-blue-50 border-l-4 border-blue-500" : ""
+                  }`}
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="flex-shrink-0 mt-1">
+                      {getNotificationIcon(notification.Type)}
                     </div>
-                    <p className="text-gray-700 text-sm mb-2">
-                      {notification.Message}
-                    </p>
-                    {notification.CaseTitle && (
-                      <p className="text-xs text-gray-500 mb-3">
-                        Related to: <span className="font-medium text-[#16305B]">{notification.CaseTitle}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-4 mb-2">
+                        <h3 className="font-semibold text-[#16305B] flex items-center gap-2">
+                          {notification.Title}
+                          {!notification.IsRead && (
+                            <span className="w-2 h-2 bg-blue-600 rounded-full"></span>
+                          )}
+                        </h3>
+                        <span className="text-xs text-gray-500 whitespace-nowrap">
+                          {formatDate(notification.CreatedAt)}
+                        </span>
+                      </div>
+                      <p className="text-gray-700 text-sm mb-2">
+                        {notification.Message}
                       </p>
-                    )}
-                    <div className="flex items-center gap-3 mt-3">
-                      {!notification.IsRead && (
-                        <button
-                          onClick={() => markAsRead(notification.NotificationId)}
-                          className="text-xs text-[#16305B] hover:underline font-medium flex items-center gap-1"
-                        >
-                          <CheckCircleIcon className="w-3 h-3" />
-                          Mark as Read
-                        </button>
+                      {notification.CaseTitle && (
+                        <p className="text-xs text-gray-500 mb-3">
+                          Related to: <span className="font-medium text-[#16305B]">{notification.CaseTitle}</span>
+                        </p>
                       )}
-                      <button
-                        onClick={() => deleteNotification(notification.NotificationId)}
-                        className="text-xs text-red-600 hover:underline font-medium flex items-center gap-1"
-                      >
-                        <Trash2Icon className="w-3 h-3" />
-                        Delete
-                      </button>
+                      <div className="flex items-center gap-3 mt-3">
+                        {!notification.IsRead && (
+                          <button
+                            onClick={() => markAsRead(notification.NotificationId)}
+                            className="text-xs text-[#16305B] hover:underline font-medium flex items-center gap-1"
+                          >
+                            <CheckCircleIcon className="w-3 h-3" />
+                            Mark as Read
+                          </button>
+                        )}
+                        <button
+                          onClick={() => deleteNotification(notification.NotificationId)}
+                          className="text-xs text-red-600 hover:underline font-medium flex items-center gap-1"
+                        >
+                          <Trash2Icon className="w-3 h-3" />
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
+              ))}
+            </div>
+
+            {hasMore && (
+              <div className="p-4 border-t border-gray-200">
+                <button
+                  onClick={loadMore}
+                  disabled={loadingMore}
+                  className="w-full px-4 py-2.5 bg-[#16305B] text-white rounded-lg hover:bg-[#1e417a] transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loadingMore ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+                      Loading more...
+                    </span>
+                  ) : (
+                    "Load More Notifications"
+                  )}
+                </button>
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </div>
     </main>

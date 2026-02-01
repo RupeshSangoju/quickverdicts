@@ -22,30 +22,54 @@ type Notification = {
 export default function NotificationsSection() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [filter, setFilter] = useState<"all" | "unread">("all");
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
 
   useEffect(() => {
-    fetchNotifications();
+    // Reset and fetch from beginning when filter changes
+    setOffset(0);
+    setNotifications([]);
+    fetchNotifications(0, true);
   }, [filter]);
 
-  const fetchNotifications = async () => {
-    setLoading(true);
+  const fetchNotifications = async (currentOffset = offset, reset = false) => {
+    if (reset) {
+      setLoading(true);
+    } else {
+      setLoadingMore(true);
+    }
+
     try {
       const token = getToken();
-      const unreadParam = filter === "unread" ? "?unreadOnly=true" : "";
-      const res = await fetch(`${API_BASE}/api/notifications${unreadParam}`, {
+      const unreadParam = filter === "unread" ? "&unreadOnly=true" : "";
+      const res = await fetch(`${API_BASE}/api/notifications?limit=50&offset=${currentOffset}${unreadParam}`, {
         headers: {
           "Authorization": `Bearer ${token}`,
         },
       });
       const data = await res.json();
       if (data.success) {
-        setNotifications(data.notifications);
+        if (reset) {
+          setNotifications(data.notifications);
+        } else {
+          setNotifications(prev => [...prev, ...data.notifications]);
+        }
+        setHasMore(data.pagination?.hasMore || false);
+        setOffset(currentOffset + data.notifications.length);
       }
     } catch (error) {
       console.error("Failed to fetch notifications:", error);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
+    }
+  };
+
+  const loadMore = () => {
+    if (!loadingMore && hasMore) {
+      fetchNotifications(offset, false);
     }
   };
 
@@ -153,47 +177,68 @@ export default function NotificationsSection() {
               <p className="text-gray-500">No notifications to display</p>
             </div>
           ) : (
-            <div className="divide-y">
-              {notifications.map((notification) => (
-                <div
-                  key={notification.NotificationId}
-                  className={`p-4 hover:bg-gray-50 transition cursor-pointer ${
-                    !notification.IsRead ? "bg-blue-50" : ""
-                  }`}
-                  onClick={() => !notification.IsRead && markAsRead(notification.NotificationId)}
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-semibold text-[#0C2D57]">
-                          {notification.Title}
-                        </h3>
-                        {!notification.IsRead && (
-                          <span className="w-2 h-2 bg-blue-600 rounded-full"></span>
+            <>
+              <div className="divide-y">
+                {notifications.map((notification) => (
+                  <div
+                    key={notification.NotificationId}
+                    className={`p-4 hover:bg-gray-50 transition cursor-pointer ${
+                      !notification.IsRead ? "bg-blue-50" : ""
+                    }`}
+                    onClick={() => !notification.IsRead && markAsRead(notification.NotificationId)}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-semibold text-[#0C2D57]">
+                            {notification.Title}
+                          </h3>
+                          {!notification.IsRead && (
+                            <span className="w-2 h-2 bg-blue-600 rounded-full"></span>
+                          )}
+                        </div>
+                        <p className="text-gray-700 text-sm mb-2">
+                          {notification.Message}
+                        </p>
+                        {notification.CaseTitle && (
+                          <p className="text-xs text-gray-500">
+                            Related to: <span className="font-medium">{notification.CaseTitle}</span>
+                            {notification.CaseId && <span className="text-gray-400 ml-1">(Case ID: {notification.CaseId})</span>}
+                          </p>
                         )}
                       </div>
-                      <p className="text-gray-700 text-sm mb-2">
-                        {notification.Message}
-                      </p>
-                      {notification.CaseTitle && (
-                        <p className="text-xs text-gray-500">
-                          Related to: <span className="font-medium">{notification.CaseTitle}</span>
-                          {notification.CaseId && <span className="text-gray-400 ml-1">(Case ID: {notification.CaseId})</span>}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex flex-col items-end gap-2">
-                      <span className="text-xs text-gray-500 whitespace-nowrap">
-                        {formatDate(notification.CreatedAt)}
-                      </span>
-                      {notification.IsRead && (
-                        <CheckCircleIcon className="w-4 h-4 text-green-500" />
-                      )}
+                      <div className="flex flex-col items-end gap-2">
+                        <span className="text-xs text-gray-500 whitespace-nowrap">
+                          {formatDate(notification.CreatedAt)}
+                        </span>
+                        {notification.IsRead && (
+                          <CheckCircleIcon className="w-4 h-4 text-green-500" />
+                        )}
+                      </div>
                     </div>
                   </div>
+                ))}
+              </div>
+
+              {hasMore && (
+                <div className="p-4 border-t">
+                  <button
+                    onClick={loadMore}
+                    disabled={loadingMore}
+                    className="w-full px-4 py-2 bg-[#0C2D57] text-white rounded hover:bg-[#0a2345] transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loadingMore ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+                        Loading more...
+                      </span>
+                    ) : (
+                      "Load More Notifications"
+                    )}
+                  </button>
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
         </div>
       </div>
