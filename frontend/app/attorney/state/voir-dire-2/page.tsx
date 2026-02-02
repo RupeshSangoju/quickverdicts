@@ -113,7 +113,8 @@ export default function VoirDirePart2() {
                     <button
                       type="button"
                       onClick={() => removeQuestion(idx)}
-                      className="px-3 py-2 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-colors flex items-center gap-2 border border-red-200"
+                      disabled={questions.length === 1 && !q.trim()}
+                      className="px-3 py-2 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-colors flex items-center gap-2 border border-red-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-red-50"
                       title={questions.length === 1 ? "Clear this question" : "Remove this question"}
                     >
                       <Trash2 className="w-4 h-4" />
