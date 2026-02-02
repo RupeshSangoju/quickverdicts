@@ -32,6 +32,8 @@ export default function AttorneyNotificationsSection({ onBack }: AttorneyNotific
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [hasMore, setHasMore] = useState(false);
+  const [selectedNotifications, setSelectedNotifications] = useState<Set<number>>(new Set());
+  const [isDeleting, setIsDeleting] = useState(false);
   const ITEMS_PER_PAGE = 50;
 
   useEffect(() => {
@@ -195,10 +197,71 @@ export default function AttorneyNotificationsSection({ onBack }: AttorneyNotific
       if (!res.ok) {
         throw new Error("Failed to delete notification");
       }
-      
+
       setNotifications(prev => prev.filter(n => n.NotificationId !== notificationId));
     } catch (error) {
       console.error("Failed to delete notification:", error);
+    }
+  };
+
+  const toggleNotificationSelection = (notificationId: number) => {
+    setSelectedNotifications((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(notificationId)) {
+        newSet.delete(notificationId);
+      } else {
+        newSet.add(notificationId);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedNotifications.size === notifications.length && notifications.length > 0) {
+      setSelectedNotifications(new Set());
+    } else {
+      setSelectedNotifications(new Set(notifications.map((n) => n.NotificationId)));
+    }
+  };
+
+  const deleteSelectedNotifications = async () => {
+    if (selectedNotifications.size === 0) {
+      return;
+    }
+
+    const token = getToken();
+    if (!token) return;
+
+    setIsDeleting(true);
+    try {
+      const deletePromises = Array.from(selectedNotifications).map(
+        (notificationId) =>
+          fetch(`${API_BASE}/api/notifications/${notificationId}`, {
+            method: "DELETE",
+            headers: {
+              "Authorization": `Bearer ${token}`,
+              "Content-Type": "application/json"
+            },
+          })
+      );
+
+      const results = await Promise.all(deletePromises);
+      const successCount = results.filter((r) => r.ok).length;
+
+      if (successCount > 0) {
+        setNotifications((prev) =>
+          prev.filter((n) => !selectedNotifications.has(n.NotificationId))
+        );
+        setSelectedNotifications(new Set());
+      }
+
+      if (successCount < results.length) {
+        console.error(`Failed to delete ${results.length - successCount} notifications`);
+      }
+    } catch (error) {
+      console.error("Error deleting notifications:", error);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -255,6 +318,25 @@ export default function AttorneyNotificationsSection({ onBack }: AttorneyNotific
           </div>
         </div>
         <div className="flex items-center gap-3">
+          {selectedNotifications.size > 0 && (
+            <button
+              onClick={deleteSelectedNotifications}
+              disabled={isDeleting}
+              className="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg flex items-center gap-2 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isDeleting ? (
+                <>
+                  <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2Icon className="w-4 h-4" />
+                  Delete ({selectedNotifications.size})
+                </>
+              )}
+            </button>
+          )}
           <button
             onClick={handleRefresh}
             disabled={refreshing}
@@ -331,15 +413,45 @@ export default function AttorneyNotificationsSection({ onBack }: AttorneyNotific
           </div>
         ) : (
           <>
+            {notifications.length > 0 && (
+              <div className="p-4 border-b border-gray-200 bg-gray-50 flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={
+                    selectedNotifications.size === notifications.length &&
+                    notifications.length > 0
+                  }
+                  onChange={toggleSelectAll}
+                  className="h-5 w-5 rounded border-gray-300 text-[#16305B] focus:ring-[#16305B] cursor-pointer"
+                  title="Select all notifications"
+                />
+                <span className="text-sm text-gray-700 font-medium">
+                  {selectedNotifications.size > 0
+                    ? `${selectedNotifications.size} selected`
+                    : "Select all"}
+                </span>
+              </div>
+            )}
             <div className="divide-y divide-gray-200">
               {notifications.map((notification) => (
                 <div
                   key={notification.NotificationId}
                   className={`p-5 hover:bg-gray-50 transition-colors ${
                     !notification.IsRead ? "bg-blue-50 border-l-4 border-blue-500" : ""
+                  } ${
+                    selectedNotifications.has(notification.NotificationId)
+                      ? "ring-2 ring-[#16305B] ring-inset"
+                      : ""
                   }`}
                 >
                   <div className="flex items-start gap-4">
+                    <input
+                      type="checkbox"
+                      checked={selectedNotifications.has(notification.NotificationId)}
+                      onChange={() => toggleNotificationSelection(notification.NotificationId)}
+                      className="mt-1 h-5 w-5 rounded border-gray-300 text-[#16305B] focus:ring-[#16305B] cursor-pointer flex-shrink-0"
+                      onClick={(e) => e.stopPropagation()}
+                    />
                     <div className="flex-shrink-0 mt-1">
                       {getNotificationIcon(notification.Type)}
                     </div>
