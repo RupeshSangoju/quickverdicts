@@ -84,11 +84,17 @@ export default function AttorneyNotificationsSection({ onBack }: AttorneyNotific
         setNotifications(data.notifications || []);
         setHasMore(data.pagination?.hasMore || false);
 
-        // Estimate total pages based on whether there are more results
-        if (data.pagination?.hasMore) {
-          setTotalPages(page + 1); // At least one more page
+        // Calculate total pages from total count
+        if (data.pagination?.total !== undefined) {
+          const calculatedTotalPages = Math.ceil(data.pagination.total / ITEMS_PER_PAGE);
+          setTotalPages(calculatedTotalPages);
         } else {
-          setTotalPages(page); // This is the last page
+          // Fallback to old logic if total is not available
+          if (data.pagination?.hasMore) {
+            setTotalPages(page + 1);
+          } else {
+            setTotalPages(page);
+          }
         }
       } else {
         throw new Error(data.message || "Failed to fetch notifications");

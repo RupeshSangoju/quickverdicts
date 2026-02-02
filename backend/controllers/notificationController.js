@@ -32,7 +32,7 @@ async function getNotifications(req, res) {
     const offsetNum = Math.max(parseInt(offset, 10) || 0, 0);
 
     // ✅ FIX: Pass options object with unreadOnly property instead of just the boolean
-    const notifications = await Notification.getNotificationsForUser(
+    const result = await Notification.getNotificationsForUser(
       userId,
       userType,
       {
@@ -42,15 +42,16 @@ async function getNotifications(req, res) {
       }
     );
 
-    // ✅ FIX: Remove duplicate pagination - already handled in the model
+    // ✅ FIX: Return total count for proper pagination
     res.json({
       success: true,
-      notifications: notifications,
-      count: notifications.length,
+      notifications: result.notifications,
+      count: result.notifications.length,
       pagination: {
         limit: limitNum,
         offset: offsetNum,
-        hasMore: notifications.length === limitNum, // If we got a full page, there might be more
+        total: result.total,
+        hasMore: (offsetNum + result.notifications.length) < result.total,
       },
     });
   } catch (error) {
