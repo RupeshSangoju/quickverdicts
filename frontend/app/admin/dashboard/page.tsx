@@ -599,6 +599,50 @@ export default function AdminDashboard() {
     return () => clearInterval(interval);
   }, [isAuthChecked, selectedDate]); // Added selectedDate dependency
 
+  // Inactivity logout timer - logout after 1 minute of inactivity
+  useEffect(() => {
+    if (!isAuthChecked) return;
+
+    const INACTIVITY_TIMEOUT = 60000; // 1 minute in milliseconds
+    let inactivityTimer: NodeJS.Timeout;
+
+    const resetInactivityTimer = () => {
+      // Clear existing timer
+      if (inactivityTimer) {
+        clearTimeout(inactivityTimer);
+      }
+
+      // Set new timer
+      inactivityTimer = setTimeout(() => {
+        console.log('⏱️ Inactivity timeout - logging out admin user');
+        toast.error('You have been logged out due to inactivity');
+        clearAuth();
+        router.push('/admin/login');
+      }, INACTIVITY_TIMEOUT);
+    };
+
+    // Activity events to track
+    const activityEvents = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
+
+    // Set initial timer
+    resetInactivityTimer();
+
+    // Add event listeners for user activity
+    activityEvents.forEach(event => {
+      window.addEventListener(event, resetInactivityTimer);
+    });
+
+    // Cleanup
+    return () => {
+      if (inactivityTimer) {
+        clearTimeout(inactivityTimer);
+      }
+      activityEvents.forEach(event => {
+        window.removeEventListener(event, resetInactivityTimer);
+      });
+    };
+  }, [isAuthChecked, router]);
+
   useEffect(() => {
     if (selectedDate && isAuthChecked) {
       fetchCasesForDate(selectedDate);
