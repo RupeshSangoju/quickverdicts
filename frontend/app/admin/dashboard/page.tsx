@@ -499,6 +499,21 @@ export default function AdminDashboard() {
     }
   };
 
+  // Disable background scrolling when case modal is open
+  useEffect(() => {
+    if (showCaseModal) {
+      // Save current overflow value
+      const originalOverflow = document.body.style.overflow;
+      // Prevent scrolling
+      document.body.style.overflow = 'hidden';
+
+      // Cleanup function to restore scrolling when modal closes
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [showCaseModal]);
+
   // Listen for optimistic case status updates (from war-room submit)
   useEffect(() => {
     const handler = (e: any) => {
