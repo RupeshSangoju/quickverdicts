@@ -392,7 +392,7 @@ export default function AttorneyNotificationsSection({ onBack }: AttorneyNotific
           <div className="flex-1">
             <p className="text-red-800 font-medium">{error}</p>
             <button
-              onClick={() => fetchNotifications()}
+              onClick={() => fetchNotifications(currentPage)}
               className="text-sm text-red-600 hover:text-red-800 underline mt-1"
             >
               Try again
