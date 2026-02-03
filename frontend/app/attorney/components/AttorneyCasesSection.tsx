@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowLeft, Lock, Clock, AlertCircle, Calendar, ChevronRight, Plus, RefreshCw } from "lucide-react";
+import { ArrowLeft, Lock, Clock, AlertCircle, Calendar, ChevronLeft, ChevronRight, Plus, RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { getToken } from "@/lib/apiClient";
 import { formatDateString } from "@/lib/dateUtils";
@@ -604,23 +604,64 @@ export default function AttorneyCasesSection({ onBack }: AttorneyCasesSectionPro
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex justify-center items-center mt-8 gap-4">
+            <div className="flex justify-center items-center mt-8 gap-2">
               <button
-                className="px-5 py-2.5 rounded-lg bg-white border-2 border-gray-300 text-[#16305B] font-semibold hover:bg-gray-50 hover:border-[#16305B] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
-                onClick={() => setPage(page - 1)}
+                className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 disabled={page === 1}
+                onClick={() => setPage(page - 1)}
               >
-                Previous
+                <ChevronLeft className="h-5 w-5" />
               </button>
-              <span className="text-[#16305B] font-semibold px-4">
-                Page {page} of {totalPages}
-              </span>
+              <div className="flex items-center gap-1">
+                {(() => {
+                  const pages = [];
+
+                  if (totalPages <= 7) {
+                    // Show all pages if 7 or fewer
+                    for (let i = 1; i <= totalPages; i++) {
+                      pages.push(i);
+                    }
+                  } else {
+                    // Show first page, last page, current page and neighbors
+                    if (page <= 3) {
+                      pages.push(1, 2, 3, 4, -1, totalPages);
+                    } else if (page >= totalPages - 2) {
+                      pages.push(1, -1, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+                    } else {
+                      pages.push(1, -1, page - 1, page, page + 1, -2, totalPages);
+                    }
+                  }
+
+                  return pages.map((pageNum, index) => {
+                    if (pageNum === -1 || pageNum === -2) {
+                      return (
+                        <span key={`ellipsis-${index}`} className="px-2 text-gray-500">
+                          ...
+                        </span>
+                      );
+                    }
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => setPage(pageNum)}
+                        className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
+                          page === pageNum
+                            ? "bg-[#16305B] text-white"
+                            : "bg-gray-200 text-black hover:bg-gray-300"
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  });
+                })()}
+              </div>
               <button
-                className="px-5 py-2.5 rounded-lg bg-white border-2 border-gray-300 text-[#16305B] font-semibold hover:bg-gray-50 hover:border-[#16305B] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                disabled={page >= totalPages}
                 onClick={() => setPage(page + 1)}
-                disabled={page === totalPages}
               >
-                Next
+                <ChevronRight className="h-5 w-5" />
               </button>
             </div>
           )}
