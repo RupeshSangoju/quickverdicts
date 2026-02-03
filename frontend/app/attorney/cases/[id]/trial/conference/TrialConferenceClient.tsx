@@ -851,15 +851,24 @@ export default function TrialConferenceClient() {
   };
 
   const toggleMute = async () => {
-    if (!call) return;
+    const currentCall = callRef.current;
+    if (!currentCall) {
+      console.error("No active call found");
+      return;
+    }
     try {
-      if (call.isMuted) {
-        await call.unmute();
+      console.log(`🎤 Toggling mute. Current state: ${currentCall.isMuted ? 'MUTED' : 'UNMUTED'}`);
+      if (currentCall.isMuted) {
+        await currentCall.unmute();
+        setIsMuted(false);
+        console.log("✅ Unmuted successfully");
       } else {
-        await call.mute();
+        await currentCall.mute();
+        setIsMuted(true);
+        console.log("✅ Muted successfully");
       }
     } catch (err) {
-      console.error("Toggle mute error:", err);
+      console.error("❌ Toggle mute error:", err);
     }
   };
 

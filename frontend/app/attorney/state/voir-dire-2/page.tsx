@@ -8,8 +8,15 @@ import Stepper from "../../components/Stepper";
 import FormContainer from "../../components/FormContainer";
 import { Trash2 } from "lucide-react";
 
+type QuestionType = "yesno" | "text";
+
+type VoirDireQuestion = {
+  question: string;
+  type: QuestionType;
+};
+
 export default function VoirDirePart2() {
-  const [questions, setQuestions] = useState<string[]>([""]);
+  const [questions, setQuestions] = useState<VoirDireQuestion[]>([{ question: "", type: "yesno" }]);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
@@ -20,7 +27,12 @@ export default function VoirDirePart2() {
       try {
         const parsed = JSON.parse(saved);
         if (parsed && parsed.length > 0) {
-          setQuestions(parsed);
+          // Handle legacy string array format
+          if (typeof parsed[0] === 'string') {
+            setQuestions(parsed.map((q: string) => ({ question: q, type: "yesno" as QuestionType })));
+          } else {
+            setQuestions(parsed);
+          }
         }
       } catch (e) {
         // Keep default
@@ -28,20 +40,24 @@ export default function VoirDirePart2() {
     }
   }, []);
 
-  const handleChange = (idx: number, value: string) => {
+  const handleChange = (idx: number, field: "question" | "type", value: string) => {
     const newQuestions = [...questions];
-    newQuestions[idx] = value;
+    if (field === "question") {
+      newQuestions[idx].question = value;
+    } else {
+      newQuestions[idx].type = value as QuestionType;
+    }
     setQuestions(newQuestions);
   };
 
   const addQuestion = () => {
-    setQuestions([...questions, ""]);
+    setQuestions([...questions, { question: "", type: "yesno" }]);
   };
 
   const removeQuestion = (idx: number) => {
     if (questions.length === 1) {
       // Don't allow removing the last question, just clear it
-      const newQuestions = [""];
+      const newQuestions = [{ question: "", type: "yesno" as QuestionType }];
       setQuestions(newQuestions);
       setValidationErrors([]);
     } else {
@@ -54,7 +70,7 @@ export default function VoirDirePart2() {
   };
 
   const validate = () => {
-    const errors = questions.map(q => q.trim() ? "" : "Required");
+    const errors = questions.map(q => q.question.trim() ? "" : "Required");
     setValidationErrors(errors);
     return errors.every(e => !e);
   };
@@ -63,7 +79,7 @@ export default function VoirDirePart2() {
     e.preventDefault();
     if (!validate()) return;
     setIsSubmitting(true);
-    const validQuestions = questions.filter(q => q.trim());
+    const validQuestions = questions.filter(q => q.question.trim());
     localStorage.setItem("voirDire2Questions", JSON.stringify(validQuestions));
     await new Promise(resolve => setTimeout(resolve, 300));
     router.push("/attorney/state/payment-details");
@@ -87,7 +103,7 @@ export default function VoirDirePart2() {
             <h2 className="text-3xl font-medium mb-4">New Case</h2>
             <div className="text-sm leading-relaxed text-blue-100 space-y-3">
               <p>Fill in Voir Dire disqualifier questions.</p>
-              <p>Voir Dire must be written out as a "Yes / No answer" question.</p>
+              <p>Choose between "Yes/No" or "Text Response" for each question.</p>
             </div>
           </div>
         </div>
@@ -98,22 +114,15 @@ export default function VoirDirePart2() {
         <FormContainer title="Custom Voir Dire Questions">
           <form className="space-y-6" onSubmit={handleNext}>
               {questions.map((q, idx) => (
-                <div key={idx} className="mb-4">
-                  <label className="block mb-1 text-[#16305B] font-medium">
-                    Question No. {idx + 1} <span className="text-red-500">*</span>
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={q}
-                      onChange={e => handleChange(idx, e.target.value)}
-                      placeholder='Write out Voir Dire as a "Yes / No answer" question.'
-                      className="flex-1 px-4 py-2 border border-[#bfc6d1] rounded-md bg-white text-[#16305B] focus:outline-[#16305B]"
-                    />
+                <div key={idx} className="mb-6 p-4 border border-[#bfc6d1] rounded-lg bg-white">
+                  <div className="flex items-start justify-between mb-3">
+                    <label className="block text-[#16305B] font-medium">
+                      Question No. {idx + 1} <span className="text-red-500">*</span>
+                    </label>
                     <button
                       type="button"
                       onClick={() => removeQuestion(idx)}
-                      disabled={questions.length === 1 && !q.trim()}
+                      disabled={questions.length === 1 && !q.question.trim()}
                       className="px-3 py-2 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-colors flex items-center gap-2 border border-red-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-red-50"
                       title={questions.length === 1 ? "Clear this question" : "Remove this question"}
                     >
@@ -123,9 +132,48 @@ export default function VoirDirePart2() {
                       </span>
                     </button>
                   </div>
-                  {validationErrors[idx] && (
-                    <p className="text-red-500 text-sm mt-1">{validationErrors[idx]}</p>
-                  )}
+
+                  <div className="mb-3">
+                    <label className="block text-sm text-[#16305B] font-medium mb-2">Response Type</label>
+                    <div className="flex gap-4">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name={`type-${idx}`}
+                          value="yesno"
+                          checked={q.type === "yesno"}
+                          onChange={(e) => handleChange(idx, "type", e.target.value)}
+                          className="w-4 h-4 text-[#16305B] border-gray-300 focus:ring-[#16305B]"
+                        />
+                        <span className="text-sm text-[#16305B]">Yes/No</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name={`type-${idx}`}
+                          value="text"
+                          checked={q.type === "text"}
+                          onChange={(e) => handleChange(idx, "type", e.target.value)}
+                          className="w-4 h-4 text-[#16305B] border-gray-300 focus:ring-[#16305B]"
+                        />
+                        <span className="text-sm text-[#16305B]">Text Response</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm text-[#16305B] font-medium mb-2">Question</label>
+                    <input
+                      type="text"
+                      value={q.question}
+                      onChange={e => handleChange(idx, "question", e.target.value)}
+                      placeholder={q.type === "yesno" ? 'Write out Voir Dire as a "Yes/No answer" question.' : 'Write your question for text response.'}
+                      className="w-full px-4 py-2 border border-[#bfc6d1] rounded-md bg-white text-[#16305B] focus:outline-[#16305B]"
+                    />
+                    {validationErrors[idx] && (
+                      <p className="text-red-500 text-sm mt-1">{validationErrors[idx]}</p>
+                    )}
+                  </div>
                 </div>
               ))}
               <button
