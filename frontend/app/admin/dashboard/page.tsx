@@ -228,7 +228,7 @@ export default function AdminDashboard() {
   const [loadingAttorneys, setLoadingAttorneys] = useState(false);
   const PAGE_SIZE = 10;
   const [attorneySearchQuery, setAttorneySearchQuery] = useState("");
-  const [attorneySortBy, setAttorneySortBy] = useState<"name" | "email" | "lawFirm" | "status" | "date" | "default">("default");
+  const [attorneySortBy, setAttorneySortBy] = useState<"name" | "email" | "lawFirm" | "barNumber" | "status" | "date" | "default">("default");
   const [attorneySortOrder, setAttorneySortOrder] = useState<"asc" | "desc">("desc");
 
   // Juror pagination, sorting, and filtering states
