@@ -124,7 +124,8 @@ router.get("/analytics", getSystemAnalytics);
 router.get("/stats/comprehensive", async (req, res) => {
   try {
     //console.log("Fetching comprehensive stats for user:", req.user);
-    const stats = await Admin.getDashboardStats();
+    const adminId = req.user?.id || req.user?.userId;
+    const stats = await Admin.getDashboardStats(adminId);
     res.json({ success: true, stats });
   } catch (error) {
     console.error("Error fetching comprehensive stats:", error);
