@@ -56,7 +56,7 @@ export default function AdminNotificationsPage() {
     total: 0,
     hasMore: false
   });
-  const [loadingMore, setLoadingMore] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     // Check authentication on mount
@@ -66,7 +66,8 @@ export default function AdminNotificationsPage() {
       router.push("/admin/login");
       return;
     }
-    fetchNotifications();
+    setCurrentPage(1);
+    fetchNotifications(1);
   }, [filter]);
 
   function createAuthHeaders(token: string) {
@@ -76,7 +77,7 @@ export default function AdminNotificationsPage() {
     };
   }
 
-  async function fetchNotifications(loadMore = false) {
+  async function fetchNotifications(page = 1) {
     const token = getAuthToken();
     const user = getUser();
 
@@ -87,16 +88,10 @@ export default function AdminNotificationsPage() {
       return;
     }
 
-    if (loadMore) {
-      setLoadingMore(true);
-    } else {
-      setLoading(true);
-      // Reset pagination when fetching fresh data
-      setPagination({ offset: 0, limit: 50, total: 0, hasMore: false });
-    }
+    setLoading(true);
 
     try {
-      const currentOffset = loadMore ? pagination.offset + pagination.limit : 0;
+      const currentOffset = (page - 1) * 50;
 
       // Build URL with pagination parameters
       const params = new URLSearchParams({
@@ -139,12 +134,8 @@ export default function AdminNotificationsPage() {
           });
         }
 
-        // Either append or replace notifications
-        if (loadMore) {
-          setNotifications((prev) => [...prev, ...fetchedNotifications]);
-        } else {
-          setNotifications(fetchedNotifications);
-        }
+        setNotifications(fetchedNotifications);
+        setCurrentPage(page);
       } else {
         toast.error("Failed to load notifications");
       }
@@ -153,7 +144,6 @@ export default function AdminNotificationsPage() {
       toast.error("Error loading notifications");
     } finally {
       setLoading(false);
-      setLoadingMore(false);
     }
   }
 
@@ -389,7 +379,10 @@ export default function AdminNotificationsPage() {
                 </button>
               )}
               <button
-                onClick={fetchNotifications}
+                onClick={() => {
+                  setCurrentPage(1);
+                  fetchNotifications(1);
+                }}
                 className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center gap-2 transition-colors cursor-pointer"
                 title="Refresh notifications"
               >
@@ -587,35 +580,36 @@ export default function AdminNotificationsPage() {
               </div>
             ))}
 
-            {/* Load More Button */}
-            {pagination.hasMore && !loading && (
-              <div className="flex justify-center pt-6">
-                <button
-                  onClick={() => fetchNotifications(true)}
-                  disabled={loadingMore}
-                  className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loadingMore ? (
-                    <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                      Loading more...
-                    </>
-                  ) : (
-                    <>
-                      Load More
-                      <span className="px-2 py-0.5 bg-blue-700 text-white text-xs font-bold rounded-full">
-                        {pagination.total - notifications.length} remaining
-                      </span>
-                    </>
-                  )}
-                </button>
-              </div>
-            )}
+            {/* Numbered Pagination */}
+            {!loading && pagination.total > 0 && (
+              <div className="flex flex-col items-center gap-4 pt-6">
+                <div className="flex items-center gap-2">
+                  {(() => {
+                    const totalPages = Math.ceil(pagination.total / pagination.limit);
+                    const pages = [];
 
-            {/* Pagination Info */}
-            {!loading && notifications.length > 0 && (
-              <div className="text-center pt-4 text-sm text-gray-600">
-                Showing {notifications.length} of {pagination.total} notifications
+                    for (let i = 1; i <= totalPages; i++) {
+                      pages.push(
+                        <button
+                          key={i}
+                          onClick={() => fetchNotifications(i)}
+                          className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+                            currentPage === i
+                              ? "bg-blue-600 text-white"
+                              : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-300"
+                          }`}
+                        >
+                          {i}
+                        </button>
+                      );
+                    }
+
+                    return pages;
+                  })()}
+                </div>
+                <div className="text-sm text-gray-600">
+                  Showing {((currentPage - 1) * pagination.limit) + 1}-{Math.min(currentPage * pagination.limit, pagination.total)} of {pagination.total} notifications
+                </div>
               </div>
             )}
           </div>
