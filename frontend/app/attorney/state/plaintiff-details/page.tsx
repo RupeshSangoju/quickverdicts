@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { useProtectedRoute } from "@/hooks/useProtectedRoute";
 import Stepper from "../../components/Stepper";
 import FormContainer from "../../components/FormContainer";
 
@@ -10,6 +11,7 @@ type Plaintiff = { name: string; email: string; };
 type PlaintiffGroup = { reps: Plaintiff[]; plaintiffs: Plaintiff[]; };
 
 export default function PlaintiffDetailsPage() {
+  useProtectedRoute({ requiredUserType: 'attorney' });
   const [groups, setGroups] = useState<PlaintiffGroup[]>([
     { reps: [{ name: "", email: "" }], plaintiffs: [{ name: "", email: "" }] },
   ]);

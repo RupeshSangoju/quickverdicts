@@ -5,6 +5,7 @@ import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
+import { useProtectedRoute } from "@/hooks/useProtectedRoute";
 import Stepper from "../../components/Stepper";
 import { Calendar, Clock, MapPin, Monitor, ChevronLeft, ChevronRight, CheckCircle2 } from "lucide-react";
 import { getToken } from "@/lib/apiClient";
@@ -80,6 +81,8 @@ type BlockedSlot = {
 };
 
 export default function ScheduleTrialPage() {
+  useProtectedRoute({ requiredUserType: 'attorney' });
+
   const [currentDate, setCurrentDate] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);

@@ -4,10 +4,12 @@
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import Image from "next/image";
+import { useProtectedRoute } from "@/hooks/useProtectedRoute";
 import Stepper from "../../components/Stepper";
 import FormContainer from "../../components/FormContainer";
 
 export default function CaseTypePage() {
+  useProtectedRoute({ requiredUserType: 'attorney' });
   const router = useRouter();
   const [selected, setSelected] = useState("");
 

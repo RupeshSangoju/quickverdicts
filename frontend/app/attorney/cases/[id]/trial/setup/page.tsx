@@ -2,8 +2,10 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useProtectedRoute } from "@/hooks/useProtectedRoute";
 
 export default function TrialSetupPage() {
+  useProtectedRoute({ requiredUserType: 'attorney' });
   const { id } = useParams();
   const router = useRouter();
   const caseId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";

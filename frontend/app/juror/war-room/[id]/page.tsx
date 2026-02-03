@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeftIcon, EyeIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { useProtectedRoute } from "@/hooks/useProtectedRoute";
 import { getToken, getUser } from "@/lib/apiClient";
 import { formatDateString } from "@/lib/dateUtils";
 import JurorVerdictForm from "../../cases/[id]/components/JurorVerdictForm";
@@ -120,6 +121,8 @@ function getFileExtension(filename: string): string {
 }
 
 export default function JurorWarRoomPage() {
+  useProtectedRoute({ requiredUserType: 'juror' });
+
   const { id } = useParams();
   const router = useRouter();
   const caseId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";

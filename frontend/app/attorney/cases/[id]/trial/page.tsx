@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
+import { useProtectedRoute } from "@/hooks/useProtectedRoute";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL
   ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api$/, '')
   : "http://localhost:4000";
 
@@ -16,6 +17,7 @@ function getCookie(name: string) {
 }
 
 export default function TrialBestPracticesPage() {
+  useProtectedRoute({ requiredUserType: 'attorney' });
   const { id } = useParams();
   const router = useRouter();
   const caseId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";
