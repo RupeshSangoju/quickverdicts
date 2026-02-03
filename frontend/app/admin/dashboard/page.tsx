@@ -8,6 +8,7 @@ import {
   Phone, Mail, AlertCircle, TrendingUp, Eye, PlayCircle, PauseCircle,
   MapPin, Briefcase, Trash2, LogOut
 } from "lucide-react";
+import { useProtectedRoute } from "@/hooks/useProtectedRoute";
 import ConflictModal from "@/components/modals/ConflictModal";
 import { formatDateString, formatTime, formatDateTime, getDayOfWeek } from "@/lib/dateUtils";
 import { getToken, getUser, isAdmin, clearAuth } from "@/lib/apiClient";
@@ -179,6 +180,8 @@ type TimeSlot = {
 };
 
 export default function AdminDashboard() {
+  useProtectedRoute({ requiredUserType: 'admin' });
+
   const router = useRouter();
   const [isAuthChecked, setIsAuthChecked] = useState(false);
   const [attorneys, setAttorneys] = useState<Attorney[]>([]);

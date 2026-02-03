@@ -13,6 +13,7 @@ import {
   UserIcon,
   BriefcaseIcon,
 } from "@heroicons/react/24/outline";
+import { useProtectedRoute } from "@/hooks/useProtectedRoute";
 import { formatDateString, formatTime as formatTimeUtil } from "@/lib/dateUtils";
 
 const BLUE = "#0A2342";
@@ -57,6 +58,8 @@ function getToken(): string | null {
 }
 
 export default function AdminRescheduleRequestsPage() {
+  useProtectedRoute({ requiredUserType: 'admin' });
+
   const router = useRouter();
   const [requests, setRequests] = useState<RescheduleRequest[]>([]);
   const [loading, setLoading] = useState(true);
