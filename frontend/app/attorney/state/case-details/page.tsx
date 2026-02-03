@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { X } from "lucide-react";
 import Stepper from "../../components/Stepper";
 import FormContainer from "../../components/FormContainer";
 
@@ -224,8 +225,24 @@ export default function CaseDetailsPage() {
                     }}
                     onFocus={() => setShowStateDropdown(true)}
                     placeholder="Search state..."
-                    className="w-full px-4 py-2 border border-[#bfc6d1] rounded-md bg-white text-[#16305B] focus:outline-[#16305B]"
+                    className="w-full px-4 py-2 pr-10 border border-[#bfc6d1] rounded-md bg-white text-[#16305B] focus:outline-[#16305B]"
                   />
+                  {state && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setState("");
+                        setStateCode("");
+                        setStateSearchTerm("");
+                        setCounty("");
+                        setCountySearchTerm("");
+                      }}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                      title="Clear state"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  )}
                   {showStateDropdown && filteredStates.length > 0 && (
                     <div className="absolute z-50 w-full mt-1 bg-white border border-[#bfc6d1] rounded-md shadow-lg max-h-60 overflow-y-auto">
                       {filteredStates.map((s) => (
@@ -268,8 +285,21 @@ export default function CaseDetailsPage() {
                     onFocus={() => setShowCountyDropdown(true)}
                     placeholder={countiesLoading ? "Loading counties..." : !state ? "Select state first" : "Search county..."}
                     disabled={!state || countiesLoading}
-                    className="w-full px-4 py-2 border border-[#bfc6d1] rounded-md bg-white text-[#16305B] focus:outline-[#16305B] disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    className="w-full px-4 py-2 pr-10 border border-[#bfc6d1] rounded-md bg-white text-[#16305B] focus:outline-[#16305B] disabled:bg-gray-100 disabled:cursor-not-allowed"
                   />
+                  {county && !countiesLoading && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCounty("");
+                        setCountySearchTerm("");
+                      }}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                      title="Clear county"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  )}
                   {countiesLoading && (
                     <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-[#16305B]"></div>

@@ -22,7 +22,9 @@ import {
 import toast from "react-hot-toast";
 import { getToken as getAuthToken, getUser, isAdmin } from "@/lib/apiClient";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL
+  ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api$/, '')
+  : 'http://localhost:4000';
 
 type Notification = {
   NotificationId: number;
@@ -46,6 +48,15 @@ export default function AdminNotificationsPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "unread" | "read">("all");
   const [selectedType, setSelectedType] = useState<string | null>(null);
+  const [selectedNotifications, setSelectedNotifications] = useState<Set<number>>(new Set());
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [pagination, setPagination] = useState({
+    offset: 0,
+    limit: 50,
+    total: 0,
+    hasMore: false
+  });
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     // Check authentication on mount
@@ -55,7 +66,8 @@ export default function AdminNotificationsPage() {
       router.push("/admin/login");
       return;
     }
-    fetchNotifications();
+    setCurrentPage(1);
+    fetchNotifications(1);
   }, [filter]);
 
   function createAuthHeaders(token: string) {
@@ -65,7 +77,7 @@ export default function AdminNotificationsPage() {
     };
   }
 
-  async function fetchNotifications() {
+  async function fetchNotifications(page = 1) {
     const token = getAuthToken();
     const user = getUser();
 
@@ -77,11 +89,21 @@ export default function AdminNotificationsPage() {
     }
 
     setLoading(true);
+
     try {
-      // ✅ Use correct backend endpoint (API_BASE already includes /api)
-      const url = filter === "unread"
-        ? `${API_BASE}/notifications?unreadOnly=true`
-        : `${API_BASE}/notifications`;
+      const currentOffset = (page - 1) * 50;
+
+      // Build URL with pagination parameters
+      const params = new URLSearchParams({
+        limit: '50',
+        offset: currentOffset.toString()
+      });
+
+      if (filter === "unread") {
+        params.append("unreadOnly", "true");
+      }
+
+      const url = `${API_BASE}/api/notifications?${params.toString()}`;
 
       const response = await fetch(url, {
         headers: createAuthHeaders(token),
@@ -95,14 +117,25 @@ export default function AdminNotificationsPage() {
 
       const data = await response.json();
       if (data.success) {
-        let filteredNotifications = data.notifications || [];
+        let fetchedNotifications = data.notifications || [];
 
-        // Apply read/unread filter
+        // Apply read/unread filter for "read" filter (backend doesn't support readOnly param)
         if (filter === "read") {
-          filteredNotifications = filteredNotifications.filter((n: Notification) => n.IsRead);
+          fetchedNotifications = fetchedNotifications.filter((n: Notification) => n.IsRead);
         }
 
-        setNotifications(filteredNotifications);
+        // Update pagination state
+        if (data.pagination) {
+          setPagination({
+            offset: data.pagination.offset,
+            limit: data.pagination.limit,
+            total: data.pagination.total,
+            hasMore: data.pagination.hasMore
+          });
+        }
+
+        setNotifications(fetchedNotifications);
+        setCurrentPage(page);
       } else {
         toast.error("Failed to load notifications");
       }
@@ -120,7 +153,7 @@ export default function AdminNotificationsPage() {
 
     try {
       const response = await fetch(
-        `${API_BASE}/notifications/${notificationId}/read`,
+        `${API_BASE}/api/notifications/${notificationId}/read`,
         {
           method: "PUT",
           headers: createAuthHeaders(token),
@@ -148,8 +181,8 @@ export default function AdminNotificationsPage() {
     if (!token) return;
 
     try {
-      // ✅ Use correct backend endpoint (API_BASE already includes /api)
-      const response = await fetch(`${API_BASE}/notifications/read-all`, {
+      // ✅ Use correct backend endpoint
+      const response = await fetch(`${API_BASE}/api/notifications/read-all`, {
         method: "PUT",
         headers: createAuthHeaders(token),
       });
@@ -172,7 +205,7 @@ export default function AdminNotificationsPage() {
 
     try {
       const response = await fetch(
-        `${API_BASE}/notifications/${notificationId}`,
+        `${API_BASE}/api/notifications/${notificationId}`,
         {
           method: "DELETE",
           headers: createAuthHeaders(token),
@@ -188,6 +221,79 @@ export default function AdminNotificationsPage() {
     } catch (error) {
       console.error("Error deleting notification:", error);
       toast.error("Failed to delete notification");
+    }
+  }
+
+  function toggleNotificationSelection(notificationId: number) {
+    setSelectedNotifications((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(notificationId)) {
+        newSet.delete(notificationId);
+      } else {
+        newSet.add(notificationId);
+      }
+      return newSet;
+    });
+  }
+
+  function toggleSelectAll() {
+    const displayed = selectedType
+      ? notifications.filter((n) => n.Type === selectedType)
+      : notifications;
+
+    if (selectedNotifications.size === displayed.length && displayed.length > 0) {
+      setSelectedNotifications(new Set());
+    } else {
+      setSelectedNotifications(
+        new Set(displayed.map((n) => n.NotificationId))
+      );
+    }
+  }
+
+  async function deleteSelectedNotifications() {
+    if (selectedNotifications.size === 0) {
+      toast.error("No notifications selected");
+      return;
+    }
+
+    const token = getAuthToken();
+    if (!token) return;
+
+    setIsDeleting(true);
+    try {
+      const deletePromises = Array.from(selectedNotifications).map(
+        (notificationId) =>
+          fetch(`${API_BASE}/api/notifications/${notificationId}`, {
+            method: "DELETE",
+            headers: createAuthHeaders(token),
+          })
+      );
+
+      const results = await Promise.all(deletePromises);
+      const successCount = results.filter((r) => r.ok).length;
+
+      if (successCount > 0) {
+        setNotifications((prev) =>
+          prev.filter((n) => !selectedNotifications.has(n.NotificationId))
+        );
+        setSelectedNotifications(new Set());
+        toast.success(
+          `${successCount} notification${successCount > 1 ? "s" : ""} deleted`
+        );
+      }
+
+      if (successCount < results.length) {
+        toast.error(
+          `Failed to delete ${results.length - successCount} notification${
+            results.length - successCount > 1 ? "s" : ""
+          }`
+        );
+      }
+    } catch (error) {
+      console.error("Error deleting notifications:", error);
+      toast.error("Failed to delete notifications");
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -253,8 +359,30 @@ export default function AdminNotificationsPage() {
               </div>
             </div>
             <div className="flex items-center gap-3">
+              {selectedNotifications.size > 0 && (
+                <button
+                  onClick={deleteSelectedNotifications}
+                  disabled={isDeleting}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50"
+                >
+                  {isDeleting ? (
+                    <>
+                      <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="h-4 w-4" />
+                      Delete ({selectedNotifications.size})
+                    </>
+                  )}
+                </button>
+              )}
               <button
-                onClick={fetchNotifications}
+                onClick={() => {
+                  setCurrentPage(1);
+                  fetchNotifications(1);
+                }}
                 className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center gap-2 transition-colors cursor-pointer"
                 title="Refresh notifications"
               >
@@ -279,40 +407,61 @@ export default function AdminNotificationsPage() {
       <div className="max-w-7xl mx-auto px-6 py-6">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Filter className="h-5 w-5 text-gray-600" />
-              <span className="font-semibold text-gray-700">Filter:</span>
-              <div className="flex gap-2 ml-2">
-                <button
-                  onClick={() => setFilter("all")}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                    filter === "all"
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  }`}
-                >
-                  All ({notifications.length})
-                </button>
-                <button
-                  onClick={() => setFilter("unread")}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                    filter === "unread"
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  }`}
-                >
-                  Unread ({unreadCount})
-                </button>
-                <button
-                  onClick={() => setFilter("read")}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                    filter === "read"
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  }`}
-                >
-                  Read
-                </button>
+            <div className="flex items-center gap-4">
+              {displayedNotifications.length > 0 && (
+                <div className="flex items-center gap-2 pr-4 border-r border-gray-300">
+                  <input
+                    type="checkbox"
+                    checked={
+                      selectedNotifications.size === displayedNotifications.length &&
+                      displayedNotifications.length > 0
+                    }
+                    onChange={toggleSelectAll}
+                    className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    title="Select all notifications"
+                  />
+                  <span className="text-sm text-gray-600 font-medium">
+                    {selectedNotifications.size > 0
+                      ? `${selectedNotifications.size} selected`
+                      : "Select all"}
+                  </span>
+                </div>
+              )}
+              <div className="flex items-center gap-2">
+                <Filter className="h-5 w-5 text-gray-600" />
+                <span className="font-semibold text-gray-700">Filter:</span>
+                <div className="flex gap-2 ml-2">
+                  <button
+                    onClick={() => setFilter("all")}
+                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                      filter === "all"
+                        ? "bg-blue-600 text-white"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
+                  >
+                    All ({notifications.length})
+                  </button>
+                  <button
+                    onClick={() => setFilter("unread")}
+                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                      filter === "unread"
+                        ? "bg-blue-600 text-white"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
+                  >
+                    Unread ({unreadCount})
+                  </button>
+                  <button
+                    onClick={() => setFilter("read")}
+                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                      filter === "read"
+                        ? "bg-blue-600 text-white"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
+                  >
+                    Read
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -347,11 +496,22 @@ export default function AdminNotificationsPage() {
                   notification.IsRead
                     ? "border-gray-200"
                     : "border-blue-300 bg-blue-50/50"
+                } ${
+                  selectedNotifications.has(notification.NotificationId)
+                    ? "ring-2 ring-blue-500"
+                    : ""
                 }`}
               >
                 <div className="p-6">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-start gap-4 flex-1">
+                      <input
+                        type="checkbox"
+                        checked={selectedNotifications.has(notification.NotificationId)}
+                        onChange={() => toggleNotificationSelection(notification.NotificationId)}
+                        className="mt-1 h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer flex-shrink-0"
+                        onClick={(e) => e.stopPropagation()}
+                      />
                       <div
                         className={`p-3 rounded-xl ${
                           notification.IsRead ? "bg-gray-100" : "bg-blue-100"
@@ -419,6 +579,39 @@ export default function AdminNotificationsPage() {
                 </div>
               </div>
             ))}
+
+            {/* Numbered Pagination */}
+            {!loading && pagination.total > 0 && (
+              <div className="flex flex-col items-center gap-4 pt-6">
+                <div className="flex items-center gap-2">
+                  {(() => {
+                    const totalPages = Math.ceil(pagination.total / pagination.limit);
+                    const pages = [];
+
+                    for (let i = 1; i <= totalPages; i++) {
+                      pages.push(
+                        <button
+                          key={i}
+                          onClick={() => fetchNotifications(i)}
+                          className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+                            currentPage === i
+                              ? "bg-blue-600 text-white"
+                              : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-300"
+                          }`}
+                        >
+                          {i}
+                        </button>
+                      );
+                    }
+
+                    return pages;
+                  })()}
+                </div>
+                <div className="text-sm text-gray-600">
+                  Showing {((currentPage - 1) * pagination.limit) + 1}-{Math.min(currentPage * pagination.limit, pagination.total)} of {pagination.total} notifications
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

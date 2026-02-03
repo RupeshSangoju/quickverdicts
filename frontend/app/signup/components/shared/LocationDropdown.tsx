@@ -166,11 +166,16 @@ export function LocationDropdown({
     [onChange, label]
   );
 
-  const handleInputFocus = useCallback(() => {
-    if (!disabled) {
+  const handleInputClick = useCallback(() => {
+    if (!disabled && !isOpen) {
+      // Only open if closed - don't toggle when already open
       setIsOpen(true);
-      setSearchTerm("");
       setFocusedIndex(-1);
+
+      // Select all text so user can start typing to search
+      setTimeout(() => {
+        inputRef.current?.select();
+      }, 0);
 
       // Track dropdown open
       if (typeof window !== "undefined" && (window as any).gtag) {
@@ -179,7 +184,7 @@ export function LocationDropdown({
         });
       }
     }
-  }, [disabled, label]);
+  }, [disabled, isOpen, label]);
 
   const handleSearchChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -188,6 +193,11 @@ export function LocationDropdown({
       setFocusedIndex(-1);
 
       if (!isOpen) setIsOpen(true);
+
+      // If user clears the input completely, clear the selection
+      if (val === "" && value) {
+        onChange({ value: "", label: "" });
+      }
 
       // Track search (debounced via analytics)
       if (
@@ -201,7 +211,7 @@ export function LocationDropdown({
         });
       }
     },
-    [isOpen, label]
+    [isOpen, label, value, onChange]
   );
 
   const handleKeyDown = useCallback(
@@ -276,12 +286,9 @@ export function LocationDropdown({
   return (
     <div className={`mb-4 ${className}`}>
       {/* Label */}
-      <label
-        htmlFor={fieldId}
-        className="block mb-2 text-base font-medium text-[#16305B]"
-      >
+      <div className="block mb-2 text-base font-medium text-[#16305B]">
         {label} {required && <span className="text-red-500">*</span>}
-      </label>
+      </div>
 
       {/* Dropdown Container */}
       <div className="relative" ref={dropdownRef}>
@@ -325,7 +332,7 @@ export function LocationDropdown({
             `}
             value={isOpen ? searchTerm : selectedLabel}
             onChange={handleSearchChange}
-            onFocus={handleInputFocus}
+            onClick={handleInputClick}
             onKeyDown={handleKeyDown}
             disabled={disabled || loading}
             autoComplete="off"

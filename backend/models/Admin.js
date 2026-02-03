@@ -637,10 +637,12 @@ async function getAuditLogs(options = {}) {
 // ADMIN DASHBOARD STATISTICS
 // ============================================
 
-async function getDashboardStats() {
+async function getDashboardStats(userId) {
   try {
     return await executeQuery(async (pool) => {
-      const result = await pool.request().query(`
+      const result = await pool.request()
+        .input("userId", sql.Int, userId)
+        .query(`
         SELECT
           (SELECT COUNT(*) FROM dbo.Attorneys WHERE IsVerified = 1 AND IsDeleted = 0 AND IsActive = 1) AS VerifiedAttorneys,
           (SELECT COUNT(*) FROM dbo.Attorneys WHERE IsVerified = 0 AND IsDeleted = 0 AND IsActive = 1) AS PendingAttorneys,
@@ -650,7 +652,7 @@ async function getDashboardStats() {
           (SELECT COUNT(*) FROM dbo.Cases WHERE AdminApprovalStatus = 'approved' AND IsDeleted = 0) AS ApprovedCases,
           (SELECT COUNT(*) FROM dbo.TrialMeetings WHERE Status = 'active') AS ActiveTrials,
           (SELECT COUNT(*) FROM dbo.TrialMeetings WHERE Status = 'created') AS ScheduledTrials,
-          (SELECT COUNT(*) FROM dbo.Notifications WHERE IsRead = 0 AND UserType = 'admin') AS UnreadNotifications,
+          (SELECT COUNT(*) FROM dbo.Notifications WHERE IsRead = 0 AND UserType = 'admin' AND UserId = @userId) AS UnreadNotifications,
           (SELECT COUNT(*)
            FROM dbo.Cases c
            LEFT JOIN dbo.Attorneys a ON c.AttorneyId = a.AttorneyId

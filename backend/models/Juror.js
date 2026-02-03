@@ -660,26 +660,45 @@ async function getAllJurors(options = {}) {
 
       if (options.search) {
         const searchTerm = `%${options.search}%`;
-        whereClauses.push("(Name LIKE @search OR Email LIKE @search)");
+        whereClauses.push("(Name LIKE @search OR Email LIKE @search OR County LIKE @search OR State LIKE @search)");
         request.input("search", sql.NVarChar, searchTerm);
       }
 
       const whereClause =
         whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
 
+      // Sorting support
+      const sortFieldMap = {
+        name: "Name",
+        email: "Email",
+        county: "County",
+        state: "State",
+        verificationStatus: "VerificationStatus",
+        createdAt: "CreatedAt",
+        lastLoginAt: "LastLoginAt",
+        default: "CreatedAt",
+      };
+
+      const sortBy = options.sortBy || "default";
+      const sortOrder =
+        options.sortOrder && options.sortOrder.toLowerCase() === "asc"
+          ? "ASC"
+          : "DESC";
+      const sortColumn = sortFieldMap[sortBy] || sortFieldMap.default;
+
       const query = `
-        SELECT 
+        SELECT
           JurorId, Name, Email, County, State, PhoneNumber,
           VerificationStatus, IsVerified, IsActive,
           OnboardingCompleted, IntroVideoCompleted, JurorQuizCompleted, ProfileComplete,
           CreatedAt, LastLoginAt, UpdatedAt
         FROM dbo.Jurors
         ${whereClause}
-        ORDER BY CreatedAt DESC
+        ORDER BY ${sortColumn} ${sortOrder}
         OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY;
 
-        SELECT COUNT(*) AS total 
-        FROM dbo.Jurors 
+        SELECT COUNT(*) AS total
+        FROM dbo.Jurors
         ${whereClause};
       `;
 

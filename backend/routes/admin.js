@@ -124,7 +124,8 @@ router.get("/analytics", getSystemAnalytics);
 router.get("/stats/comprehensive", async (req, res) => {
   try {
     //console.log("Fetching comprehensive stats for user:", req.user);
-    const stats = await Admin.getDashboardStats();
+    const adminId = req.user?.id || req.user?.userId;
+    const stats = await Admin.getDashboardStats(adminId);
     res.json({ success: true, stats });
   } catch (error) {
     console.error("Error fetching comprehensive stats:", error);
@@ -1363,11 +1364,30 @@ router.post(
 router.get("/attorneys", async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = Math.min(100, parseInt(req.query.limit) || 20);
+    const limit = Math.min(100, parseInt(req.query.limit) || 5);
+    const sortBy = req.query.sortBy || "default";
+    const sortOrder = req.query.sortOrder || "desc";
+    const search = req.query.search || "";
+    const verificationStatus = req.query.verificationStatus || "";
 
-    console.log("Fetching attorneys - Page:", page, "Limit:", limit);
+    console.log("Fetching attorneys - Page:", page, "Limit:", limit, "SortBy:", sortBy, "SortOrder:", sortOrder);
 
-    const result = await Attorney.getAllAttorneys({ page, limit });
+    const options = {
+      page,
+      limit,
+      sortBy,
+      sortOrder,
+    };
+
+    if (search) {
+      options.search = search;
+    }
+
+    if (verificationStatus && verificationStatus !== "all") {
+      options.verificationStatus = verificationStatus;
+    }
+
+    const result = await Attorney.getAllAttorneys(options);
 
     res.json({
       success: true,
@@ -1420,11 +1440,30 @@ router.post("/attorneys/:id/verify", async (req, res) => {
 router.get("/jurors", async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = Math.min(100, parseInt(req.query.limit) || 20);
+    const limit = Math.min(100, parseInt(req.query.limit) || 5);
+    const sortBy = req.query.sortBy || "default";
+    const sortOrder = req.query.sortOrder || "desc";
+    const search = req.query.search || "";
+    const verificationStatus = req.query.verificationStatus || "";
 
-    console.log("Fetching jurors - Page:", page, "Limit:", limit);
+    console.log("Fetching jurors - Page:", page, "Limit:", limit, "SortBy:", sortBy, "SortOrder:", sortOrder);
 
-    const result = await Juror.getAllJurors({ page, limit });
+    const options = {
+      page,
+      limit,
+      sortBy,
+      sortOrder,
+    };
+
+    if (search) {
+      options.search = search;
+    }
+
+    if (verificationStatus && verificationStatus !== "all") {
+      options.verificationStatus = verificationStatus;
+    }
+
+    const result = await Juror.getAllJurors(options);
 
     res.json({
       success: true,

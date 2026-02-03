@@ -39,6 +39,7 @@ type VoirDirePart2 = {
   Id: number;
   Question: string;
   Response: string;
+  Type?: string; // "yesno" or "text"
 };
 
 function getCaseName(plaintiffGroups: string, defendantGroups: string) {
@@ -183,6 +184,7 @@ export default function JurorApplyPage() {
           const formatted = vd2Questions.map((q: any, idx: number) => ({
             Id: idx,
             Question: typeof q === 'string' ? q : (q.question || q.Question || ''),
+            Type: typeof q === 'object' && q.type ? q.type : 'yesno',
             Response: ''
           }));
           setVoirDire2Questions(formatted);
@@ -193,6 +195,7 @@ export default function JurorApplyPage() {
           const formatted = (Array.isArray(parsed) ? parsed : []).map((q: any, idx: number) => ({
             Id: idx,
             Question: typeof q === 'string' ? q : (q.question || q.Question || ''),
+            Type: typeof q === 'object' && q.type ? q.type : 'yesno',
             Response: ''
           }));
           setVoirDire2Questions(formatted);
@@ -554,36 +557,47 @@ export default function JurorApplyPage() {
                           <label className="block text-gray-800 font-semibold mb-4 leading-relaxed text-base">
                             {item.Question}
                           </label>
-                          <div className="flex gap-4">
-                            <label className="flex items-center gap-3 cursor-pointer group/radio">
-                              <div className="relative">
-                                <input
-                                  type="radio"
-                                  name={`vd2-${index}`}
-                                  value="Yes"
-                                  checked={answers[`vd2-${index}`] === "Yes"}
-                                  onChange={(e) => handleAnswerChange(`vd2-${index}`, e.target.value)}
-                                  required
-                                  className="w-5 h-5 text-[#0C2D57] border-2 border-gray-300 focus:ring-2 focus:ring-[#0C2D57] focus:ring-offset-2 cursor-pointer"
-                                />
-                              </div>
-                              <span className="text-gray-700 font-medium group-hover/radio:text-[#0C2D57] transition-colors">Yes</span>
-                            </label>
-                            <label className="flex items-center gap-3 cursor-pointer group/radio">
-                              <div className="relative">
-                                <input
-                                  type="radio"
-                                  name={`vd2-${index}`}
-                                  value="No"
-                                  checked={answers[`vd2-${index}`] === "No"}
-                                  onChange={(e) => handleAnswerChange(`vd2-${index}`, e.target.value)}
-                                  required
-                                  className="w-5 h-5 text-[#0C2D57] border-2 border-gray-300 focus:ring-2 focus:ring-[#0C2D57] focus:ring-offset-2 cursor-pointer"
-                                />
-                              </div>
-                              <span className="text-gray-700 font-medium group-hover/radio:text-[#0C2D57] transition-colors">No</span>
-                            </label>
-                          </div>
+                          {item.Type === "text" ? (
+                            <textarea
+                              value={answers[`vd2-${index}`] || ""}
+                              onChange={(e) => handleAnswerChange(`vd2-${index}`, e.target.value)}
+                              required
+                              rows={4}
+                              placeholder="Enter your response here..."
+                              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0C2D57] focus:border-[#0C2D57] text-gray-700 resize-none"
+                            />
+                          ) : (
+                            <div className="flex gap-4">
+                              <label className="flex items-center gap-3 cursor-pointer group/radio">
+                                <div className="relative">
+                                  <input
+                                    type="radio"
+                                    name={`vd2-${index}`}
+                                    value="Yes"
+                                    checked={answers[`vd2-${index}`] === "Yes"}
+                                    onChange={(e) => handleAnswerChange(`vd2-${index}`, e.target.value)}
+                                    required
+                                    className="w-5 h-5 text-[#0C2D57] border-2 border-gray-300 focus:ring-2 focus:ring-[#0C2D57] focus:ring-offset-2 cursor-pointer"
+                                  />
+                                </div>
+                                <span className="text-gray-700 font-medium group-hover/radio:text-[#0C2D57] transition-colors">Yes</span>
+                              </label>
+                              <label className="flex items-center gap-3 cursor-pointer group/radio">
+                                <div className="relative">
+                                  <input
+                                    type="radio"
+                                    name={`vd2-${index}`}
+                                    value="No"
+                                    checked={answers[`vd2-${index}`] === "No"}
+                                    onChange={(e) => handleAnswerChange(`vd2-${index}`, e.target.value)}
+                                    required
+                                    className="w-5 h-5 text-[#0C2D57] border-2 border-gray-300 focus:ring-2 focus:ring-[#0C2D57] focus:ring-offset-2 cursor-pointer"
+                                  />
+                                </div>
+                                <span className="text-gray-700 font-medium group-hover/radio:text-[#0C2D57] transition-colors">No</span>
+                              </label>
+                            </div>
+                          )}
                         </div>
                         {answers[`vd2-${index}`] && (
                           <CheckCircleIcon className="w-6 h-6 text-green-500 flex-shrink-0" />

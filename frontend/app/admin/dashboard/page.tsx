@@ -6,11 +6,12 @@ import {
   Users, UserCheck, Calendar, FileText, CheckCircle2, Clock, Building2,
   XCircle, Video, UserIcon, Download, ExternalLink, Bell, Activity,
   Phone, Mail, AlertCircle, TrendingUp, Eye, PlayCircle, PauseCircle,
-  MapPin, Briefcase, Trash2
+  MapPin, Briefcase, Trash2, LogOut
 } from "lucide-react";
 import ConflictModal from "@/components/modals/ConflictModal";
 import { formatDateString, formatTime, formatDateTime, getDayOfWeek } from "@/lib/dateUtils";
 import { getToken, getUser, isAdmin, clearAuth } from "@/lib/apiClient";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 const BLUE = "#0A2342";
 const BG = "#FAF9F6";
@@ -221,10 +222,23 @@ export default function AdminDashboard() {
   const [jurorFilter, setJurorFilter] = useState<"all" | "verified" | "not_verified" | "declined">("all");
   const [attorneyPage, setAttorneyPage] = useState(1);
   const [jurorPage, setJurorPage] = useState(1);
+  const [attorneyPageSize, setAttorneyPageSize] = useState(10);
+  const [attorneyTotalPages, setAttorneyTotalPages] = useState(1);
+  const [attorneyTotal, setAttorneyTotal] = useState(0);
+  const [loadingAttorneys, setLoadingAttorneys] = useState(false);
   const PAGE_SIZE = 10;
   const [attorneySearchQuery, setAttorneySearchQuery] = useState("");
-  const [attorneySortBy, setAttorneySortBy] = useState<"name" | "email" | "lawFirm" | "status" | "date">("date");
+  const [attorneySortBy, setAttorneySortBy] = useState<"name" | "email" | "lawFirm" | "barNumber" | "status" | "date" | "default">("default");
   const [attorneySortOrder, setAttorneySortOrder] = useState<"asc" | "desc">("desc");
+
+  // Juror pagination, sorting, and filtering states
+  const [jurorPageSize, setJurorPageSize] = useState(10);
+  const [jurorTotalPages, setJurorTotalPages] = useState(1);
+  const [jurorTotal, setJurorTotal] = useState(0);
+  const [loadingJurors, setLoadingJurors] = useState(false);
+  const [jurorSearchQuery, setJurorSearchQuery] = useState("");
+  const [jurorSortBy, setJurorSortBy] = useState<"name" | "email" | "county" | "state" | "status" | "jurorStatus" | "onboarding" | "date" | "default">("default");
+  const [jurorSortOrder, setJurorSortOrder] = useState<"asc" | "desc">("desc");
 
   const [showCaseRejectModal, setShowCaseRejectModal] = useState(false);
   const [rejectCaseId, setRejectCaseId] = useState<number | null>(null);
@@ -485,6 +499,21 @@ export default function AdminDashboard() {
     }
   };
 
+  // Disable background scrolling when case modal is open
+  useEffect(() => {
+    if (showCaseModal) {
+      // Save current overflow value
+      const originalOverflow = document.body.style.overflow;
+      // Prevent scrolling
+      document.body.style.overflow = 'hidden';
+
+      // Cleanup function to restore scrolling when modal closes
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [showCaseModal]);
+
   // Listen for optimistic case status updates (from war-room submit)
   useEffect(() => {
     const handler = (e: any) => {
@@ -522,6 +551,7 @@ export default function AdminDashboard() {
   const attorneySectionRef = useRef<HTMLDivElement>(null);
   const jurorSectionRef = useRef<HTMLDivElement>(null);
   const casesSectionRef = useRef<HTMLDivElement>(null);
+  const rescheduleRequestsSectionRef = useRef<HTMLDivElement>(null);
 
   const REJECTION_REASONS = [
     { value: "scheduling_conflict", label: "🔄 Scheduling Conflict - I'm unavailable at this time" },
@@ -569,6 +599,50 @@ export default function AdminDashboard() {
     return () => clearInterval(interval);
   }, [isAuthChecked, selectedDate]); // Added selectedDate dependency
 
+  // Inactivity logout timer - logout after 1 minute of inactivity
+  useEffect(() => {
+    if (!isAuthChecked) return;
+
+    const INACTIVITY_TIMEOUT = 60000; // 1 minute in milliseconds
+    let inactivityTimer: NodeJS.Timeout;
+
+    const resetInactivityTimer = () => {
+      // Clear existing timer
+      if (inactivityTimer) {
+        clearTimeout(inactivityTimer);
+      }
+
+      // Set new timer
+      inactivityTimer = setTimeout(() => {
+        console.log('⏱️ Inactivity timeout - logging out admin user');
+        toast.error('You have been logged out due to inactivity');
+        clearAuth();
+        router.push('/admin/login');
+      }, INACTIVITY_TIMEOUT);
+    };
+
+    // Activity events to track
+    const activityEvents = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
+
+    // Set initial timer
+    resetInactivityTimer();
+
+    // Add event listeners for user activity
+    activityEvents.forEach(event => {
+      window.addEventListener(event, resetInactivityTimer);
+    });
+
+    // Cleanup
+    return () => {
+      if (inactivityTimer) {
+        clearTimeout(inactivityTimer);
+      }
+      activityEvents.forEach(event => {
+        window.removeEventListener(event, resetInactivityTimer);
+      });
+    };
+  }, [isAuthChecked, router]);
+
   useEffect(() => {
     if (selectedDate && isAuthChecked) {
       fetchCasesForDate(selectedDate);
@@ -605,6 +679,42 @@ export default function AdminDashboard() {
       }
     };
   }, [isAuthChecked, selectedDate]);
+
+  // Fetch attorneys with server-side pagination, sorting, and filtering
+  useEffect(() => {
+    if (isAuthChecked) {
+      fetchAttorneys();
+    }
+  }, [isAuthChecked, attorneyPage, attorneyPageSize, attorneySortBy, attorneySortOrder, attorneyFilter]);
+
+  // Debounce search query to avoid excessive API calls
+  useEffect(() => {
+    if (!isAuthChecked) return;
+
+    const timer = setTimeout(() => {
+      fetchAttorneys();
+    }, 500); // 500ms delay
+
+    return () => clearTimeout(timer);
+  }, [attorneySearchQuery]);
+
+  // Fetch jurors with server-side pagination, sorting, and filtering
+  useEffect(() => {
+    if (isAuthChecked) {
+      fetchJurors();
+    }
+  }, [isAuthChecked, jurorPage, jurorPageSize, jurorSortBy, jurorSortOrder, jurorFilter]);
+
+  // Debounce juror search query to avoid excessive API calls
+  useEffect(() => {
+    if (!isAuthChecked) return;
+
+    const timer = setTimeout(() => {
+      fetchJurors();
+    }, 500); // 500ms delay
+
+    return () => clearTimeout(timer);
+  }, [jurorSearchQuery]);
 
   // Enhanced fetch with error handling
   const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
@@ -710,17 +820,15 @@ export default function AdminDashboard() {
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      const [dashboardRes, attRes, jurRes, casesRes, statsRes, rescheduleRes] = await Promise.all([
+      const [dashboardRes, jurRes, casesRes, statsRes, rescheduleRes] = await Promise.all([
         fetchWithAuth(`${API_BASE}/api/admin/dashboard`),
-        fetchWithAuth(`${API_BASE}/api/admin/attorneys`),
-        fetchWithAuth(`${API_BASE}/api/admin/jurors`),
+        fetchWithAuth(`${API_BASE}/api/admin/jurors?limit=10`),
         fetchWithAuth(`${API_BASE}/api/admin/cases/pending`),
         fetchWithAuth(`${API_BASE}/api/admin/stats/comprehensive`),
         fetchWithAuth(`${API_BASE}/api/admin/reschedule-requests`),
       ]);
 
       const dashboardData = await dashboardRes.json();
-      const attData = await attRes.json();
       const jurData = await jurRes.json();
       const casesData = await casesRes.json();
       const statsData = await statsRes.json();
@@ -748,12 +856,6 @@ export default function AdminDashboard() {
         });
       }
 
-      const attorneysList = Array.isArray(attData.attorneys) 
-        ? attData.attorneys 
-        : (Array.isArray(attData) ? attData : []);
-
-      setAttorneys(attorneysList);
-
       const jurorsList = Array.isArray(jurData.jurors) 
         ? jurData.jurors 
         : (Array.isArray(jurData) ? jurData : []);
@@ -776,6 +878,93 @@ export default function AdminDashboard() {
       console.error("Error fetching dashboard data:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAttorneys = async () => {
+    setLoadingAttorneys(true);
+    try {
+      const params = new URLSearchParams({
+        page: attorneyPage.toString(),
+        limit: attorneyPageSize.toString(),
+        sortBy: attorneySortBy,
+        sortOrder: attorneySortOrder,
+      });
+
+      if (attorneySearchQuery) {
+        params.append("search", attorneySearchQuery);
+      }
+
+      if (attorneyFilter !== "all") {
+        params.append("verificationStatus", attorneyFilter === "verified" ? "verified" : attorneyFilter === "declined" ? "declined" : "pending");
+      }
+
+      const response = await fetchWithAuth(`${API_BASE}/api/admin/attorneys?${params.toString()}`);
+      const data = await response.json();
+
+      if (data.success) {
+        const attorneysList = Array.isArray(data.attorneys) ? data.attorneys : [];
+        setAttorneys(attorneysList);
+        setAttorneyTotal(data.total || 0);
+        setAttorneyTotalPages(data.totalPages || 1);
+      }
+    } catch (error) {
+      console.error("Error fetching attorneys:", error);
+      setAttorneys([]);
+      setAttorneyTotal(0);
+      setAttorneyTotalPages(1);
+    } finally {
+      setLoadingAttorneys(false);
+    }
+  };
+
+  const fetchJurors = async () => {
+    setLoadingJurors(true);
+    try {
+      const params = new URLSearchParams({
+        page: jurorPage.toString(),
+        limit: jurorPageSize.toString(),
+        sortBy: jurorSortBy,
+        sortOrder: jurorSortOrder,
+      });
+
+      if (jurorSearchQuery) {
+        params.append("search", jurorSearchQuery);
+      }
+
+      if (jurorFilter !== "all") {
+        params.append("verificationStatus", jurorFilter === "verified" ? "verified" : jurorFilter === "declined" ? "declined" : "pending");
+      }
+
+      const response = await fetchWithAuth(`${API_BASE}/api/admin/jurors?${params.toString()}`);
+      const data = await response.json();
+
+      if (data.success) {
+        const jurorsList = Array.isArray(data.jurors) ? data.jurors : [];
+        setJurors(jurorsList.map((j: any) => ({
+          JurorId: j.JurorId ?? j.id,
+          Name: j.Name ?? j.name,
+          Email: j.Email ?? j.email,
+          County: j.County ?? j.county,
+          State: j.State ?? j.state,
+          IsVerified: j.IsVerified ?? j.verified,
+          Status: j.Status ?? j.status,
+          IsActive: j.IsActive ?? j.isActive,
+          OnboardingCompleted: j.OnboardingCompleted ?? j.onboardingCompleted,
+          CreatedAt: j.CreatedAt ?? j.createdAt,
+          VerificationStatus: j.VerificationStatus,
+          CriteriaResponses: j.CriteriaResponses ?? j.criteriaResponses ?? [],
+        })));
+        setJurorTotal(data.total || 0);
+        setJurorTotalPages(data.totalPages || 1);
+      }
+    } catch (error) {
+      console.error("Error fetching jurors:", error);
+      setJurors([]);
+      setJurorTotal(0);
+      setJurorTotalPages(1);
+    } finally {
+      setLoadingJurors(false);
     }
   };
 
@@ -1021,11 +1210,9 @@ export default function AdminDashboard() {
         body: JSON.stringify({ status: "verified" }),
       });
       if (response.ok) {
-        // Update attorney in local state
-        setAttorneys((prev) =>
-          prev.map((a) => a.AttorneyId === attorneyId ? { ...a, VerificationStatus: "verified", IsVerified: true } : a)
-        );
-        // Update stats locally instead of refetching all data
+        // Refetch attorneys to update the list with server-side filtering
+        await fetchAttorneys();
+        // Update stats locally
         setStats((prev) => ({
           ...prev,
           verifiedAttorneys: prev.verifiedAttorneys + 1,
@@ -1060,11 +1247,9 @@ export default function AdminDashboard() {
         body: JSON.stringify({ status: "verified" }),
       });
       if (response.ok) {
-        // Update juror in local state
-        setJurors((prev) =>
-          prev.map((j) => j.JurorId === jurorId ? { ...j, VerificationStatus: "verified", IsVerified: true } : j)
-        );
-        // Update stats locally instead of refetching all data
+        // Refetch jurors to update the list with server-side filtering
+        await fetchJurors();
+        // Update stats locally
         setStats((prev) => ({
           ...prev,
           verifiedJurors: prev.verifiedJurors + 1,
@@ -1104,16 +1289,14 @@ export default function AdminDashboard() {
       });
       if (response.ok) {
         if (declineType === "attorney") {
-          setAttorneys((prev) =>
-            prev.map((a) => a.AttorneyId === declineId ? { ...a, VerificationStatus: "declined", IsVerified: false } : a)
-          );
+          // Refetch attorneys to update the list with server-side filtering
+          await fetchAttorneys();
           toast.success("Attorney declined successfully.", {
             duration: 3000,
           });
         } else {
-          setJurors((prev) =>
-            prev.map((j) => j.JurorId === declineId ? { ...j, VerificationStatus: "declined", IsVerified: false } : j)
-          );
+          // Refetch jurors to update the list with server-side filtering
+          await fetchJurors();
           toast.success("Juror declined successfully.", {
             duration: 3000,
           });
@@ -1130,72 +1313,41 @@ export default function AdminDashboard() {
     }
   };
 
-  const filteredAttorneys = attorneys
-    .filter((a) => {
-      // Filter by verification status
-      if (attorneyFilter === "verified") return a.IsVerified;
-      if (attorneyFilter === "not_verified") return !a.IsVerified && a.VerificationStatus !== "declined";
-      if (attorneyFilter === "declined") return a.VerificationStatus === "declined";
-      return true;
-    })
-    .filter((a) => {
-      // Filter by search query
-      if (!attorneySearchQuery) return true;
-      const query = attorneySearchQuery.toLowerCase();
-      const fullName = `${a.FirstName} ${a.LastName}`.toLowerCase();
-      return (
-        fullName.includes(query) ||
-        a.Email.toLowerCase().includes(query) ||
-        a.LawFirmName.toLowerCase().includes(query) ||
-        a.StateBarNumber.toLowerCase().includes(query)
-      );
-    })
-    .sort((a, b) => {
-      // Sort by selected field
-      let comparison = 0;
-      switch (attorneySortBy) {
-        case "name":
-          const nameA = `${a.FirstName} ${a.LastName}`.toLowerCase();
-          const nameB = `${b.FirstName} ${b.LastName}`.toLowerCase();
-          comparison = nameA.localeCompare(nameB);
-          break;
-        case "email":
-          comparison = a.Email.toLowerCase().localeCompare(b.Email.toLowerCase());
-          break;
-        case "lawFirm":
-          comparison = a.LawFirmName.toLowerCase().localeCompare(b.LawFirmName.toLowerCase());
-          break;
-        case "status":
-          const statusA = a.VerificationStatus === "declined" ? 2 : (a.IsVerified ? 0 : 1);
-          const statusB = b.VerificationStatus === "declined" ? 2 : (b.IsVerified ? 0 : 1);
-          comparison = statusA - statusB;
-          break;
-        case "date":
-          comparison = new Date(a.CreatedAt).getTime() - new Date(b.CreatedAt).getTime();
-          break;
-      }
-      return attorneySortOrder === "asc" ? comparison : -comparison;
-    });
-  const paginatedAttorneys = filteredAttorneys.slice((attorneyPage - 1) * PAGE_SIZE, attorneyPage * PAGE_SIZE);
-
-  const handleAttorneySortChange = (column: "name" | "email" | "lawFirm" | "status" | "date") => {
+  const handleAttorneySortChange = (column: "name" | "email" | "lawFirm" | "barNumber" | "status" | "date" | "default") => {
+    setAttorneyPage(1); // Reset to first page when sorting changes
     if (attorneySortBy === column) {
-      // Toggle sort order if clicking the same column
-      setAttorneySortOrder(attorneySortOrder === "asc" ? "desc" : "asc");
+      // Cycle through: asc -> desc -> default
+      if (attorneySortOrder === "asc") {
+        setAttorneySortOrder("desc");
+      } else if (attorneySortOrder === "desc") {
+        // Go back to default sorting (by entry time)
+        setAttorneySortBy("default");
+        setAttorneySortOrder("desc");
+      }
     } else {
-      // Set new column and default to ascending
+      // Set new column and start with ascending
       setAttorneySortBy(column);
       setAttorneySortOrder("asc");
     }
   };
 
-  const filteredJurors = jurors.filter((j) => {
-    if (jurorFilter === "verified") return j.IsVerified;
-    if (jurorFilter === "not_verified") return !j.IsVerified && j.VerificationStatus !== "declined";
-    if (jurorFilter === "declined") return j.VerificationStatus === "declined";
-    return true;
-  });
-  const paginatedJurors = filteredJurors.slice((jurorPage - 1) * PAGE_SIZE, jurorPage * PAGE_SIZE);
+  const handleJurorSortChange = (column: "name" | "email" | "county" | "state" | "status" | "jurorStatus" | "onboarding" | "date" | "default") => {
+    setJurorPage(1); // Reset to first page when sorting changes
+    if (jurorSortBy === column) {
+      // Cycle through: asc -> desc -> default
+      if (jurorSortOrder === "asc") {
+        setJurorSortOrder("desc");
+      } else if (jurorSortOrder === "desc") {
+        // Go back to default sorting (by entry time)
+        setJurorSortBy("default");
+        setJurorSortOrder("desc");
+      }
+    } else {
+      // Set new column and start with ascending
+      setJurorSortBy(column);
+      setJurorSortOrder("asc");
+    }
+  };
 
   // Show auth error screen
   if (authError) {
@@ -1577,6 +1729,10 @@ function formatTime(timeString: string, scheduledDate: string) {
               </p>
             </div>
             <div className="flex items-center gap-4">
+              <div className="text-sm text-gray-500 text-right">
+                <div className="font-semibold">Last updated</div>
+                <div>{new Date().toLocaleString()}</div>
+              </div>
               <div className="relative">
                 <button
                   onClick={() => router.push('/admin/notifications')}
@@ -1591,9 +1747,17 @@ function formatTime(timeString: string, scheduledDate: string) {
                   )}
                 </button>
               </div>
-              <div className="text-sm text-gray-500 text-right">
-                <div className="font-semibold">Last updated</div>
-                <div>{new Date().toLocaleString()}</div>
+              <div className="relative">
+                <button
+                  onClick={() => {
+                    clearAuth();
+                    router.push('/');
+                  }}
+                  className="relative p-3 rounded-full hover:bg-red-50 transition-colors"
+                  title="Sign out"
+                >
+                  <LogOut className="h-6 w-6 text-gray-700 hover:text-red-600" />
+                </button>
               </div>
             </div>
           </div>
@@ -1640,68 +1804,68 @@ function formatTime(timeString: string, scheduledDate: string) {
 
       <div className="max-w-7xl mx-auto px-8 py-8 space-y-8">
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 ">
-          <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl hover:scale-105 transition-all border border-gray-200 cursor-pointer">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 ">
+          <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl shadow-lg p-6 transition-all border border-blue-200 hover:shadow-xl">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-sm font-medium ">Total Attorneys</p>
-                <p className="text-4xl font-bold mt-2" style={{ color: BLUE }}>{stats.totalAttorneys}</p>
-                <p className="text-gray-500 text-xs mt-1">{stats.verifiedAttorneys} verified</p>
+                <p className="text-gray-700 text-sm font-medium ">Total Attorneys</p>
+                <p className="text-4xl font-bold mt-2 text-blue-600">{stats.totalAttorneys}</p>
+                <p className="text-gray-600 text-xs mt-1">{stats.verifiedAttorneys} verified</p>
               </div>
-              <div className="p-3 rounded-xl" style={{ backgroundColor: LIGHT_BLUE }}>
-                <Building2 className="h-8 w-8" style={{ color: BLUE }} />
+              <div className="p-3 rounded-xl bg-blue-500">
+                <Building2 className="h-8 w-8 text-white" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl hover:scale-105 transition-all border border-gray-200 cursor-pointer">
+          <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-xl shadow-lg p-6 transition-all border border-green-200 hover:shadow-xl">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-sm font-medium">Total Jurors</p>
-                <p className="text-4xl font-bold mt-2" style={{ color: BLUE }}>{stats.totalJurors}</p>
-                <p className="text-gray-500 text-xs mt-1">{stats.verifiedJurors} verified</p>
+                <p className="text-gray-700 text-sm font-medium">Total Jurors</p>
+                <p className="text-4xl font-bold mt-2 text-green-600">{stats.totalJurors}</p>
+                <p className="text-gray-600 text-xs mt-1">{stats.verifiedJurors} verified</p>
               </div>
-              <div className="p-3 rounded-xl" style={{ backgroundColor: LIGHT_BLUE }}>
-                <Users className="h-8 w-8" style={{ color: BLUE }} />
+              <div className="p-3 rounded-xl bg-green-500">
+                <Users className="h-8 w-8 text-white" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl hover:scale-105 transition-all border border-gray-200 cursor-pointer">
+          <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 rounded-xl shadow-lg p-6 transition-all border border-yellow-200 hover:shadow-xl">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-sm font-medium">Pending Cases</p>
-                <p className="text-4xl font-bold mt-2" style={{ color: BLUE }}>{stats.pendingCases}</p>
-                <p className="text-gray-500 text-xs mt-1">Need approval</p>
+                <p className="text-gray-700 text-sm font-medium">Pending Cases</p>
+                <p className="text-4xl font-bold mt-2 text-yellow-600">{stats.pendingCases}</p>
+                <p className="text-gray-600 text-xs mt-1">Need approval</p>
               </div>
-              <div className="p-3 rounded-xl" style={{ backgroundColor: LIGHT_BLUE }}>
-                <Clock className="h-8 w-8" style={{ color: BLUE }} />
+              <div className="p-3 rounded-xl bg-yellow-500">
+                <Clock className="h-8 w-8 text-white" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl hover:scale-105 transition-all border border-gray-200 cursor-pointer">
+          <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-xl shadow-lg p-6 transition-all border border-purple-200 hover:shadow-xl">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-sm font-medium">Active Trials</p>
-                <p className="text-4xl font-bold mt-2" style={{ color: BLUE }}>{stats.activeTrials}</p>
-                <p className="text-gray-500 text-xs mt-1">{stats.scheduledTrials} scheduled</p>
+                <p className="text-gray-700 text-sm font-medium">Active Trials</p>
+                <p className="text-4xl font-bold mt-2 text-purple-600">{stats.activeTrials}</p>
+                <p className="text-gray-600 text-xs mt-1">{stats.scheduledTrials} scheduled</p>
               </div>
-              <div className="p-3 rounded-xl" style={{ backgroundColor: LIGHT_BLUE }}>
-                <Video className="h-8 w-8" style={{ color: BLUE }} />
+              <div className="p-3 rounded-xl bg-purple-500">
+                <Video className="h-8 w-8 text-white" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl hover:scale-105 transition-all border border-gray-200 cursor-pointer" onClick={() => router.push('/admin/reschedule-requests')}>
+          <div className="bg-gradient-to-r from-amber-50 to-amber-100 rounded-xl shadow-lg p-6 transition-all border border-amber-200 hover:shadow-xl">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-sm font-medium">Reschedule Requests</p>
-                <p className="text-4xl font-bold mt-2" style={{ color: BLUE }}>{stats.pendingRescheduleRequests}</p>
-                <p className="text-gray-500 text-xs mt-1">Need review</p>
+                <p className="text-gray-700 text-sm font-medium">Reschedule Requests</p>
+                <p className="text-4xl font-bold mt-2 text-amber-600">{stats.pendingRescheduleRequests}</p>
+                <p className="text-gray-600 text-xs mt-1">Need review</p>
               </div>
-              <div className="p-3 rounded-xl" style={{ backgroundColor: LIGHT_BLUE }}>
-                <Calendar className="h-8 w-8" style={{ color: BLUE }} />
+              <div className="p-3 rounded-xl bg-amber-500">
+                <Calendar className="h-8 w-8 text-white" />
               </div>
             </div>
           </div>
@@ -1753,7 +1917,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                 </button>
                 <button
                   className="w-full bg-gradient-to-r from-amber-50 to-amber-100 rounded-lg p-4 text-left font-medium hover:shadow-md transition-all border border-amber-200 group"
-                  onClick={() => router.push('/admin/reschedule-requests')}
+                  onClick={() => rescheduleRequestsSectionRef.current?.scrollIntoView({ behavior: "smooth" })}
                 >
                   <div className="flex items-center">
                     <div className="p-2 bg-amber-500 rounded-lg mr-3 group-hover:scale-110 transition-transform">
@@ -2067,7 +2231,7 @@ function formatTime(timeString: string, scheduledDate: string) {
           </div>
 
         {/* Reschedule Requests */}
-        <div className="bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 rounded-xl shadow-lg p-6 border-2 border-orange-300">
+        <div ref={rescheduleRequestsSectionRef} className="bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 rounded-xl shadow-lg p-6 border-2 border-orange-300">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center">
               <div className="p-3 bg-gradient-to-r from-orange-600 to-amber-600 rounded-lg mr-3">
@@ -2106,7 +2270,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold" style={{ color: BLUE }}>Attorneys Management</h2>
-                  <p className="text-gray-600 text-sm">{filteredAttorneys.length} attorneys total</p>
+                  <p className="text-gray-600 text-sm">{attorneyTotal} attorneys total</p>
                 </div>
               </div>
               <div className="flex items-center space-x-4">
@@ -2130,29 +2294,35 @@ function formatTime(timeString: string, scheduledDate: string) {
               </div>
             </div>
           </div>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" style={{ maxHeight: '500px', overflowY: 'auto' }}>
             <table className="w-full">
-              <thead className="bg-gray-100">
+              <thead className="bg-gray-100 sticky top-0 z-20">
                 <tr>
                   <th
-                    className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none"
+                    className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none whitespace-nowrap sticky left-0 z-30 bg-gray-100"
                     onClick={() => handleAttorneySortChange("name")}
+                    style={{ minWidth: '200px', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.1)' }}
                   >
                     <div className="flex items-center gap-2">
                       Attorney Info
-                      {attorneySortBy === "name" && (
-                        <span className="text-blue-600">{attorneySortOrder === "asc" ? "↑" : "↓"}</span>
+                      {attorneySortBy === "name" ? (
+                        <span className="text-blue-600 font-bold">{attorneySortOrder === "asc" ? "↑" : "↓"}</span>
+                      ) : (
+                        <span className="text-gray-400">⇅</span>
                       )}
                     </div>
                   </th>
                   <th
-                    className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none"
+                    className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none sticky z-30 bg-gray-100"
                     onClick={() => handleAttorneySortChange("email")}
+                    style={{ left: '200px', minWidth: '280px', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.1)' }}
                   >
                     <div className="flex items-center gap-2">
                       Contact
-                      {attorneySortBy === "email" && (
-                        <span className="text-blue-600">{attorneySortOrder === "asc" ? "↑" : "↓"}</span>
+                      {attorneySortBy === "email" ? (
+                        <span className="text-blue-600 font-bold">{attorneySortOrder === "asc" ? "↑" : "↓"}</span>
+                      ) : (
+                        <span className="text-gray-400">⇅</span>
                       )}
                     </div>
                   </th>
@@ -2162,39 +2332,74 @@ function formatTime(timeString: string, scheduledDate: string) {
                   >
                     <div className="flex items-center gap-2">
                       Law Firm
-                      {attorneySortBy === "lawFirm" && (
-                        <span className="text-blue-600">{attorneySortOrder === "asc" ? "↑" : "↓"}</span>
+                      {attorneySortBy === "lawFirm" ? (
+                        <span className="text-blue-600 font-bold">{attorneySortOrder === "asc" ? "↑" : "↓"}</span>
+                      ) : (
+                        <span className="text-gray-400">⇅</span>
                       )}
                     </div>
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Bar Number</th>
+                  <th
+                    className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider
+                              cursor-pointer hover:bg-gray-200 transition-colors select-none whitespace-nowrap"
+                    onClick={() => handleAttorneySortChange("barNumber")}
+                  >
+                    <div className="flex items-center gap-2 whitespace-nowrap">
+                      Bar Number
+                      {attorneySortBy === "barNumber" ? (
+                        <span className="text-blue-600 font-bold">
+                          {attorneySortOrder === "asc" ? "↑" : "↓"}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">⇅</span>
+                      )}
+                    </div>
+                  </th>
+
                   <th
                     className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none"
                     onClick={() => handleAttorneySortChange("status")}
                   >
                     <div className="flex items-center gap-2">
                       Status
-                      {attorneySortBy === "status" && (
-                        <span className="text-blue-600">{attorneySortOrder === "asc" ? "↑" : "↓"}</span>
+                      {attorneySortBy === "status" ? (
+                        <span className="text-blue-600 font-bold">{attorneySortOrder === "asc" ? "↑" : "↓"}</span>
+                      ) : (
+                        <span className="text-gray-400">⇅</span>
                       )}
                     </div>
                   </th>
                   <th
-                    className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none"
+                    className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider
+                              cursor-pointer hover:bg-gray-200 transition-colors select-none whitespace-nowrap"
                     onClick={() => handleAttorneySortChange("date")}
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 whitespace-nowrap">
                       Joined
-                      {attorneySortBy === "date" && (
-                        <span className="text-blue-600">{attorneySortOrder === "asc" ? "↑" : "↓"}</span>
+                      {attorneySortBy === "date" ? (
+                        <span className="text-blue-600 font-bold">
+                          {attorneySortOrder === "asc" ? "↑" : "↓"}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">⇅</span>
                       )}
                     </div>
                   </th>
+
                   <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 bg-white">
-                {paginatedAttorneys.length === 0 ? (
+                {loadingAttorneys ? (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-16 text-center">
+                      <div className="flex flex-col items-center justify-center">
+                        <div className="animate-spin h-12 w-12 border-4 border-blue-500 border-t-transparent rounded-full mb-4"></div>
+                        <p className="text-gray-500 font-medium text-lg">Loading attorneys...</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : attorneys.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-6 py-16 text-center">
                       <Building2 className="h-16 w-16 text-gray-300 mx-auto mb-4" />
@@ -2202,13 +2407,13 @@ function formatTime(timeString: string, scheduledDate: string) {
                     </td>
                   </tr>
                 ) : (
-                  paginatedAttorneys.map((attorney) => (
-                    <tr key={attorney.AttorneyId} className="hover:bg-blue-50 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="font-bold text-gray-900 text-lg">{attorney.FirstName} {attorney.LastName}</div>
-                        <div className="text-sm text-gray-600">{attorney.State}</div>
+                  attorneys.map((attorney) => (
+                    <tr key={attorney.AttorneyId} className="group hover:bg-blue-50 transition-colors">
+                      <td className="px-6 py-4 sticky left-0 z-10 bg-white group-hover:bg-blue-50" style={{ minWidth: '200px', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.1)' }}>
+                        <div className="font-bold text-gray-900 text-base">{attorney.FirstName} {attorney.LastName}</div>
+                        <div className="text-xs text-gray-600">{attorney.State}</div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-6 py-4 sticky z-10 bg-white group-hover:bg-blue-50" style={{ left: '200px', minWidth: '280px', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.1)' }}>
                         <div className="flex items-center gap-2 text-sm text-gray-700 mb-1">
                           <Mail className="h-4 w-4 text-blue-500" />
                           <span>{attorney.Email}</span>
@@ -2221,10 +2426,10 @@ function formatTime(timeString: string, scheduledDate: string) {
                         )}
                       </td>
                       <td className="px-6 py-4">
-                        <div className="font-medium text-gray-900">{attorney.LawFirmName}</div>
+                        <div className="text-sm font-medium text-gray-800 leading-tight">{attorney.LawFirmName}</div>
                       </td>
-                      <td className="px-6 py-4">
-                        <span className="font-mono text-sm font-semibold bg-gray-200 text-gray-900 px-3 py-1.5 rounded">{attorney.StateBarNumber}</span>
+                      <td className="px-6 py-3 text-left font-mono text-sm font-semibold text-gray-900 whitespace-nowrap">
+                        {attorney.StateBarNumber}
                       </td>
                       <td className="px-6 py-4">
                         {attorney.VerificationStatus === "declined" ? (
@@ -2275,10 +2480,26 @@ function formatTime(timeString: string, scheduledDate: string) {
             </table>
           </div>
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4 px-6 py-4 bg-gray-50 border-t border-gray-200">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600 font-medium">Show per page:</span>
+                <select
+                  className="border-2 border-gray-300 rounded-lg px-3 py-1.5 text-sm text-black bg-white font-medium focus:border-blue-500 focus:outline-none"
+                  value={attorneyPageSize}
+                  onChange={(e) => { setAttorneyPageSize(Number(e.target.value)); setAttorneyPage(1); }}
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={15}>15</option>
+                  <option value={20}>20</option>
+                  <option value={25}>25</option>
+                </select>
+              </div>
               <span className="text-sm text-gray-600">
-                Showing {filteredAttorneys.length === 0 ? 0 : (attorneyPage - 1) * PAGE_SIZE + 1} to{" "}
-                {Math.min(attorneyPage * PAGE_SIZE, filteredAttorneys.length)} of {filteredAttorneys.length} results
+                {/*
+                Showing {attorneyTotal === 0 ? 0 : (attorneyPage - 1) * attorneyPageSize + 1} to{" "}
+                {Math.min(attorneyPage * attorneyPageSize, attorneyTotal)} of {attorneyTotal} results */}
+                of {attorneyTotal} results
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -2287,11 +2508,11 @@ function formatTime(timeString: string, scheduledDate: string) {
                 disabled={attorneyPage === 1}
                 onClick={() => setAttorneyPage(attorneyPage - 1)}
               >
-                Previous
+                <ChevronLeft className="h-5 w-5" />
               </button>
               <div className="flex items-center gap-1">
                 {(() => {
-                  const totalPages = Math.max(1, Math.ceil(filteredAttorneys.length / PAGE_SIZE));
+                  const totalPages = Math.max(1, attorneyTotalPages);
                   const pages = [];
 
                   if (totalPages <= 7) {
@@ -2335,11 +2556,11 @@ function formatTime(timeString: string, scheduledDate: string) {
                 })()}
               </div>
               <button
-                className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer "
-                disabled={attorneyPage * PAGE_SIZE >= filteredAttorneys.length}
+                className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                disabled={attorneyPage >= attorneyTotalPages}
                 onClick={() => setAttorneyPage(attorneyPage + 1)}
               >
-                Next
+                <ChevronRight className="h-5 w-5" />
               </button>
             </div>
           </div>
@@ -2355,13 +2576,20 @@ function formatTime(timeString: string, scheduledDate: string) {
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold" style={{ color: BLUE }}>Jurors Management</h2>
-                  <p className="text-gray-600 text-sm">{filteredJurors.length} jurors total</p>
+                  <p className="text-gray-600 text-sm">{jurorTotal} jurors total</p>
                 </div>
               </div>
               <div className="flex items-center space-x-4">
-                <select 
-                  className="border-2 border-gray-300 rounded-lg px-4 py-2 text-sm text-black bg-white font-medium focus:border-green-500 focus:outline-none cursor-pointer" 
-                  value={jurorFilter} 
+                <input
+                  type="text"
+                  placeholder="Search by name, email, county, or state..."
+                  className="border-2 border-gray-300 rounded-lg px-4 py-2 text-sm text-black bg-white focus:border-green-500 focus:outline-none w-96"
+                  value={jurorSearchQuery}
+                  onChange={(e) => { setJurorSearchQuery(e.target.value); setJurorPage(1); }}
+                />
+                <select
+                  className="border-2 border-gray-300 rounded-lg px-4 py-2 text-sm text-black bg-white font-medium focus:border-green-500 focus:outline-none cursor-pointer"
+                  value={jurorFilter}
                   onChange={(e) => { setJurorFilter(e.target.value as any); setJurorPage(1); }}
                 >
                   <option value="all">All Jurors</option>
@@ -2372,21 +2600,103 @@ function formatTime(timeString: string, scheduledDate: string) {
               </div>
             </div>
           </div>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" style={{ maxHeight: '450px', overflowY: 'auto' }}>
             <table className="w-full">
-              <thead className="bg-gray-100">
+              <thead className="bg-gray-100 sticky top-0 z-20">
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Juror Info</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Location</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Verification</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Onboarding</th>
-                  <th className="px-6 py-4 text-sm text-gray-600">Joined</th>
+                  <th
+                    className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none sticky left-0 z-30 bg-gray-100"
+                    onClick={() => handleJurorSortChange("name")}
+                    style={{ minWidth: '280px', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.1)' }}
+                  >
+                    <div className="flex items-center gap-2">
+                      Juror Info
+                      {jurorSortBy === "name" ? (
+                        <span className="text-green-600 font-bold">{jurorSortOrder === "asc" ? "↑" : "↓"}</span>
+                      ) : (
+                        <span className="text-gray-400">⇅</span>
+                      )}
+                    </div>
+                  </th>
+                  <th
+                    className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none"
+                    onClick={() => handleJurorSortChange("county")}
+                  >
+                    <div className="flex items-center gap-2">
+                      Location
+                      {jurorSortBy === "county" ? (
+                        <span className="text-green-600 font-bold">{jurorSortOrder === "asc" ? "↑" : "↓"}</span>
+                      ) : (
+                        <span className="text-gray-400">⇅</span>
+                      )}
+                    </div>
+                  </th>
+                  <th
+                    className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none"
+                    onClick={() => handleJurorSortChange("status")}
+                  >
+                    <div className="flex items-center gap-2">
+                      Verification
+                      {jurorSortBy === "status" ? (
+                        <span className="text-green-600 font-bold">{jurorSortOrder === "asc" ? "↑" : "↓"}</span>
+                      ) : (
+                        <span className="text-gray-400">⇅</span>
+                      )}
+                    </div>
+                  </th>
+                  <th
+                    className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none"
+                    onClick={() => handleJurorSortChange("jurorStatus")}
+                  >
+                    <div className="flex items-center gap-2">
+                      Status
+                      {jurorSortBy === "jurorStatus" ? (
+                        <span className="text-green-600 font-bold">{jurorSortOrder === "asc" ? "↑" : "↓"}</span>
+                      ) : (
+                        <span className="text-gray-400">⇅</span>
+                      )}
+                    </div>
+                  </th>
+                  <th
+                    className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none"
+                    onClick={() => handleJurorSortChange("onboarding")}
+                  >
+                    <div className="flex items-center gap-2">
+                      Onboarding
+                      {jurorSortBy === "onboarding" ? (
+                        <span className="text-green-600 font-bold">{jurorSortOrder === "asc" ? "↑" : "↓"}</span>
+                      ) : (
+                        <span className="text-gray-400">⇅</span>
+                      )}
+                    </div>
+                  </th>
+                  <th
+                    className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none"
+                    onClick={() => handleJurorSortChange("date")}
+                  >
+                    <div className="flex items-center gap-2">
+                      Joined
+                      {jurorSortBy === "date" || jurorSortBy === "default" ? (
+                        <span className="text-green-600 font-bold">{jurorSortOrder === "asc" ? "↑" : "↓"}</span>
+                      ) : (
+                        <span className="text-gray-400">⇅</span>
+                      )}
+                    </div>
+                  </th>
                   <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 bg-white">
-                {paginatedJurors.length === 0 ? (
+                {loadingJurors ? (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-16 text-center">
+                      <div className="flex flex-col items-center justify-center">
+                        <div className="animate-spin h-12 w-12 border-4 border-green-500 border-t-transparent rounded-full mb-4"></div>
+                        <p className="text-gray-500 font-medium text-lg">Loading jurors...</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : jurors.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-6 py-16 text-center">
                       <Users className="h-16 w-16 text-gray-300 mx-auto mb-4" />
@@ -2394,9 +2704,9 @@ function formatTime(timeString: string, scheduledDate: string) {
                     </td>
                   </tr>
                 ) : (
-                  paginatedJurors.map((juror) => (
-                    <tr key={juror.JurorId} className="hover:bg-green-50 transition-colors">
-                      <td className="px-6 py-4">
+                  jurors.map((juror) => (
+                    <tr key={juror.JurorId} className="group hover:bg-green-50 transition-colors">
+                      <td className="px-6 py-4 sticky left-0 z-10 bg-white group-hover:bg-green-50" style={{ minWidth: '280px', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.1)' }}>
                         <div className="font-bold text-gray-900 text-lg">{juror.Name}</div>
                         <div className="text-sm text-gray-600">{juror.Email}</div>
                       </td>
@@ -2481,24 +2791,90 @@ function formatTime(timeString: string, scheduledDate: string) {
               </tbody>
             </table>
           </div>
-          <div className="flex justify-between items-center px-6 py-4 bg-gray-50 border-t border-gray-200">
-            <button 
-              className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer" 
-              disabled={jurorPage === 1} 
-              onClick={() => setJurorPage(jurorPage - 1)}
-            >
-              Previous
-            </button>
-            <span className="text-sm font-semibold text-black">
-              Page {jurorPage} of {Math.max(1, Math.ceil(filteredJurors.length / PAGE_SIZE))}
-            </span>
-            <button 
-              className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer" 
-              disabled={jurorPage * PAGE_SIZE >= filteredJurors.length} 
-              onClick={() => setJurorPage(jurorPage + 1)}
-            >
-              Next
-            </button>
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 px-6 py-4 bg-gray-50 border-t border-gray-200">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600 font-medium">Show per page:</span>
+                <select
+                  className="border-2 border-gray-300 rounded-lg px-3 py-1.5 text-sm text-black bg-white font-medium focus:border-green-500 focus:outline-none"
+                  value={jurorPageSize}
+                  onChange={(e) => { setJurorPageSize(Number(e.target.value)); setJurorPage(1); }}
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={15}>15</option>
+                  <option value={20}>20</option>
+                  <option value={25}>25</option>
+                </select>
+              </div>
+              <span className="text-sm text-gray-600">
+                {/*
+                Showing {jurorTotal === 0 ? 0 : (jurorPage - 1) * jurorPageSize + 1} to{" "}
+                {Math.min(jurorPage * jurorPageSize, jurorTotal)} of {jurorTotal} results  */}
+                of {jurorTotal} results
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                disabled={jurorPage === 1}
+                onClick={() => setJurorPage(jurorPage - 1)}
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <div className="flex items-center gap-1">
+                {(() => {
+                  const totalPages = Math.max(1, jurorTotalPages);
+                  const pages = [];
+
+                  if (totalPages <= 7) {
+                    // Show all pages if 7 or fewer
+                    for (let i = 1; i <= totalPages; i++) {
+                      pages.push(i);
+                    }
+                  } else {
+                    // Show first page, last page, current page and neighbors
+                    if (jurorPage <= 3) {
+                      pages.push(1, 2, 3, 4, -1, totalPages);
+                    } else if (jurorPage >= totalPages - 2) {
+                      pages.push(1, -1, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+                    } else {
+                      pages.push(1, -1, jurorPage - 1, jurorPage, jurorPage + 1, -2, totalPages);
+                    }
+                  }
+
+                  return pages.map((page, index) => {
+                    if (page === -1 || page === -2) {
+                      return (
+                        <span key={`ellipsis-${index}`} className="px-2 text-gray-500">
+                          ...
+                        </span>
+                      );
+                    }
+                    return (
+                      <button
+                        key={page}
+                        onClick={() => setJurorPage(page)}
+                        className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
+                          jurorPage === page
+                            ? "bg-green-600 text-white"
+                            : "bg-gray-200 text-black hover:bg-gray-300"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    );
+                  });
+                })()}
+              </div>
+              <button
+                className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                disabled={jurorPage >= jurorTotalPages}
+                onClick={() => setJurorPage(jurorPage + 1)}
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            </div>
           </div>
         </div>
       </div>

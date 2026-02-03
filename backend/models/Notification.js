@@ -133,12 +133,12 @@ async function createNotification(notificationData) {
 
 /**
  * Get notifications for user
- * FIXED: Added SQL type safety and pagination
+ * FIXED: Added SQL type safety and pagination with total count
  *
  * @param {number} userId - User ID
  * @param {string} userType - User type ('attorney', 'juror', 'admin')
  * @param {Object} options - Query options {unreadOnly, limit, offset}
- * @returns {Promise<Array>} Array of notifications
+ * @returns {Promise<Object>} Object with notifications array and total count
  */
 async function getNotificationsForUser(userId, userType, options = {}) {
   try {
@@ -157,8 +157,22 @@ async function getNotificationsForUser(userId, userType, options = {}) {
     const unreadOnly = options.unreadOnly || false;
 
     const pool = await poolPromise;
+
+    // Build WHERE clause
+    let whereClause = `WHERE n.UserId = @userId AND n.UserType = @userType`;
+    if (unreadOnly) {
+      whereClause += ` AND n.IsRead = 0`;
+    }
+
+    // Get total count and notifications in a single query
     let query = `
-      SELECT 
+      -- Get total count
+      SELECT COUNT(*) as TotalCount
+      FROM dbo.Notifications n
+      ${whereClause};
+
+      -- Get paginated notifications
+      SELECT
         n.NotificationId,
         n.UserId,
         n.UserType,
@@ -174,7 +188,10 @@ async function getNotificationsForUser(userId, userType, options = {}) {
         c.County
       FROM dbo.Notifications n
       LEFT JOIN dbo.Cases c ON n.CaseId = c.CaseId
-      WHERE n.UserId = @userId AND n.UserType = @userType
+      ${whereClause}
+      ORDER BY n.CreatedAt DESC
+      OFFSET @offset ROWS
+      FETCH NEXT @limit ROWS ONLY
     `;
 
     const request = pool
@@ -184,18 +201,16 @@ async function getNotificationsForUser(userId, userType, options = {}) {
       .input("limit", sql.Int, limit)
       .input("offset", sql.Int, offset);
 
-    if (unreadOnly) {
-      query += ` AND n.IsRead = 0`;
-    }
-
-    query += ` 
-      ORDER BY n.CreatedAt DESC
-      OFFSET @offset ROWS
-      FETCH NEXT @limit ROWS ONLY
-    `;
-
     const result = await request.query(query);
-    return result.recordset;
+
+    // First recordset has the count, second has the notifications
+    const totalCount = result.recordsets[0][0].TotalCount;
+    const notifications = result.recordsets[1];
+
+    return {
+      notifications,
+      total: totalCount
+    };
   } catch (error) {
     console.error("Error getting notifications for user:", error);
     throw error;

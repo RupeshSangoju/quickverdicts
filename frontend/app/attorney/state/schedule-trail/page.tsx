@@ -221,7 +221,26 @@ export default function ScheduleTrialPage() {
       });
 
     console.log('🚫 Blocked times for this date:', blockedTimesForDate);
-    const available = allTimeSlots.filter(time => !blockedTimesForDate.includes(time));
+
+    // Filter out blocked slots
+    let available = allTimeSlots.filter(time => !blockedTimesForDate.includes(time));
+
+    // If selected date is today, filter out past time slots
+    if (isToday(selectedDate)) {
+      const now = new Date();
+      const currentHour = now.getHours();
+      const currentMinute = now.getMinutes();
+      const currentTimeInMinutes = currentHour * 60 + currentMinute;
+
+      available = available.filter(time => {
+        const [hour, minute] = time.split(':').map(Number);
+        const timeInMinutes = hour * 60 + minute;
+        return timeInMinutes >= currentTimeInMinutes;
+      });
+
+      console.log(`⏰ Filtered past times for today (current time: ${String(currentHour).padStart(2, '0')}:${String(currentMinute).padStart(2, '0')})`);
+    }
+
     console.log('✅ Available time slots:', available.length, 'out of', allTimeSlots.length);
     return available;
   };
