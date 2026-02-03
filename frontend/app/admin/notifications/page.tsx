@@ -50,6 +50,13 @@ export default function AdminNotificationsPage() {
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [selectedNotifications, setSelectedNotifications] = useState<Set<number>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
+  const [pagination, setPagination] = useState({
+    offset: 0,
+    limit: 50,
+    total: 0,
+    hasMore: false
+  });
+  const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
     // Check authentication on mount
@@ -69,7 +76,7 @@ export default function AdminNotificationsPage() {
     };
   }
 
-  async function fetchNotifications() {
+  async function fetchNotifications(loadMore = false) {
     const token = getAuthToken();
     const user = getUser();
 
@@ -80,12 +87,28 @@ export default function AdminNotificationsPage() {
       return;
     }
 
-    setLoading(true);
+    if (loadMore) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+      // Reset pagination when fetching fresh data
+      setPagination({ offset: 0, limit: 50, total: 0, hasMore: false });
+    }
+
     try {
-      // ✅ Use correct backend endpoint
-      const url = filter === "unread"
-        ? `${API_BASE}/api/notifications?unreadOnly=true`
-        : `${API_BASE}/api/notifications`;
+      const currentOffset = loadMore ? pagination.offset + pagination.limit : 0;
+
+      // Build URL with pagination parameters
+      const params = new URLSearchParams({
+        limit: '50',
+        offset: currentOffset.toString()
+      });
+
+      if (filter === "unread") {
+        params.append("unreadOnly", "true");
+      }
+
+      const url = `${API_BASE}/api/notifications?${params.toString()}`;
 
       const response = await fetch(url, {
         headers: createAuthHeaders(token),
@@ -99,14 +122,29 @@ export default function AdminNotificationsPage() {
 
       const data = await response.json();
       if (data.success) {
-        let filteredNotifications = data.notifications || [];
+        let fetchedNotifications = data.notifications || [];
 
-        // Apply read/unread filter
+        // Apply read/unread filter for "read" filter (backend doesn't support readOnly param)
         if (filter === "read") {
-          filteredNotifications = filteredNotifications.filter((n: Notification) => n.IsRead);
+          fetchedNotifications = fetchedNotifications.filter((n: Notification) => n.IsRead);
         }
 
-        setNotifications(filteredNotifications);
+        // Update pagination state
+        if (data.pagination) {
+          setPagination({
+            offset: data.pagination.offset,
+            limit: data.pagination.limit,
+            total: data.pagination.total,
+            hasMore: data.pagination.hasMore
+          });
+        }
+
+        // Either append or replace notifications
+        if (loadMore) {
+          setNotifications((prev) => [...prev, ...fetchedNotifications]);
+        } else {
+          setNotifications(fetchedNotifications);
+        }
       } else {
         toast.error("Failed to load notifications");
       }
@@ -115,6 +153,7 @@ export default function AdminNotificationsPage() {
       toast.error("Error loading notifications");
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   }
 
@@ -547,6 +586,38 @@ export default function AdminNotificationsPage() {
                 </div>
               </div>
             ))}
+
+            {/* Load More Button */}
+            {pagination.hasMore && !loading && (
+              <div className="flex justify-center pt-6">
+                <button
+                  onClick={() => fetchNotifications(true)}
+                  disabled={loadingMore}
+                  className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loadingMore ? (
+                    <>
+                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                      Loading more...
+                    </>
+                  ) : (
+                    <>
+                      Load More
+                      <span className="px-2 py-0.5 bg-blue-700 text-white text-xs font-bold rounded-full">
+                        {pagination.total - notifications.length} remaining
+                      </span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+
+            {/* Pagination Info */}
+            {!loading && notifications.length > 0 && (
+              <div className="text-center pt-4 text-sm text-gray-600">
+                Showing {notifications.length} of {pagination.total} notifications
+              </div>
+            )}
           </div>
         )}
       </div>
