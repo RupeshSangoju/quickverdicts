@@ -1008,12 +1008,12 @@ router.post(
           }
 
           // Remove from chat thread
-          if (meeting.ChatThreadId && participant.AcsUserId) {
+          if (meeting.ChatThreadId && meeting.ChatServiceUserId && participant.AcsUserId) {
             try {
               await removeParticipantFromChat(
                 meeting.ChatThreadId,
-                participant.AcsUserId,
-                participant.DisplayName || "Participant"
+                meeting.ChatServiceUserId,
+                participant.AcsUserId
               );
             } catch (chatError) {
               // Chat errors are not critical
