@@ -1,10 +1,11 @@
 "use client";
 
 import dynamic from 'next/dynamic';
+import { useProtectedRoute } from "@/hooks/useProtectedRoute";
 
 const AdminTrialMonitor = dynamic(
   () => import('./AdminTrialMonitorComponent'),
-  { 
+  {
     ssr: false,
     loading: () => (
       <div className="h-screen bg-gray-900 flex items-center justify-center">
@@ -18,5 +19,6 @@ const AdminTrialMonitor = dynamic(
 );
 
 export default function AdminTrialPage() {
+  useProtectedRoute({ requiredUserType: 'admin' });
   return <AdminTrialMonitor />;
 }

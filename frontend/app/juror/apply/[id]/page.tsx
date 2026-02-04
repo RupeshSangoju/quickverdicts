@@ -11,6 +11,7 @@ import {
   CheckCircleIcon,
   BuildingOfficeIcon
 } from "@heroicons/react/24/outline";
+import { useProtectedRoute } from "@/hooks/useProtectedRoute";
 import { getToken } from "@/lib/apiClient";
 import { formatDateString } from "@/lib/dateUtils";
 import toast from "react-hot-toast";
@@ -113,6 +114,8 @@ function formatTime(timeString: string, scheduledDate: string) {
 }
 
 export default function JurorApplyPage() {
+  useProtectedRoute({ requiredUserType: 'juror' });
+
   const { id } = useParams();
   const caseId = id;
   const router = useRouter();

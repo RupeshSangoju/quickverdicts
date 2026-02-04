@@ -4,6 +4,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { useProtectedRoute } from "@/hooks/useProtectedRoute";
 import Stepper from "../../components/Stepper";
 import FormContainer from "../../components/FormContainer";
 import { Trash2 } from "lucide-react";
@@ -16,6 +17,7 @@ type VoirDireQuestion = {
 };
 
 export default function VoirDirePart2() {
+  useProtectedRoute({ requiredUserType: 'attorney' });
   const [questions, setQuestions] = useState<VoirDireQuestion[]>([{ question: "", type: "yesno" }]);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);

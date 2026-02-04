@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from 'next/dynamic';
+import { useProtectedRoute } from "@/hooks/useProtectedRoute";
 
 const TrialConference = dynamic(() => import('./TrialConferenceClient'), {
   ssr: false,
@@ -15,5 +16,6 @@ const TrialConference = dynamic(() => import('./TrialConferenceClient'), {
 });
 
 export default function ConferencePage() {
+  useProtectedRoute({ requiredUserType: 'attorney' });
   return <TrialConference />;
 }

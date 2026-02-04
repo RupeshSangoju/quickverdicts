@@ -448,6 +448,7 @@ export default function TrialConferenceClient() {
         e.added.forEach(async (stream: any) => {
           if (stream.mediaStreamType === "ScreenSharing") {
             screenShareStream.current = stream;
+            setIsScreenSharing(true);
             setFeaturedParticipant("screenshare");
             setRenderTrigger(prev => prev + 1);
           }
@@ -873,21 +874,33 @@ export default function TrialConferenceClient() {
   };
 
   const toggleVideo = async () => {
-    if (!call || !localVideoStream.current) return;
+    const currentCall = callRef.current;
+    if (!currentCall) {
+      console.error("No active call found");
+      toast.error("Unable to toggle camera. Please try again.");
+      return;
+    }
+    if (!localVideoStream.current) {
+      console.error("No video stream available");
+      toast.error("Camera is not available");
+      return;
+    }
     try {
+      console.log(`📹 Toggling video. Current state: ${isVideoOff ? 'OFF' : 'ON'}`);
       if (isVideoOff) {
         // Turn camera ON
-        await call.startVideo(localVideoStream.current);
+        await currentCall.startVideo(localVideoStream.current);
         setIsVideoOff(false);
-        console.log("📹 Camera turned ON");
+        console.log("✅ Camera turned ON");
       } else {
         // Turn camera OFF
-        await call.stopVideo(localVideoStream.current);
+        await currentCall.stopVideo(localVideoStream.current);
         setIsVideoOff(true);
-        console.log("📹 Camera turned OFF");
+        console.log("✅ Camera turned OFF");
       }
     } catch (err) {
-      console.error("Toggle video error:", err);
+      console.error("❌ Toggle video error:", err);
+      toast.error("Failed to toggle camera. Please try again.");
     }
   };
 
@@ -897,10 +910,10 @@ export default function TrialConferenceClient() {
     try {
       if (isScreenSharing) {
         await call.stopScreenSharing();
-        setIsScreenSharing(false);
+        // State will be updated by localVideoStreamsUpdated event handler
       } else {
         await call.startScreenSharing();
-        setIsScreenSharing(true);
+        // State will be updated by localVideoStreamsUpdated event handler
       }
     } catch (err: any) {
       console.error("Screen share error:", err);

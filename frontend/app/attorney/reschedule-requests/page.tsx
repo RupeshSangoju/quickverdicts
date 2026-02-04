@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Calendar, Clock, AlertCircle, CheckCircle2, MessageSquare } from "lucide-react";
+import { useProtectedRoute } from "@/hooks/useProtectedRoute";
 import { getToken } from "@/lib/apiClient";
 import { formatDateString, formatTime as formatTimeUtil } from "@/lib/dateUtils";
 
@@ -28,6 +29,8 @@ type TimeSlot = {
 };
 
 export default function RescheduleRequestsPage() {
+  useProtectedRoute({ requiredUserType: 'attorney' });
+
   const [requests, setRequests] = useState<RescheduleRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedRequest, setSelectedRequest] = useState<RescheduleRequest | null>(null);

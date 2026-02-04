@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import toast from "react-hot-toast";
+import { useProtectedRoute } from "@/hooks/useProtectedRoute";
 import WitnessSection from "./components/WitnessSection";
 import JuryChargeBuilder from "./components/JuryChargeBuilder";
 import { formatDateString } from "@/lib/dateUtils";
@@ -251,6 +252,8 @@ const InfoCard = ({ icon: Icon, label, value, variant = 'default' }: InfoCardPro
 };
 
 export default function WarRoomPage() {
+  useProtectedRoute({ requiredUserType: 'attorney' });
+
   const params = useParams();
   const router = useRouter();
   const caseId = params.id as string;

@@ -20,6 +20,7 @@ import {
   RefreshCw
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { useProtectedRoute } from "@/hooks/useProtectedRoute";
 import { getToken as getAuthToken, getUser, isAdmin } from "@/lib/apiClient";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL
@@ -43,6 +44,8 @@ type Notification = {
 };
 
 export default function AdminNotificationsPage() {
+  useProtectedRoute({ requiredUserType: 'admin' });
+
   const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);

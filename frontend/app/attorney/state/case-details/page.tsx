@@ -3,10 +3,12 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { X } from "lucide-react";
+import { useProtectedRoute } from "@/hooks/useProtectedRoute";
 import Stepper from "../../components/Stepper";
 import FormContainer from "../../components/FormContainer";
 
 export default function CaseDetailsPage() {
+  useProtectedRoute({ requiredUserType: 'attorney' });
   const [state, setState] = useState("");
   const [stateCode, setStateCode] = useState(""); // For fetching counties from Census API
   const [county, setCounty] = useState("");
