@@ -448,6 +448,7 @@ export default function TrialConferenceClient() {
         e.added.forEach(async (stream: any) => {
           if (stream.mediaStreamType === "ScreenSharing") {
             screenShareStream.current = stream;
+            setIsScreenSharing(true);
             setFeaturedParticipant("screenshare");
             setRenderTrigger(prev => prev + 1);
           }
@@ -909,10 +910,10 @@ export default function TrialConferenceClient() {
     try {
       if (isScreenSharing) {
         await call.stopScreenSharing();
-        setIsScreenSharing(false);
+        // State will be updated by localVideoStreamsUpdated event handler
       } else {
         await call.startScreenSharing();
-        setIsScreenSharing(true);
+        // State will be updated by localVideoStreamsUpdated event handler
       }
     } catch (err: any) {
       console.error("Screen share error:", err);
