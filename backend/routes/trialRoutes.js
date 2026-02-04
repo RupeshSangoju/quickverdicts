@@ -970,7 +970,7 @@ router.post(
 /**
  * POST /api/trial/end/:caseId
  * End a trial meeting
- * NEW: Added endpoint to end meetings
+ * FIXED: Now properly removes all participants from ACS room and chat thread
  */
 router.post(
   "/end/:caseId",
@@ -989,23 +989,69 @@ router.post(
         });
       }
 
+      // Get all active participants (excluding the admin who is ending the call)
+      // The admin will disconnect via frontend hangUp({ forEveryone: true })
+      const participants = await TrialMeeting.getParticipants(meeting.MeetingId);
+      const activeParticipants = participants.filter(p =>
+        (p.IsActive === 1 || p.LeftAt === null) &&
+        !(p.UserType === 'admin' && p.UserId === req.user?.id)
+      );
+
+      console.log(`Removing ${activeParticipants.length} active participants from meeting ${meeting.MeetingId}`);
+
+      // Remove each active participant from ACS room, chat thread, and database
+      for (const participant of activeParticipants) {
+        try {
+          // Remove from ACS room
+          if (meeting.RoomId && participant.AcsUserId) {
+            await removeParticipantFromRoom(meeting.RoomId, participant.AcsUserId);
+          }
+
+          // Remove from chat thread
+          if (meeting.ChatThreadId && participant.AcsUserId) {
+            try {
+              await removeParticipantFromChat(
+                meeting.ChatThreadId,
+                participant.AcsUserId,
+                participant.DisplayName || "Participant"
+              );
+            } catch (chatError) {
+              // Chat errors are not critical
+              console.log(`Chat removal completed for ${participant.AcsUserId}:`, chatError.message);
+            }
+          }
+
+          // Mark participant as left in database
+          await TrialMeeting.removeParticipant(participant.ParticipantId);
+
+          console.log(`✅ Removed participant ${participant.DisplayName} (${participant.UserType})`);
+        } catch (participantError) {
+          console.error(`Error removing participant ${participant.ParticipantId}:`, participantError);
+          // Continue with other participants even if one fails
+        }
+      }
+
+      // Update meeting status to completed
       await TrialMeeting.updateMeetingStatus(meeting.MeetingId, "completed");
 
+      // Update case status
       await Case.updateCaseStatus(caseId, {
         attorneyStatus: "view_details",
       });
 
+      // Create event in audit trail
       await Event.createEvent({
         caseId,
         eventType: Event.EVENT_TYPES.TRIAL_COMPLETED,
-        description: "Trial meeting ended",
-        triggeredBy: req.user?.id || 0, // ✅ FIX
+        description: "Trial meeting ended by admin",
+        triggeredBy: req.user?.id || 0,
         userType: "admin",
       });
 
       res.json({
         success: true,
         message: "Trial ended successfully",
+        participantsRemoved: activeParticipants.length,
       });
     } catch (error) {
       console.error("Error ending trial:", error);
