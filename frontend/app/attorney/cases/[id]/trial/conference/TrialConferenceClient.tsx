@@ -87,6 +87,7 @@ export default function TrialConferenceClient() {
 
   const featuredVideoRef = useRef<HTMLDivElement>(null);
   const localVideoStream = useRef<any>(null);
+  const localVideoRenderer = useRef<any>(null); // ✅ Track local video renderer for proper disposal
   const screenShareStream = useRef<any>(null);
   const screenShareRenderer = useRef<any>(null);
   const remoteVideoRefs = useRef<Map<string, any>>(new Map());
@@ -120,6 +121,11 @@ export default function TrialConferenceClient() {
       if (callRef.current) {
         callRef.current.hangUp({ forEveryone: false }).catch((e: any) => console.error("Hangup error:", e));
       }
+      // Dispose local video renderer
+      if (localVideoRenderer.current) {
+        localVideoRenderer.current.dispose();
+      }
+      // Dispose remote video renderers
       remoteVideoRefs.current.forEach((r) => r.renderer?.dispose());
     };
   }, []);
@@ -203,8 +209,17 @@ export default function TrialConferenceClient() {
       if (participantId === "local") {
         if (!isVideoOff && localVideoStream.current) {
           // Local camera is ON - render it
-          const renderer = new VideoStreamRenderer(localVideoStream.current);
-          const view = await renderer.createView({ scalingMode: 'Crop' });
+          // Dispose old renderer first if exists
+          if (localVideoRenderer.current) {
+            try {
+              localVideoRenderer.current.dispose();
+            } catch (err) {
+              console.warn("Warning disposing old local renderer:", err);
+            }
+          }
+          // Create new renderer and track it
+          localVideoRenderer.current = new VideoStreamRenderer(localVideoStream.current);
+          const view = await localVideoRenderer.current.createView({ scalingMode: 'Crop' });
           containerElement.appendChild(view.target);
           console.log("✅ Rendered local video in thumbnail");
         }
@@ -256,6 +271,8 @@ export default function TrialConferenceClient() {
       } else if (featuredParticipant === "local") {
         // Local participant in main view
         if (!isVideoOff && localVideoStream.current) {
+          // Note: We create a separate renderer for featured view
+          // The thumbnail has its own renderer tracked in localVideoRenderer
           const renderer = new VideoStreamRenderer(localVideoStream.current);
           const view = await renderer.createView();
           featuredVideoRef.current.appendChild(view.target);
@@ -941,14 +958,50 @@ export default function TrialConferenceClient() {
         setIsVideoOff(false);
         console.log("✅ Camera turned ON");
       } else {
-        // Turn camera OFF
+        // Turn camera OFF - Following MS Teams/Zoom/WhatsApp industry standards
         if (!localVideoStream.current) {
           console.error("No video stream available");
           return;
         }
+
+        console.log("🛑 Stopping camera and disposing renderer...");
+
+        // Step 1: Stop the video stream via ACS SDK
         await currentCall.stopVideo(localVideoStream.current);
+
+        // Step 2: Dispose the local video renderer to remove frozen frame
+        // This is critical - simply stopping the stream isn't enough
+        if (localVideoRenderer.current) {
+          try {
+            localVideoRenderer.current.dispose();
+            localVideoRenderer.current = null;
+            console.log("✅ Local video renderer disposed");
+          } catch (err) {
+            console.warn("Warning disposing local renderer:", err);
+          }
+        }
+
+        // Step 3: Clear ALL video containers immediately to remove any frozen frames
+        // Clear featured video if showing local participant
+        if (featuredParticipant === "local" && featuredVideoRef.current) {
+          featuredVideoRef.current.innerHTML = "";
+          console.log("🧹 Cleared featured video container (local)");
+        }
+
+        // Clear local participant thumbnail
+        const localContainer = participantVideoRefs.current.get("local");
+        if (localContainer) {
+          localContainer.innerHTML = "";
+          console.log("🧹 Cleared local thumbnail container");
+        }
+
+        // Step 4: Update state to show avatar
         setIsVideoOff(true);
-        console.log("✅ Camera turned OFF");
+
+        // Step 5: Force re-render to show avatar immediately
+        setRenderTrigger(prev => prev + 1);
+
+        console.log("✅ Camera turned OFF - all video elements cleared");
       }
     } catch (err) {
       console.error("❌ Toggle video error:", err);
