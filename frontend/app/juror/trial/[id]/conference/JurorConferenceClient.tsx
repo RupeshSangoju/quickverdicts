@@ -70,6 +70,7 @@ export default function JurorConferenceClient() {
   const currentUserId = useRef<string>("");
   const callRef = useRef<any>(null);
   const callAgentRef = useRef<any>(null);
+  const deviceManagerRef = useRef<any>(null);
 
   useEffect(() => {
     const handleBeforeUnload = async () => {
@@ -351,6 +352,9 @@ export default function JurorConferenceClient() {
       const tokenCredential = new AzureCommunicationTokenCredential(data.token);
       const callClient = new CallClient();
       const deviceManager = await callClient.getDeviceManager();
+
+      // Store device manager reference for later use
+      deviceManagerRef.current = deviceManager;
 
       const cameras = await deviceManager.getCameras();
       if (cameras.length > 0) {
@@ -645,20 +649,34 @@ export default function JurorConferenceClient() {
       toast.error("Unable to toggle camera. Please try again.");
       return;
     }
-    if (!localVideoStream.current) {
-      console.error("No video stream available");
-      toast.error("Camera is not available");
-      return;
-    }
     try {
       console.log(`📹 Toggling video. Current state: ${isVideoOff ? 'OFF' : 'ON'}`);
       if (isVideoOff) {
-        // Turn camera ON
+        // Turn camera ON - recreate the video stream with fresh device
+        if (!deviceManagerRef.current) {
+          console.error("Device manager not available");
+          toast.error("Camera device manager is not available");
+          return;
+        }
+
+        const cameras = await deviceManagerRef.current.getCameras();
+        if (cameras.length === 0) {
+          console.error("No cameras available");
+          toast.error("No camera found");
+          return;
+        }
+
+        // Create a fresh LocalVideoStream with the camera device
+        localVideoStream.current = new LocalVideoStream(cameras[0]);
         await currentCall.startVideo(localVideoStream.current);
         setIsVideoOff(false);
         console.log("✅ Camera turned ON");
       } else {
         // Turn camera OFF
+        if (!localVideoStream.current) {
+          console.error("No video stream available");
+          return;
+        }
         await currentCall.stopVideo(localVideoStream.current);
         setIsVideoOff(true);
         console.log("✅ Camera turned OFF");
