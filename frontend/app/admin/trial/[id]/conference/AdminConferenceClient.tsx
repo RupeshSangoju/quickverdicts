@@ -330,6 +330,19 @@ export default function AdminConferenceClient() {
     renderFeaturedVideo();
   }, [featuredParticipant, renderTrigger, isVideoOff]);
 
+  // ✅ FIX: Immediately clear video containers when camera is turned off
+  useEffect(() => {
+    participantVideoStates.forEach((isVideoOn, participantId) => {
+      if (!isVideoOn) {
+        const containerElement = participantVideoRefs.current.get(participantId);
+        if (containerElement) {
+          containerElement.innerHTML = "";
+          console.log(`🧹 Cleared video container for ${participantId} (camera off)`);
+        }
+      }
+    });
+  }, [participantVideoStates]);
+
   // Render all participant thumbnails when participants or camera states change
   useEffect(() => {
     // Render local participant thumbnail
@@ -1608,15 +1621,9 @@ export default function AdminConferenceClient() {
                       </div>
                     ) : (
                       <>
-                        {/* ✅ FIX: Always create ref for video container, but show/hide based on camera state */}
+                        {/* Video container - cleared by useEffect when camera turns off */}
                         <div
-                          ref={(el) => {
-                            participantVideoRefs.current.set(participant.id, el);
-                            // ✅ Clear container when camera is off to remove frozen frames
-                            if (el && !isVideoOn) {
-                              el.innerHTML = "";
-                            }
-                          }}
+                          ref={(el) => participantVideoRefs.current.set(participant.id, el)}
                           className="w-full h-full [&_video]:object-cover"
                           style={{ display: isVideoOn ? 'block' : 'none' }}
                         />
