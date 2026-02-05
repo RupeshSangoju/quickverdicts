@@ -300,6 +300,22 @@ export default function TrialConferenceClient() {
     });
   }, [participantVideoStates]);
 
+  // ✅ FIX: Clear local participant video container when camera is turned off
+  useEffect(() => {
+    if (isVideoOff) {
+      const localContainer = participantVideoRefs.current.get("local");
+      if (localContainer) {
+        localContainer.innerHTML = "";
+        console.log(`🧹 Cleared local video container (camera off)`);
+      }
+      // Also clear featured video if showing local participant
+      if (featuredParticipant === "local" && featuredVideoRef.current) {
+        featuredVideoRef.current.innerHTML = "";
+        console.log(`🧹 Cleared featured video container (local camera off)`);
+      }
+    }
+  }, [isVideoOff]);
+
   // Render all participant thumbnails when participants or camera states change
   useEffect(() => {
     // Render local participant thumbnail
