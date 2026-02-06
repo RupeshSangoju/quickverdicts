@@ -83,6 +83,8 @@ export default function TrialConferenceClient() {
     QuestionType: 'Multiple Choice',
     Options: '',
     IsRequired: true,
+    MinValue: undefined,
+    MaxValue: undefined,
   });
 
   const featuredVideoRef = useRef<HTMLDivElement>(null);
@@ -874,6 +876,11 @@ export default function TrialConferenceClient() {
         payload.options = newQuestionData.Options.split('\n').map((o: string) => o.trim()).filter(Boolean);
       }
 
+      if (newQuestionData.QuestionType === 'Numeric Response') {
+        payload.minValue = newQuestionData.MinValue;
+        payload.maxValue = newQuestionData.MaxValue;
+      }
+
       const response = await fetch(`${API_BASE}/api/jury-charge/questions`, {
         method: 'POST',
         headers: {
@@ -891,6 +898,8 @@ export default function TrialConferenceClient() {
           QuestionType: 'Multiple Choice',
           Options: '',
           IsRequired: true,
+          MinValue: undefined,
+          MaxValue: undefined,
         });
       } else {
         const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
@@ -1559,8 +1568,9 @@ export default function TrialConferenceClient() {
                     style={{ backgroundColor: "#ffffff", color: "#0A2342", borderColor: "#C6CDD9" }}
                   >
                     <option value="Multiple Choice">Multiple Choice</option>
-                    <option value="Text">Text</option>
                     <option value="Yes/No">Yes/No</option>
+                    <option value="Text Response">Text Response</option>
+                    <option value="Numeric Response">Numeric Response</option>
                   </select>
                 </div>
 
@@ -1575,6 +1585,33 @@ export default function TrialConferenceClient() {
                       rows={4}
                       placeholder="Option 1&#10;Option 2&#10;Option 3"
                     />
+                  </div>
+                )}
+
+                {newQuestionData.QuestionType === "Numeric Response" && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs mb-1" style={{ color: "#455A7C" }}>Minimum Value (optional)</label>
+                      <input
+                        type="number"
+                        value={newQuestionData.MinValue || ''}
+                        onChange={(e) => setNewQuestionData({...newQuestionData, MinValue: e.target.value ? Number(e.target.value) : undefined})}
+                        className="w-full px-3 py-2 rounded border focus:outline-none focus:border-2"
+                        style={{ backgroundColor: "#ffffff", color: "#0A2342", borderColor: "#C6CDD9" }}
+                        placeholder="Min"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs mb-1" style={{ color: "#455A7C" }}>Maximum Value (optional)</label>
+                      <input
+                        type="number"
+                        value={newQuestionData.MaxValue || ''}
+                        onChange={(e) => setNewQuestionData({...newQuestionData, MaxValue: e.target.value ? Number(e.target.value) : undefined})}
+                        className="w-full px-3 py-2 rounded border focus:outline-none focus:border-2"
+                        style={{ backgroundColor: "#ffffff", color: "#0A2342", borderColor: "#C6CDD9" }}
+                        placeholder="Max"
+                      />
+                    </div>
                   </div>
                 )}
 
