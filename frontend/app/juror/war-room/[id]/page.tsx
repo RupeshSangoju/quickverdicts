@@ -6,9 +6,6 @@ import { ArrowLeftIcon, EyeIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useProtectedRoute } from "@/hooks/useProtectedRoute";
 import { getToken, getUser } from "@/lib/apiClient";
 import { formatDateString } from "@/lib/dateUtils";
-import JurorVerdictForm from "../../cases/[id]/components/JurorVerdictForm";
-import { useWebSocket } from "@/hooks/useWebSocket";
-import toast from "react-hot-toast";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL
   ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api$/, '')
@@ -126,7 +123,6 @@ export default function JurorWarRoomPage() {
   const { id } = useParams();
   const router = useRouter();
   const caseId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";
-  const { socket, isConnected, joinRoom, on, off } = useWebSocket();
 
   const [caseData, setCaseData] = useState<CaseData | null>(null);
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -135,58 +131,6 @@ export default function JurorWarRoomPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [viewingDoc, setViewingDoc] = useState<Document | null>(null);
-  const [juryChargeReleased, setJuryChargeReleased] = useState(false);
-  const [juryChargeLoading, setJuryChargeLoading] = useState(true);
-  const [jurorId, setJurorId] = useState<number | null>(null);
-
-  // Get jurorId from localStorage
-  useEffect(() => {
-    const user = getUser();
-    if (user?.type === 'juror' && user?.id) {
-      setJurorId(user.id);
-    }
-  }, []);
-
-  // Fetch jury charge status
-  useEffect(() => {
-    if (!caseId) return;
-
-    const checkJuryChargeStatus = async () => {
-      try {
-        setJuryChargeLoading(true);
-        const token = getToken();
-        const response = await fetch(`${API_BASE}/api/jury-charge/status/${caseId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (!response.ok) {
-          console.warn(`Jury charge status check failed: ${response.status}`);
-          setJuryChargeReleased(false);
-          return;
-        }
-
-        const contentType = response.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-          console.warn("Jury charge status response is not JSON");
-          setJuryChargeReleased(false);
-          return;
-        }
-
-        const data = await response.json();
-        // isLocked means the jury charge has been released to jurors
-        setJuryChargeReleased(data.isLocked || false);
-      } catch (err) {
-        console.error("Error checking jury charge status:", err);
-        setJuryChargeReleased(false);
-      } finally {
-        setJuryChargeLoading(false);
-      }
-    };
-
-    checkJuryChargeStatus();
-  }, [caseId]);
 
   useEffect(() => {
     if (!caseId) return;
@@ -272,43 +216,6 @@ export default function JurorWarRoomPage() {
 
     fetchWarRoomData();
   }, [caseId]);
-
-  // WebSocket listener for jury charge release
-  useEffect(() => {
-    if (!isConnected || !socket || !caseId) return;
-
-    try {
-      // Join the case room to receive notifications
-      if (typeof joinRoom === 'function') {
-        joinRoom(`case_${caseId}`);
-      }
-
-      const handleJuryChargeReleased = (data: any) => {
-        if (data.caseId === parseInt(caseId)) {
-          console.log('🔔 Jury charge has been released!');
-          setJuryChargeReleased(true);
-          // Show toast notification to the user
-          toast.success('The jury charge has been released and is now available for you to complete!', {
-            duration: 5000,
-            position: 'top-center',
-          });
-        }
-      };
-
-      if (typeof on === 'function') {
-        on('jury_charge:released', handleJuryChargeReleased);
-      }
-
-      return () => {
-        if (typeof off === 'function') {
-          off('jury_charge:released', handleJuryChargeReleased);
-        }
-      };
-    } catch (error) {
-      console.error('WebSocket setup error:', error);
-      // Continue without WebSocket functionality
-    }
-  }, [isConnected, socket, caseId, joinRoom, on, off]);
 
   const handleViewDocument = (doc: Document) => {
     setViewingDoc(doc);
@@ -550,28 +457,6 @@ export default function JurorWarRoomPage() {
           <p className="text-sm text-blue-800">
             <strong>Note:</strong> This is a read-only view. You can view documents in your browser, but cannot make any changes to case materials. Please review all materials before the trial date.
           </p>
-        </div>
-
-        {/* Jury Charge Section */}
-        <div className="mt-6 bg-white rounded-lg shadow border border-[#C6CDD9] p-6">
-          <h2 className="text-xl font-bold text-[#0A2342] mb-4">Jury Charge - Verdict Form</h2>
-          {juryChargeLoading ? (
-            <div className="flex items-center justify-center p-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-2 border-[#16305B]/30 border-t-[#16305B]"></div>
-              <span className="ml-3 text-[#455A7C]">Checking jury charge status...</span>
-            </div>
-          ) : juryChargeReleased && jurorId ? (
-            <JurorVerdictForm caseId={parseInt(caseId)} jurorId={jurorId} />
-          ) : (
-            <div className="bg-[#FAF9F6] border border-[#C6CDD9] rounded-lg p-8 text-center">
-              <p className="text-[#0A2342] font-medium">
-                The jury charge has not been released yet. Please check back later.
-              </p>
-              <p className="text-sm text-[#455A7C] mt-2">
-                You will be notified when the jury charge is available for you to complete.
-              </p>
-            </div>
-          )}
         </div>
       </div>
 
