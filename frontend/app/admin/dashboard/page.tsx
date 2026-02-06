@@ -602,11 +602,11 @@ export default function AdminDashboard() {
     return () => clearInterval(interval);
   }, [isAuthChecked, selectedDate]); // Added selectedDate dependency
 
-  // Inactivity logout timer - logout after 1 minute of inactivity
+  // Inactivity logout timer - logout after 10 minutes of inactivity
   useEffect(() => {
     if (!isAuthChecked) return;
 
-    const INACTIVITY_TIMEOUT = 60000; // 1 minute in milliseconds
+    const INACTIVITY_TIMEOUT = 600000; // 10 minutes in milliseconds
     let inactivityTimer: NodeJS.Timeout;
 
     const resetInactivityTimer = () => {
