@@ -928,9 +928,8 @@ export default function JurorConferenceClient() {
       <div className="flex-1 flex overflow-hidden relative">
         {/* Main Content Area - Adjust width when panels are open */}
         <div className={`flex flex-col transition-all duration-300 ${
-          showChatPanel && showQuestionsPanel ? 'w-2/5' :
-          showQuestionsPanel ? 'w-3/5' :
-          showChatPanel ? 'w-4/5' : 'w-full mx-auto'
+          showChatPanel && showQuestionsPanel ? 'w-3/5' :
+          showChatPanel || showQuestionsPanel ? 'w-3/5' : 'w-4/5 mx-auto'
         }`}>
           {/* Header */}
           <div className="px-6 py-3 flex items-center justify-between shadow-lg" style={{ backgroundColor: "#16305B" }}>
@@ -1188,7 +1187,7 @@ export default function JurorConferenceClient() {
 
     {/* Chat Panel - slides in from right, takes 20% width */}
     {showChatPanel && (
-      <div className="w-1/5 h-full flex flex-col shadow-2xl" style={{ backgroundColor: "#ffffff", borderLeft: "1px solid #C6CDD9" }}>
+      <div className="w-1/5 flex flex-col shadow-2xl" style={{ backgroundColor: "#ffffff", borderLeft: "1px solid #C6CDD9" }}>
           <div className="p-5 flex items-center justify-between" style={{ backgroundColor: "#16305B", borderBottom: "1px solid #C6CDD9" }}>
             <div>
               <h3 className="text-lg font-bold text-white">Chat</h3>
@@ -1285,7 +1284,7 @@ export default function JurorConferenceClient() {
 
       {/* Questions Panel - slides in from right */}
       {showQuestionsPanel && juryChargeReleased && jurorId && (
-        <div className={`fixed top-0 bottom-0 w-2/5 flex flex-col shadow-2xl z-50 ${showChatPanel ? 'right-[20%]' : 'right-0'}`} style={{ backgroundColor: "#ffffff", borderLeft: "2px solid #C6CDD9" }}>
+        <div className="fixed right-0 top-0 bottom-0 w-2/5 flex flex-col shadow-2xl z-50" style={{ backgroundColor: "#ffffff", borderLeft: "2px solid #C6CDD9" }}>
           <div className="p-5 flex items-center justify-between" style={{ backgroundColor: "#16305B", borderBottom: "1px solid #C6CDD9" }}>
             <div>
               <h3 className="text-lg font-bold text-white">Jury Charge Questions</h3>
