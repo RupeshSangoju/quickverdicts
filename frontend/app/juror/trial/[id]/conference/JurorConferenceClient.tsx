@@ -7,6 +7,7 @@ import { AzureCommunicationTokenCredential } from "@azure/communication-common";
 import { ChatClient } from "@azure/communication-chat";
 import { getToken } from "@/lib/apiClient";
 import toast from "react-hot-toast";
+import { io, Socket } from "socket.io-client";
 import {
   Video,
   VideoOff,
@@ -19,7 +20,9 @@ import {
   MoreVertical,
   Pin,
   Volume2,
+  FileText,
 } from "lucide-react";
+import JurorVerdictForm from "@/app/juror/cases/[id]/components/JurorVerdictForm";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL
   ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api$/, '')
@@ -61,6 +64,12 @@ export default function JurorConferenceClient() {
   const [showChatPanel, setShowChatPanel] = useState(false);
   const [participantJoinTimes, setParticipantJoinTimes] = useState<Map<string, Date>>(new Map());
 
+  // Questions panel state
+  const [showQuestionsPanel, setShowQuestionsPanel] = useState(false);
+  const [juryChargeReleased, setJuryChargeReleased] = useState(false);
+  const [showQuestionsNotification, setShowQuestionsNotification] = useState(false);
+  const [jurorId, setJurorId] = useState<number | null>(null);
+
   const featuredVideoRef = useRef<HTMLDivElement>(null);
   const localVideoStream = useRef<any>(null);
   const remoteVideoRefs = useRef<Map<string, any>>(new Map());
@@ -71,6 +80,7 @@ export default function JurorConferenceClient() {
   const callRef = useRef<any>(null);
   const callAgentRef = useRef<any>(null);
   const deviceManagerRef = useRef<any>(null);
+  const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
     const handleBeforeUnload = async () => {
@@ -95,6 +105,9 @@ export default function JurorConferenceClient() {
         callRef.current.hangUp({ forEveryone: false }).catch((e: any) => console.error("Hangup error:", e));
       }
       remoteVideoRefs.current.forEach((r) => r.renderer?.dispose());
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
     };
   }, []);
 
@@ -289,6 +302,79 @@ export default function JurorConferenceClient() {
     }
   }, [participants.length, featuredParticipant]);
 
+  async function checkJuryChargeStatus() {
+    try {
+      const token = getToken();
+      const response = await fetch(`${API_BASE}/api/cases/${caseId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const caseData = await response.json();
+        if (caseData.case?.JuryChargeStatus === 'completed') {
+          setJuryChargeReleased(true);
+        }
+      }
+    } catch (err) {
+      console.error("Error checking jury charge status:", err);
+    }
+  }
+
+  function initializeWebSocket() {
+    try {
+      const token = getToken();
+      if (!token) {
+        console.warn("No token available for Socket.IO connection");
+        return;
+      }
+
+      const socket = io(API_BASE, {
+        path: "/socket.io",
+        auth: {
+          token: token,
+        },
+        transports: ["websocket", "polling"],
+      });
+
+      socketRef.current = socket;
+
+      socket.on("connect", () => {
+        console.log("Socket.IO connected for jury charge notifications");
+        // Join the case room to receive notifications
+        socket.emit("join_case", parseInt(caseId));
+      });
+
+      socket.on("joined_case", (data) => {
+        console.log("Successfully joined case room:", data);
+      });
+
+      // Listen for jury charge release event
+      socket.on("jury_charge:released", (data) => {
+        console.log("Received jury_charge:released event:", data);
+        if (data.caseId === parseInt(caseId)) {
+          console.log("Jury charge has been released!");
+          setJuryChargeReleased(true);
+          setShowQuestionsNotification(true);
+          toast.success("Jury charge questions are now available!", {
+            duration: 5000,
+          });
+        }
+      });
+
+      socket.on("connect_error", (error) => {
+        console.error("Socket.IO connection error:", error);
+      });
+
+      socket.on("disconnect", () => {
+        console.log("Socket.IO connection closed");
+      });
+    } catch (err) {
+      console.error("Error initializing Socket.IO:", err);
+    }
+  }
+
   async function initializeChat(token: string, userId: string, threadId: string, endpoint: string) {
     try {
       const tokenCredential = new AzureCommunicationTokenCredential(token);
@@ -343,6 +429,17 @@ export default function JurorConferenceClient() {
       if (!response.ok) throw new Error("Not authorized to join this trial");
       const data = await response.json();
       setDisplayName(data.displayName);
+
+      // Set juror ID for questions
+      if (data.jurorId) {
+        setJurorId(data.jurorId);
+      }
+
+      // Check if jury charge has been released
+      checkJuryChargeStatus();
+
+      // Initialize WebSocket for jury charge notifications
+      initializeWebSocket();
 
       if (data.chatThreadId && data.endpointUrl) {
         await initializeChat(data.token, data.userId, data.chatThreadId, data.endpointUrl);
@@ -620,6 +717,13 @@ export default function JurorConferenceClient() {
     }
   };
 
+  const toggleQuestionsPanel = () => {
+    setShowQuestionsPanel(!showQuestionsPanel);
+    if (!showQuestionsPanel) {
+      setShowQuestionsNotification(false);
+    }
+  };
+
   const toggleMute = async () => {
     const currentCall = callRef.current;
     if (!currentCall) {
@@ -822,9 +926,10 @@ export default function JurorConferenceClient() {
     <div className="h-screen flex flex-col overflow-hidden" style={{ backgroundColor: "#f0ebe0" }}>
       {/* Container with chat support */}
       <div className="flex-1 flex overflow-hidden relative">
-        {/* Main Content Area - More space for video when chat open */}
+        {/* Main Content Area - Adjust width when panels are open */}
         <div className={`flex flex-col transition-all duration-300 ${
-          showChatPanel ? 'w-4/5' : 'w-4/5 mx-auto'
+          showChatPanel && showQuestionsPanel ? 'w-3/5' :
+          showChatPanel || showQuestionsPanel ? 'w-3/5' : 'w-4/5 mx-auto'
         }`}>
           {/* Header */}
           <div className="px-6 py-3 flex items-center justify-between shadow-lg" style={{ backgroundColor: "#16305B" }}>
@@ -1052,6 +1157,22 @@ export default function JurorConferenceClient() {
               </span>
             </button>
 
+            {juryChargeReleased && (
+              <button onClick={toggleQuestionsPanel} className="relative flex flex-col items-center gap-1 hover:scale-110 transition-transform group" title="Questions">
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: showQuestionsPanel ? "#5B9BD5" : "#16305B" }}>
+                  <FileText className="w-6 h-6 text-white" />
+                </div>
+                {showQuestionsNotification && !showQuestionsPanel && (
+                  <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
+                    !
+                  </div>
+                )}
+                <span className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                  Questions
+                </span>
+              </button>
+            )}
+
             <button onClick={leaveCall} className="flex flex-col items-center gap-1 hover:scale-110 transition-transform group relative" title="Leave Call">
               <div className="w-12 h-12 rounded-xl bg-red-600 flex items-center justify-center">
                 <Phone className="w-6 h-6 text-white transform rotate-135" />
@@ -1150,6 +1271,57 @@ export default function JurorConferenceClient() {
               onClick={(e) => {
                 e.stopPropagation();
                 setShowChatNotification(false);
+              }}
+              className="text-white/80 hover:text-white"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Questions Panel - slides in from right */}
+      {showQuestionsPanel && juryChargeReleased && jurorId && (
+        <div className="fixed right-0 top-0 bottom-0 w-2/5 flex flex-col shadow-2xl z-50" style={{ backgroundColor: "#ffffff", borderLeft: "2px solid #C6CDD9" }}>
+          <div className="p-5 flex items-center justify-between" style={{ backgroundColor: "#16305B", borderBottom: "1px solid #C6CDD9" }}>
+            <div>
+              <h3 className="text-lg font-bold text-white">Jury Charge Questions</h3>
+              <p className="text-sm text-white opacity-80">Answer all required questions</p>
+            </div>
+            <button onClick={toggleQuestionsPanel} className="text-white hover:text-gray-300">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-4">
+            <JurorVerdictForm caseId={parseInt(caseId)} jurorId={jurorId} />
+          </div>
+        </div>
+      )}
+
+      {/* Questions Notification */}
+      {showQuestionsNotification && !showQuestionsPanel && juryChargeReleased && (
+        <div
+          onClick={toggleQuestionsPanel}
+          className="fixed bottom-24 left-6 w-96 rounded-2xl shadow-2xl p-4 cursor-pointer hover:shadow-3xl transition-all"
+          style={{ backgroundColor: "#16305B", border: "1px solid #C6CDD9" }}
+        >
+          <div className="flex items-start gap-3">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+              <FileText className="w-6 h-6 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold text-white text-sm">Jury Charge Released</div>
+              <div className="text-sm text-white/90">Questions are now available for you to answer</div>
+            </div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowQuestionsNotification(false);
               }}
               className="text-white/80 hover:text-white"
             >

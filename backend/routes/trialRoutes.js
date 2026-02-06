@@ -719,6 +719,7 @@ router.post(
         roomId: roomId,
         displayName: `${jurorName} (Juror)`,
         userId: identity.communicationUserId,
+        jurorId: jurorId,
         chatThreadId: chatThreadId,
         endpointUrl: ACS_ENDPOINT,
       });
