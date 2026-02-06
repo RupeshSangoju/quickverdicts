@@ -1518,7 +1518,9 @@ export default function AdminConferenceClient() {
       <div className="flex-1 flex overflow-hidden relative">
         {/* Main Content Area - More space for video when panels open */}
         <div className={`flex flex-col transition-all duration-300 ${
-          showChatPanel || showJuryChargePanel || showDocumentsPanel ? 'w-4/5' : 'w-4/5 mx-auto'
+          [showChatPanel, showJuryChargePanel, showDocumentsPanel].filter(Boolean).length === 3 ? 'w-2/5' :
+          [showChatPanel, showJuryChargePanel, showDocumentsPanel].filter(Boolean).length === 2 ? 'w-3/5' :
+          [showChatPanel, showJuryChargePanel, showDocumentsPanel].filter(Boolean).length === 1 ? 'w-4/5' : 'w-full mx-auto'
         }`}>
           {/* Header */}
           <div className="px-6 py-3 flex items-center justify-between shadow-lg" style={{ backgroundColor: "#16305B" }}>
@@ -1862,7 +1864,7 @@ export default function AdminConferenceClient() {
 
     {/* Chat Panel - slides in from right, takes 20% width */}
     {showChatPanel && (
-      <div className="w-1/5 flex flex-col shadow-2xl" style={{ backgroundColor: "#ffffff", borderLeft: "1px solid #C6CDD9" }}>
+      <div className="w-1/5 h-full flex flex-col shadow-2xl" style={{ backgroundColor: "#ffffff", borderLeft: "1px solid #C6CDD9" }}>
           <div className="p-5 flex items-center justify-between" style={{ backgroundColor: "#16305B", borderBottom: "1px solid #C6CDD9" }}>
             <div>
               <h3 className="text-lg font-bold text-white">Chat</h3>
@@ -1926,7 +1928,7 @@ export default function AdminConferenceClient() {
 
       {/* Jury Charge Panel */}
       {showJuryChargePanel && (
-        <div className="w-1/5 flex flex-col shadow-2xl" style={{ backgroundColor: "#ffffff", borderLeft: "1px solid #C6CDD9" }}>
+        <div className="w-1/5 h-full flex flex-col shadow-2xl" style={{ backgroundColor: "#ffffff", borderLeft: "1px solid #C6CDD9" }}>
           <div className="p-5 flex items-center justify-between" style={{ backgroundColor: "#16305B", borderBottom: "1px solid #C6CDD9" }}>
             <div>
               <h3 className="text-lg font-bold text-white">Jury Charge Questions</h3>
@@ -2015,7 +2017,7 @@ export default function AdminConferenceClient() {
 
       {/* Documents Panel */}
       {showDocumentsPanel && (
-        <div className="w-1/5 flex flex-col shadow-2xl" style={{ backgroundColor: "#ffffff", borderLeft: "1px solid #C6CDD9" }}>
+        <div className="w-1/5 h-full flex flex-col shadow-2xl" style={{ backgroundColor: "#ffffff", borderLeft: "1px solid #C6CDD9" }}>
           <div className="p-5 flex items-center justify-between" style={{ backgroundColor: "#16305B", borderBottom: "1px solid #C6CDD9" }}>
             <div>
               <h3 className="text-lg font-bold text-white">Case Documents</h3>

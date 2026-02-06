@@ -1177,7 +1177,8 @@ export default function TrialConferenceClient() {
       <div className="flex-1 flex overflow-hidden relative">
         {/* Main Content Area - More space for video when panels open */}
         <div className={`flex flex-col transition-all duration-300 ${
-          showChatPanel || showJuryChargePanel ? 'w-4/5' : 'w-4/5 mx-auto'
+          showChatPanel && showJuryChargePanel ? 'w-3/5' :
+          showChatPanel || showJuryChargePanel ? 'w-4/5' : 'w-full mx-auto'
         }`}>
           {/* Header */}
           <div className="px-6 py-3 flex items-center justify-between shadow-lg" style={{ backgroundColor: "#16305B" }}>
@@ -1439,7 +1440,7 @@ export default function TrialConferenceClient() {
 
     {/* Chat Panel - slides in from right, takes 20% width */}
     {showChatPanel && (
-      <div className="w-1/5 flex flex-col shadow-2xl" style={{ backgroundColor: "#ffffff", borderLeft: "1px solid #C6CDD9" }}>
+      <div className="w-1/5 h-full flex flex-col shadow-2xl" style={{ backgroundColor: "#ffffff", borderLeft: "1px solid #C6CDD9" }}>
           <div className="p-5 flex items-center justify-between" style={{ backgroundColor: "#16305B", borderBottom: "1px solid #C6CDD9" }}>
             <div>
               <h3 className="text-lg font-bold text-white">Chat</h3>
@@ -1503,7 +1504,7 @@ export default function TrialConferenceClient() {
 
       {/* Jury Charge Panel */}
       {showJuryChargePanel && (
-        <div className="w-1/5 flex flex-col shadow-2xl" style={{ backgroundColor: "#ffffff", borderLeft: "1px solid #C6CDD9" }}>
+        <div className="w-1/5 h-full flex flex-col shadow-2xl" style={{ backgroundColor: "#ffffff", borderLeft: "1px solid #C6CDD9" }}>
           <div className="p-5" style={{ backgroundColor: "#16305B", borderBottom: "1px solid #C6CDD9" }}>
             <div className="flex items-center justify-between mb-3">
               <div>
