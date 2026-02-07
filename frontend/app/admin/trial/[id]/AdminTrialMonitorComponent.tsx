@@ -144,6 +144,55 @@ export default function AdminTrialMonitor() {
   // WebSocket connection for real-time verdict updates
   const { isConnected: wsConnected, on: wsOn, off: wsOff, emit: wsEmit } = useWebSocket();
 
+  // Subscribe to camera state broadcasts for instant UI updates
+  useEffect(() => {
+    if (!wsConnected) return;
+    try {
+      // Join case room so we receive broadcasts
+      wsEmit?.("join_case", parseInt(caseId));
+
+      const handler = (data: any) => {
+        try {
+          const { userId, isVideoOn } = data || {};
+          if (!userId || userId === currentUserId.current) return;
+
+          setParticipantVideoStates((prev) => {
+            const updated = new Map(prev);
+            updated.set(userId, isVideoOn);
+            return updated;
+          });
+
+          if (!isVideoOn) {
+            // Camera OFF → show avatar NOW
+            clearParticipantVideo(userId);
+            if (featuredParticipant === userId) setRenderTrigger((prev) => prev + 1);
+          } else {
+            // Camera ON → attempt to render
+            renderParticipantVideoInThumbnail(userId).catch((err) =>
+              console.warn("Re-render failed:", err)
+            );
+            if (featuredParticipant === userId) setRenderTrigger((prev) => prev + 1);
+          }
+        } catch (e) {
+          console.warn("Error handling camera:state socket event:", e);
+        }
+      };
+
+      wsOn?.("camera:state", handler);
+
+      return () => {
+        try {
+          wsOff?.("camera:state", handler);
+          wsEmit?.("leave_case", parseInt(caseId));
+        } catch (e) {
+          console.warn("Error cleaning up camera:state listener:", e);
+        }
+      };
+    } catch (e) {
+      console.warn("WebSocket camera:state setup error:", e);
+    }
+  }, [wsConnected, wsOn, wsOff, wsEmit, caseId, featuredParticipant]);
+
   // Fetch verdict status function - defined early to avoid hoisting issues
   const fetchVerdictStatus = useCallback(async () => {
     setVerdictStatusLoading(true);
@@ -895,9 +944,23 @@ export default function AdminTrialMonitor() {
       if (isVideoOff) {
         await call.startVideo(localVideoStream.current);
         setIsVideoOff(false);
+        // Broadcast camera state
+        try {
+          wsEmit?.("camera:state", { caseId: parseInt(caseId), isVideoOn: true });
+          wsEmit?.("camera:toggle", { caseId: parseInt(caseId), isOn: true });
+        } catch (e) {
+          console.warn("Failed to emit camera state (on):", e);
+        }
       } else {
         await call.stopVideo(localVideoStream.current);
         setIsVideoOff(true);
+        // Broadcast camera state
+        try {
+          wsEmit?.("camera:state", { caseId: parseInt(caseId), isVideoOn: false });
+          wsEmit?.("camera:toggle", { caseId: parseInt(caseId), isOn: false });
+        } catch (e) {
+          console.warn("Failed to emit camera state (off):", e);
+        }
       }
     } catch (err) {
       console.error("Toggle video error:", err);

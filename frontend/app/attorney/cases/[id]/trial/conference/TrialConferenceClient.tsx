@@ -11,6 +11,7 @@ import { AzureCommunicationTokenCredential } from "@azure/communication-common";
 import { ChatClient } from "@azure/communication-chat";
 import { getToken } from "@/lib/apiClient";
 import toast from "react-hot-toast";
+import { useWebSocket } from "@/hooks/useWebSocket";
 import {
   Video,
   VideoOff,
@@ -84,7 +85,7 @@ export default function TrialConferenceClient() {
     Options: '',
     IsRequired: true,
     MinValue: undefined,
-    MaxValue: undefined,
+    MaxValue: undefined,    
   });
 
   const featuredVideoRef = useRef<HTMLDivElement>(null);
@@ -100,6 +101,125 @@ export default function TrialConferenceClient() {
   const callRef = useRef<any>(null);
   const callAgentRef = useRef<any>(null);
   const deviceManagerRef = useRef<any>(null);
+  // Track attached MediaStreamTrack listeners for cleanup
+  const trackListenersRef = useRef<Map<string, {
+    track: MediaStreamTrack;
+    mute: () => void;
+    unmute: () => void;
+  }>>(new Map());
+
+  // WebSocket for camera state broadcasts
+  const { socket: wsSocket, isConnected: wsConnected, emit: wsEmit, on: wsOn, off: wsOff, joinRoom: wsJoinRoom, leaveRoom: wsLeaveRoom } = useWebSocket();
+
+  // Subscribe to camera state broadcasts and join case room
+  useEffect(() => {
+    if (!wsConnected) return;
+    try {
+      wsJoinRoom?.(`case_${caseId}`);
+
+      const handler = (data: any) => {
+        try {
+          const { userId, isVideoOn } = data || {};
+          if (!userId || userId === currentUserId.current) return;
+          console.log(`[SOCKET] ${userId} camera ${isVideoOn ? "ON" : "OFF"} — instant UI update`);
+
+          setParticipantVideoStates((prev) => {
+            const updated = new Map(prev);
+            updated.set(userId, isVideoOn);
+            return updated;
+          });
+
+          if (!isVideoOn) {
+            // If the featured participant turned their camera off, attempt to switch
+            // to a sensible alternative (unless pinned).
+            clearParticipantVideo(userId);
+            if (featuredParticipant === userId) {
+              if (!pinnedParticipant) {
+                // Prefer active speaker if they have video
+                const activeHasVideo = activeSpeaker && participantVideoStates.get(activeSpeaker);
+                if (activeHasVideo) {
+                  setFeaturedParticipant(activeSpeaker as string);
+                } else {
+                  // Find any other participant with video on
+                  const replacement = participants.find((p: any) => {
+                    const id = getUserId(p.identifier);
+                    return id !== userId && participantVideoStates.get(id);
+                  });
+                  if (replacement) {
+                    setFeaturedParticipant(getUserId(replacement.identifier));
+                  } else {
+                    setFeaturedParticipant("local");
+                  }
+                }
+              } else {
+                // pinned -> force a re-render to remove frozen frame
+                setRenderTrigger((prev) => prev + 1);
+              }
+            }
+          } else {
+            renderParticipantVideoInThumbnail(userId).catch(() => {});
+            // If participant is speaking, bring them back to featured (unless pinned)
+            const isSpeaking = participantSpeakingStates.get(userId) || false;
+            if (!pinnedParticipant && isSpeaking) {
+              setFeaturedParticipant(userId);
+            } else if (featuredParticipant === userId) {
+              setRenderTrigger((prev) => prev + 1);
+            }
+          }
+        } catch (e) {
+          console.warn("Error handling camera:state socket event:", e);
+        }
+      };
+
+      wsOn?.("camera:state", handler);
+
+      return () => {
+        try {
+          wsOff?.("camera:state", handler);
+          wsLeaveRoom?.(`case_${caseId}`);
+        } catch (e) {
+          console.warn("Error cleaning up camera:state listener:", e);
+        }
+      };
+    } catch (e) {
+      console.warn("WebSocket camera:state setup error:", e);
+    }
+  }, [wsConnected, wsOn, wsOff, wsJoinRoom, wsLeaveRoom, caseId, featuredParticipant]);
+
+  // Ensure attorney socket joins case room on connect and add debug logs
+  useEffect(() => {
+    if (!wsSocket) return;
+    try {
+      const onConnect = () => {
+        try {
+          console.log("✅ [Attorney Socket] Connected! ID:", wsSocket.id);
+          const numericCaseId = parseInt(caseId as string);
+          wsSocket.emit("join_case", numericCaseId);
+          console.log(`📍 [Attorney Socket] Emitted join_case for case ${numericCaseId}`);
+        } catch (e) {
+          console.warn("Attorney socket connect handler error:", e);
+        }
+      };
+
+      const onJoined = (data: any) => {
+        console.log("✅ [Attorney Socket] Successfully joined case room:", data);
+      };
+
+      wsSocket.on("connect", onConnect);
+      wsSocket.on("joined_case", onJoined);
+
+      return () => {
+        try {
+          wsSocket.off("connect", onConnect);
+          wsSocket.off("joined_case", onJoined);
+        } catch (e) {
+          // ignore
+        }
+      };
+    } catch (e) {
+      console.warn("Attorney socket setup error:", e);
+    }
+  }, [wsSocket, caseId]);
 
   useEffect(() => {
     const handleBeforeUnload = async () => {
@@ -129,6 +249,17 @@ export default function TrialConferenceClient() {
       }
       // Dispose remote video renderers
       remoteVideoRefs.current.forEach((r) => r.renderer?.dispose());
+      // Cleanup any attached track listeners
+      trackListenersRef.current.forEach((listener, userId) => {
+        try {
+          listener.track.removeEventListener('mute', listener.mute);
+          listener.track.removeEventListener('unmute', listener.unmute);
+          console.log(`Final cleanup: removed track listeners for ${userId}`);
+        } catch (err) {
+          console.warn(`Error cleaning track listeners for ${userId}:`, err);
+        }
+      });
+      trackListenersRef.current.clear();
     };
   }, []);
 
@@ -181,21 +312,70 @@ export default function TrialConferenceClient() {
 
   // Clear participant video and show avatar
   function clearParticipantVideo(participantId: string) {
-    console.log(`🧹 Clearing video for ${participantId} - will show avatar`);
+    console.log(`🧹 [FORCE CLEAR] ${participantId} - thumbnail + featured`);
 
-    // Clear container to remove frozen frame
-    const containerElement = participantVideoRefs.current.get(participantId);
-    if (containerElement) {
-      containerElement.innerHTML = "";
+    // ── Thumbnail cleanup ──
+    const thumbContainer = participantVideoRefs.current.get(participantId);
+    if (thumbContainer) {
+      try {
+        const videoEl = thumbContainer.querySelector('video') as HTMLVideoElement | null;
+        if (videoEl?.srcObject instanceof MediaStream) {
+          videoEl.srcObject.getTracks().forEach(track => {
+            track.stop();
+            console.log(`   → Stopped track in thumbnail for ${participantId}`);
+          });
+          videoEl.srcObject = null;
+        }
+      } catch (e) {}
+
+      while (thumbContainer.firstChild) {
+        thumbContainer.removeChild(thumbContainer.firstChild);
+      }
+      thumbContainer.innerHTML = '';
+      thumbContainer.textContent = '';
+      console.log(`   → Thumbnail DOM cleared for ${participantId}`);
     }
 
-    // Dispose renderer
-    disposeVideoRenderer(participantId);
+    // ── Renderer cleanup ──
+    const ref = remoteVideoRefs.current.get(participantId);
+    if (ref) {
+      try {
+        if (ref.renderer) {
+          ref.renderer.dispose();
+          console.log(`   → Disposed renderer for ${participantId}`);
+        }
+      } catch (e) {
+        console.warn(`Dispose renderer failed:`, e);
+      }
+      remoteVideoRefs.current.delete(participantId);
+    }
 
-    // Force re-render if this participant is featured
-    if (featuredParticipant === participantId) {
+    // ── Featured view cleanup (if this participant is featured) ──
+    if (featuredParticipant === participantId && featuredVideoRef.current) {
+      try {
+        const featuredVideoEl = featuredVideoRef.current.querySelector('video') as HTMLVideoElement | null;
+        if (featuredVideoEl?.srcObject instanceof MediaStream) {
+          featuredVideoEl.srcObject.getTracks().forEach(track => track.stop());
+          featuredVideoEl.srcObject = null;
+        }
+      } catch (e) {}
+
+      while (featuredVideoRef.current.firstChild) {
+        featuredVideoRef.current.removeChild(featuredVideoRef.current.firstChild);
+      }
+      featuredVideoRef.current.innerHTML = '';
+      console.log(`   → Featured DOM cleared for ${participantId}`);
+    }
+
+    // ── Force React + browser repaint (double trigger works best) ──
+    setRenderTrigger(prev => prev + 1);
+    setTimeout(() => {
       setRenderTrigger(prev => prev + 1);
-    }
+      if (thumbContainer) thumbContainer.style.display = 'none';
+      setTimeout(() => { if (thumbContainer) thumbContainer.style.display = 'block'; }, 0);
+    }, 50);
+
+    console.log(`   → Video state now: ${participantVideoStates.get(participantId)}`);
   }
 
   // Render participant video in thumbnail
@@ -562,29 +742,88 @@ export default function TrialConferenceClient() {
           participant.on("videoStreamsUpdated", (streamEvent: any) => {
             streamEvent.added.forEach(async (stream: any) => {
               if (stream.mediaStreamType === "Video") {
-                // Update state immediately
-                setParticipantVideoStates(prev => {
-                  const updated = new Map(prev);
-                  updated.set(userId, stream.isAvailable);
-                  return updated;
-                });
+  // Keep your existing state update
+  setParticipantVideoStates(prev => {
+    const updated = new Map(prev);
+    updated.set(userId, stream.isAvailable);
+    return updated;
+  });
 
-                // Listen for camera toggle events
-                stream.on("isAvailableChanged", async () => {
-                  console.log(`📹 ${userId} camera ${stream.isAvailable ? 'ON' : 'OFF'}`);
+  // ── NEW: Fast camera detection using MediaStreamTrack.mute ──
+  if (stream.isAvailable) {
+    const mediaStream = stream.source?.getMediaStream?.();
+    const videoTrack = mediaStream?.getVideoTracks()?.[0];
 
-                  // Update state
-                  setParticipantVideoStates(prev => {
-                    const updated = new Map(prev);
-                    updated.set(userId, stream.isAvailable);
-                    return updated;
-                  });
+    if (videoTrack) {
+      const onMute = () => {
+        console.log(`[track.mute] ${userId} → camera treated as OFF`);
+        try {
+          toast("Camera off detected quickly", { duration: 1500, icon: "📹" });
+        } catch (e) {}
+        setParticipantVideoStates(prev => {
+          const updated = new Map(prev);
+          updated.set(userId, false);
+          return updated;
+        });
+        clearParticipantVideo(userId);
+        if (featuredParticipant === userId) {
+          setRenderTrigger(prev => prev + 1);
+        }
+      };
 
-                  // ✅ FIX: Clear video container immediately when camera turns off
-                  if (!stream.isAvailable) {
-                    clearParticipantVideo(userId);
-                  }
-                });
+      const onUnmute = () => {
+        console.log(`[track.unmute] ${userId} → camera likely back ON`);
+        try { toast("Camera back on detected", { duration: 1500, icon: "📹" }); } catch (e) {}
+        setParticipantVideoStates(prev => {
+          const updated = new Map(prev);
+          updated.set(userId, true);
+          return updated;
+        });
+        renderParticipantVideoInThumbnail(userId).catch(err => {
+          console.warn(`Re-render after unmute failed for ${userId}:`, err);
+        });
+        if (featuredParticipant === userId) {
+          setRenderTrigger(prev => prev + 1);
+        }
+      };
+
+      try {
+        videoTrack.addEventListener('mute', onMute);
+        videoTrack.addEventListener('unmute', onUnmute);
+      } catch (err) {
+        console.warn(`Failed to attach track listeners for ${userId}:`, err);
+      }
+
+      // If track is already muted when attached, treat as muted immediately
+      if (videoTrack.muted) {
+        console.log(`[initial check] ${userId} track already muted → applying off state`);
+        onMute();
+      }
+
+      // Save for cleanup later
+      trackListenersRef.current.set(userId, {
+        track: videoTrack,
+        mute: onMute,
+        unmute: onUnmute,
+      });
+    }
+  }
+
+  // Keep your existing fallback (important!)
+  stream.on("isAvailableChanged", async () => {
+    console.log(`[fallback isAvailable] ${userId} → ${stream.isAvailable ? 'ON' : 'OFF'}`);
+    setParticipantVideoStates(prev => {
+      const updated = new Map(prev);
+      updated.set(userId, stream.isAvailable);
+      return updated;
+    });
+
+    if (!stream.isAvailable) {
+      clearParticipantVideo(userId);
+    } else {
+      await renderParticipantVideoInThumbnail(userId);
+    }
+  });
               } else if (stream.mediaStreamType === "ScreenSharing") {
                 // Remote participant started screensharing
                 console.log(`📺 Remote screenshare started by ${userId}, isAvailable: ${stream.isAvailable}`);
@@ -966,6 +1205,14 @@ export default function TrialConferenceClient() {
         await currentCall.startVideo(localVideoStream.current);
         setIsVideoOff(false);
         console.log("✅ Camera turned ON");
+        // Broadcast camera state to other clients for instant UI updates
+        try {
+          wsEmit?.("camera:state", { caseId: parseInt(caseId), isVideoOn: true });
+          // fast toggle shorthand for server
+          wsEmit?.("camera:toggle", { caseId: parseInt(caseId), isOn: true });
+        } catch (e) {
+          console.warn("Failed to emit camera:state (on):", e);
+        }
       } else {
         // Turn camera OFF - Following MS Teams/Zoom/WhatsApp industry standards
         if (!localVideoStream.current) {
@@ -975,8 +1222,13 @@ export default function TrialConferenceClient() {
 
         console.log("🛑 Stopping camera and disposing renderer...");
 
-        // Step 1: Stop the video stream via ACS SDK
-        await currentCall.stopVideo(localVideoStream.current);
+        // Step 1: Stop the video stream via ACS SDK (guard errors but continue cleanup)
+        try {
+          await currentCall.stopVideo(localVideoStream.current);
+          console.log("✅ stopVideo succeeded");
+        } catch (stopErr) {
+          console.warn("Warning: stopVideo failed, continuing cleanup:", stopErr);
+        }
 
         // Step 2: Dispose the local video renderer to remove frozen frame
         // This is critical - simply stopping the stream isn't enough
@@ -1004,13 +1256,28 @@ export default function TrialConferenceClient() {
           console.log("🧹 Cleared local thumbnail container");
         }
 
-        // Step 4: Update state to show avatar
+
+        // Step 4: Ensure localVideoStream reference is cleared and update state to show avatar
+        try {
+          localVideoStream.current = null;
+        } catch (e) {
+          console.warn("Warning clearing localVideoStream ref:", e);
+        }
+
         setIsVideoOff(true);
 
         // Step 5: Force re-render to show avatar immediately
         setRenderTrigger(prev => prev + 1);
 
         console.log("✅ Camera turned OFF - all video elements cleared");
+        // Broadcast camera state to other clients for instant UI updates
+        try {
+          wsEmit?.("camera:state", { caseId: parseInt(caseId), isVideoOn: false });
+          // fast toggle shorthand for server
+          wsEmit?.("camera:toggle", { caseId: parseInt(caseId), isOn: false });
+        } catch (e) {
+          console.warn("Failed to emit camera:state (off):", e);
+        }
       }
     } catch (err) {
       console.error("❌ Toggle video error:", err);
@@ -1569,9 +1836,9 @@ export default function TrialConferenceClient() {
                   >
                     <option value="Multiple Choice">Multiple Choice</option>
                     <option value="Yes/No">Yes/No</option>
+                    <option value="Numeric Response">Numeric Response</option>    
                     <option value="Text Response">Text Response</option>
-                    <option value="Numeric Response">Numeric Response</option>
-                  </select>
+                  </select> 
                 </div>
 
                 {newQuestionData.QuestionType === "Multiple Choice" && (

@@ -82,6 +82,13 @@ export default function JurorConferenceClient() {
   const deviceManagerRef = useRef<any>(null);
   const socketRef = useRef<Socket | null>(null);
 
+  // Add this line among your other refs (around line 80–100, after participantVideoRefs)
+  const trackListenersRef = useRef<Map<string, {
+    track: MediaStreamTrack;
+    mute: () => void;
+    unmute: () => void;
+  }>>(new Map());
+  
   useEffect(() => {
     const handleBeforeUnload = async () => {
       console.log("Page closing/refreshing - cleaning up call...");
@@ -108,6 +115,18 @@ export default function JurorConferenceClient() {
       if (socketRef.current) {
         socketRef.current.disconnect();
       }
+
+      // ── ADD THIS ──
+      trackListenersRef.current.forEach((listener, userId) => {
+        try {
+          listener.track.removeEventListener('mute', listener.mute);
+          listener.track.removeEventListener('unmute', listener.unmute);
+          console.log(`Final cleanup: removed track listeners for ${userId}`);
+        } catch (err) {
+          console.warn(`Error cleaning track listeners for ${userId}:`, err);
+        }
+      });
+      trackListenersRef.current.clear();
     };
   }, []);
 
@@ -157,21 +176,70 @@ export default function JurorConferenceClient() {
 
   // Clear participant video and show avatar
   function clearParticipantVideo(participantId: string) {
-    console.log(`🧹 Clearing video for ${participantId} - will show avatar`);
+    console.log(`🧹 [FORCE CLEAR] ${participantId} - thumbnail + featured`);
 
-    // Clear container to remove frozen frame
-    const containerElement = participantVideoRefs.current.get(participantId);
-    if (containerElement) {
-      containerElement.innerHTML = "";
+    // ── Thumbnail cleanup ──
+    const thumbContainer = participantVideoRefs.current.get(participantId);
+    if (thumbContainer) {
+      try {
+        const videoEl = thumbContainer.querySelector('video') as HTMLVideoElement | null;
+        if (videoEl?.srcObject instanceof MediaStream) {
+          videoEl.srcObject.getTracks().forEach(track => {
+            track.stop();
+            console.log(`   → Stopped track in thumbnail for ${participantId}`);
+          });
+          videoEl.srcObject = null;
+        }
+      } catch (e) {}
+
+      while (thumbContainer.firstChild) {
+        thumbContainer.removeChild(thumbContainer.firstChild);
+      }
+      thumbContainer.innerHTML = '';
+      thumbContainer.textContent = '';
+      console.log(`   → Thumbnail DOM cleared for ${participantId}`);
     }
 
-    // Dispose renderer
-    disposeVideoRenderer(participantId);
+    // ── Renderer cleanup ──
+    const ref = remoteVideoRefs.current.get(participantId);
+    if (ref) {
+      try {
+        if (ref.renderer) {
+          ref.renderer.dispose();
+          console.log(`   → Disposed renderer for ${participantId}`);
+        }
+      } catch (e) {
+        console.warn(`Dispose renderer failed:`, e);
+      }
+      remoteVideoRefs.current.delete(participantId);
+    }
 
-    // Force re-render if this participant is featured
-    if (featuredParticipant === participantId) {
+    // ── Featured view cleanup (if this participant is featured) ──
+    if (featuredParticipant === participantId && featuredVideoRef.current) {
+      try {
+        const featuredVideoEl = featuredVideoRef.current.querySelector('video') as HTMLVideoElement | null;
+        if (featuredVideoEl?.srcObject instanceof MediaStream) {
+          featuredVideoEl.srcObject.getTracks().forEach(track => track.stop());
+          featuredVideoEl.srcObject = null;
+        }
+      } catch (e) {}
+
+      while (featuredVideoRef.current.firstChild) {
+        featuredVideoRef.current.removeChild(featuredVideoRef.current.firstChild);
+      }
+      featuredVideoRef.current.innerHTML = '';
+      console.log(`   → Featured DOM cleared for ${participantId}`);
+    }
+
+    // ── Force React + browser repaint (double trigger works best) ──
+    setRenderTrigger(prev => prev + 1);
+    setTimeout(() => {
       setRenderTrigger(prev => prev + 1);
-    }
+      if (thumbContainer) thumbContainer.style.display = 'none';
+      setTimeout(() => { if (thumbContainer) thumbContainer.style.display = 'block'; }, 0);
+    }, 50);
+
+    console.log(`   → Video state now: ${participantVideoStates.get(participantId)}`);
   }
 
   // Render participant video in thumbnail
@@ -370,6 +438,55 @@ export default function JurorConferenceClient() {
       socket.on("disconnect", () => {
         console.log("Socket.IO connection closed");
       });
+
+      // Listen for instant camera state broadcasts from other clients
+      socket.on("camera:state", (data: any) => {
+        try {
+          const { userId, isVideoOn } = data || {};
+          if (!userId || userId === currentUserId.current) return; // ignore our own
+          console.log(`[SOCKET] ${userId} camera ${isVideoOn ? "ON" : "OFF"} — instant UI update`);
+
+          setParticipantVideoStates((prev) => {
+            const updated = new Map(prev);
+            updated.set(userId, isVideoOn);
+            return updated;
+          });
+
+          if (!isVideoOn) {
+            clearParticipantVideo(userId);
+            if (featuredParticipant === userId) {
+              if (!pinnedParticipant) {
+                const activeHasVideo = activeSpeaker && participantVideoStates.get(activeSpeaker);
+                if (activeHasVideo) {
+                  setFeaturedParticipant(activeSpeaker as string);
+                } else {
+                  const replacement = participants.find((p: any) => {
+                    const id = getUserId(p.identifier);
+                    return id !== userId && participantVideoStates.get(id);
+                  });
+                  if (replacement) {
+                    setFeaturedParticipant(getUserId(replacement.identifier));
+                  } else {
+                    setFeaturedParticipant("local");
+                  }
+                }
+              } else {
+                setRenderTrigger((prev) => prev + 1);
+              }
+            }
+          } else {
+            renderParticipantVideoInThumbnail(userId).catch(() => {});
+            const isSpeaking = participantSpeakingStates.get(userId) || false;
+            if (!pinnedParticipant && isSpeaking) {
+              setFeaturedParticipant(userId);
+            } else if (featuredParticipant === userId) {
+              setRenderTrigger((prev) => prev + 1);
+            }
+          }
+        } catch (e) {
+          console.warn("Error handling camera:state socket event:", e);
+        }
+      });
     } catch (err) {
       console.error("Error initializing Socket.IO:", err);
     }
@@ -525,29 +642,95 @@ export default function JurorConferenceClient() {
           participant.on('videoStreamsUpdated', async (streamEvent: any) => {
             streamEvent.added.forEach(async (stream: any) => {
               if (stream.mediaStreamType === 'Video') {
-                // Update state immediately
-                setParticipantVideoStates(prev => {
-                  const updated = new Map(prev);
-                  updated.set(userId, stream.isAvailable);
-                  return updated;
-                });
+  // Keep your existing state update
+  setParticipantVideoStates(prev => {
+    const updated = new Map(prev);
+    updated.set(userId, stream.isAvailable);
+    return updated;
+  });
 
-                // Listen for camera toggle events
-                stream.on('isAvailableChanged', async () => {
-                  console.log(`📹 ${userId} camera ${stream.isAvailable ? 'ON' : 'OFF'}`);
+  // ── NEW: Fast camera detection using MediaStreamTrack.mute ──
+  if (stream.isAvailable) {
+    const mediaStream = stream.source?.getMediaStream?.();
+    const videoTrack = mediaStream?.getVideoTracks()?.[0];
 
-                  // Update state
-                  setParticipantVideoStates(prev => {
-                    const updated = new Map(prev);
-                    updated.set(userId, stream.isAvailable);
-                    return updated;
-                  });
+    if (videoTrack) {
+    const onMute = () => {
+      console.log(`[track.mute] ${userId} → camera treated as OFF`);
+      try {
+        toast("Camera off detected quickly", { duration: 1500, icon: "📹" });
+      } catch (e) {
+        // ignore if toast fails
+      }
+      setParticipantVideoStates(prev => {
+        const updated = new Map(prev);
+        updated.set(userId, false);
+        return updated;
+      });
+      clearParticipantVideo(userId);
+      if (featuredParticipant === userId) {
+        setRenderTrigger(prev => prev + 1);
+      }
+    };
 
-                  // ✅ FIX: Clear video container immediately when camera turns off
-                  if (!stream.isAvailable) {
-                    clearParticipantVideo(userId);
-                  }
-                });
+    const onUnmute = () => {
+      console.log(`[track.unmute] ${userId} → camera likely back ON`);
+      try {
+        toast("Camera back on detected", { duration: 1500, icon: "📹" });
+      } catch (e) {
+        // ignore
+      }
+      setParticipantVideoStates(prev => {
+        const updated = new Map(prev);
+        updated.set(userId, true);
+        return updated;
+      });
+      renderParticipantVideoInThumbnail(userId).catch(err => {
+        console.warn(`Re-render after unmute failed for ${userId}:`, err);
+      });
+      if (featuredParticipant === userId) {
+        setRenderTrigger(prev => prev + 1);
+      }
+    };
+
+    try {
+      videoTrack.addEventListener('mute', onMute);
+      videoTrack.addEventListener('unmute', onUnmute);
+    } catch (err) {
+      console.warn(`Failed to attach track listeners for ${userId}:`, err);
+    }
+
+    // If track is already muted when attached, treat as muted immediately
+    if (videoTrack.muted) {
+      console.log(`[initial check] ${userId} track already muted → applying off state`);
+      onMute();
+    }
+
+    // Save for cleanup later
+    trackListenersRef.current.set(userId, {
+      track: videoTrack,
+      mute: onMute,
+      unmute: onUnmute,
+    });
+    }
+  }
+
+  // Keep your existing fallback (important!)
+  stream.on('isAvailableChanged', async () => {
+    console.log(`[fallback isAvailable] ${userId} → ${stream.isAvailable ? 'ON' : 'OFF'}`);
+    setParticipantVideoStates(prev => {
+      const updated = new Map(prev);
+      updated.set(userId, stream.isAvailable);
+      return updated;
+    });
+
+    if (!stream.isAvailable) {
+      clearParticipantVideo(userId);
+    } else {
+      await renderParticipantVideoInThumbnail(userId);
+    }
+  });
+
               } else if (stream.mediaStreamType === 'ScreenSharing') {
                 // Remote participant started screensharing
                 console.log(`📺 Remote screenshare started by ${userId}, isAvailable: ${stream.isAvailable}`);
@@ -598,6 +781,15 @@ export default function JurorConferenceClient() {
                   updated.set(userId, false);
                   return updated;
                 });
+
+                // Cleanup track listeners when video stream is removed
+                const listener = trackListenersRef.current.get(userId);
+                if (listener) {
+                  listener.track.removeEventListener('mute', listener.mute);
+                  listener.track.removeEventListener('unmute', listener.unmute);
+                  trackListenersRef.current.delete(userId);
+                  console.log(`Cleaned up track listeners for removed video stream of ${userId}`);
+                }
               } else if (stream.mediaStreamType === 'ScreenSharing') {
                 const key = `screenshare-${userId}`;
                 const ref = remoteVideoRefs.current.get(key);
@@ -660,6 +852,15 @@ export default function JurorConferenceClient() {
 
         e.removed.forEach((participant: any) => {
           const userId = getUserId(participant.identifier);
+
+          // Cleanup track listeners when participant leaves
+          const listener = trackListenersRef.current.get(userId);
+          if (listener) {
+            listener.track.removeEventListener('mute', listener.mute);
+            listener.track.removeEventListener('unmute', listener.unmute);
+            trackListenersRef.current.delete(userId);
+            console.log(`Cleaned up track listeners for removed participant ${userId}`);
+          }
 
           const ref = remoteVideoRefs.current.get(userId);
           if (ref && ref.renderer) {
@@ -775,6 +976,16 @@ export default function JurorConferenceClient() {
         await currentCall.startVideo(localVideoStream.current);
         setIsVideoOff(false);
         console.log("✅ Camera turned ON");
+        // Broadcast camera state to other clients for instant UI updates
+        try {
+          if (socketRef.current?.connected) {
+            socketRef.current.emit("camera:state", { caseId: parseInt(caseId), isVideoOn: true });
+            // fast toggle shorthand
+            socketRef.current.emit("camera:toggle", { caseId: parseInt(caseId), isOn: true });
+          }
+        } catch (e) {
+          console.warn("Failed to emit camera:state (on):", e);
+        }
       } else {
         // Turn camera OFF
         if (!localVideoStream.current) {
@@ -784,6 +995,16 @@ export default function JurorConferenceClient() {
         await currentCall.stopVideo(localVideoStream.current);
         setIsVideoOff(true);
         console.log("✅ Camera turned OFF");
+        // Broadcast camera state to other clients for instant UI updates
+        try {
+          if (socketRef.current?.connected) {
+            socketRef.current.emit("camera:state", { caseId: parseInt(caseId), isVideoOn: false });
+            // fast toggle shorthand
+            socketRef.current.emit("camera:toggle", { caseId: parseInt(caseId), isOn: false });
+          }
+        } catch (e) {
+          console.warn("Failed to emit camera:state (off):", e);
+        }
       }
     } catch (err) {
       console.error("❌ Toggle video error:", err);

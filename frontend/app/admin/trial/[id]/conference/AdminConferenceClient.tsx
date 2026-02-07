@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import toast from "react-hot-toast";
+import { io, Socket } from "socket.io-client";
 import {
   CallClient,
   VideoStreamRenderer,
@@ -113,11 +114,14 @@ export default function AdminConferenceClient() {
   const screenShareRenderer = useRef<any>(null);
   const remoteVideoRefs = useRef<Map<string, any>>(new Map());
   const participantVideoRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
+  const trackListenersRef = useRef<Map<string, { track: MediaStreamTrack; mute: () => void; unmute: () => void }>>(new Map());
   const hasInitialized = useRef(false);
   const chatMessagesEndRef = useRef<HTMLDivElement>(null);
   const currentUserId = useRef<string>("");
   const callRef = useRef<any>(null);
   const callAgentRef = useRef<any>(null);
+  const socketRef = useRef<any>(null);
+  const deviceManagerRef = useRef<any>(null);
 
   // Cleanup on page close/refresh
   useEffect(() => {
@@ -145,6 +149,21 @@ export default function AdminConferenceClient() {
         callRef.current.hangUp({ forEveryone: false }).catch((e: any) => console.error("Hangup error:", e));
       }
       remoteVideoRefs.current.forEach((r) => r.renderer?.dispose());
+
+      // Clean up any remaining track listeners we attached
+      try {
+        trackListenersRef.current.forEach((entry, id) => {
+          try {
+            entry.track.removeEventListener('mute', entry.mute);
+            entry.track.removeEventListener('unmute', entry.unmute);
+          } catch (e) {
+            // ignore
+          }
+        });
+      } catch (e) {
+        // ignore
+      }
+      trackListenersRef.current.clear();
     };
   }, []);
 
@@ -214,23 +233,75 @@ export default function AdminConferenceClient() {
     }
   }
 
-  // Clear participant video and show avatar
+  // Clear participant video and show avatar (super-strong)
   function clearParticipantVideo(participantId: string) {
-    console.log(`🧹 Clearing video for ${participantId} - will show avatar`);
+    console.log(`🧹 [FORCE CLEAR] ${participantId} - thumbnail + featured`);
 
-    // Clear container to remove frozen frame
-    const containerElement = participantVideoRefs.current.get(participantId);
-    if (containerElement) {
-      containerElement.innerHTML = "";
+    // ── Thumbnail cleanup ──
+    const thumbContainer = participantVideoRefs.current.get(participantId);
+    if (thumbContainer) {
+      // Stop any lingering media tracks first (critical for frozen frames)
+      try {
+        const videoEl = thumbContainer.querySelector('video') as HTMLVideoElement | null;
+        if (videoEl?.srcObject instanceof MediaStream) {
+          videoEl.srcObject.getTracks().forEach(track => {
+            track.stop();
+            console.log(`   → Stopped track in thumbnail for ${participantId}`);
+          });
+          videoEl.srcObject = null;
+        }
+      } catch (e) {}
+
+      // Remove all children + force empty
+      while (thumbContainer.firstChild) {
+        thumbContainer.removeChild(thumbContainer.firstChild);
+      }
+      thumbContainer.innerHTML = '';
+      thumbContainer.textContent = ''; // extra safety
+      console.log(`   → Thumbnail DOM cleared for ${participantId}`);
     }
 
-    // Dispose renderer
-    disposeVideoRenderer(participantId);
+    // ── Renderer cleanup ──
+    const ref = remoteVideoRefs.current.get(participantId);
+    if (ref) {
+      try {
+        if (ref.renderer) {
+          ref.renderer.dispose();
+          console.log(`   → Disposed renderer for ${participantId}`);
+        }
+      } catch (e) {
+        console.warn(`Dispose renderer failed:`, e);
+      }
+      remoteVideoRefs.current.delete(participantId);
+    }
 
-    // Force re-render if this participant is featured
-    if (featuredParticipant === participantId) {
+    // ── Featured view cleanup (if this participant is featured) ──
+    if (featuredParticipant === participantId && featuredVideoRef.current) {
+      try {
+        const featuredVideoEl = featuredVideoRef.current.querySelector('video') as HTMLVideoElement | null;
+        if (featuredVideoEl?.srcObject instanceof MediaStream) {
+          featuredVideoEl.srcObject.getTracks().forEach(track => track.stop());
+          featuredVideoEl.srcObject = null;
+        }
+      } catch (e) {}
+
+      while (featuredVideoRef.current.firstChild) {
+        featuredVideoRef.current.removeChild(featuredVideoRef.current.firstChild);
+      }
+      featuredVideoRef.current.innerHTML = '';
+      console.log(`   → Featured DOM cleared for ${participantId}`);
+    }
+
+    // ── Force React + browser repaint (double trigger works best) ──
+    setRenderTrigger(prev => prev + 1);
+    setTimeout(() => {
       setRenderTrigger(prev => prev + 1);
-    }
+      // Extra DOM refresh trick
+      if (thumbContainer) thumbContainer.style.display = 'none';
+      setTimeout(() => { if (thumbContainer) thumbContainer.style.display = 'block'; }, 0);
+    }, 50);
+
+    console.log(`   → Video state now: ${participantVideoStates.get(participantId)}`);
   }
 
   // Render participant video in thumbnail
@@ -241,6 +312,8 @@ export default function AdminConferenceClient() {
 
       // Clear existing content
       containerElement.innerHTML = "";
+
+  
 
       // Check if this is local participant
       if (participantId === "local") {
@@ -271,6 +344,76 @@ export default function AdminConferenceClient() {
       console.error(`Error rendering thumbnail for ${participantId}:`, err);
     }
   }
+
+  // === WebSocket: join case room on connect and listen for camera state ===
+  useEffect(() => {
+    try {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+
+      socketRef.current = io(API_BASE, {
+        path: "/socket.io",
+        auth: { token: getToken() },
+        transports: ["websocket", "polling"],
+      });
+
+      socketRef.current.on("connect", () => {
+        console.log("✅ [Admin Socket] Connected! ID:", socketRef.current.id);
+        const numericCaseId = parseInt(caseId as string);
+        socketRef.current.emit("join_case", numericCaseId);
+        console.log(`📍 [Admin Socket] Emitted join_case for case ${numericCaseId}`);
+      });
+
+      socketRef.current.on("joined_case", (data: any) => {
+        console.log("✅ [Admin Socket] Successfully joined case room:", data);
+      });
+
+      socketRef.current.on("camera:state", (data: any) => {
+        try {
+          const { userId, isVideoOn } = data || {};
+          if (!userId || userId === currentUserId.current) return;
+
+          console.log(`[ADMIN RECEIVED] ${userId} → camera ${isVideoOn ? 'ON' : 'OFF'}`);
+
+          setParticipantVideoStates(prev => {
+            const updated = new Map(prev);
+            updated.set(userId, isVideoOn);
+            return updated;
+          });
+
+          if (!isVideoOn) {
+            console.log(`[ADMIN] Forcing clear for ${userId} (remote OFF)`);
+            clearParticipantVideo(userId);  // ← this now cleans both thumbnail + featured
+          } else {
+            renderParticipantVideoInThumbnail(userId).catch(err => console.warn(err));
+          }
+
+          // Always refresh if featured
+          if (featuredParticipant === userId) {
+            setRenderTrigger(prev => prev + 1);
+          }
+        } catch (e) {
+          console.error("camera:state handler error:", e);
+        }
+      });
+
+      return () => {
+        try {
+          socketRef.current?.off("connect");
+          socketRef.current?.off("joined_case");
+          socketRef.current?.off("camera:state");
+          socketRef.current?.disconnect();
+          socketRef.current = null;
+        } catch (e) {
+          // ignore
+        }
+      };
+    } catch (e) {
+      console.warn("Admin socket init error:", e);
+    }
+  }, [caseId, featuredParticipant]);
 
   async function renderFeaturedVideo() {
     if (!featuredVideoRef.current) return;
@@ -458,6 +601,7 @@ export default function AdminConferenceClient() {
       const callClient = new CallClient();
       const tokenCredential = new AzureCommunicationTokenCredential(data.token);
       const deviceManager = await callClient.getDeviceManager();
+      deviceManagerRef.current = deviceManager;
       await deviceManager.askDevicePermission({ video: true, audio: true });
 
       const cameras = await deviceManager.getCameras();
@@ -569,28 +713,66 @@ export default function AdminConferenceClient() {
                   return updated;
                 });
 
-                // Render if available now
+                // Fast camera detection using MediaStreamTrack events
                 if (stream.isAvailable) {
-                  await renderParticipantVideoInThumbnail(userId);
+                  const mediaStream = stream.source?.getMediaStream?.();
+                  const videoTrack = mediaStream?.getVideoTracks()?.[0];
+
+                  if (videoTrack) {
+                    const onMute = () => {
+                      console.log(`[track.mute] ${userId} → camera treated as OFF`);
+                      try { toast("Camera off detected quickly", { duration: 1500, icon: "📹" }); } catch (e) {}
+                      setParticipantVideoStates(prev => {
+                        const updated = new Map(prev);
+                        updated.set(userId, false);
+                        return updated;
+                      });
+                      clearParticipantVideo(userId);
+                      if (featuredParticipant === userId) setRenderTrigger(prev => prev + 1);
+                    };
+
+                    const onUnmute = () => {
+                      console.log(`[track.unmute] ${userId} → camera likely back ON`);
+                      try { toast("Camera back on detected", { duration: 1500, icon: "📹" }); } catch (e) {}
+                      setParticipantVideoStates(prev => {
+                        const updated = new Map(prev);
+                        updated.set(userId, true);
+                        return updated;
+                      });
+                      renderParticipantVideoInThumbnail(userId).catch(err => console.warn(err));
+                      if (featuredParticipant === userId) setRenderTrigger(prev => prev + 1);
+                    };
+
+                    try {
+                      videoTrack.addEventListener('mute', onMute);
+                      videoTrack.addEventListener('unmute', onUnmute);
+                    } catch (err) {
+                      console.warn(`Failed to attach track listeners for ${userId}:`, err);
+                    }
+
+                    if (videoTrack.muted) onMute();
+
+                    trackListenersRef.current.set(userId, {
+                      track: videoTrack,
+                      mute: onMute,
+                      unmute: onUnmute,
+                    });
+                  }
                 }
 
-                // Listen for camera toggle events
+                // Always keep the fallback isAvailableChanged handler
                 stream.on("isAvailableChanged", async () => {
-                  console.log(`📹 ${userId} camera ${stream.isAvailable ? 'ON' : 'OFF'}`);
-
-                  // Update state
+                  console.log(`[fallback isAvailable] ${userId} → ${stream.isAvailable ? 'ON' : 'OFF'}`);
                   setParticipantVideoStates(prev => {
                     const updated = new Map(prev);
                     updated.set(userId, stream.isAvailable);
                     return updated;
                   });
 
-                  if (stream.isAvailable) {
-                    // Camera ON - render video
-                    await renderParticipantVideoInThumbnail(userId);
-                  } else {
-                    // Camera OFF - clear and show avatar
+                  if (!stream.isAvailable) {
                     clearParticipantVideo(userId);
+                  } else {
+                    await renderParticipantVideoInThumbnail(userId);
                   }
                 });
               } else if (stream.mediaStreamType === "ScreenSharing") {
@@ -644,6 +826,18 @@ export default function AdminConferenceClient() {
                   updated.set(userId, false);
                   return updated;
                 });
+
+                // Remove any attached track listeners for this participant
+                try {
+                  const entry = trackListenersRef.current.get(userId);
+                  if (entry) {
+                    try {
+                      entry.track.removeEventListener('mute', entry.mute);
+                      entry.track.removeEventListener('unmute', entry.unmute);
+                    } catch (e) {}
+                    trackListenersRef.current.delete(userId);
+                  }
+                } catch (e) {}
               } else if (stream.mediaStreamType === "ScreenSharing") {
                 const key = `screenshare-${userId}`;
                 const ref = remoteVideoRefs.current.get(key);
@@ -1059,21 +1253,87 @@ export default function AdminConferenceClient() {
   };
 
   const toggleVideo = async () => {
-    if (!call || !localVideoStream.current) return;
+    const currentCall = callRef.current;
+    if (!currentCall) {
+      console.error("[Admin] No active call found");
+      toast.error("No active call");
+      return;
+    }
+
     try {
+      console.log(`📹 [Admin Toggle] Current: ${isVideoOff ? 'OFF' : 'ON'}`);
+
       if (isVideoOff) {
-        // Turn camera ON
-        await call.startVideo(localVideoStream.current);
+        // === Turning ON ===
+        if (!deviceManagerRef.current) {
+          toast.error("No device manager");
+          return;
+        }
+
+        const cameras = await deviceManagerRef.current.getCameras();
+        if (cameras.length === 0) {
+          toast.error("No cameras found");
+          return;
+        }
+
+        // Fresh stream
+        localVideoStream.current = new LocalVideoStream(cameras[0]);
+        await currentCall.startVideo(localVideoStream.current);
         setIsVideoOff(false);
-        console.log("📹 Camera turned ON");
+        console.log("✅ [Admin] Camera ON");
+
+        // Broadcast ON
+        if (socketRef.current?.connected) {
+          console.log("[Admin] Emitting camera:state ON");
+          socketRef.current.emit("camera:state", {
+            caseId: parseInt(caseId),
+            userId: currentUserId.current || "admin-local",
+            isVideoOn: true
+          });
+        }
       } else {
-        // Turn camera OFF
-        await call.stopVideo(localVideoStream.current);
+        // === Turning OFF ===
+        console.log("🛑 [Admin] Stopping camera...");
+
+        // Stop ACS stream (ignore errors but log)
+        try {
+          if (localVideoStream.current) {
+            await currentCall.stopVideo(localVideoStream.current);
+            console.log("✅ [Admin] stopVideo OK");
+          }
+        } catch (e) {
+          console.warn("[Admin] stopVideo failed:", e);
+        }
+
+        // Clear local containers aggressively
+        if (featuredParticipant === "local" && featuredVideoRef.current) {
+          featuredVideoRef.current.innerHTML = "";
+        }
+        const localContainer = participantVideoRefs.current.get("local");
+        if (localContainer) {
+          localContainer.innerHTML = "";
+        }
+
+        localVideoStream.current = null;
         setIsVideoOff(true);
-        console.log("📹 Camera turned OFF");
+        setRenderTrigger(prev => prev + 1);
+        console.log("✅ [Admin] Camera OFF - local cleared");
+
+        // Broadcast OFF (critical!)
+        if (socketRef.current?.connected) {
+          console.log("[Admin] Emitting camera:state OFF");
+          socketRef.current.emit("camera:state", {
+            caseId: parseInt(caseId),
+            userId: currentUserId.current || "admin-local",
+            isVideoOn: false
+          });
+        } else {
+          console.warn("[Admin] Socket not connected - cannot broadcast OFF");
+        }
       }
     } catch (err) {
-      console.error("Toggle video error:", err);
+      console.error("[Admin] Toggle error:", err);
+      toast.error("Camera toggle failed");
     }
   };
 
@@ -1287,6 +1547,18 @@ export default function AdminConferenceClient() {
         clearInterval(recordingIntervalRef.current);
         recordingIntervalRef.current = null;
       }
+
+      // Extra safety: clean track listeners when stopping recording
+      try {
+        trackListenersRef.current.forEach((listener, userId) => {
+          try {
+            listener.track.removeEventListener('mute', listener.mute);
+            listener.track.removeEventListener('unmute', listener.unmute);
+            console.log(`Recording stopped → cleaned track listeners for ${userId}`);
+          } catch (err) {}
+        });
+      } catch (err) {}
+      trackListenersRef.current.clear();
     }
   };
 
