@@ -2679,7 +2679,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                   >
                     <div className="flex items-center gap-2">
                       Joined
-                      {jurorSortBy === "date" || jurorSortBy === "default" ? (
+                      {jurorSortBy === "date" ? (
                         <span className="text-green-600 font-bold">{jurorSortOrder === "asc" ? "↑" : "↓"}</span>
                       ) : (
                         <span className="text-gray-400">⇅</span>
