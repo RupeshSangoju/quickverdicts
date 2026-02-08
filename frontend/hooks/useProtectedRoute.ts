@@ -137,8 +137,8 @@ export function useProtectedRoute(
         if (!authed || !currentUserType || !user) {
           console.warn("❌ Not authenticated - redirecting to login");
           clearAuth();
-          
-          const loginPath = redirectTo || `/login/${requiredUserType}`;
+
+          const loginPath = redirectTo || (requiredUserType === 'admin' ? '/admin/login' : `/login/${requiredUserType}`);
           router.replace(loginPath);
           
           setState({
@@ -157,8 +157,8 @@ export function useProtectedRoute(
           console.warn(
             `❌ Wrong user type: ${currentUserType} (required: ${requiredUserType})`
           );
-          
-          const loginPath = redirectTo || `/login/${requiredUserType}`;
+
+          const loginPath = redirectTo || (requiredUserType === 'admin' ? '/admin/login' : `/login/${requiredUserType}`);
           router.replace(loginPath);
           
           setState({
@@ -224,8 +224,8 @@ export function useProtectedRoute(
       } catch (error) {
         console.error("❌ Auth check error:", error);
         clearAuth();
-        
-        const loginPath = redirectTo || `/login/${requiredUserType}`;
+
+        const loginPath = redirectTo || (requiredUserType === 'admin' ? '/admin/login' : `/login/${requiredUserType}`);
         router.replace(loginPath);
         
         setState({
