@@ -163,14 +163,15 @@ export default function AdminTrialMonitor() {
           });
 
           if (!isVideoOn) {
-            // Camera OFF → show avatar NOW
             clearParticipantVideo(userId);
+            // Optional: force thumbnail re-check (shows avatar)
+            setTimeout(() => {
+              const thumb = participantVideoRefs.current.get(userId);
+              if (thumb) thumb.innerHTML = '';
+            }, 100);
             if (featuredParticipant === userId) setRenderTrigger((prev) => prev + 1);
           } else {
-            // Camera ON → attempt to render
-            renderParticipantVideoInThumbnail(userId).catch((err) =>
-              console.warn("Re-render failed:", err)
-            );
+            renderParticipantVideoInThumbnail(userId).catch(() => {});
             if (featuredParticipant === userId) setRenderTrigger((prev) => prev + 1);
           }
         } catch (e) {
@@ -396,6 +397,61 @@ export default function AdminTrialMonitor() {
     } catch (err) {
       console.error(`❌ Error rendering video for ${participant.displayName}:`, err);
     }
+  }
+
+  // Clear participant video and show avatar (thumbnail-protection)
+  function clearParticipantVideo(participantId: string) {
+    console.log(`🧹 [THUMBNAIL FIX] Clearing ${participantId}`);
+
+    // ── 1. Get thumbnail container ──
+    const container = participantId === 'local' ? localThumbnailRef.current : null;
+    // If remote, try to find its thumbnail container in the DOM via stored refs (thumbnails rendered inline)
+    const remoteContainer = participantVideoRefs?.current?.get?.(participantId) || null;
+    const effectiveContainer = container || remoteContainer;
+
+    if (effectiveContainer) {
+      try {
+        const video = effectiveContainer.querySelector('video') as HTMLVideoElement | null;
+        if (video?.srcObject instanceof MediaStream) {
+          video.srcObject.getTracks().forEach(t => { try { t.stop(); } catch {} });
+          video.srcObject = null;
+          video.load();
+        }
+      } catch (e) {}
+
+      effectiveContainer.innerHTML = '';
+      while (effectiveContainer.firstChild) {
+        effectiveContainer.removeChild(effectiveContainer.firstChild);
+      }
+
+      effectiveContainer.style.visibility = 'hidden';
+      effectiveContainer.offsetHeight;
+      effectiveContainer.style.visibility = 'visible';
+    }
+
+    // ── 2. Renderer cleanup ──
+    const ref = remoteVideoRefs.current.get(participantId);
+    if (ref?.renderer) {
+      try { ref.renderer.dispose(); console.log(` → Disposed thumbnail renderer for ${participantId}`); } catch (e) {}
+      remoteVideoRefs.current.delete(participantId);
+    }
+
+    // ── 3. If this was featured → clear featured too (safety) ──
+    if (featuredParticipant === participantId && featuredVideoRef.current) {
+      featuredVideoRef.current.innerHTML = '';
+    }
+
+    // ── 4. Force React + browser update (very important for thumbnails) ──
+    setRenderTrigger(prev => prev + 1);
+    setTimeout(() => {
+      setRenderTrigger(prev => prev + 1);
+      if (effectiveContainer) {
+        const parent = (effectiveContainer as HTMLElement).parentElement;
+        if (parent) { parent.style.display = 'none'; parent.offsetHeight; parent.style.display = ''; }
+      }
+    }, 30);
+
+    console.log(` → Cleared thumbnail for ${participantId}`);
   }
 
   const checkRecordingStatus = async () => {
@@ -954,6 +1010,24 @@ export default function AdminTrialMonitor() {
       } else {
         await call.stopVideo(localVideoStream.current);
         setIsVideoOff(true);
+        // Clear own thumbnail immediately
+        const localThumb = localThumbnailRef.current;
+        if (localThumb) {
+          localThumb.innerHTML = '';
+        }
+
+        // If own local was featured → switch away
+        if (featuredParticipant === 'local') {
+          // Prefer active speaker with video, else first participant, else keep local
+          if (!pinnedParticipant) {
+            const activeHasVideo = activeSpeaker && participantVideoStates.get(activeSpeaker);
+            if (activeHasVideo) setFeaturedParticipant(activeSpeaker as string);
+            else if (participants.length > 0) setFeaturedParticipant(participants[0].identifier.communicationUserId);
+            else setFeaturedParticipant('local');
+          } else {
+            setRenderTrigger(prev => prev + 1);
+          }
+        }
         // Broadcast camera state
         try {
           wsEmit?.("camera:state", { caseId: parseInt(caseId), isVideoOn: false });

@@ -232,116 +232,114 @@ export default function AdminConferenceClient() {
       remoteVideoRefs.current.delete(participantId);
     }
   }
-
-  // Clear participant video and show avatar (super-strong)
+  // Clear participant video and show avatar (thumbnail-protection)
   function clearParticipantVideo(participantId: string) {
-    console.log(`🧹 [FORCE CLEAR] ${participantId} - thumbnail + featured`);
+    console.log(`🧹 [THUMBNAIL FIX] Clearing ${participantId}`);
 
-    // ── Thumbnail cleanup ──
-    const thumbContainer = participantVideoRefs.current.get(participantId);
-    if (thumbContainer) {
-      // Stop any lingering media tracks first (critical for frozen frames)
+    // ── 1. Get thumbnail container ──
+    const container = participantVideoRefs.current.get(participantId);
+    if (container) {
+      // Stop any playing tracks (kills frozen video)
       try {
-        const videoEl = thumbContainer.querySelector('video') as HTMLVideoElement | null;
-        if (videoEl?.srcObject instanceof MediaStream) {
-          videoEl.srcObject.getTracks().forEach(track => {
-            track.stop();
-            console.log(`   → Stopped track in thumbnail for ${participantId}`);
+        const video = container.querySelector('video') as HTMLVideoElement | null;
+        if (video?.srcObject instanceof MediaStream) {
+          video.srcObject.getTracks().forEach(t => {
+            try { t.stop(); } catch {}
           });
-          videoEl.srcObject = null;
+          video.srcObject = null;
+          video.load();
         }
       } catch (e) {}
 
-      // Remove all children + force empty
-      while (thumbContainer.firstChild) {
-        thumbContainer.removeChild(thumbContainer.firstChild);
+      // ── Nuclear DOM removal ──
+      container.innerHTML = '';
+      while (container.firstChild) {
+        container.removeChild(container.firstChild);
       }
-      thumbContainer.innerHTML = '';
-      thumbContainer.textContent = ''; // extra safety
-      console.log(`   → Thumbnail DOM cleared for ${participantId}`);
+
+      // Force browser reflow + repaint
+      container.style.visibility = 'hidden';
+      container.offsetHeight;
+      container.style.visibility = 'visible';
     }
 
-    // ── Renderer cleanup ──
+    // ── 2. Renderer cleanup ──
     const ref = remoteVideoRefs.current.get(participantId);
-    if (ref) {
+    if (ref?.renderer) {
       try {
-        if (ref.renderer) {
-          ref.renderer.dispose();
-          console.log(`   → Disposed renderer for ${participantId}`);
-        }
-      } catch (e) {
-        console.warn(`Dispose renderer failed:`, e);
-      }
+        ref.renderer.dispose();
+        console.log(` → Disposed thumbnail renderer for ${participantId}`);
+      } catch (e) {}
       remoteVideoRefs.current.delete(participantId);
     }
 
-    // ── Featured view cleanup (if this participant is featured) ──
+    // ── 3. If this was featured → clear featured too (safety) ──
     if (featuredParticipant === participantId && featuredVideoRef.current) {
-      try {
-        const featuredVideoEl = featuredVideoRef.current.querySelector('video') as HTMLVideoElement | null;
-        if (featuredVideoEl?.srcObject instanceof MediaStream) {
-          featuredVideoEl.srcObject.getTracks().forEach(track => track.stop());
-          featuredVideoEl.srcObject = null;
-        }
-      } catch (e) {}
-
-      while (featuredVideoRef.current.firstChild) {
-        featuredVideoRef.current.removeChild(featuredVideoRef.current.firstChild);
-      }
       featuredVideoRef.current.innerHTML = '';
-      console.log(`   → Featured DOM cleared for ${participantId}`);
     }
 
-    // ── Force React + browser repaint (double trigger works best) ──
+    // ── 4. Force React + browser update (very important for thumbnails) ──
     setRenderTrigger(prev => prev + 1);
     setTimeout(() => {
       setRenderTrigger(prev => prev + 1);
-      // Extra DOM refresh trick
-      if (thumbContainer) thumbContainer.style.display = 'none';
-      setTimeout(() => { if (thumbContainer) thumbContainer.style.display = 'block'; }, 0);
-    }, 50);
+      // Extra reflow trick — works wonders on thumbnails
+      if (container) {
+        const parent = container.parentElement;
+        if (parent) {
+          parent.style.display = 'none';
+          parent.offsetHeight;
+          parent.style.display = '';
+        }
+      }
+    }, 30);
 
-    console.log(`   → Video state now: ${participantVideoStates.get(participantId)}`);
+    console.log(` → Cleared thumbnail for ${participantId}`);
   }
 
   // Render participant video in thumbnail
   async function renderParticipantVideoInThumbnail(participantId: string) {
     try {
-      const containerElement = participantVideoRefs.current.get(participantId);
-      if (!containerElement) return;
+      const container = participantVideoRefs.current.get(participantId);
+      if (!container) return;
 
-      // Clear existing content
-      containerElement.innerHTML = "";
+      // ALWAYS clear first — prevents old renderer leak
+      container.innerHTML = '';
 
-  
+      // Dispose any old renderer we might have missed
+      const oldRef = remoteVideoRefs.current.get(participantId);
+      if (oldRef?.renderer) {
+        try { oldRef.renderer.dispose(); } catch {}
+        remoteVideoRefs.current.delete(participantId);
+      }
 
-      // Check if this is local participant
+      // ── Local participant ──
       if (participantId === "local") {
         if (!isVideoOff && localVideoStream.current) {
-          // Local camera is ON - render it
           const renderer = new VideoStreamRenderer(localVideoStream.current);
           const view = await renderer.createView({ scalingMode: 'Crop' });
-          containerElement.appendChild(view.target);
-          console.log("✅ Rendered local video in thumbnail");
+          container.appendChild(view.target);
+          console.log("✅ Local thumbnail rendered");
         }
-        // If camera is OFF, container stays empty (avatar will show via CSS)
-      } else {
-        // Remote participant
+      } 
+      // ── Remote participant ──
+      else {
         const participant = participants.find((p: any) => getUserId(p.identifier) === participantId);
-        if (participant && participant.videoStreams) {
+        if (participant?.videoStreams) {
           const videoStream = participant.videoStreams.find((s: any) => s.mediaStreamType === "Video");
-          if (videoStream && videoStream.isAvailable) {
-            // Remote camera is ON - render it
+          if (videoStream?.isAvailable) {
             const renderer = new VideoStreamRenderer(videoStream);
             const view = await renderer.createView({ scalingMode: 'Crop' });
-            containerElement.appendChild(view.target);
-            console.log(`✅ Rendered remote video in thumbnail for ${participantId}`);
+            container.appendChild(view.target);
+
+            // Store renderer so we can dispose it later
+            remoteVideoRefs.current.set(participantId, { renderer });
+
+            console.log(`✅ Remote thumbnail rendered for ${participantId}`);
           }
         }
-        // If no video or camera OFF, container stays empty (avatar will show via CSS)
       }
     } catch (err) {
-      console.error(`Error rendering thumbnail for ${participantId}:`, err);
+      console.error(`Thumbnail render failed for ${participantId}:`, err);
     }
   }
 
@@ -384,10 +382,14 @@ export default function AdminConferenceClient() {
           });
 
           if (!isVideoOn) {
-            console.log(`[ADMIN] Forcing clear for ${userId} (remote OFF)`);
-            clearParticipantVideo(userId);  // ← this now cleans both thumbnail + featured
+            clearParticipantVideo(userId);
+            // Optional: force thumbnail re-check (shows avatar)
+            setTimeout(() => {
+              const thumb = participantVideoRefs.current.get(userId);
+              if (thumb) thumb.innerHTML = '';
+            }, 100);
           } else {
-            renderParticipantVideoInThumbnail(userId).catch(err => console.warn(err));
+            renderParticipantVideoInThumbnail(userId).catch(() => {});
           }
 
           // Always refresh if featured
@@ -1317,6 +1319,21 @@ export default function AdminConferenceClient() {
         localVideoStream.current = null;
         setIsVideoOff(true);
         setRenderTrigger(prev => prev + 1);
+
+        // If own local was featured → switch away
+        if (featuredParticipant === "local") {
+          if (!pinnedParticipant) {
+            const activeHasVideo = activeSpeaker && participantVideoStates.get(activeSpeaker);
+            if (activeHasVideo) setFeaturedParticipant(activeSpeaker as string);
+            else {
+              const replacement = participants.find((p: any) => participantVideoStates.get(getUserId(p.identifier)));
+              if (replacement) setFeaturedParticipant(getUserId(replacement.identifier));
+              else setFeaturedParticipant("local");
+            }
+          } else {
+            setRenderTrigger(prev => prev + 1);
+          }
+        }
         console.log("✅ [Admin] Camera OFF - local cleared");
 
         // Broadcast OFF (critical!)

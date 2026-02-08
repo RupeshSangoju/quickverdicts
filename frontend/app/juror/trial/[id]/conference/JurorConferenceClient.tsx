@@ -176,105 +176,108 @@ export default function JurorConferenceClient() {
 
   // Clear participant video and show avatar
   function clearParticipantVideo(participantId: string) {
-    console.log(`🧹 [FORCE CLEAR] ${participantId} - thumbnail + featured`);
+    console.log(`🧹 [THUMBNAIL FIX] Clearing ${participantId}`);
 
-    // ── Thumbnail cleanup ──
-    const thumbContainer = participantVideoRefs.current.get(participantId);
-    if (thumbContainer) {
+    // ── 1. Get thumbnail container ──
+    const container = participantVideoRefs.current.get(participantId);
+    if (container) {
+      // Stop any playing tracks (kills frozen video)
       try {
-        const videoEl = thumbContainer.querySelector('video') as HTMLVideoElement | null;
-        if (videoEl?.srcObject instanceof MediaStream) {
-          videoEl.srcObject.getTracks().forEach(track => {
-            track.stop();
-            console.log(`   → Stopped track in thumbnail for ${participantId}`);
+        const video = container.querySelector('video') as HTMLVideoElement | null;
+        if (video?.srcObject instanceof MediaStream) {
+          video.srcObject.getTracks().forEach(t => {
+            try { t.stop(); } catch {}
           });
-          videoEl.srcObject = null;
+          video.srcObject = null;
+          video.load();
         }
       } catch (e) {}
 
-      while (thumbContainer.firstChild) {
-        thumbContainer.removeChild(thumbContainer.firstChild);
+      // ── Nuclear DOM removal ──
+      container.innerHTML = '';
+      while (container.firstChild) {
+        container.removeChild(container.firstChild);
       }
-      thumbContainer.innerHTML = '';
-      thumbContainer.textContent = '';
-      console.log(`   → Thumbnail DOM cleared for ${participantId}`);
+
+      // Force browser reflow + repaint
+      container.style.visibility = 'hidden';
+      container.offsetHeight;
+      container.style.visibility = 'visible';
     }
 
-    // ── Renderer cleanup ──
+    // ── 2. Renderer cleanup ──
     const ref = remoteVideoRefs.current.get(participantId);
-    if (ref) {
+    if (ref?.renderer) {
       try {
-        if (ref.renderer) {
-          ref.renderer.dispose();
-          console.log(`   → Disposed renderer for ${participantId}`);
-        }
-      } catch (e) {
-        console.warn(`Dispose renderer failed:`, e);
-      }
+        ref.renderer.dispose();
+        console.log(` → Disposed thumbnail renderer for ${participantId}`);
+      } catch (e) {}
       remoteVideoRefs.current.delete(participantId);
     }
 
-    // ── Featured view cleanup (if this participant is featured) ──
+    // ── 3. If this was featured → clear featured too (safety) ──
     if (featuredParticipant === participantId && featuredVideoRef.current) {
-      try {
-        const featuredVideoEl = featuredVideoRef.current.querySelector('video') as HTMLVideoElement | null;
-        if (featuredVideoEl?.srcObject instanceof MediaStream) {
-          featuredVideoEl.srcObject.getTracks().forEach(track => track.stop());
-          featuredVideoEl.srcObject = null;
-        }
-      } catch (e) {}
-
-      while (featuredVideoRef.current.firstChild) {
-        featuredVideoRef.current.removeChild(featuredVideoRef.current.firstChild);
-      }
       featuredVideoRef.current.innerHTML = '';
-      console.log(`   → Featured DOM cleared for ${participantId}`);
     }
 
-    // ── Force React + browser repaint (double trigger works best) ──
+    // ── 4. Force React + browser update (very important for thumbnails) ──
     setRenderTrigger(prev => prev + 1);
     setTimeout(() => {
       setRenderTrigger(prev => prev + 1);
-      if (thumbContainer) thumbContainer.style.display = 'none';
-      setTimeout(() => { if (thumbContainer) thumbContainer.style.display = 'block'; }, 0);
-    }, 50);
+      // Extra reflow trick — works wonders on thumbnails
+      if (container) {
+        const parent = container.parentElement;
+        if (parent) {
+          parent.style.display = 'none';
+          parent.offsetHeight;
+          parent.style.display = '';
+        }
+      }
+    }, 30);
 
-    console.log(`   → Video state now: ${participantVideoStates.get(participantId)}`);
+    console.log(` → Cleared thumbnail for ${participantId}`);
   }
 
   // Render participant video in thumbnail
   async function renderParticipantVideoInThumbnail(participantId: string) {
     try {
-      const containerElement = participantVideoRefs.current.get(participantId);
-      if (!containerElement) return;
+      const container = participantVideoRefs.current.get(participantId);
+      if (!container) return;
 
-      // Clear existing content
-      containerElement.innerHTML = "";
+      // ALWAYS clear first — prevents old renderer leak
+      container.innerHTML = '';
 
-      // Check if this is local participant
+      // Dispose any old renderer we might have missed
+      const oldRef = remoteVideoRefs.current.get(participantId);
+      if (oldRef?.renderer) {
+        try { oldRef.renderer.dispose(); } catch {}
+        remoteVideoRefs.current.delete(participantId);
+      }
+
+      // ── Local participant ──
       if (participantId === "local") {
         if (!isVideoOff && localVideoStream.current) {
-          // Local camera is ON - render it
           const renderer = new VideoStreamRenderer(localVideoStream.current);
           const view = await renderer.createView({ scalingMode: 'Crop' });
-          containerElement.appendChild(view.target);
-          console.log("✅ Rendered local video in thumbnail");
+          container.appendChild(view.target);
+          console.log("✅ Local thumbnail rendered");
         }
-        // If camera is OFF, container stays empty (avatar will show via CSS)
       } else {
-        // Remote participant
+        // ── Remote participant ──
         const participant = participants.find((p: any) => getUserId(p.identifier) === participantId);
-        if (participant && participant.videoStreams) {
+        if (participant?.videoStreams) {
           const videoStream = participant.videoStreams.find((s: any) => s.mediaStreamType === "Video");
-          if (videoStream && videoStream.isAvailable) {
-            // Remote camera is ON - render it
+          if (videoStream?.isAvailable) {
             const renderer = new VideoStreamRenderer(videoStream);
             const view = await renderer.createView({ scalingMode: 'Crop' });
-            containerElement.appendChild(view.target);
-            console.log(`✅ Rendered remote video in thumbnail for ${participantId}`);
+            container.appendChild(view.target);
+
+            // Store renderer so we can dispose it later
+            remoteVideoRefs.current.set(participantId, { renderer });
+
+            console.log(`✅ Remote thumbnail rendered for ${participantId}`);
           }
         }
-        // If no video or camera OFF, container stays empty (avatar will show via CSS)
       }
     } catch (err) {
       console.error(`Error rendering thumbnail for ${participantId}:`, err);
@@ -956,8 +959,9 @@ export default function JurorConferenceClient() {
     }
     try {
       console.log(`📹 Toggling video. Current state: ${isVideoOff ? 'OFF' : 'ON'}`);
+
       if (isVideoOff) {
-        // Turn camera ON - recreate the video stream with fresh device
+        // Turn camera ON
         if (!deviceManagerRef.current) {
           console.error("Device manager not available");
           toast.error("Camera device manager is not available");
@@ -976,11 +980,11 @@ export default function JurorConferenceClient() {
         await currentCall.startVideo(localVideoStream.current);
         setIsVideoOff(false);
         console.log("✅ Camera turned ON");
+
         // Broadcast camera state to other clients for instant UI updates
         try {
           if (socketRef.current?.connected) {
             socketRef.current.emit("camera:state", { caseId: parseInt(caseId), isVideoOn: true });
-            // fast toggle shorthand
             socketRef.current.emit("camera:toggle", { caseId: parseInt(caseId), isOn: true });
           }
         } catch (e) {
@@ -992,14 +996,54 @@ export default function JurorConferenceClient() {
           console.error("No video stream available");
           return;
         }
-        await currentCall.stopVideo(localVideoStream.current);
+
+        console.log("🛑 Stopping camera and disposing renderer...");
+
+        try {
+          await currentCall.stopVideo(localVideoStream.current);
+          console.log("✅ stopVideo succeeded");
+        } catch (stopErr) {
+          console.warn("Warning: stopVideo failed, continuing cleanup:", stopErr);
+        }
+
+        // Clear local thumbnail and featured if necessary
+        const localContainer = participantVideoRefs.current.get("local");
+        if (localContainer) {
+          localContainer.innerHTML = "";
+        }
+        if (featuredParticipant === "local" && featuredVideoRef.current) {
+          featuredVideoRef.current.innerHTML = "";
+        }
+
+        try {
+          localVideoStream.current = null;
+        } catch (e) {
+          console.warn("Warning clearing localVideoStream ref:", e);
+        }
+
         setIsVideoOff(true);
-        console.log("✅ Camera turned OFF");
-        // Broadcast camera state to other clients for instant UI updates
+        setRenderTrigger(prev => prev + 1);
+
+        // If our own local was featured → switch away
+        if (featuredParticipant === "local") {
+          if (!pinnedParticipant) {
+            const activeHasVideo = activeSpeaker && participantVideoStates.get(activeSpeaker);
+            if (activeHasVideo) setFeaturedParticipant(activeSpeaker as string);
+            else {
+              const replacement = participants.find((p: any) => participantVideoStates.get(getUserId(p.identifier)));
+              if (replacement) setFeaturedParticipant(getUserId(replacement.identifier));
+              else setFeaturedParticipant("local");
+            }
+          } else {
+            setRenderTrigger(prev => prev + 1);
+          }
+        }
+
+        console.log("✅ Camera turned OFF - all video elements cleared");
+
         try {
           if (socketRef.current?.connected) {
             socketRef.current.emit("camera:state", { caseId: parseInt(caseId), isVideoOn: false });
-            // fast toggle shorthand
             socketRef.current.emit("camera:toggle", { caseId: parseInt(caseId), isOn: false });
           }
         } catch (e) {
