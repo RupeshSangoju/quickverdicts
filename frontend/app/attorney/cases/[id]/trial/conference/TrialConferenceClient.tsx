@@ -416,11 +416,28 @@ export default function TrialConferenceClient() {
         if (participant && participant.videoStreams) {
           const videoStream = participant.videoStreams.find((s: any) => s.mediaStreamType === "Video");
           if (videoStream && videoStream.isAvailable) {
+            // ✅ FIX: Dispose old renderer BEFORE creating new one
+            console.log(`[THUMBNAIL] Checking for old renderer for ${participantId}...`);
+            const existing = remoteVideoRefs.current.get(participantId);
+            if (existing?.renderer) {
+              try {
+                existing.renderer.dispose();
+                console.log(`[THUMBNAIL] → Disposed old renderer before new render for ${participantId}`);
+              } catch (e) {
+                console.warn(`[THUMBNAIL] Warning disposing old renderer:`, e);
+              }
+              remoteVideoRefs.current.delete(participantId);
+            }
+
             // Remote camera is ON - render it
             const renderer = new VideoStreamRenderer(videoStream);
             const view = await renderer.createView({ scalingMode: 'Crop' });
             containerElement.appendChild(view.target);
+
+            // ✅ CRITICAL FIX: Store the renderer so clearParticipantVideo can dispose it later!
+            remoteVideoRefs.current.set(participantId, { renderer, stream: videoStream });
             console.log(`✅ Rendered remote video in thumbnail for ${participantId}`);
+            console.log(`   → STORED REMOTE THUMBNAIL renderer for ${participantId} (THIS SHOULD FIX STUCK FRAME)`);
           }
         }
         // If no video or camera OFF, container stays empty (avatar will show via CSS)

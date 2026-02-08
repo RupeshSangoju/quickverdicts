@@ -302,17 +302,12 @@ export default function AdminConferenceClient() {
       const container = participantVideoRefs.current.get(participantId);
       if (!container) return;
 
-      // ALWAYS clear first — prevents old renderer leak
-      container.innerHTML = '';
+      // Clear existing content
+      containerElement.innerHTML = "";
 
-      // Dispose any old renderer we might have missed
-      const oldRef = remoteVideoRefs.current.get(participantId);
-      if (oldRef?.renderer) {
-        try { oldRef.renderer.dispose(); } catch {}
-        remoteVideoRefs.current.delete(participantId);
-      }
 
-      // ── Local participant ──
+
+      // Check if this is local participant
       if (participantId === "local") {
         if (!isVideoOff && localVideoStream.current) {
           const renderer = new VideoStreamRenderer(localVideoStream.current);
@@ -326,15 +321,29 @@ export default function AdminConferenceClient() {
         const participant = participants.find((p: any) => getUserId(p.identifier) === participantId);
         if (participant?.videoStreams) {
           const videoStream = participant.videoStreams.find((s: any) => s.mediaStreamType === "Video");
-          if (videoStream?.isAvailable) {
+          if (videoStream && videoStream.isAvailable) {
+            // ✅ FIX: Dispose old renderer BEFORE creating new one
+            console.log(`[THUMBNAIL] Checking for old renderer for ${participantId}...`);
+            const existing = remoteVideoRefs.current.get(participantId);
+            if (existing?.renderer) {
+              try {
+                existing.renderer.dispose();
+                console.log(`[THUMBNAIL] → Disposed old renderer before new render for ${participantId}`);
+              } catch (e) {
+                console.warn(`[THUMBNAIL] Warning disposing old renderer:`, e);
+              }
+              remoteVideoRefs.current.delete(participantId);
+            }
+
+            // Remote camera is ON - render it
             const renderer = new VideoStreamRenderer(videoStream);
             const view = await renderer.createView({ scalingMode: 'Crop' });
-            container.appendChild(view.target);
+            containerElement.appendChild(view.target);
 
-            // Store renderer so we can dispose it later
-            remoteVideoRefs.current.set(participantId, { renderer });
-
-            console.log(`✅ Remote thumbnail rendered for ${participantId}`);
+            // ✅ CRITICAL FIX: Store the renderer so clearParticipantVideo can dispose it later!
+            remoteVideoRefs.current.set(participantId, { renderer, stream: videoStream });
+            console.log(`✅ Rendered remote video in thumbnail for ${participantId}`);
+            console.log(`   → STORED REMOTE THUMBNAIL renderer for ${participantId} (THIS SHOULD FIX STUCK FRAME)`);
           }
         }
       }

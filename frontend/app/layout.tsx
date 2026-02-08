@@ -173,6 +173,7 @@ export default function RootLayout({
             position="top-center"
             reverseOrder={false}
             gutter={8}
+            limit={1}
             toastOptions={{
               // Default options
               duration: 4000,
