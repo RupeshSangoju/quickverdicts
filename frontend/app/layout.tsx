@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import ToastProvider from "@/components/ToastProvider";
+import { Toaster } from "react-hot-toast";
 import Script from "next/script";
 import { AppErrorBoundary } from "@/components/errors/AppErrorBoundary";
 import "./globals.css";
@@ -168,8 +168,55 @@ export default function RootLayout({
         
         {/* App Error Boundary - Catches app-level errors */}
         <AppErrorBoundary>
-          {/* Toast Notifications - limited to 1 visible at a time */}
-          <ToastProvider />
+          {/* Toast Notifications */}
+          <Toaster
+            position="top-center"
+            reverseOrder={false}
+            gutter={8}
+            toastOptions={{
+              // Default options
+              duration: 4000,
+              style: {
+                background: "#fff",
+                color: "#0A2342",
+                padding: "16px",
+                borderRadius: "8px",
+                boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+                maxWidth: "500px",
+              },
+              // Success toast
+              success: {
+                duration: 4000,
+                iconTheme: {
+                  primary: "#10b981",
+                  secondary: "#fff",
+                },
+                style: {
+                  background: "#f0fdf4",
+                  border: "1px solid #86efac",
+                },
+              },
+              // Error toast
+              error: {
+                duration: 5000,
+                iconTheme: {
+                  primary: "#ef4444",
+                  secondary: "#fff",
+                },
+                style: {
+                  background: "#fef2f2",
+                  border: "1px solid #fca5a5",
+                },
+              },
+              // Loading toast
+              loading: {
+                iconTheme: {
+                  primary: "#0A2342",
+                  secondary: "#fff",
+                },
+              },
+            }}
+          />
           
           {/* Main Content */}
           {children}

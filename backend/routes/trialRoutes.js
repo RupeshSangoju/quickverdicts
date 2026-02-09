@@ -57,25 +57,16 @@ console.log("ACS Identity Client initialized:", !!identityClient);
 
 /**
  * Strict rate limiter for joining trials
- * User-based rate limiting to prevent abuse while allowing legitimate retries
  */
 const joinTrialLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 50, // 50 join attempts per 15 minutes per user (allows for page refreshes and retries)
+  max: 10, // 10 join attempts per 15 minutes
   message: {
     success: false,
     message: "Too many join attempts. Please try again in 15 minutes.",
   },
   standardHeaders: true,
   legacyHeaders: false,
-  // Use user ID as the rate limit key instead of IP address
-  // This prevents multiple users behind the same NAT from sharing a limit
-  keyGenerator: (req) => {
-    // Use user ID if authenticated, otherwise fall back to IP
-    return req.user?.id ? `user_${req.user.id}` : req.ip;
-  },
-  // Skip rate limiting for failed authentication (authMiddleware handles that)
-  skip: (req) => !req.user,
 });
 
 /**
@@ -728,7 +719,6 @@ router.post(
         roomId: roomId,
         displayName: `${jurorName} (Juror)`,
         userId: identity.communicationUserId,
-        jurorId: jurorId,
         chatThreadId: chatThreadId,
         endpointUrl: ACS_ENDPOINT,
       });
