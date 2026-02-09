@@ -448,7 +448,6 @@ export default function TrialConferenceClient() {
         e.added.forEach(async (stream: any) => {
           if (stream.mediaStreamType === "ScreenSharing") {
             screenShareStream.current = stream;
-            setIsScreenSharing(true);
             setFeaturedParticipant("screenshare");
             setRenderTrigger(prev => prev + 1);
           }
@@ -819,7 +818,7 @@ export default function TrialConferenceClient() {
         payload.options = newQuestionData.Options.split('\n').map((o: string) => o.trim()).filter(Boolean);
       }
 
-      const response = await fetch(`${API_BASE}/api/jury-charge/questions`, {
+      const response = await fetch(`${API_BASE}/api/jury-charge/add-question`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -838,10 +837,7 @@ export default function TrialConferenceClient() {
           IsRequired: true,
         });
       } else {
-        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
-        const errorMsg = errorData.message || errorData.error || 'Failed to add question';
-        console.error('Failed to add question:', errorMsg);
-        alert(`Failed to add question: ${errorMsg}`);
+        alert('Failed to add question');
       }
     } catch (err) {
       console.error('Error adding question:', err);
@@ -852,55 +848,34 @@ export default function TrialConferenceClient() {
   };
 
   const toggleMute = async () => {
-    const currentCall = callRef.current;
-    if (!currentCall) {
-      console.error("No active call found");
-      return;
-    }
+    if (!call) return;
     try {
-      console.log(`🎤 Toggling mute. Current state: ${currentCall.isMuted ? 'MUTED' : 'UNMUTED'}`);
-      if (currentCall.isMuted) {
-        await currentCall.unmute();
-        setIsMuted(false);
-        console.log("✅ Unmuted successfully");
+      if (call.isMuted) {
+        await call.unmute();
       } else {
-        await currentCall.mute();
-        setIsMuted(true);
-        console.log("✅ Muted successfully");
+        await call.mute();
       }
     } catch (err) {
-      console.error("❌ Toggle mute error:", err);
+      console.error("Toggle mute error:", err);
     }
   };
 
   const toggleVideo = async () => {
-    const currentCall = callRef.current;
-    if (!currentCall) {
-      console.error("No active call found");
-      toast.error("Unable to toggle camera. Please try again.");
-      return;
-    }
-    if (!localVideoStream.current) {
-      console.error("No video stream available");
-      toast.error("Camera is not available");
-      return;
-    }
+    if (!call || !localVideoStream.current) return;
     try {
-      console.log(`📹 Toggling video. Current state: ${isVideoOff ? 'OFF' : 'ON'}`);
       if (isVideoOff) {
         // Turn camera ON
-        await currentCall.startVideo(localVideoStream.current);
+        await call.startVideo(localVideoStream.current);
         setIsVideoOff(false);
-        console.log("✅ Camera turned ON");
+        console.log("📹 Camera turned ON");
       } else {
         // Turn camera OFF
-        await currentCall.stopVideo(localVideoStream.current);
+        await call.stopVideo(localVideoStream.current);
         setIsVideoOff(true);
-        console.log("✅ Camera turned OFF");
+        console.log("📹 Camera turned OFF");
       }
     } catch (err) {
-      console.error("❌ Toggle video error:", err);
-      toast.error("Failed to toggle camera. Please try again.");
+      console.error("Toggle video error:", err);
     }
   };
 
@@ -910,10 +885,10 @@ export default function TrialConferenceClient() {
     try {
       if (isScreenSharing) {
         await call.stopScreenSharing();
-        // State will be updated by localVideoStreamsUpdated event handler
+        setIsScreenSharing(false);
       } else {
         await call.startScreenSharing();
-        // State will be updated by localVideoStreamsUpdated event handler
+        setIsScreenSharing(true);
       }
     } catch (err: any) {
       console.error("Screen share error:", err);

@@ -118,6 +118,53 @@ function initializeWebSocket(server) {
     socket.on("error", (error) => {
       console.error(`❌ [WebSocket] Socket error:`, error);
     });
+
+    // Client reports their own camera state changed
+    socket.on("camera:state", (data) => {
+      try {
+        console.log("[WS SERVER] Received camera:state from", socket.userId, data);
+        const { caseId, isVideoOn } = data || {};
+        if (!caseId || typeof isVideoOn !== "boolean") return;
+
+        const room = `case_${caseId}`;
+
+        // Broadcast to everyone in the case room (including sender)
+        io.to(room).emit("camera:state", {
+          userId: socket.userId,
+          isVideoOn,
+          timestamp: Date.now(),
+        });
+
+        console.log(`[WS SERVER] Broadcasted camera:state to room ${room} (user ${socket.userId} → ${isVideoOn ? "ON" : "OFF"})`);
+      } catch (err) {
+        console.error("❌ [WebSocket] camera:state handler error:", err);
+      }
+    });
+
+    // Client requests to toggle camera state (shorthand) -> broadcast camera state
+    socket.on("camera:toggle", (payload) => {
+      try {
+        const { caseId, isOn } = payload || {};
+        if (!caseId || typeof isOn !== "boolean") {
+          console.warn("[WebSocket] Invalid camera:toggle payload");
+          return;
+        }
+
+        const roomName = `case_${caseId}`;
+
+        // Broadcast normalized camera:state to the case room
+        getIO().to(roomName).emit("camera:state", {
+          userId: socket.userId,
+          userType: socket.userType,
+          isVideoOn: isOn,
+          timestamp: Date.now(),
+        });
+
+        console.log(`📹 [WS] ${socket.userId} camera ${isOn ? "ON" : "OFF"} → broadcast to ${roomName}`);
+      } catch (err) {
+        console.error("❌ [WebSocket] camera:toggle handler error:", err);
+      }
+    });
   });
 
   console.log("✅ [WebSocket] Server initialized");
@@ -437,4 +484,18 @@ module.exports = {
   broadcastToAll,
   getConnectedClientsCount,
   getClientsInRoom,
+  // Optional helper to notify camera state from server-side
+  notifyCameraState: (caseId, userId, isVideoOn) => {
+    try {
+      const roomName = `case_${caseId}`;
+      getIO().to(roomName).emit("camera:state", {
+        userId,
+        isVideoOn,
+        timestamp: Date.now(),
+      });
+      console.log(`📹 [WebSocket] notifyCameraState: ${userId} -> ${isVideoOn} for case ${caseId}`);
+    } catch (err) {
+      console.error("❌ [WebSocket] notifyCameraState error:", err);
+    }
+  },
 };

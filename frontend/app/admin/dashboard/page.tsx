@@ -602,11 +602,11 @@ export default function AdminDashboard() {
     return () => clearInterval(interval);
   }, [isAuthChecked, selectedDate]); // Added selectedDate dependency
 
-  // Inactivity logout timer - logout after 1 minute of inactivity
+  // Inactivity logout timer - logout after 10 minutes of inactivity
   useEffect(() => {
     if (!isAuthChecked) return;
 
-    const INACTIVITY_TIMEOUT = 60000; // 1 minute in milliseconds
+    const INACTIVITY_TIMEOUT = 600000; // 10 minutes in milliseconds
     let inactivityTimer: NodeJS.Timeout;
 
     const resetInactivityTimer = () => {
@@ -1860,14 +1860,14 @@ function formatTime(timeString: string, scheduledDate: string) {
             </div>
           </div>
 
-          <div className="bg-gradient-to-r from-amber-50 to-amber-100 rounded-xl shadow-lg p-6 transition-all border border-amber-200 hover:shadow-xl">
+          <div className="bg-gradient-to-r from-orange-50 to-orange-100 rounded-xl shadow-lg p-6 transition-all border border-orange-200 hover:shadow-xl">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-700 text-sm font-medium">Reschedule Requests</p>
-                <p className="text-4xl font-bold mt-2 text-amber-600">{stats.pendingRescheduleRequests}</p>
+                <p className="text-4xl font-bold mt-2 text-orange-600">{stats.pendingRescheduleRequests}</p>
                 <p className="text-gray-600 text-xs mt-1">Need review</p>
               </div>
-              <div className="p-3 rounded-xl bg-amber-500">
+              <div className="p-3 rounded-xl bg-orange-500">
                 <Calendar className="h-8 w-8 text-white" />
               </div>
             </div>
@@ -1919,17 +1919,17 @@ function formatTime(timeString: string, scheduledDate: string) {
                   </div>
                 </button>
                 <button
-                  className="w-full bg-gradient-to-r from-amber-50 to-amber-100 rounded-lg p-4 text-left font-medium hover:shadow-md transition-all border border-amber-200 group"
+                  className="w-full bg-gradient-to-r from-orange-50 to-orange-100 rounded-lg p-4 text-left font-medium hover:shadow-md transition-all border border-orange-200 group"
                   onClick={() => rescheduleRequestsSectionRef.current?.scrollIntoView({ behavior: "smooth" })}
                 >
                   <div className="flex items-center">
-                    <div className="p-2 bg-amber-500 rounded-lg mr-3 group-hover:scale-110 transition-transform">
+                    <div className="p-2 bg-orange-500 rounded-lg mr-3 group-hover:scale-110 transition-transform">
                       <Calendar className="h-5 w-5 text-white" />
                     </div>
                     <div className="flex-1 flex items-center justify-between">
-                      <span className="text-gray-900 group-hover:text-amber-600 font-semibold cursor-pointer">Reschedule Requests</span>
+                      <span className="text-gray-900 group-hover:text-orange-600 font-semibold cursor-pointer">Reschedule Requests</span>
                       {stats.pendingRescheduleRequests > 0 && (
-                        <span className="px-2 py-1 bg-amber-500 text-white text-xs font-bold rounded-full">
+                        <span className="px-2 py-1 bg-orange-500 text-white text-xs font-bold rounded-full">
                           {stats.pendingRescheduleRequests}
                         </span>
                       )}
@@ -2679,7 +2679,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                   >
                     <div className="flex items-center gap-2">
                       Joined
-                      {jurorSortBy === "date" || jurorSortBy === "default" ? (
+                      {jurorSortBy === "date" ? (
                         <span className="text-green-600 font-bold">{jurorSortOrder === "asc" ? "↑" : "↓"}</span>
                       ) : (
                         <span className="text-gray-400">⇅</span>

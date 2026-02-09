@@ -599,55 +599,34 @@ export default function JurorConferenceClient() {
   };
 
   const toggleMute = async () => {
-    const currentCall = callRef.current;
-    if (!currentCall) {
-      console.error("No active call found");
-      return;
-    }
+    if (!call) return;
     try {
-      console.log(`🎤 Toggling mute. Current state: ${currentCall.isMuted ? 'MUTED' : 'UNMUTED'}`);
-      if (currentCall.isMuted) {
-        await currentCall.unmute();
-        setIsMuted(false);
-        console.log("✅ Unmuted successfully");
+      if (call.isMuted) {
+        await call.unmute();
       } else {
-        await currentCall.mute();
-        setIsMuted(true);
-        console.log("✅ Muted successfully");
+        await call.mute();
       }
     } catch (err) {
-      console.error("❌ Toggle mute error:", err);
+      console.error("Toggle mute error:", err);
     }
   };
 
   const toggleVideo = async () => {
-    const currentCall = callRef.current;
-    if (!currentCall) {
-      console.error("No active call found");
-      toast.error("Unable to toggle camera. Please try again.");
-      return;
-    }
-    if (!localVideoStream.current) {
-      console.error("No video stream available");
-      toast.error("Camera is not available");
-      return;
-    }
+    if (!call || !localVideoStream.current) return;
     try {
-      console.log(`📹 Toggling video. Current state: ${isVideoOff ? 'OFF' : 'ON'}`);
       if (isVideoOff) {
         // Turn camera ON
-        await currentCall.startVideo(localVideoStream.current);
+        await call.startVideo(localVideoStream.current);
         setIsVideoOff(false);
-        console.log("✅ Camera turned ON");
+        console.log("📹 Camera turned ON");
       } else {
         // Turn camera OFF
-        await currentCall.stopVideo(localVideoStream.current);
+        await call.stopVideo(localVideoStream.current);
         setIsVideoOff(true);
-        console.log("✅ Camera turned OFF");
+        console.log("📹 Camera turned OFF");
       }
     } catch (err) {
-      console.error("❌ Toggle video error:", err);
-      toast.error("Failed to toggle camera. Please try again.");
+      console.error("Toggle video error:", err);
     }
   };
 
