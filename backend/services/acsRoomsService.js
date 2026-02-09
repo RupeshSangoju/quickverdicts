@@ -282,10 +282,49 @@ async function addParticipantToRoom(
       role: role,
     };
 
-    await retryOperation(
-      () => roomsClient.addOrUpdateParticipants(roomId, [participant]),
-      `Add participant to room ${roomId}`
-    );
+    try {
+      await retryOperation(
+        () => roomsClient.addOrUpdateParticipants(roomId, [participant]),
+        `Add participant to room ${roomId}`
+      );
+    } catch (addError) {
+      // If the error is about ACSRoleType conversion, stale participants have corrupted the room state.
+      // Fix: list all participants, remove them, then re-add only the new one.
+      if (addError.message && addError.message.includes("ACSRoleType")) {
+        console.warn(`⚠️ Room ${roomId} has corrupted participant state. Attempting cleanup...`);
+
+        try {
+          // List existing participants
+          const existingParticipants = [];
+          const participantsIterator = roomsClient.listParticipants(roomId);
+          for await (const p of participantsIterator) {
+            existingParticipants.push(p);
+          }
+          console.log(`   Found ${existingParticipants.length} existing participants in room`);
+
+          // Remove all stale participants
+          if (existingParticipants.length > 0) {
+            const idsToRemove = existingParticipants.map(p => ({
+              communicationUserId: p.id?.communicationUserId || p.communicationIdentifier?.communicationUserId
+            })).filter(id => id.communicationUserId);
+
+            if (idsToRemove.length > 0) {
+              await roomsClient.removeParticipants(roomId, idsToRemove);
+              console.log(`   Removed ${idsToRemove.length} stale participants`);
+            }
+          }
+
+          // Now add the new participant to the clean room
+          await roomsClient.addOrUpdateParticipants(roomId, [participant]);
+          console.log(`✅ Participant added after room cleanup`);
+          return;
+        } catch (cleanupError) {
+          console.error(`❌ Room cleanup failed:`, cleanupError.message);
+          throw new Error(`Failed to add participant to room: ${addError.message}`);
+        }
+      }
+      throw addError;
+    }
 
     console.log(
       `✅ Participant ${participantId} added to room ${roomId} with role ${role}`
