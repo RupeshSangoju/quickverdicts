@@ -7,7 +7,6 @@ import { AzureCommunicationTokenCredential } from "@azure/communication-common";
 import { ChatClient } from "@azure/communication-chat";
 import { getToken } from "@/lib/apiClient";
 import toast from "react-hot-toast";
-import { io, Socket } from "socket.io-client";
 import {
   Video,
   VideoOff,
@@ -20,9 +19,7 @@ import {
   MoreVertical,
   Pin,
   Volume2,
-  FileText,
 } from "lucide-react";
-import JurorVerdictForm from "@/app/juror/cases/[id]/components/JurorVerdictForm";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL
   ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api$/, '')
@@ -64,12 +61,6 @@ export default function JurorConferenceClient() {
   const [showChatPanel, setShowChatPanel] = useState(false);
   const [participantJoinTimes, setParticipantJoinTimes] = useState<Map<string, Date>>(new Map());
 
-  // Questions panel state
-  const [showQuestionsPanel, setShowQuestionsPanel] = useState(false);
-  const [juryChargeReleased, setJuryChargeReleased] = useState(false);
-  const [showQuestionsNotification, setShowQuestionsNotification] = useState(false);
-  const [jurorId, setJurorId] = useState<number | null>(null);
-
   const featuredVideoRef = useRef<HTMLDivElement>(null);
   const localVideoStream = useRef<any>(null);
   const remoteVideoRefs = useRef<Map<string, any>>(new Map());
@@ -79,16 +70,7 @@ export default function JurorConferenceClient() {
   const currentUserId = useRef<string>("");
   const callRef = useRef<any>(null);
   const callAgentRef = useRef<any>(null);
-  const deviceManagerRef = useRef<any>(null);
-  const socketRef = useRef<Socket | null>(null);
 
-  // Add this line among your other refs (around line 80–100, after participantVideoRefs)
-  const trackListenersRef = useRef<Map<string, {
-    track: MediaStreamTrack;
-    mute: () => void;
-    unmute: () => void;
-  }>>(new Map());
-  
   useEffect(() => {
     const handleBeforeUnload = async () => {
       console.log("Page closing/refreshing - cleaning up call...");
@@ -112,21 +94,6 @@ export default function JurorConferenceClient() {
         callRef.current.hangUp({ forEveryone: false }).catch((e: any) => console.error("Hangup error:", e));
       }
       remoteVideoRefs.current.forEach((r) => r.renderer?.dispose());
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-      }
-
-      // ── ADD THIS ──
-      trackListenersRef.current.forEach((listener, userId) => {
-        try {
-          listener.track.removeEventListener('mute', listener.mute);
-          listener.track.removeEventListener('unmute', listener.unmute);
-          console.log(`Final cleanup: removed track listeners for ${userId}`);
-        } catch (err) {
-          console.warn(`Error cleaning track listeners for ${userId}:`, err);
-        }
-      });
-      trackListenersRef.current.clear();
     };
   }, []);
 
@@ -176,122 +143,56 @@ export default function JurorConferenceClient() {
 
   // Clear participant video and show avatar
   function clearParticipantVideo(participantId: string) {
-    console.log(`🧹 [THUMBNAIL FIX] Clearing ${participantId}`);
+    console.log(`🧹 Clearing video for ${participantId} - will show avatar`);
 
-    // ── 1. Get thumbnail container ──
-    const container = participantVideoRefs.current.get(participantId);
-    if (container) {
-      // Stop any playing tracks (kills frozen video)
-      try {
-        const video = container.querySelector('video') as HTMLVideoElement | null;
-        if (video?.srcObject instanceof MediaStream) {
-          video.srcObject.getTracks().forEach(t => {
-            try { t.stop(); } catch {}
-          });
-          video.srcObject = null;
-          video.load();
-        }
-      } catch (e) {}
-
-      // ── Nuclear DOM removal ──
-      container.innerHTML = '';
-      while (container.firstChild) {
-        container.removeChild(container.firstChild);
-      }
-
-      // Force browser reflow + repaint
-      container.style.visibility = 'hidden';
-      container.offsetHeight;
-      container.style.visibility = 'visible';
+    // Clear container to remove frozen frame
+    const containerElement = participantVideoRefs.current.get(participantId);
+    if (containerElement) {
+      containerElement.innerHTML = "";
     }
 
-    // ── 2. Renderer cleanup ──
-    const ref = remoteVideoRefs.current.get(participantId);
-    if (ref?.renderer) {
-      try {
-        ref.renderer.dispose();
-        console.log(` → Disposed thumbnail renderer for ${participantId}`);
-      } catch (e) {}
-      remoteVideoRefs.current.delete(participantId);
-    }
+    // Dispose renderer
+    disposeVideoRenderer(participantId);
 
-    // ── 3. If this was featured → clear featured too (safety) ──
-    if (featuredParticipant === participantId && featuredVideoRef.current) {
-      featuredVideoRef.current.innerHTML = '';
-    }
-
-    // ── 4. Force React + browser update (very important for thumbnails) ──
-    setRenderTrigger(prev => prev + 1);
-    setTimeout(() => {
+    // Force re-render if this participant is featured
+    if (featuredParticipant === participantId) {
       setRenderTrigger(prev => prev + 1);
-      // Extra reflow trick — works wonders on thumbnails
-      if (container) {
-        const parent = container.parentElement;
-        if (parent) {
-          parent.style.display = 'none';
-          parent.offsetHeight;
-          parent.style.display = '';
-        }
-      }
-    }, 30);
-
-    console.log(` → Cleared thumbnail for ${participantId}`);
+    }
   }
 
   // Render participant video in thumbnail
   async function renderParticipantVideoInThumbnail(participantId: string) {
     try {
-      const container = participantVideoRefs.current.get(participantId);
-      if (!container) return;
+      const containerElement = participantVideoRefs.current.get(participantId);
+      if (!containerElement) return;
 
-      // ALWAYS clear first — prevents old renderer leak
-      container.innerHTML = '';
+      // Clear existing content
+      containerElement.innerHTML = "";
 
-      // Dispose any old renderer we might have missed
-      const oldRef = remoteVideoRefs.current.get(participantId);
-      if (oldRef?.renderer) {
-        try { oldRef.renderer.dispose(); } catch {}
-        remoteVideoRefs.current.delete(participantId);
-      }
-
-      // ── Local participant ──
+      // Check if this is local participant
       if (participantId === "local") {
         if (!isVideoOff && localVideoStream.current) {
+          // Local camera is ON - render it
           const renderer = new VideoStreamRenderer(localVideoStream.current);
           const view = await renderer.createView({ scalingMode: 'Crop' });
-          container.appendChild(view.target);
-          console.log("✅ Local thumbnail rendered");
+          containerElement.appendChild(view.target);
+          console.log("✅ Rendered local video in thumbnail");
         }
+        // If camera is OFF, container stays empty (avatar will show via CSS)
       } else {
-        // ── Remote participant ──
+        // Remote participant
         const participant = participants.find((p: any) => getUserId(p.identifier) === participantId);
-        if (participant?.videoStreams) {
+        if (participant && participant.videoStreams) {
           const videoStream = participant.videoStreams.find((s: any) => s.mediaStreamType === "Video");
           if (videoStream && videoStream.isAvailable) {
-            // ✅ FIX: Dispose old renderer BEFORE creating new one
-            console.log(`[THUMBNAIL] Checking for old renderer for ${participantId}...`);
-            const existing = remoteVideoRefs.current.get(participantId);
-            if (existing?.renderer) {
-              try {
-                existing.renderer.dispose();
-                console.log(`[THUMBNAIL] → Disposed old renderer before new render for ${participantId}`);
-              } catch (e) {
-                console.warn(`[THUMBNAIL] Warning disposing old renderer:`, e);
-              }
-              remoteVideoRefs.current.delete(participantId);
-            }
-
             // Remote camera is ON - render it
             const renderer = new VideoStreamRenderer(videoStream);
             const view = await renderer.createView({ scalingMode: 'Crop' });
             containerElement.appendChild(view.target);
-
-            // ✅ CRITICAL FIX: Store the renderer so clearParticipantVideo can dispose it later!
-            remoteVideoRefs.current.set(participantId, { renderer, stream: videoStream });
             console.log(`✅ Rendered remote video in thumbnail for ${participantId}`);
-            console.log(`   → STORED REMOTE THUMBNAIL renderer for ${participantId} (THIS SHOULD FIX STUCK FRAME)`);
           }
         }
+        // If no video or camera OFF, container stays empty (avatar will show via CSS)
       }
     } catch (err) {
       console.error(`Error rendering thumbnail for ${participantId}:`, err);
@@ -347,19 +248,6 @@ export default function JurorConferenceClient() {
     renderFeaturedVideo();
   }, [featuredParticipant, renderTrigger, isVideoOff]);
 
-  // ✅ FIX: Immediately clear video containers when camera is turned off
-  useEffect(() => {
-    participantVideoStates.forEach((isVideoOn, participantId) => {
-      if (!isVideoOn) {
-        const containerElement = participantVideoRefs.current.get(participantId);
-        if (containerElement) {
-          containerElement.innerHTML = "";
-          console.log(`🧹 Cleared video container for ${participantId} (camera off)`);
-        }
-      }
-    });
-  }, [participantVideoStates]);
-
   // Render all participant thumbnails when participants or camera states change
   useEffect(() => {
     // Render local participant thumbnail
@@ -386,128 +274,6 @@ export default function JurorConferenceClient() {
       }
     }
   }, [participants.length, featuredParticipant]);
-
-  async function checkJuryChargeStatus() {
-    try {
-      const token = getToken();
-      const response = await fetch(`${API_BASE}/api/cases/${caseId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        const caseData = await response.json();
-        if (caseData.case?.JuryChargeStatus === 'completed') {
-          setJuryChargeReleased(true);
-        }
-      }
-    } catch (err) {
-      console.error("Error checking jury charge status:", err);
-    }
-  }
-
-  function initializeWebSocket() {
-    try {
-      const token = getToken();
-      if (!token) {
-        console.warn("No token available for Socket.IO connection");
-        return;
-      }
-
-      const socket = io(API_BASE, {
-        path: "/socket.io",
-        auth: {
-          token: token,
-        },
-        transports: ["websocket", "polling"],
-      });
-
-      socketRef.current = socket;
-
-      socket.on("connect", () => {
-        console.log("Socket.IO connected for jury charge notifications");
-        // Join the case room to receive notifications
-        socket.emit("join_case", parseInt(caseId));
-      });
-
-      socket.on("joined_case", (data) => {
-        console.log("Successfully joined case room:", data);
-      });
-
-      // Listen for jury charge release event
-      socket.on("jury_charge:released", (data) => {
-        console.log("Received jury_charge:released event:", data);
-        if (data.caseId === parseInt(caseId)) {
-          console.log("Jury charge has been released!");
-          setJuryChargeReleased(true);
-          setShowQuestionsNotification(true);
-          toast.success("Jury charge questions are now available!", {
-            duration: 5000,
-          });
-        }
-      });
-
-      socket.on("connect_error", (error) => {
-        console.error("Socket.IO connection error:", error);
-      });
-
-      socket.on("disconnect", () => {
-        console.log("Socket.IO connection closed");
-      });
-
-      // Listen for instant camera state broadcasts from other clients
-      socket.on("camera:state", (data: any) => {
-        try {
-          const { userId, isVideoOn } = data || {};
-          if (!userId || userId === currentUserId.current) return; // ignore our own
-          console.log(`[SOCKET] ${userId} camera ${isVideoOn ? "ON" : "OFF"} — instant UI update`);
-
-          setParticipantVideoStates((prev) => {
-            const updated = new Map(prev);
-            updated.set(userId, isVideoOn);
-            return updated;
-          });
-
-          if (!isVideoOn) {
-            clearParticipantVideo(userId);
-            if (featuredParticipant === userId) {
-              if (!pinnedParticipant) {
-                const activeHasVideo = activeSpeaker && participantVideoStates.get(activeSpeaker);
-                if (activeHasVideo) {
-                  setFeaturedParticipant(activeSpeaker as string);
-                } else {
-                  const replacement = participants.find((p: any) => {
-                    const id = getUserId(p.identifier);
-                    return id !== userId && participantVideoStates.get(id);
-                  });
-                  if (replacement) {
-                    setFeaturedParticipant(getUserId(replacement.identifier));
-                  } else {
-                    setFeaturedParticipant("local");
-                  }
-                }
-              } else {
-                setRenderTrigger((prev) => prev + 1);
-              }
-            }
-          } else {
-            renderParticipantVideoInThumbnail(userId).catch(() => {});
-            const isSpeaking = participantSpeakingStates.get(userId) || false;
-            if (!pinnedParticipant && isSpeaking) {
-              setFeaturedParticipant(userId);
-            } else if (featuredParticipant === userId) {
-              setRenderTrigger((prev) => prev + 1);
-            }
-          }
-        } catch (e) {
-          console.warn("Error handling camera:state socket event:", e);
-        }
-      });
-    } catch (err) {
-      console.error("Error initializing Socket.IO:", err);
-    }
-  }
 
   async function initializeChat(token: string, userId: string, threadId: string, endpoint: string) {
     try {
@@ -564,17 +330,6 @@ export default function JurorConferenceClient() {
       const data = await response.json();
       setDisplayName(data.displayName);
 
-      // Set juror ID for questions
-      if (data.jurorId) {
-        setJurorId(data.jurorId);
-      }
-
-      // Check if jury charge has been released
-      checkJuryChargeStatus();
-
-      // Initialize WebSocket for jury charge notifications
-      initializeWebSocket();
-
       if (data.chatThreadId && data.endpointUrl) {
         await initializeChat(data.token, data.userId, data.chatThreadId, data.endpointUrl);
       }
@@ -583,9 +338,6 @@ export default function JurorConferenceClient() {
       const tokenCredential = new AzureCommunicationTokenCredential(data.token);
       const callClient = new CallClient();
       const deviceManager = await callClient.getDeviceManager();
-
-      // Store device manager reference for later use
-      deviceManagerRef.current = deviceManager;
 
       const cameras = await deviceManager.getCameras();
       if (cameras.length > 0) {
@@ -659,95 +411,24 @@ export default function JurorConferenceClient() {
           participant.on('videoStreamsUpdated', async (streamEvent: any) => {
             streamEvent.added.forEach(async (stream: any) => {
               if (stream.mediaStreamType === 'Video') {
-  // Keep your existing state update
-  setParticipantVideoStates(prev => {
-    const updated = new Map(prev);
-    updated.set(userId, stream.isAvailable);
-    return updated;
-  });
+                // Update state immediately
+                setParticipantVideoStates(prev => {
+                  const updated = new Map(prev);
+                  updated.set(userId, stream.isAvailable);
+                  return updated;
+                });
 
-  // ── NEW: Fast camera detection using MediaStreamTrack.mute ──
-  if (stream.isAvailable) {
-    const mediaStream = stream.source?.getMediaStream?.();
-    const videoTrack = mediaStream?.getVideoTracks()?.[0];
+                // Listen for camera toggle events
+                stream.on('isAvailableChanged', async () => {
+                  console.log(`📹 ${userId} camera ${stream.isAvailable ? 'ON' : 'OFF'}`);
 
-    if (videoTrack) {
-    const onMute = () => {
-      console.log(`[track.mute] ${userId} → camera treated as OFF`);
-      try {
-        toast("Camera off detected quickly", { duration: 1500, icon: "📹" });
-      } catch (e) {
-        // ignore if toast fails
-      }
-      setParticipantVideoStates(prev => {
-        const updated = new Map(prev);
-        updated.set(userId, false);
-        return updated;
-      });
-      clearParticipantVideo(userId);
-      if (featuredParticipant === userId) {
-        setRenderTrigger(prev => prev + 1);
-      }
-    };
-
-    const onUnmute = () => {
-      console.log(`[track.unmute] ${userId} → camera likely back ON`);
-      try {
-        toast("Camera back on detected", { duration: 1500, icon: "📹" });
-      } catch (e) {
-        // ignore
-      }
-      setParticipantVideoStates(prev => {
-        const updated = new Map(prev);
-        updated.set(userId, true);
-        return updated;
-      });
-      renderParticipantVideoInThumbnail(userId).catch(err => {
-        console.warn(`Re-render after unmute failed for ${userId}:`, err);
-      });
-      if (featuredParticipant === userId) {
-        setRenderTrigger(prev => prev + 1);
-      }
-    };
-
-    try {
-      videoTrack.addEventListener('mute', onMute);
-      videoTrack.addEventListener('unmute', onUnmute);
-    } catch (err) {
-      console.warn(`Failed to attach track listeners for ${userId}:`, err);
-    }
-
-    // If track is already muted when attached, treat as muted immediately
-    if (videoTrack.muted) {
-      console.log(`[initial check] ${userId} track already muted → applying off state`);
-      onMute();
-    }
-
-    // Save for cleanup later
-    trackListenersRef.current.set(userId, {
-      track: videoTrack,
-      mute: onMute,
-      unmute: onUnmute,
-    });
-    }
-  }
-
-  // Keep your existing fallback (important!)
-  stream.on('isAvailableChanged', async () => {
-    console.log(`[fallback isAvailable] ${userId} → ${stream.isAvailable ? 'ON' : 'OFF'}`);
-    setParticipantVideoStates(prev => {
-      const updated = new Map(prev);
-      updated.set(userId, stream.isAvailable);
-      return updated;
-    });
-
-    if (!stream.isAvailable) {
-      clearParticipantVideo(userId);
-    } else {
-      await renderParticipantVideoInThumbnail(userId);
-    }
-  });
-
+                  // Update state
+                  setParticipantVideoStates(prev => {
+                    const updated = new Map(prev);
+                    updated.set(userId, stream.isAvailable);
+                    return updated;
+                  });
+                });
               } else if (stream.mediaStreamType === 'ScreenSharing') {
                 // Remote participant started screensharing
                 console.log(`📺 Remote screenshare started by ${userId}, isAvailable: ${stream.isAvailable}`);
@@ -798,15 +479,6 @@ export default function JurorConferenceClient() {
                   updated.set(userId, false);
                   return updated;
                 });
-
-                // Cleanup track listeners when video stream is removed
-                const listener = trackListenersRef.current.get(userId);
-                if (listener) {
-                  listener.track.removeEventListener('mute', listener.mute);
-                  listener.track.removeEventListener('unmute', listener.unmute);
-                  trackListenersRef.current.delete(userId);
-                  console.log(`Cleaned up track listeners for removed video stream of ${userId}`);
-                }
               } else if (stream.mediaStreamType === 'ScreenSharing') {
                 const key = `screenshare-${userId}`;
                 const ref = remoteVideoRefs.current.get(key);
@@ -870,15 +542,6 @@ export default function JurorConferenceClient() {
         e.removed.forEach((participant: any) => {
           const userId = getUserId(participant.identifier);
 
-          // Cleanup track listeners when participant leaves
-          const listener = trackListenersRef.current.get(userId);
-          if (listener) {
-            listener.track.removeEventListener('mute', listener.mute);
-            listener.track.removeEventListener('unmute', listener.unmute);
-            trackListenersRef.current.delete(userId);
-            console.log(`Cleaned up track listeners for removed participant ${userId}`);
-          }
-
           const ref = remoteVideoRefs.current.get(userId);
           if (ref && ref.renderer) {
             ref.renderer.dispose();
@@ -935,138 +598,35 @@ export default function JurorConferenceClient() {
     }
   };
 
-  const toggleQuestionsPanel = () => {
-    setShowQuestionsPanel(!showQuestionsPanel);
-    if (!showQuestionsPanel) {
-      setShowQuestionsNotification(false);
-    }
-  };
-
   const toggleMute = async () => {
-    const currentCall = callRef.current;
-    if (!currentCall) {
-      console.error("No active call found");
-      return;
-    }
+    if (!call) return;
     try {
-      console.log(`🎤 Toggling mute. Current state: ${currentCall.isMuted ? 'MUTED' : 'UNMUTED'}`);
-      if (currentCall.isMuted) {
-        await currentCall.unmute();
-        setIsMuted(false);
-        console.log("✅ Unmuted successfully");
+      if (call.isMuted) {
+        await call.unmute();
       } else {
-        await currentCall.mute();
-        setIsMuted(true);
-        console.log("✅ Muted successfully");
+        await call.mute();
       }
     } catch (err) {
-      console.error("❌ Toggle mute error:", err);
+      console.error("Toggle mute error:", err);
     }
   };
 
   const toggleVideo = async () => {
-    const currentCall = callRef.current;
-    if (!currentCall) {
-      console.error("No active call found");
-      toast.error("Unable to toggle camera. Please try again.");
-      return;
-    }
+    if (!call || !localVideoStream.current) return;
     try {
-      console.log(`📹 Toggling video. Current state: ${isVideoOff ? 'OFF' : 'ON'}`);
-
       if (isVideoOff) {
         // Turn camera ON
-        if (!deviceManagerRef.current) {
-          console.error("Device manager not available");
-          toast.error("Camera device manager is not available");
-          return;
-        }
-
-        const cameras = await deviceManagerRef.current.getCameras();
-        if (cameras.length === 0) {
-          console.error("No cameras available");
-          toast.error("No camera found");
-          return;
-        }
-
-        // Create a fresh LocalVideoStream with the camera device
-        localVideoStream.current = new LocalVideoStream(cameras[0]);
-        await currentCall.startVideo(localVideoStream.current);
+        await call.startVideo(localVideoStream.current);
         setIsVideoOff(false);
-        console.log("✅ Camera turned ON");
-
-        // Broadcast camera state to other clients for instant UI updates
-        try {
-          if (socketRef.current?.connected) {
-            socketRef.current.emit("camera:state", { caseId: parseInt(caseId), isVideoOn: true });
-            socketRef.current.emit("camera:toggle", { caseId: parseInt(caseId), isOn: true });
-          }
-        } catch (e) {
-          console.warn("Failed to emit camera:state (on):", e);
-        }
+        console.log("📹 Camera turned ON");
       } else {
         // Turn camera OFF
-        if (!localVideoStream.current) {
-          console.error("No video stream available");
-          return;
-        }
-
-        console.log("🛑 Stopping camera and disposing renderer...");
-
-        try {
-          await currentCall.stopVideo(localVideoStream.current);
-          console.log("✅ stopVideo succeeded");
-        } catch (stopErr) {
-          console.warn("Warning: stopVideo failed, continuing cleanup:", stopErr);
-        }
-
-        // Clear local thumbnail and featured if necessary
-        const localContainer = participantVideoRefs.current.get("local");
-        if (localContainer) {
-          localContainer.innerHTML = "";
-        }
-        if (featuredParticipant === "local" && featuredVideoRef.current) {
-          featuredVideoRef.current.innerHTML = "";
-        }
-
-        try {
-          localVideoStream.current = null;
-        } catch (e) {
-          console.warn("Warning clearing localVideoStream ref:", e);
-        }
-
+        await call.stopVideo(localVideoStream.current);
         setIsVideoOff(true);
-        setRenderTrigger(prev => prev + 1);
-
-        // If our own local was featured → switch away
-        if (featuredParticipant === "local") {
-          if (!pinnedParticipant) {
-            const activeHasVideo = activeSpeaker && participantVideoStates.get(activeSpeaker);
-            if (activeHasVideo) setFeaturedParticipant(activeSpeaker as string);
-            else {
-              const replacement = participants.find((p: any) => participantVideoStates.get(getUserId(p.identifier)));
-              if (replacement) setFeaturedParticipant(getUserId(replacement.identifier));
-              else setFeaturedParticipant("local");
-            }
-          } else {
-            setRenderTrigger(prev => prev + 1);
-          }
-        }
-
-        console.log("✅ Camera turned OFF - all video elements cleared");
-
-        try {
-          if (socketRef.current?.connected) {
-            socketRef.current.emit("camera:state", { caseId: parseInt(caseId), isVideoOn: false });
-            socketRef.current.emit("camera:toggle", { caseId: parseInt(caseId), isOn: false });
-          }
-        } catch (e) {
-          console.warn("Failed to emit camera:state (off):", e);
-        }
+        console.log("📹 Camera turned OFF");
       }
     } catch (err) {
-      console.error("❌ Toggle video error:", err);
-      toast.error("Failed to toggle camera. Please try again.");
+      console.error("Toggle video error:", err);
     }
   };
 
@@ -1205,10 +765,9 @@ export default function JurorConferenceClient() {
     <div className="h-screen flex flex-col overflow-hidden" style={{ backgroundColor: "#f0ebe0" }}>
       {/* Container with chat support */}
       <div className="flex-1 flex overflow-hidden relative">
-        {/* Main Content Area - Adjust width when panels are open */}
+        {/* Main Content Area - More space for video when chat open */}
         <div className={`flex flex-col transition-all duration-300 ${
-          showChatPanel && showQuestionsPanel ? 'w-3/5' :
-          showChatPanel || showQuestionsPanel ? 'w-3/5' : 'w-4/5 mx-auto'
+          showChatPanel ? 'w-4/5' : 'w-4/5 mx-auto'
         }`}>
           {/* Header */}
           <div className="px-6 py-3 flex items-center justify-between shadow-lg" style={{ backgroundColor: "#16305B" }}>
@@ -1303,10 +862,14 @@ export default function JurorConferenceClient() {
                       </div>
                     ) : (
                       <>
-                        {/* Video container - cleared by useEffect when camera turns off */}
+                        {/* ✅ FIX: Always create ref for video container, but show/hide based on camera state */}
                         <div
                           ref={(el) => {
                             participantVideoRefs.current.set(participant.id, el);
+                            // ✅ Clear container when camera is off to remove frozen frames
+                            if (el && !isVideoOn) {
+                              el.innerHTML = "";
+                            }
                           }}
                           className="w-full h-full [&_video]:object-cover"
                           style={{ display: isVideoOn ? 'block' : 'none' }}
@@ -1438,22 +1001,6 @@ export default function JurorConferenceClient() {
               </span>
             </button>
 
-            {juryChargeReleased && (
-              <button onClick={toggleQuestionsPanel} className="relative flex flex-col items-center gap-1 hover:scale-110 transition-transform group" title="Questions">
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: showQuestionsPanel ? "#5B9BD5" : "#16305B" }}>
-                  <FileText className="w-6 h-6 text-white" />
-                </div>
-                {showQuestionsNotification && !showQuestionsPanel && (
-                  <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
-                    !
-                  </div>
-                )}
-                <span className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
-                  Questions
-                </span>
-              </button>
-            )}
-
             <button onClick={leaveCall} className="flex flex-col items-center gap-1 hover:scale-110 transition-transform group relative" title="Leave Call">
               <div className="w-12 h-12 rounded-xl bg-red-600 flex items-center justify-center">
                 <Phone className="w-6 h-6 text-white transform rotate-135" />
@@ -1552,57 +1099,6 @@ export default function JurorConferenceClient() {
               onClick={(e) => {
                 e.stopPropagation();
                 setShowChatNotification(false);
-              }}
-              className="text-white/80 hover:text-white"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Questions Panel - slides in from right */}
-      {showQuestionsPanel && juryChargeReleased && jurorId && (
-        <div className="fixed right-0 top-0 bottom-0 w-2/5 flex flex-col shadow-2xl z-50" style={{ backgroundColor: "#ffffff", borderLeft: "2px solid #C6CDD9" }}>
-          <div className="p-5 flex items-center justify-between" style={{ backgroundColor: "#16305B", borderBottom: "1px solid #C6CDD9" }}>
-            <div>
-              <h3 className="text-lg font-bold text-white">Jury Charge Questions</h3>
-              <p className="text-sm text-white opacity-80">Answer all required questions</p>
-            </div>
-            <button onClick={toggleQuestionsPanel} className="text-white hover:text-gray-300">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-4">
-            <JurorVerdictForm caseId={parseInt(caseId)} jurorId={jurorId} />
-          </div>
-        </div>
-      )}
-
-      {/* Questions Notification */}
-      {showQuestionsNotification && !showQuestionsPanel && juryChargeReleased && (
-        <div
-          onClick={toggleQuestionsPanel}
-          className="fixed bottom-24 left-6 w-96 rounded-2xl shadow-2xl p-4 cursor-pointer hover:shadow-3xl transition-all"
-          style={{ backgroundColor: "#16305B", border: "1px solid #C6CDD9" }}
-        >
-          <div className="flex items-start gap-3">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
-              <FileText className="w-6 h-6 text-white" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="font-semibold text-white text-sm">Jury Charge Released</div>
-              <div className="text-sm text-white/90">Questions are now available for you to answer</div>
-            </div>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowQuestionsNotification(false);
               }}
               className="text-white/80 hover:text-white"
             >

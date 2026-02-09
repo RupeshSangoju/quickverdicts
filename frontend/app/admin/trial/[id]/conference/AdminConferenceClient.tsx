@@ -3,7 +3,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { io, Socket } from "socket.io-client";
 import {
   CallClient,
   VideoStreamRenderer,
@@ -11,7 +10,6 @@ import {
 } from "@azure/communication-calling";
 import { AzureCommunicationTokenCredential } from "@azure/communication-common";
 import { ChatClient } from "@azure/communication-chat";
-import RecordRTC, { RecordRTCPromisesHandler } from "recordrtc";
 import { getToken } from "@/lib/apiClient";
 import {
   Video,
@@ -72,9 +70,8 @@ export default function AdminConferenceClient() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [recordingBlob, setRecordingBlob] = useState<Blob | null>(null);
-  const mediaRecorderRef = useRef<RecordRTCPromisesHandler | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
-  const recordingStreamRef = useRef<MediaStream | null>(null);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const recordingAudioContextRef = useRef<AudioContext | null>(null);
   const recordingAudioSourcesRef = useRef<MediaStreamAudioSourceNode[]>([]);
@@ -114,14 +111,11 @@ export default function AdminConferenceClient() {
   const screenShareRenderer = useRef<any>(null);
   const remoteVideoRefs = useRef<Map<string, any>>(new Map());
   const participantVideoRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
-  const trackListenersRef = useRef<Map<string, { track: MediaStreamTrack; mute: () => void; unmute: () => void }>>(new Map());
   const hasInitialized = useRef(false);
   const chatMessagesEndRef = useRef<HTMLDivElement>(null);
   const currentUserId = useRef<string>("");
   const callRef = useRef<any>(null);
   const callAgentRef = useRef<any>(null);
-  const socketRef = useRef<any>(null);
-  const deviceManagerRef = useRef<any>(null);
 
   // Cleanup on page close/refresh
   useEffect(() => {
@@ -149,21 +143,6 @@ export default function AdminConferenceClient() {
         callRef.current.hangUp({ forEveryone: false }).catch((e: any) => console.error("Hangup error:", e));
       }
       remoteVideoRefs.current.forEach((r) => r.renderer?.dispose());
-
-      // Clean up any remaining track listeners we attached
-      try {
-        trackListenersRef.current.forEach((entry, id) => {
-          try {
-            entry.track.removeEventListener('mute', entry.mute);
-            entry.track.removeEventListener('unmute', entry.unmute);
-          } catch (e) {
-            // ignore
-          }
-        });
-      } catch (e) {
-        // ignore
-      }
-      trackListenersRef.current.clear();
     };
   }, []);
 
@@ -232,199 +211,64 @@ export default function AdminConferenceClient() {
       remoteVideoRefs.current.delete(participantId);
     }
   }
-  // Clear participant video and show avatar (thumbnail-protection)
+
+  // Clear participant video and show avatar
   function clearParticipantVideo(participantId: string) {
-    console.log(`🧹 [THUMBNAIL FIX] Clearing ${participantId}`);
+    console.log(`🧹 Clearing video for ${participantId} - will show avatar`);
 
-    // ── 1. Get thumbnail container ──
-    const container = participantVideoRefs.current.get(participantId);
-    if (container) {
-      // Stop any playing tracks (kills frozen video)
-      try {
-        const video = container.querySelector('video') as HTMLVideoElement | null;
-        if (video?.srcObject instanceof MediaStream) {
-          video.srcObject.getTracks().forEach(t => {
-            try { t.stop(); } catch {}
-          });
-          video.srcObject = null;
-          video.load();
-        }
-      } catch (e) {}
-
-      // ── Nuclear DOM removal ──
-      container.innerHTML = '';
-      while (container.firstChild) {
-        container.removeChild(container.firstChild);
-      }
-
-      // Force browser reflow + repaint
-      container.style.visibility = 'hidden';
-      container.offsetHeight;
-      container.style.visibility = 'visible';
+    // Clear container to remove frozen frame
+    const containerElement = participantVideoRefs.current.get(participantId);
+    if (containerElement) {
+      containerElement.innerHTML = "";
     }
 
-    // ── 2. Renderer cleanup ──
-    const ref = remoteVideoRefs.current.get(participantId);
-    if (ref?.renderer) {
-      try {
-        ref.renderer.dispose();
-        console.log(` → Disposed thumbnail renderer for ${participantId}`);
-      } catch (e) {}
-      remoteVideoRefs.current.delete(participantId);
-    }
+    // Dispose renderer
+    disposeVideoRenderer(participantId);
 
-    // ── 3. If this was featured → clear featured too (safety) ──
-    if (featuredParticipant === participantId && featuredVideoRef.current) {
-      featuredVideoRef.current.innerHTML = '';
-    }
-
-    // ── 4. Force React + browser update (very important for thumbnails) ──
-    setRenderTrigger(prev => prev + 1);
-    setTimeout(() => {
+    // Force re-render if this participant is featured
+    if (featuredParticipant === participantId) {
       setRenderTrigger(prev => prev + 1);
-      // Extra reflow trick — works wonders on thumbnails
-      if (container) {
-        const parent = container.parentElement;
-        if (parent) {
-          parent.style.display = 'none';
-          parent.offsetHeight;
-          parent.style.display = '';
-        }
-      }
-    }, 30);
-
-    console.log(` → Cleared thumbnail for ${participantId}`);
+    }
   }
 
   // Render participant video in thumbnail
   async function renderParticipantVideoInThumbnail(participantId: string) {
     try {
-      const container = participantVideoRefs.current.get(participantId);
-      if (!container) return;
+      const containerElement = participantVideoRefs.current.get(participantId);
+      if (!containerElement) return;
 
       // Clear existing content
       containerElement.innerHTML = "";
 
-
-
       // Check if this is local participant
       if (participantId === "local") {
         if (!isVideoOff && localVideoStream.current) {
+          // Local camera is ON - render it
           const renderer = new VideoStreamRenderer(localVideoStream.current);
           const view = await renderer.createView({ scalingMode: 'Crop' });
-          container.appendChild(view.target);
-          console.log("✅ Local thumbnail rendered");
+          containerElement.appendChild(view.target);
+          console.log("✅ Rendered local video in thumbnail");
         }
-      } 
-      // ── Remote participant ──
-      else {
+        // If camera is OFF, container stays empty (avatar will show via CSS)
+      } else {
+        // Remote participant
         const participant = participants.find((p: any) => getUserId(p.identifier) === participantId);
-        if (participant?.videoStreams) {
+        if (participant && participant.videoStreams) {
           const videoStream = participant.videoStreams.find((s: any) => s.mediaStreamType === "Video");
           if (videoStream && videoStream.isAvailable) {
-            // ✅ FIX: Dispose old renderer BEFORE creating new one
-            console.log(`[THUMBNAIL] Checking for old renderer for ${participantId}...`);
-            const existing = remoteVideoRefs.current.get(participantId);
-            if (existing?.renderer) {
-              try {
-                existing.renderer.dispose();
-                console.log(`[THUMBNAIL] → Disposed old renderer before new render for ${participantId}`);
-              } catch (e) {
-                console.warn(`[THUMBNAIL] Warning disposing old renderer:`, e);
-              }
-              remoteVideoRefs.current.delete(participantId);
-            }
-
             // Remote camera is ON - render it
             const renderer = new VideoStreamRenderer(videoStream);
             const view = await renderer.createView({ scalingMode: 'Crop' });
             containerElement.appendChild(view.target);
-
-            // ✅ CRITICAL FIX: Store the renderer so clearParticipantVideo can dispose it later!
-            remoteVideoRefs.current.set(participantId, { renderer, stream: videoStream });
             console.log(`✅ Rendered remote video in thumbnail for ${participantId}`);
-            console.log(`   → STORED REMOTE THUMBNAIL renderer for ${participantId} (THIS SHOULD FIX STUCK FRAME)`);
           }
         }
+        // If no video or camera OFF, container stays empty (avatar will show via CSS)
       }
     } catch (err) {
-      console.error(`Thumbnail render failed for ${participantId}:`, err);
+      console.error(`Error rendering thumbnail for ${participantId}:`, err);
     }
   }
-
-  // === WebSocket: join case room on connect and listen for camera state ===
-  useEffect(() => {
-    try {
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-        socketRef.current = null;
-      }
-
-      socketRef.current = io(API_BASE, {
-        path: "/socket.io",
-        auth: { token: getToken() },
-        transports: ["websocket", "polling"],
-      });
-
-      socketRef.current.on("connect", () => {
-        console.log("✅ [Admin Socket] Connected! ID:", socketRef.current.id);
-        const numericCaseId = parseInt(caseId as string);
-        socketRef.current.emit("join_case", numericCaseId);
-        console.log(`📍 [Admin Socket] Emitted join_case for case ${numericCaseId}`);
-      });
-
-      socketRef.current.on("joined_case", (data: any) => {
-        console.log("✅ [Admin Socket] Successfully joined case room:", data);
-      });
-
-      socketRef.current.on("camera:state", (data: any) => {
-        try {
-          const { userId, isVideoOn } = data || {};
-          if (!userId || userId === currentUserId.current) return;
-
-          console.log(`[ADMIN RECEIVED] ${userId} → camera ${isVideoOn ? 'ON' : 'OFF'}`);
-
-          setParticipantVideoStates(prev => {
-            const updated = new Map(prev);
-            updated.set(userId, isVideoOn);
-            return updated;
-          });
-
-          if (!isVideoOn) {
-            clearParticipantVideo(userId);
-            // Optional: force thumbnail re-check (shows avatar)
-            setTimeout(() => {
-              const thumb = participantVideoRefs.current.get(userId);
-              if (thumb) thumb.innerHTML = '';
-            }, 100);
-          } else {
-            renderParticipantVideoInThumbnail(userId).catch(() => {});
-          }
-
-          // Always refresh if featured
-          if (featuredParticipant === userId) {
-            setRenderTrigger(prev => prev + 1);
-          }
-        } catch (e) {
-          console.error("camera:state handler error:", e);
-        }
-      });
-
-      return () => {
-        try {
-          socketRef.current?.off("connect");
-          socketRef.current?.off("joined_case");
-          socketRef.current?.off("camera:state");
-          socketRef.current?.disconnect();
-          socketRef.current = null;
-        } catch (e) {
-          // ignore
-        }
-      };
-    } catch (e) {
-      console.warn("Admin socket init error:", e);
-    }
-  }, [caseId, featuredParticipant]);
 
   async function renderFeaturedVideo() {
     if (!featuredVideoRef.current) return;
@@ -483,19 +327,6 @@ export default function AdminConferenceClient() {
   useEffect(() => {
     renderFeaturedVideo();
   }, [featuredParticipant, renderTrigger, isVideoOff]);
-
-  // ✅ FIX: Immediately clear video containers when camera is turned off
-  useEffect(() => {
-    participantVideoStates.forEach((isVideoOn, participantId) => {
-      if (!isVideoOn) {
-        const containerElement = participantVideoRefs.current.get(participantId);
-        if (containerElement) {
-          containerElement.innerHTML = "";
-          console.log(`🧹 Cleared video container for ${participantId} (camera off)`);
-        }
-      }
-    });
-  }, [participantVideoStates]);
 
   // Render all participant thumbnails when participants or camera states change
   useEffect(() => {
@@ -612,7 +443,6 @@ export default function AdminConferenceClient() {
       const callClient = new CallClient();
       const tokenCredential = new AzureCommunicationTokenCredential(data.token);
       const deviceManager = await callClient.getDeviceManager();
-      deviceManagerRef.current = deviceManager;
       await deviceManager.askDevicePermission({ video: true, audio: true });
 
       const cameras = await deviceManager.getCameras();
@@ -724,66 +554,28 @@ export default function AdminConferenceClient() {
                   return updated;
                 });
 
-                // Fast camera detection using MediaStreamTrack events
+                // Render if available now
                 if (stream.isAvailable) {
-                  const mediaStream = stream.source?.getMediaStream?.();
-                  const videoTrack = mediaStream?.getVideoTracks()?.[0];
-
-                  if (videoTrack) {
-                    const onMute = () => {
-                      console.log(`[track.mute] ${userId} → camera treated as OFF`);
-                      try { toast("Camera off detected quickly", { duration: 1500, icon: "📹" }); } catch (e) {}
-                      setParticipantVideoStates(prev => {
-                        const updated = new Map(prev);
-                        updated.set(userId, false);
-                        return updated;
-                      });
-                      clearParticipantVideo(userId);
-                      if (featuredParticipant === userId) setRenderTrigger(prev => prev + 1);
-                    };
-
-                    const onUnmute = () => {
-                      console.log(`[track.unmute] ${userId} → camera likely back ON`);
-                      try { toast("Camera back on detected", { duration: 1500, icon: "📹" }); } catch (e) {}
-                      setParticipantVideoStates(prev => {
-                        const updated = new Map(prev);
-                        updated.set(userId, true);
-                        return updated;
-                      });
-                      renderParticipantVideoInThumbnail(userId).catch(err => console.warn(err));
-                      if (featuredParticipant === userId) setRenderTrigger(prev => prev + 1);
-                    };
-
-                    try {
-                      videoTrack.addEventListener('mute', onMute);
-                      videoTrack.addEventListener('unmute', onUnmute);
-                    } catch (err) {
-                      console.warn(`Failed to attach track listeners for ${userId}:`, err);
-                    }
-
-                    if (videoTrack.muted) onMute();
-
-                    trackListenersRef.current.set(userId, {
-                      track: videoTrack,
-                      mute: onMute,
-                      unmute: onUnmute,
-                    });
-                  }
+                  await renderParticipantVideoInThumbnail(userId);
                 }
 
-                // Always keep the fallback isAvailableChanged handler
+                // Listen for camera toggle events
                 stream.on("isAvailableChanged", async () => {
-                  console.log(`[fallback isAvailable] ${userId} → ${stream.isAvailable ? 'ON' : 'OFF'}`);
+                  console.log(`📹 ${userId} camera ${stream.isAvailable ? 'ON' : 'OFF'}`);
+
+                  // Update state
                   setParticipantVideoStates(prev => {
                     const updated = new Map(prev);
                     updated.set(userId, stream.isAvailable);
                     return updated;
                   });
 
-                  if (!stream.isAvailable) {
-                    clearParticipantVideo(userId);
-                  } else {
+                  if (stream.isAvailable) {
+                    // Camera ON - render video
                     await renderParticipantVideoInThumbnail(userId);
+                  } else {
+                    // Camera OFF - clear and show avatar
+                    clearParticipantVideo(userId);
                   }
                 });
               } else if (stream.mediaStreamType === "ScreenSharing") {
@@ -837,18 +629,6 @@ export default function AdminConferenceClient() {
                   updated.set(userId, false);
                   return updated;
                 });
-
-                // Remove any attached track listeners for this participant
-                try {
-                  const entry = trackListenersRef.current.get(userId);
-                  if (entry) {
-                    try {
-                      entry.track.removeEventListener('mute', entry.mute);
-                      entry.track.removeEventListener('unmute', entry.unmute);
-                    } catch (e) {}
-                    trackListenersRef.current.delete(userId);
-                  }
-                } catch (e) {}
               } else if (stream.mediaStreamType === "ScreenSharing") {
                 const key = `screenshare-${userId}`;
                 const ref = remoteVideoRefs.current.get(key);
@@ -1242,124 +1022,34 @@ export default function AdminConferenceClient() {
   };
 
   const toggleMute = async () => {
-    const currentCall = callRef.current;
-    if (!currentCall) {
-      console.error("No active call found");
-      return;
-    }
+    if (!call) return;
     try {
-      console.log(`🎤 Toggling mute. Current state: ${currentCall.isMuted ? 'MUTED' : 'UNMUTED'}`);
-      if (currentCall.isMuted) {
-        await currentCall.unmute();
-        setIsMuted(false);
-        console.log("✅ Unmuted successfully");
+      if (call.isMuted) {
+        await call.unmute();
       } else {
-        await currentCall.mute();
-        setIsMuted(true);
-        console.log("✅ Muted successfully");
+        await call.mute();
       }
     } catch (err) {
-      console.error("❌ Toggle mute error:", err);
+      console.error("Toggle mute error:", err);
     }
   };
 
   const toggleVideo = async () => {
-    const currentCall = callRef.current;
-    if (!currentCall) {
-      console.error("[Admin] No active call found");
-      toast.error("No active call");
-      return;
-    }
-
+    if (!call || !localVideoStream.current) return;
     try {
-      console.log(`📹 [Admin Toggle] Current: ${isVideoOff ? 'OFF' : 'ON'}`);
-
       if (isVideoOff) {
-        // === Turning ON ===
-        if (!deviceManagerRef.current) {
-          toast.error("No device manager");
-          return;
-        }
-
-        const cameras = await deviceManagerRef.current.getCameras();
-        if (cameras.length === 0) {
-          toast.error("No cameras found");
-          return;
-        }
-
-        // Fresh stream
-        localVideoStream.current = new LocalVideoStream(cameras[0]);
-        await currentCall.startVideo(localVideoStream.current);
+        // Turn camera ON
+        await call.startVideo(localVideoStream.current);
         setIsVideoOff(false);
-        console.log("✅ [Admin] Camera ON");
-
-        // Broadcast ON
-        if (socketRef.current?.connected) {
-          console.log("[Admin] Emitting camera:state ON");
-          socketRef.current.emit("camera:state", {
-            caseId: parseInt(caseId),
-            userId: currentUserId.current || "admin-local",
-            isVideoOn: true
-          });
-        }
+        console.log("📹 Camera turned ON");
       } else {
-        // === Turning OFF ===
-        console.log("🛑 [Admin] Stopping camera...");
-
-        // Stop ACS stream (ignore errors but log)
-        try {
-          if (localVideoStream.current) {
-            await currentCall.stopVideo(localVideoStream.current);
-            console.log("✅ [Admin] stopVideo OK");
-          }
-        } catch (e) {
-          console.warn("[Admin] stopVideo failed:", e);
-        }
-
-        // Clear local containers aggressively
-        if (featuredParticipant === "local" && featuredVideoRef.current) {
-          featuredVideoRef.current.innerHTML = "";
-        }
-        const localContainer = participantVideoRefs.current.get("local");
-        if (localContainer) {
-          localContainer.innerHTML = "";
-        }
-
-        localVideoStream.current = null;
+        // Turn camera OFF
+        await call.stopVideo(localVideoStream.current);
         setIsVideoOff(true);
-        setRenderTrigger(prev => prev + 1);
-
-        // If own local was featured → switch away
-        if (featuredParticipant === "local") {
-          if (!pinnedParticipant) {
-            const activeHasVideo = activeSpeaker && participantVideoStates.get(activeSpeaker);
-            if (activeHasVideo) setFeaturedParticipant(activeSpeaker as string);
-            else {
-              const replacement = participants.find((p: any) => participantVideoStates.get(getUserId(p.identifier)));
-              if (replacement) setFeaturedParticipant(getUserId(replacement.identifier));
-              else setFeaturedParticipant("local");
-            }
-          } else {
-            setRenderTrigger(prev => prev + 1);
-          }
-        }
-        console.log("✅ [Admin] Camera OFF - local cleared");
-
-        // Broadcast OFF (critical!)
-        if (socketRef.current?.connected) {
-          console.log("[Admin] Emitting camera:state OFF");
-          socketRef.current.emit("camera:state", {
-            caseId: parseInt(caseId),
-            userId: currentUserId.current || "admin-local",
-            isVideoOn: false
-          });
-        } else {
-          console.warn("[Admin] Socket not connected - cannot broadcast OFF");
-        }
+        console.log("📹 Camera turned OFF");
       }
     } catch (err) {
-      console.error("[Admin] Toggle error:", err);
-      toast.error("Camera toggle failed");
+      console.error("Toggle video error:", err);
     }
   };
 
@@ -1380,8 +1070,6 @@ export default function AdminConferenceClient() {
       toast.error("Screen sharing failed. Please try again.", { duration: 4000 });
     }
   };
-
-  // RecordRTC handles codec conversion internally - no need for manual conversion
 
   const startRecording = async () => {
     try {
@@ -1495,28 +1183,87 @@ export default function AdminConferenceClient() {
       const combinedStream = new MediaStream(combinedTracks);
       console.log(`🎬 Recording stream: ${combinedTracks.length} tracks (1 video + ${screenAudioTracks.length} audio with ALL participants)`);
 
-      // Store stream reference for cleanup later
-      recordingStreamRef.current = combinedStream;
+      // Try to use MP4 format first, then fall back to WebM
+      let mimeType = '';
+      let useMP4 = false;
+      let fileExtension = '';
 
-      // ✅ Using RecordRTC for better codec handling and cross-browser compatibility
-      // RecordRTC automatically selects the best available codecs and handles conversion
-      console.log('🎬 Initializing RecordRTC for reliable recording...');
+      // Check for MP4 support (best for cross-platform compatibility)
+      if (MediaRecorder.isTypeSupported('video/mp4')) {
+        mimeType = 'video/mp4';
+        useMP4 = true;
+        fileExtension = 'mp4';
+        console.log('📼 Recording in MP4 format (native)');
+      } else if (MediaRecorder.isTypeSupported('video/mp4;codecs=h264,aac')) {
+        mimeType = 'video/mp4;codecs=h264,aac';
+        useMP4 = true;
+        fileExtension = 'mp4';
+        console.log('📼 Recording in MP4 format (h264,aac)');
+      } else if (MediaRecorder.isTypeSupported('video/mp4;codecs=avc1,mp4a')) {
+        mimeType = 'video/mp4;codecs=avc1,mp4a';
+        useMP4 = true;
+        fileExtension = 'mp4';
+        console.log('📼 Recording in MP4 format (avc1,mp4a)');
+      }
+      // Fall back to WebM if MP4 not supported
+      else if (MediaRecorder.isTypeSupported('video/webm;codecs=h264,opus')) {
+        mimeType = 'video/webm;codecs=h264,opus';
+        fileExtension = 'webm';
+        console.log('📼 Recording in WebM format with H.264 (h264,opus)');
+      } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')) {
+        mimeType = 'video/webm;codecs=vp9,opus';
+        fileExtension = 'webm';
+        console.log('📼 Recording in WebM format (vp9,opus)');
+      } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus')) {
+        mimeType = 'video/webm;codecs=vp8,opus';
+        fileExtension = 'webm';
+        console.log('📼 Recording in WebM format (vp8,opus)');
+      } else {
+        mimeType = 'video/webm';
+        fileExtension = 'webm';
+        console.log('📼 Recording in WebM format (default)');
+      }
 
-      const recorder = new RecordRTCPromisesHandler(combinedStream, {
-        type: 'video',
-        mimeType: 'video/webm',  // RecordRTC will handle codec selection
-        recorderType: RecordRTC.MediaStreamRecorder,
+      // Create MediaRecorder
+      const mediaRecorder = new MediaRecorder(combinedStream, {
+        mimeType: mimeType,
         videoBitsPerSecond: 2500000,
-        audioBitsPerSecond: 128000,
-        timeSlice: 1000,  // Get data every second
-        ondataavailable: (blob: Blob) => {
-          console.log(`📦 Recording chunk: ${blob.size} bytes`);
-        },
+        audioBitsPerSecond: 128000
       });
 
-      await recorder.startRecording();
-      mediaRecorderRef.current = recorder;
-      console.log('✅ RecordRTC recording started with automatic codec selection');
+      console.log(`✅ Using ${useMP4 ? 'MP4' : 'WebM'} format for recording`);
+
+      recordedChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          recordedChunksRef.current.push(event.data);
+          console.log(`📦 Chunk ${recordedChunksRef.current.length}: ${event.data.size} bytes`);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        console.log(`⏹️ Recording stopped. Total chunks: ${recordedChunksRef.current.length}`);
+
+        // Stop all stream tracks (screen capture + audio)
+        combinedStream.getTracks().forEach(track => track.stop());
+        screenStream.getTracks().forEach(track => track.stop());
+
+        // Create blob
+        const blob = new Blob(recordedChunksRef.current, { type: mimeType });
+        console.log(`💾 Final blob size: ${blob.size} bytes (${(blob.size / 1024 / 1024).toFixed(2)} MB)`);
+
+        setRecordingBlob(blob);
+        (blob as any).fileExtension = fileExtension;
+      };
+
+      mediaRecorder.onerror = (event: any) => {
+        console.error("❌ MediaRecorder error:", event.error);
+      };
+
+      // Start recording - request data every 1 second
+      mediaRecorder.start(1000);
+      mediaRecorderRef.current = mediaRecorder;
       setIsRecording(true);
       setRecordingDuration(0);
 
@@ -1533,39 +1280,11 @@ export default function AdminConferenceClient() {
     }
   };
 
-  const stopRecording = async () => {
+  const stopRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
-      console.log("🛑 Stopping RecordRTC recording...");
-
-      try {
-        await mediaRecorderRef.current.stopRecording();
-        const blob = await mediaRecorderRef.current.getBlob();
-
-        console.log(`💾 Final blob size: ${blob.size} bytes (${(blob.size / 1024 / 1024).toFixed(2)} MB)`);
-        console.log(`📼 Recording MIME type: ${blob.type}`);
-
-        // Set file extension based on blob type
-        const fileExtension = blob.type.includes('mp4') ? 'mp4' : 'webm';
-        (blob as any).fileExtension = fileExtension;
-
-        setRecordingBlob(blob);
-        toast.success('Recording saved successfully!', { duration: 3000 });
-
-        // Clean up stream tracks
-        if (recordingStreamRef.current) {
-          recordingStreamRef.current.getTracks().forEach((track: MediaStreamTrack) => track.stop());
-          recordingStreamRef.current = null;
-        }
-
-        // Destroy recorder
-        await mediaRecorderRef.current.destroy();
-        mediaRecorderRef.current = null;
-
-      } catch (error) {
-        console.error('❌ Error stopping recording:', error);
-        toast.error('Failed to save recording', { duration: 4000 });
-      }
-
+      console.log("🛑 Stopping recording...");
+      mediaRecorderRef.current.stop();
+      mediaRecorderRef.current = null;
       setIsRecording(false);
 
       // Clear duration timer
@@ -1573,18 +1292,6 @@ export default function AdminConferenceClient() {
         clearInterval(recordingIntervalRef.current);
         recordingIntervalRef.current = null;
       }
-
-      // Extra safety: clean track listeners when stopping recording
-      try {
-        trackListenersRef.current.forEach((listener, userId) => {
-          try {
-            listener.track.removeEventListener('mute', listener.mute);
-            listener.track.removeEventListener('unmute', listener.unmute);
-            console.log(`Recording stopped → cleaned track listeners for ${userId}`);
-          } catch (err) {}
-        });
-      } catch (err) {}
-      trackListenersRef.current.clear();
     }
   };
 
@@ -1598,50 +1305,19 @@ export default function AdminConferenceClient() {
     console.log(`   Size: ${(recordingBlob.size / 1024 / 1024).toFixed(2)} MB`);
     console.log(`   Duration: ${durationStr}`);
 
-    // Determine best file extension from blob metadata
-    const rawExt = (recordingBlob as any)?.fileExtension || '';
-    const type = recordingBlob.type || '';
-    let ext = rawExt || (type ? type.split('/')[1]?.split(';')[0] : 'webm');
-
-    // Normalize some common MIME-derived extensions
-    if (!ext) ext = 'webm';
-    if (ext === 'x-matroska') ext = 'webm';
-    if (ext.includes('mp4') || type.includes('mp4')) ext = 'mp4';
-    if (ext.includes('webm')) ext = 'webm';
-
-    const filename = `trial-recording-${caseId}-${durationStr}-${timestamp}.${ext}`;
-
+    // Download directly as MP4 (browser will play WebM video even with .mp4 extension)
+    // For true MP4 conversion, use server-side processing
     const url = URL.createObjectURL(recordingBlob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = filename;
+    a.download = `trial-recording-${caseId}-${durationStr}-${timestamp}.mp4`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    // Show helpful message about WebM playback compatibility
-    if (ext === 'webm') {
-      const hasOpus = type.includes('opus');
-      if (hasOpus) {
-        toast(
-          'Warning: This recording uses Opus audio codec which may not play in all browsers. If you experience playback issues, use the conversion endpoint (/api/recordings/convert) to convert to MP4 with AAC audio for universal compatibility.',
-          { duration: 12000 }
-        );
-      } else {
-        const isMac = typeof navigator !== 'undefined' && /mac|darwin/i.test(navigator.platform || '');
-        if (isMac) {
-          toast(
-            'Note: macOS QuickTime does not play .webm files natively. Use VLC or a modern browser for playback.',
-            { duration: 8000 }
-          );
-        } else {
-          toast.success('Recording downloaded successfully! WebM format should play in most modern browsers.', { duration: 4000 });
-        }
-      }
-    } else {
-      toast.success('Recording downloaded successfully!', { duration: 4000 });
-    }
+    console.log("✅ Video downloaded successfully!");
+    toast.success("Recording downloaded successfully!", { duration: 4000 });
 
     // Reset state
     setRecordingBlob(null);
@@ -1919,10 +1595,14 @@ export default function AdminConferenceClient() {
                       </div>
                     ) : (
                       <>
-                        {/* Video container - cleared by useEffect when camera turns off */}
+                        {/* ✅ FIX: Always create ref for video container, but show/hide based on camera state */}
                         <div
                           ref={(el) => {
                             participantVideoRefs.current.set(participant.id, el);
+                            // ✅ Clear container when camera is off to remove frozen frames
+                            if (el && !isVideoOn) {
+                              el.innerHTML = "";
+                            }
                           }}
                           className="w-full h-full [&_video]:object-cover"
                           style={{ display: isVideoOn ? 'block' : 'none' }}

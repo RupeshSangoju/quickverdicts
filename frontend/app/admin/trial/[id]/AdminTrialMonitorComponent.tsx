@@ -140,74 +140,9 @@ export default function AdminTrialMonitor() {
   const localThumbnailRenderer = useRef<any>(null);
   const remoteVideoRefs = useRef<Map<string, any>>(new Map());
   const hasInitialized = useRef(false);
-  const currentUserId = useRef<string | null>(null);
-
-  // Track participant video states
-  const [participantVideoStates, setParticipantVideoStates] = useState<Map<string, boolean>>(new Map());
 
   // WebSocket connection for real-time verdict updates
   const { isConnected: wsConnected, on: wsOn, off: wsOff, emit: wsEmit } = useWebSocket();
-
-  // Helper function to render participant video in thumbnail
-  const renderParticipantVideoInThumbnail = async (userId: string) => {
-    const ref = remoteVideoRefs.current.get(userId);
-    if (!ref || !ref.participant) {
-      console.warn("No participant found for userId:", userId);
-      return;
-    }
-
-    const videoStream = ref.participant.videoStreams.find((s: any) => s.mediaStreamType === 'Video');
-    if (videoStream && videoStream.isAvailable) {
-      await renderRemoteVideo(videoStream, ref.participant, userId);
-    }
-  };
-
-  // Subscribe to camera state broadcasts for instant UI updates
-  useEffect(() => {
-    if (!wsConnected) return;
-    try {
-      // Join case room so we receive broadcasts
-      wsEmit?.("join_case", parseInt(caseId));
-
-      const handler = (data: any) => {
-        try {
-          const { userId, isVideoOn } = data || {};
-          if (!userId) return;
-          // Skip if this is the admin's own camera state (admin userId would need to be tracked separately)
-          if (currentUserId.current && userId === currentUserId.current) return;
-
-          setParticipantVideoStates((prev) => {
-            const updated = new Map(prev);
-            updated.set(userId, isVideoOn);
-            return updated;
-          });
-
-          if (!isVideoOn) {
-            clearParticipantVideo(userId);
-            if (featuredParticipant === userId) setRenderTrigger((prev) => prev + 1);
-          } else {
-            renderParticipantVideoInThumbnail(userId).catch(() => {});
-            if (featuredParticipant === userId) setRenderTrigger((prev) => prev + 1);
-          }
-        } catch (e) {
-          console.warn("Error handling camera:state socket event:", e);
-        }
-      };
-
-      wsOn?.("camera:state", handler);
-
-      return () => {
-        try {
-          wsOff?.("camera:state", handler);
-          wsEmit?.("leave_case", parseInt(caseId));
-        } catch (e) {
-          console.warn("Error cleaning up camera:state listener:", e);
-        }
-      };
-    } catch (e) {
-      console.warn("WebSocket camera:state setup error:", e);
-    }
-  }, [wsConnected, wsOn, wsOff, wsEmit, caseId, featuredParticipant]);
 
   // Fetch verdict status function - defined early to avoid hoisting issues
   const fetchVerdictStatus = useCallback(async () => {
@@ -412,62 +347,6 @@ export default function AdminTrialMonitor() {
     } catch (err) {
       console.error(`❌ Error rendering video for ${participant.displayName}:`, err);
     }
-  }
-
-  // Clear participant video and show avatar (thumbnail-protection)
-  function clearParticipantVideo(participantId: string) {
-    console.log(`🧹 [THUMBNAIL FIX] Clearing ${participantId}`);
-
-    // ── 1. Get thumbnail container ──
-    const container = participantId === 'local' ? localThumbnailRef.current : null;
-    // If remote, try to find its thumbnail container via the stored renderer refs
-    const remoteRef = remoteVideoRefs.current.get(participantId);
-    const remoteContainer = remoteRef?.view?.target || null;
-    const effectiveContainer = container || remoteContainer;
-
-    if (effectiveContainer) {
-      try {
-        const video = effectiveContainer.querySelector('video') as HTMLVideoElement | null;
-        if (video?.srcObject instanceof MediaStream) {
-          video.srcObject.getTracks().forEach(t => { try { t.stop(); } catch {} });
-          video.srcObject = null;
-          video.load();
-        }
-      } catch (e) {}
-
-      effectiveContainer.innerHTML = '';
-      while (effectiveContainer.firstChild) {
-        effectiveContainer.removeChild(effectiveContainer.firstChild);
-      }
-
-      effectiveContainer.style.visibility = 'hidden';
-      effectiveContainer.offsetHeight;
-      effectiveContainer.style.visibility = 'visible';
-    }
-
-    // ── 2. Renderer cleanup ──
-    const ref = remoteVideoRefs.current.get(participantId);
-    if (ref?.renderer) {
-      try { ref.renderer.dispose(); console.log(` → Disposed thumbnail renderer for ${participantId}`); } catch (e) {}
-      remoteVideoRefs.current.delete(participantId);
-    }
-
-    // ── 3. If this was featured → clear featured too (safety) ──
-    if (featuredParticipant === participantId && featuredVideoRef.current) {
-      featuredVideoRef.current.innerHTML = '';
-    }
-
-    // ── 4. Force React + browser update (very important for thumbnails) ──
-    setRenderTrigger(prev => prev + 1);
-    setTimeout(() => {
-      setRenderTrigger(prev => prev + 1);
-      if (effectiveContainer) {
-        const parent = (effectiveContainer as HTMLElement).parentElement;
-        if (parent) { parent.style.display = 'none'; parent.offsetHeight; parent.style.display = ''; }
-      }
-    }, 30);
-
-    console.log(` → Cleared thumbnail for ${participantId}`);
   }
 
   const checkRecordingStatus = async () => {
@@ -1016,37 +895,9 @@ export default function AdminTrialMonitor() {
       if (isVideoOff) {
         await call.startVideo(localVideoStream.current);
         setIsVideoOff(false);
-        // Broadcast camera state
-        try {
-          wsEmit?.("camera:state", { caseId: parseInt(caseId), isVideoOn: true });
-          wsEmit?.("camera:toggle", { caseId: parseInt(caseId), isOn: true });
-        } catch (e) {
-          console.warn("Failed to emit camera state (on):", e);
-        }
       } else {
         await call.stopVideo(localVideoStream.current);
         setIsVideoOff(true);
-        // Clear own thumbnail immediately
-        const localThumb = localThumbnailRef.current;
-        if (localThumb) {
-          localThumb.innerHTML = '';
-        }
-
-        // If own local was featured → switch away
-        if (featuredParticipant === 'local') {
-          // Prefer active speaker with video, else first participant, else keep local
-          const activeHasVideo = activeSpeaker && participantVideoStates.get(activeSpeaker);
-          if (activeHasVideo) setFeaturedParticipant(activeSpeaker as string);
-          else if (participants.length > 0) setFeaturedParticipant(participants[0].identifier.communicationUserId);
-          else setFeaturedParticipant('local');
-        }
-        // Broadcast camera state
-        try {
-          wsEmit?.("camera:state", { caseId: parseInt(caseId), isVideoOn: false });
-          wsEmit?.("camera:toggle", { caseId: parseInt(caseId), isOn: false });
-        } catch (e) {
-          console.warn("Failed to emit camera state (off):", e);
-        }
       }
     } catch (err) {
       console.error("Toggle video error:", err);
