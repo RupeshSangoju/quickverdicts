@@ -2322,13 +2322,41 @@ export default function WarRoomPage() {
                       <label className="block text-sm font-semibold text-[#0A2342] mb-2">
                         New Time <span className="text-red-500">*</span>
                       </label>
-                      <input
-                        type="time"
-                        value={rescheduleData.newScheduledTime}
-                        onChange={(e) => setRescheduleData({ ...rescheduleData, newScheduledTime: e.target.value })}
-                        className="w-full px-4 py-2 border border-[#C6CDD9] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#16305B] text-sm"
-                        disabled={submittingReschedule}
-                      />
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={rescheduleData.newScheduledTime ? rescheduleData.newScheduledTime.split(':')[0] : ''}
+                          onChange={(e) => {
+                            const mins = rescheduleData.newScheduledTime ? rescheduleData.newScheduledTime.split(':')[1] || '00' : '00';
+                            setRescheduleData({ ...rescheduleData, newScheduledTime: `${e.target.value}:${mins}` });
+                          }}
+                          className="flex-1 px-3 py-2 border border-[#C6CDD9] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#16305B] text-sm"
+                          disabled={submittingReschedule}
+                        >
+                          <option value="">HH</option>
+                          {Array.from({ length: 24 }, (_, i) => (
+                            <option key={i} value={String(i).padStart(2, '0')}>
+                              {String(i).padStart(2, '0')}
+                            </option>
+                          ))}
+                        </select>
+                        <span className="text-lg font-bold text-[#0A2342]">:</span>
+                        <select
+                          value={rescheduleData.newScheduledTime ? rescheduleData.newScheduledTime.split(':')[1] || '' : ''}
+                          onChange={(e) => {
+                            const hrs = rescheduleData.newScheduledTime ? rescheduleData.newScheduledTime.split(':')[0] || '00' : '00';
+                            setRescheduleData({ ...rescheduleData, newScheduledTime: `${hrs}:${e.target.value}` });
+                          }}
+                          className="flex-1 px-3 py-2 border border-[#C6CDD9] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#16305B] text-sm"
+                          disabled={submittingReschedule}
+                        >
+                          <option value="">MM</option>
+                          {Array.from({ length: 60 }, (_, i) => (
+                            <option key={i} value={String(i).padStart(2, '0')}>
+                              {String(i).padStart(2, '0')}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                   </div>
 
