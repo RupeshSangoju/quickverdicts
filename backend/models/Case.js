@@ -1520,4 +1520,7 @@ module.exports = {
   CASE_TYPES,
   CASE_JURISDICTIONS,
   CASE_TIERS,
+
+  // Validation
+  validateCaseData,
 };

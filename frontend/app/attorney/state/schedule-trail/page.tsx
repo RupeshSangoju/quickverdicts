@@ -664,10 +664,11 @@ export default function ScheduleTrialPage() {
 
                   <button
                     type="button"
-                    className="w-full bg-[#16305B] text-white font-semibold px-8 py-3 rounded-lg hover:bg-[#0A2342] transition-colors"
+                    className="w-full bg-[#16305B] text-white font-semibold px-8 py-3 rounded-lg hover:bg-[#0A2342] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={handleComplete}
+                    disabled={redirecting}
                   >
-                    Complete & Go to Dashboard
+                    {redirecting ? "Creating Case..." : "Complete & Go to Dashboard"}
                   </button>
                 </div>
               </div>
