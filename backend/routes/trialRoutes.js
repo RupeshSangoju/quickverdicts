@@ -329,8 +329,8 @@ router.post(
 
       // ✅ FIX: Check if trial can be joined (15 minutes before scheduled time)
       // Scheduled time is stored in attorney's LOCAL timezone
-      // Admins can join anytime
-      if (userType !== "admin" && caseData.ScheduledDate && caseData.ScheduledTime) {
+      // Admins and attorneys (case owners) can join anytime
+      if (userType !== "admin" && userType !== "attorney" && caseData.ScheduledDate && caseData.ScheduledTime) {
         // Parse the stored local date/time
         const dateParts = caseData.ScheduledDate.split('T')[0].split('-');
         const timeParts = caseData.ScheduledTime.split(':');
