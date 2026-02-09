@@ -140,9 +140,46 @@ export default function AdminTrialMonitor() {
   const localThumbnailRenderer = useRef<any>(null);
   const remoteVideoRefs = useRef<Map<string, any>>(new Map());
   const hasInitialized = useRef(false);
+  const currentUserId = useRef<string | null>(null);
+
+  // Track participant video states
+  const [participantVideoStates, setParticipantVideoStates] = useState<Map<string, boolean>>(new Map());
 
   // WebSocket connection for real-time verdict updates
   const { isConnected: wsConnected, on: wsOn, off: wsOff, emit: wsEmit } = useWebSocket();
+
+  // Helper function to clear participant video
+  const clearParticipantVideo = (userId: string) => {
+    const ref = remoteVideoRefs.current.get(userId);
+    if (ref && ref.renderer) {
+      try {
+        ref.renderer.dispose();
+      } catch (e) {
+        console.warn("Error disposing renderer:", e);
+      }
+    }
+    remoteVideoRefs.current.set(userId, {
+      renderer: null,
+      view: null,
+      participant: ref?.participant,
+      streamType: 'Video',
+      videoOff: true
+    });
+  };
+
+  // Helper function to render participant video in thumbnail
+  const renderParticipantVideoInThumbnail = async (userId: string) => {
+    const ref = remoteVideoRefs.current.get(userId);
+    if (!ref || !ref.participant) {
+      console.warn("No participant found for userId:", userId);
+      return;
+    }
+
+    const videoStream = ref.participant.videoStreams.find((s: any) => s.mediaStreamType === 'Video');
+    if (videoStream && videoStream.isAvailable) {
+      await renderRemoteVideo(videoStream, ref.participant, userId);
+    }
+  };
 
   // Subscribe to camera state broadcasts for instant UI updates
   useEffect(() => {
@@ -154,7 +191,9 @@ export default function AdminTrialMonitor() {
       const handler = (data: any) => {
         try {
           const { userId, isVideoOn } = data || {};
-          if (!userId || userId === currentUserId.current) return;
+          if (!userId) return;
+          // Skip if this is the admin's own camera state (admin userId would need to be tracked separately)
+          if (currentUserId.current && userId === currentUserId.current) return;
 
           setParticipantVideoStates((prev) => {
             const updated = new Map(prev);

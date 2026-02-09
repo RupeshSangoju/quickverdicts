@@ -1921,7 +1921,9 @@ export default function AdminConferenceClient() {
                       <>
                         {/* Video container - cleared by useEffect when camera turns off */}
                         <div
-                          ref={(el) => participantVideoRefs.current.set(participant.id, el)}
+                          ref={(el) => {
+                            participantVideoRefs.current.set(participant.id, el);
+                          }}
                           className="w-full h-full [&_video]:object-cover"
                           style={{ display: isVideoOn ? 'block' : 'none' }}
                         />
