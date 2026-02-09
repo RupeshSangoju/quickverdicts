@@ -1035,14 +1035,10 @@ export default function AdminTrialMonitor() {
         // If own local was featured → switch away
         if (featuredParticipant === 'local') {
           // Prefer active speaker with video, else first participant, else keep local
-          if (!pinnedParticipant) {
-            const activeHasVideo = activeSpeaker && participantVideoStates.get(activeSpeaker);
-            if (activeHasVideo) setFeaturedParticipant(activeSpeaker as string);
-            else if (participants.length > 0) setFeaturedParticipant(participants[0].identifier.communicationUserId);
-            else setFeaturedParticipant('local');
-          } else {
-            setRenderTrigger(prev => prev + 1);
-          }
+          const activeHasVideo = activeSpeaker && participantVideoStates.get(activeSpeaker);
+          if (activeHasVideo) setFeaturedParticipant(activeSpeaker as string);
+          else if (participants.length > 0) setFeaturedParticipant(participants[0].identifier.communicationUserId);
+          else setFeaturedParticipant('local');
         }
         // Broadcast camera state
         try {
