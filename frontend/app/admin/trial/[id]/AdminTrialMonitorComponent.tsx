@@ -184,11 +184,6 @@ export default function AdminTrialMonitor() {
 
           if (!isVideoOn) {
             clearParticipantVideo(userId);
-            // Optional: force thumbnail re-check (shows avatar)
-            setTimeout(() => {
-              const thumb = participantVideoRefs.current.get(userId);
-              if (thumb) thumb.innerHTML = '';
-            }, 100);
             if (featuredParticipant === userId) setRenderTrigger((prev) => prev + 1);
           } else {
             renderParticipantVideoInThumbnail(userId).catch(() => {});
@@ -425,8 +420,9 @@ export default function AdminTrialMonitor() {
 
     // ── 1. Get thumbnail container ──
     const container = participantId === 'local' ? localThumbnailRef.current : null;
-    // If remote, try to find its thumbnail container in the DOM via stored refs (thumbnails rendered inline)
-    const remoteContainer = participantVideoRefs?.current?.get?.(participantId) || null;
+    // If remote, try to find its thumbnail container via the stored renderer refs
+    const remoteRef = remoteVideoRefs.current.get(participantId);
+    const remoteContainer = remoteRef?.view?.target || null;
     const effectiveContainer = container || remoteContainer;
 
     if (effectiveContainer) {
