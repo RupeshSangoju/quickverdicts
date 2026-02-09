@@ -148,25 +148,6 @@ export default function AdminTrialMonitor() {
   // WebSocket connection for real-time verdict updates
   const { isConnected: wsConnected, on: wsOn, off: wsOff, emit: wsEmit } = useWebSocket();
 
-  // Helper function to clear participant video
-  const clearParticipantVideo = (userId: string) => {
-    const ref = remoteVideoRefs.current.get(userId);
-    if (ref && ref.renderer) {
-      try {
-        ref.renderer.dispose();
-      } catch (e) {
-        console.warn("Error disposing renderer:", e);
-      }
-    }
-    remoteVideoRefs.current.set(userId, {
-      renderer: null,
-      view: null,
-      participant: ref?.participant,
-      streamType: 'Video',
-      videoOff: true
-    });
-  };
-
   // Helper function to render participant video in thumbnail
   const renderParticipantVideoInThumbnail = async (userId: string) => {
     const ref = remoteVideoRefs.current.get(userId);
