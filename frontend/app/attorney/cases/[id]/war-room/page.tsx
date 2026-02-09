@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { useProtectedRoute } from "@/hooks/useProtectedRoute";
@@ -276,6 +276,7 @@ export default function WarRoomPage() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [filesToUpload, setFilesToUpload] = useState<FileToUpload[]>([]);
   const [uploadingDocuments, setUploadingDocuments] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Jury Charge
   const [juryChargeLocked, setJuryChargeLocked] = useState(false);
@@ -1564,6 +1565,7 @@ export default function WarRoomPage() {
                   <div>
                     <label className="block text-xs font-semibold text-[#455A7C] mb-1.5">Select Files</label>
                     <input
+                      ref={fileInputRef}
                       type="file"
                       multiple
                       accept=".jpg,.jpeg,.png,.gif,.webp,.svg,.bmp,.mp4,.mpeg,.mov,.avi,.wmv,.webm,.flv,.3gp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,image/*,video/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -1577,6 +1579,8 @@ export default function WarRoomPage() {
                             status: 'pending' as const
                           }));
                           setFilesToUpload([...filesToUpload, ...files]);
+                          // Reset file input so the filename disappears from the button
+                          if (fileInputRef.current) fileInputRef.current.value = '';
                         }
                       }}
                       className="w-full px-3 py-2 border border-[#C6CDD9] rounded-lg focus:ring-1 focus:ring-[#16305B] focus:border-[#16305B] bg-white text-[#0A2342] text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-[#16305B] file:text-white hover:file:bg-[#1e417a]"
