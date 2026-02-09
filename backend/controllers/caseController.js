@@ -303,12 +303,17 @@ async function createCase(req, res) {
         status: Case.ATTORNEY_CASE_STATES.PENDING_ADMIN_APPROVAL,
       });
     } catch (error) {
-      // FIXED: Rollback on error
-      await transaction.rollback();
+      // FIXED: Rollback on error - with safe rollback
+      try {
+        await transaction.rollback();
+      } catch (rollbackErr) {
+        console.error("Transaction rollback failed:", rollbackErr);
+      }
       throw error;
     }
   } catch (error) {
     console.error("Create case error:", error);
+    console.error("Error stack:", error.stack);
 
     // Handle validation errors specifically
     if (error.code === "VALIDATION_ERROR") {
@@ -332,7 +337,7 @@ async function createCase(req, res) {
     res.status(500).json({
       success: false,
       message: "Failed to create case",
-      error: process.env.NODE_ENV === "development" ? error.message : "An unexpected error occurred. Please try again.",
+      error: error.message || "An unexpected error occurred. Please try again.",
     });
   }
 }
