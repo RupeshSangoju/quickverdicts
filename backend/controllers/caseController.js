@@ -257,13 +257,15 @@ async function createCase(req, res) {
           "questions into WarRoomVoirDire"
         );
 
-        for (const question of voirDire2Questions) {
-          if (question && question.trim()) {
-            console.log("Inserting question:", question);
+        for (const q of voirDire2Questions) {
+          // Support both string format ("question text") and object format ({ question: "text", type: "yesno" })
+          const questionText = typeof q === 'string' ? q : q?.question;
+          if (questionText && typeof questionText === 'string' && questionText.trim()) {
+            console.log("Inserting question:", questionText);
             await transaction
               .request()
               .input("caseId", sql.Int, caseId)
-              .input("question", sql.NVarChar, question.trim())
+              .input("question", sql.NVarChar, questionText.trim())
               .input("response", sql.NVarChar, "")
               .input("addedBy", sql.Int, attorneyId).query(`
                 INSERT INTO WarRoomVoirDire (CaseId, Question, Response, AddedBy, AddedAt)
