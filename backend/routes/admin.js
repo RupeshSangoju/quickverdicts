@@ -287,7 +287,7 @@ router.get("/trials/ready", async (req, res) => {
       FROM dbo.Cases c
       INNER JOIN dbo.Attorneys a ON c.AttorneyId = a.AttorneyId
       LEFT JOIN dbo.TrialMeetings tm ON c.CaseId = tm.CaseId
-      WHERE c.AttorneyStatus = 'join_trial'
+      WHERE c.AttorneyStatus IN ('join_trial', 'view_details')
         AND c.AdminApprovalStatus = 'approved'
         AND c.IsDeleted = 0
         -- ✅ EXCLUDE PAST TRIALS: Only show trials for today (using attorney's timezone)
