@@ -1082,11 +1082,6 @@ router.post(
       // Update meeting status to ended
       await TrialMeeting.updateMeetingStatus(meeting.MeetingId, "ended");
 
-      // Update case status
-      await Case.updateCaseStatus(caseId, {
-        attorneyStatus: "view_details",
-      });
-
       // Create event in audit trail
       await Event.createEvent({
         caseId,
