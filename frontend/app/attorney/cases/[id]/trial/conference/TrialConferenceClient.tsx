@@ -837,7 +837,7 @@ export default function TrialConferenceClient() {
           IsRequired: true,
         });
       } else {
-        alert('Failed to add question');
+        alert('Failed to add question. Question cannot be added after release to jurors');
       }
     } catch (err) {
       console.error('Error adding question:', err);

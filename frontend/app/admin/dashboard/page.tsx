@@ -1362,7 +1362,7 @@ export default function AdminDashboard() {
           <p className="text-gray-700">You need to be logged in to access the admin dashboard.</p>
           <p className="text-sm text-gray-600">Redirecting to login page...</p>
           <button 
-            onClick={() => router.push('/login')}
+            onClick={() => router.push('/admin/login')}
             className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
           >
             Go to Login

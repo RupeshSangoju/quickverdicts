@@ -864,11 +864,12 @@ router.post(
             tm.RoomId,
             tm.MeetingId,
             tm.ChatThreadId,
-            tm.ChatServiceUserId
+            tm.ChatServiceUserId,
+            c.AdminApprovalStatus
           FROM dbo.Cases c
           JOIN dbo.TrialMeetings tm ON c.CaseId = tm.CaseId
-          WHERE c.CaseId = @caseId 
-            AND c.AttorneyStatus IN ('approved', 'war_room', 'join_trial')
+          WHERE c.CaseId = @caseId
+            AND c.AdminApprovalStatus = 'approved'
         `);
 
       if (result.recordset.length === 0) {
