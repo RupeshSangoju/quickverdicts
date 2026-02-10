@@ -838,10 +838,7 @@ export default function TrialConferenceClient() {
           IsRequired: true,
         });
       } else {
-        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
-        const errorMsg = errorData.message || errorData.error || 'Failed to add question';
-        console.error('Failed to add question:', errorMsg);
-        alert(`Failed to add question: ${errorMsg}`);
+        alert('Failed to add question. Question cannot be added after release to jurors');
       }
     } catch (err) {
       console.error('Error adding question:', err);

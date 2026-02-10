@@ -19,7 +19,11 @@ import {
   MoreVertical,
   Pin,
   Volume2,
+  ClipboardList,
+  CheckCircle2,
+  Send,
 } from "lucide-react";
+import { useWebSocket } from "@/hooks/useWebSocket";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL
   ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api$/, '')
@@ -61,6 +65,18 @@ export default function JurorConferenceClient() {
   const [showChatPanel, setShowChatPanel] = useState(false);
   const [participantJoinTimes, setParticipantJoinTimes] = useState<Map<string, Date>>(new Map());
 
+  // Jury Charge State
+  const [showJuryChargePanel, setShowJuryChargePanel] = useState(false);
+  const [juryChargeQuestions, setJuryChargeQuestions] = useState<any[]>([]);
+  const [juryChargeResponses, setJuryChargeResponses] = useState<Record<number, string>>({});
+  const [juryChargeAvailable, setJuryChargeAvailable] = useState(false);
+  const [juryChargeSubmitted, setJuryChargeSubmitted] = useState(false);
+  const [juryChargeSubmitting, setJuryChargeSubmitting] = useState(false);
+  const [juryChargeLoading, setJuryChargeLoading] = useState(false);
+
+  // WebSocket for jury charge events
+  const { socket, isConnected: wsConnected, on: wsOn, off: wsOff, emit: wsEmit } = useWebSocket();
+
   const featuredVideoRef = useRef<HTMLDivElement>(null);
   const localVideoStream = useRef<any>(null);
   const remoteVideoRefs = useRef<Map<string, any>>(new Map());
@@ -70,6 +86,118 @@ export default function JurorConferenceClient() {
   const currentUserId = useRef<string>("");
   const callRef = useRef<any>(null);
   const callAgentRef = useRef<any>(null);
+
+  // ============================================
+  // JURY CHARGE: Fetch questions from API
+  // ============================================
+  const fetchJuryChargeQuestions = async () => {
+    try {
+      setJuryChargeLoading(true);
+      const token = getToken();
+      const response = await fetch(`${API_BASE}/api/jury-charge/juror/${caseId}`, {
+        headers: {
+          "Authorization": `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.questions && data.questions.length > 0) {
+          setJuryChargeQuestions(data.questions);
+          setJuryChargeAvailable(true);
+          // Auto-open the panel when questions arrive
+          setShowJuryChargePanel(true);
+          // Close chat panel if open to avoid UI clutter
+          setShowChatPanel(false);
+        }
+      }
+      // 403 means not released yet - that's fine, we'll wait for WebSocket event
+    } catch (err) {
+      console.error("Error fetching jury charge questions:", err);
+    } finally {
+      setJuryChargeLoading(false);
+    }
+  };
+
+  // Submit jury charge responses
+  const submitJuryChargeResponses = async () => {
+    // Validate all required questions are answered
+    const unanswered = juryChargeQuestions.filter(
+      (q: any) => !juryChargeResponses[q.QuestionId] || juryChargeResponses[q.QuestionId].trim() === ""
+    );
+    if (unanswered.length > 0) {
+      toast.error(`Please answer all questions. ${unanswered.length} question(s) remaining.`);
+      return;
+    }
+
+    setJuryChargeSubmitting(true);
+    try {
+      const token = getToken();
+      const responsesArray = Object.entries(juryChargeResponses).map(([questionId, response]) => ({
+        QuestionId: parseInt(questionId),
+        Response: response,
+      }));
+
+      const response = await fetch(`${API_BASE}/api/jury-charge/submit`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          caseId: parseInt(caseId),
+          responses: responsesArray,
+        }),
+      });
+
+      if (response.ok) {
+        toast.success("Your jury charge responses have been submitted successfully!");
+        setJuryChargeSubmitted(true);
+      } else {
+        const data = await response.json();
+        toast.error(data.message || "Failed to submit responses");
+      }
+    } catch (err) {
+      console.error("Error submitting jury charge responses:", err);
+      toast.error("Failed to submit responses. Please try again.");
+    } finally {
+      setJuryChargeSubmitting(false);
+    }
+  };
+
+  // ============================================
+  // JURY CHARGE: WebSocket listener + initial check
+  // ============================================
+  useEffect(() => {
+    if (!caseId) return;
+
+    // Check if jury charge was already released on mount
+    fetchJuryChargeQuestions();
+
+    // Join the case room for WebSocket events
+    if (wsConnected) {
+      wsEmit("join_case", caseId);
+    }
+  }, [caseId, wsConnected]);
+
+  useEffect(() => {
+    if (!wsConnected) return;
+
+    const handleJuryChargeReleased = (data: any) => {
+      console.log("📋 Jury charge released!", data);
+      if (String(data.caseId) === String(caseId)) {
+        toast.success("The jury charge has been released! Please review and answer the questions.", { duration: 6000 });
+        // Fetch the questions
+        fetchJuryChargeQuestions();
+      }
+    };
+
+    wsOn("jury_charge:released", handleJuryChargeReleased);
+
+    return () => {
+      wsOff("jury_charge:released", handleJuryChargeReleased);
+    };
+  }, [wsConnected, caseId]);
 
   useEffect(() => {
     const handleBeforeUnload = async () => {
@@ -595,6 +723,7 @@ export default function JurorConferenceClient() {
     if (!showChatPanel) {
       setUnreadCount(0);
       setShowChatNotification(false);
+      setShowJuryChargePanel(false); // Close jury charge when opening chat
     }
   };
 
@@ -788,7 +917,7 @@ export default function JurorConferenceClient() {
       <div className="flex-1 flex overflow-hidden relative">
         {/* Main Content Area - More space for video when chat open */}
         <div className={`flex flex-col transition-all duration-300 ${
-          showChatPanel ? 'w-4/5' : 'w-4/5 mx-auto'
+          showChatPanel || showJuryChargePanel ? (showJuryChargePanel ? 'w-2/3' : 'w-4/5') : 'w-4/5 mx-auto'
         }`}>
           {/* Header */}
           <div className="px-6 py-3 flex items-center justify-between shadow-lg" style={{ backgroundColor: "#16305B" }}>
@@ -1008,6 +1137,29 @@ export default function JurorConferenceClient() {
           </div>
 
           <div className="flex items-center gap-3">
+            {juryChargeAvailable && (
+              <button
+                onClick={() => {
+                  setShowJuryChargePanel(!showJuryChargePanel);
+                  if (!showJuryChargePanel) setShowChatPanel(false);
+                }}
+                className="relative flex flex-col items-center gap-1 hover:scale-110 transition-transform group"
+                title="Jury Charge"
+              >
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: showJuryChargePanel ? "#5B9BD5" : juryChargeSubmitted ? "#10b981" : "#dc2626" }}>
+                  {juryChargeSubmitted ? <CheckCircle2 className="w-6 h-6 text-white" /> : <ClipboardList className="w-6 h-6 text-white" />}
+                </div>
+                {!juryChargeSubmitted && (
+                  <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold animate-pulse">
+                    !
+                  </div>
+                )}
+                <span className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                  Jury Charge
+                </span>
+              </button>
+            )}
+
             <button onClick={toggleChatPanel} className="relative flex flex-col items-center gap-1 hover:scale-110 transition-transform group" title="Chat">
               <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: showChatPanel ? "#5B9BD5" : "#FDB71A" }}>
                 <MessageSquare className="w-6 h-6 text-white" />
@@ -1098,6 +1250,177 @@ export default function JurorConferenceClient() {
           </div>
         </div>
       )}
+
+    {/* Jury Charge Panel - slides in from right */}
+    {showJuryChargePanel && (
+      <div className="w-1/3 flex flex-col shadow-2xl" style={{ backgroundColor: "#ffffff", borderLeft: "1px solid #C6CDD9" }}>
+        {/* Header */}
+        <div className="p-5 flex items-center justify-between" style={{ backgroundColor: "#16305B", borderBottom: "1px solid #C6CDD9" }}>
+          <div>
+            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+              <ClipboardList className="w-5 h-5" />
+              Jury Charge
+            </h3>
+            <p className="text-sm text-white opacity-80">
+              {juryChargeSubmitted ? "Submitted" : `${juryChargeQuestions.length} question(s)`}
+            </p>
+          </div>
+          <button
+            onClick={() => setShowJuryChargePanel(false)}
+            className="text-white hover:text-gray-300"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {juryChargeLoading ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2" style={{ borderColor: "#16305B" }}></div>
+              <p className="mt-4 text-gray-600">Loading jury charge...</p>
+            </div>
+          ) : juryChargeSubmitted ? (
+            <div className="text-center py-12">
+              <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-4" />
+              <h4 className="text-xl font-bold text-gray-900 mb-2">Responses Submitted</h4>
+              <p className="text-gray-600">Thank you for submitting your jury charge responses. Your answers have been recorded.</p>
+            </div>
+          ) : juryChargeQuestions.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              <ClipboardList className="w-12 h-12 mx-auto mb-3 opacity-50" />
+              <p>No jury charge questions available yet.</p>
+            </div>
+          ) : (
+            <>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-2">
+                <p className="text-sm text-blue-800 font-medium">
+                  Please carefully read and answer all questions below, then click &quot;Submit Responses&quot; at the bottom.
+                </p>
+              </div>
+
+              {juryChargeQuestions.map((question: any, index: number) => (
+                <div key={question.QuestionId} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  <div className="flex items-start gap-2 mb-3">
+                    <span className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold text-white" style={{ backgroundColor: "#16305B" }}>
+                      {index + 1}
+                    </span>
+                    <div className="flex-1">
+                      <p className="font-semibold text-gray-900 text-sm">{question.QuestionText}</p>
+                      <span className="text-xs text-gray-500 mt-1 inline-block">
+                        {question.QuestionType}
+                        {question.IsRequired && <span className="text-red-500 ml-1">*</span>}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Yes/No */}
+                  {question.QuestionType === "Yes/No" && (
+                    <div className="flex gap-3 ml-9">
+                      {["Yes", "No"].map((option) => (
+                        <button
+                          key={option}
+                          onClick={() => setJuryChargeResponses(prev => ({ ...prev, [question.QuestionId]: option }))}
+                          className={`flex-1 py-2.5 px-4 rounded-lg border-2 text-sm font-medium transition-all ${
+                            juryChargeResponses[question.QuestionId] === option
+                              ? "border-blue-500 bg-blue-50 text-blue-700"
+                              : "border-gray-300 bg-white text-gray-700 hover:border-blue-300"
+                          }`}
+                        >
+                          {option}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Multiple Choice */}
+                  {question.QuestionType === "Multiple Choice" && (
+                    <div className="space-y-2 ml-9">
+                      {(Array.isArray(question.Options) ? question.Options : []).map((option: string, optIdx: number) => (
+                        <button
+                          key={optIdx}
+                          onClick={() => setJuryChargeResponses(prev => ({ ...prev, [question.QuestionId]: option }))}
+                          className={`w-full text-left py-2.5 px-4 rounded-lg border-2 text-sm transition-all ${
+                            juryChargeResponses[question.QuestionId] === option
+                              ? "border-blue-500 bg-blue-50 text-blue-700 font-medium"
+                              : "border-gray-300 bg-white text-gray-700 hover:border-blue-300"
+                          }`}
+                        >
+                          {option}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Text Response */}
+                  {question.QuestionType === "Text Response" && (
+                    <div className="ml-9">
+                      <textarea
+                        value={juryChargeResponses[question.QuestionId] || ""}
+                        onChange={(e) => setJuryChargeResponses(prev => ({ ...prev, [question.QuestionId]: e.target.value }))}
+                        placeholder="Type your answer here..."
+                        rows={3}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm resize-none"
+                        style={{ color: "#0A2342" }}
+                      />
+                    </div>
+                  )}
+
+                  {/* Numeric Response */}
+                  {question.QuestionType === "Numeric Response" && (
+                    <div className="ml-9">
+                      <input
+                        type="number"
+                        value={juryChargeResponses[question.QuestionId] || ""}
+                        onChange={(e) => setJuryChargeResponses(prev => ({ ...prev, [question.QuestionId]: e.target.value }))}
+                        placeholder="Enter a number..."
+                        min={question.MinValue}
+                        max={question.MaxValue}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        style={{ color: "#0A2342" }}
+                      />
+                      {(question.MinValue !== null || question.MaxValue !== null) && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          {question.MinValue !== null && `Min: ${question.MinValue}`}
+                          {question.MinValue !== null && question.MaxValue !== null && " | "}
+                          {question.MaxValue !== null && `Max: ${question.MaxValue}`}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+
+        {/* Submit Button */}
+        {!juryChargeSubmitted && juryChargeQuestions.length > 0 && !juryChargeLoading && (
+          <div className="p-4" style={{ borderTop: "1px solid #C6CDD9", backgroundColor: "#f9f7f2" }}>
+            <button
+              onClick={submitJuryChargeResponses}
+              disabled={juryChargeSubmitting}
+              className="w-full py-3 text-white rounded-xl font-semibold transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              style={{ backgroundColor: "#16305B" }}
+            >
+              {juryChargeSubmitting ? (
+                <>
+                  <span className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></span>
+                  Submitting...
+                </>
+              ) : (
+                <>
+                  <Send className="w-5 h-5" />
+                  Submit Responses
+                </>
+              )}
+            </button>
+          </div>
+        )}
+      </div>
+    )}
 
       {/* Chat Notification */}
       {showChatNotification && latestMessage && !showChatPanel && (

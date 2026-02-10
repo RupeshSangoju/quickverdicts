@@ -178,8 +178,71 @@ async function createCase(req, res) {
     await transaction.begin();
 
     try {
-      // Create the case
-      const caseId = await Case.createCase(caseData);
+      // Validate case data (from model)
+      Case.validateCaseData(caseData);
+
+      // Prepare scheduled time value
+      let timeValue = null;
+      if (caseData.scheduledTime && caseData.scheduledDate) {
+        const trimmedTime = caseData.scheduledTime.trim();
+        const timeParts = trimmedTime.split(':');
+        let hours, minutes, seconds;
+        if (timeParts.length === 2) {
+          hours = parseInt(timeParts[0], 10);
+          minutes = parseInt(timeParts[1], 10);
+          seconds = 0;
+        } else if (timeParts.length === 3) {
+          hours = parseInt(timeParts[0], 10);
+          minutes = parseInt(timeParts[1], 10);
+          seconds = parseInt(timeParts[2], 10);
+        } else {
+          throw new Error("Invalid time format after validation");
+        }
+        timeValue = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+      }
+
+      // Create the case WITHIN the transaction
+      const caseResult = await transaction
+        .request()
+        .input("attorneyId", sql.Int, parseInt(caseData.attorneyId))
+        .input("caseType", sql.NVarChar, caseData.caseType.trim())
+        .input("caseJurisdiction", sql.NVarChar, caseData.caseJurisdiction.trim())
+        .input("caseTier", sql.NVarChar, caseData.caseTier.trim())
+        .input("state", sql.NVarChar, caseData.state.trim().toUpperCase())
+        .input("county", sql.NVarChar, caseData.county.trim())
+        .input("caseTitle", sql.NVarChar, caseData.caseTitle.trim())
+        .input("caseDescription", sql.NVarChar, caseData.caseDescription?.trim() || "")
+        .input("paymentMethod", sql.NVarChar, caseData.paymentMethod?.trim() || "")
+        .input("paymentAmount", sql.Decimal(10, 2), parseFloat(caseData.paymentAmount) || 0)
+        .input("scheduledDate", sql.Date, caseData.scheduledDate)
+        .input("scheduledTime", sql.VarChar, timeValue)
+        .input("timezoneOffset", sql.Int, parseInt(caseData.timezoneOffset || 0, 10))
+        .input("plaintiffGroups", sql.NVarChar, JSON.stringify(typeof caseData.plaintiffGroups === 'string' ? JSON.parse(caseData.plaintiffGroups) : (caseData.plaintiffGroups || [])))
+        .input("defendantGroups", sql.NVarChar, JSON.stringify(typeof caseData.defendantGroups === 'string' ? JSON.parse(caseData.defendantGroups) : (caseData.defendantGroups || [])))
+        .input("voirDire1Questions", sql.NVarChar, JSON.stringify(typeof caseData.voirDire1Questions === 'string' ? JSON.parse(caseData.voirDire1Questions) : (caseData.voirDire1Questions || [])))
+        .input("voirDire2Questions", sql.NVarChar, JSON.stringify(typeof caseData.voirDire2Questions === 'string' ? JSON.parse(caseData.voirDire2Questions) : (caseData.voirDire2Questions || [])))
+        .input("requiredJurors", sql.Int, parseInt(caseData.requiredJurors) || 7)
+        .input("attorneyStatus", sql.NVarChar, Case.ATTORNEY_CASE_STATES.PENDING_ADMIN_APPROVAL)
+        .input("adminApprovalStatus", sql.NVarChar, "pending")
+        .query(`
+          INSERT INTO dbo.Cases (
+            AttorneyId, CaseType, CaseJurisdiction, CaseTier, State, County, CaseTitle, CaseDescription,
+            PaymentMethod, PaymentAmount, ScheduledDate, ScheduledTime, TimezoneOffset,
+            PlaintiffGroups, DefendantGroups, VoirDire1Questions, VoirDire2Questions,
+            RequiredJurors, AttorneyStatus, AdminApprovalStatus,
+            IsDeleted, CreatedAt, UpdatedAt
+          )
+          VALUES (
+            @attorneyId, @caseType, @caseJurisdiction, @caseTier, @state, @county, @caseTitle, @caseDescription,
+            @paymentMethod, @paymentAmount, @scheduledDate, @scheduledTime, @timezoneOffset,
+            @plaintiffGroups, @defendantGroups, @voirDire1Questions, @voirDire2Questions,
+            @requiredJurors, @attorneyStatus, @adminApprovalStatus,
+            0, GETUTCDATE(), GETUTCDATE()
+          );
+          SELECT SCOPE_IDENTITY() AS CaseId;
+        `);
+
+      const caseId = caseResult.recordset[0].CaseId;
       console.log("Case created with ID:", caseId);
 
       // Insert Part 2 questions into WarRoomVoirDire table
@@ -194,13 +257,15 @@ async function createCase(req, res) {
           "questions into WarRoomVoirDire"
         );
 
-        for (const question of voirDire2Questions) {
-          if (question && question.trim()) {
-            console.log("Inserting question:", question);
+        for (const q of voirDire2Questions) {
+          // Support both string format ("question text") and object format ({ question: "text", type: "yesno" })
+          const questionText = typeof q === 'string' ? q : q?.question;
+          if (questionText && typeof questionText === 'string' && questionText.trim()) {
+            console.log("Inserting question:", questionText);
             await transaction
               .request()
               .input("caseId", sql.Int, caseId)
-              .input("question", sql.NVarChar, question.trim())
+              .input("question", sql.NVarChar, questionText.trim())
               .input("response", sql.NVarChar, "")
               .input("addedBy", sql.Int, attorneyId).query(`
                 INSERT INTO WarRoomVoirDire (CaseId, Question, Response, AddedBy, AddedAt)
@@ -211,20 +276,24 @@ async function createCase(req, res) {
         console.log("All questions inserted successfully");
       }
 
-      // Create event for case creation
-      await Event.createEvent({
-        caseId,
-        eventType: Event.EVENT_TYPES.CASE_CREATED,
-        description: `Case "${caseData.caseTitle}" created and submitted for admin approval`,
-        triggeredBy: attorneyId,
-        userType: "attorney",
-        metadata: {
+      // Create event for case creation WITHIN the transaction
+      await transaction
+        .request()
+        .input("eventCaseId", sql.Int, caseId)
+        .input("eventType", sql.NVarChar, Event.EVENT_TYPES.CASE_CREATED)
+        .input("eventDescription", sql.NVarChar, `Case "${caseData.caseTitle}" created and submitted for admin approval`)
+        .input("triggeredBy", sql.Int, attorneyId)
+        .input("userType", sql.NVarChar, "attorney")
+        .input("metadata", sql.NVarChar, JSON.stringify({
           caseType: caseData.caseType,
           caseJurisdiction: caseData.caseJurisdiction,
           state: caseData.state,
           county: caseData.county
-        },
-      });
+        }))
+        .query(`
+          INSERT INTO dbo.Events (CaseId, EventType, Description, TriggeredBy, UserType, Metadata, CreatedAt)
+          VALUES (@eventCaseId, @eventType, @eventDescription, @triggeredBy, @userType, @metadata, GETUTCDATE())
+        `);
 
       // FIXED: Commit transaction
       await transaction.commit();
@@ -236,12 +305,17 @@ async function createCase(req, res) {
         status: Case.ATTORNEY_CASE_STATES.PENDING_ADMIN_APPROVAL,
       });
     } catch (error) {
-      // FIXED: Rollback on error
-      await transaction.rollback();
+      // FIXED: Rollback on error - with safe rollback
+      try {
+        await transaction.rollback();
+      } catch (rollbackErr) {
+        console.error("Transaction rollback failed:", rollbackErr);
+      }
       throw error;
     }
   } catch (error) {
     console.error("Create case error:", error);
+    console.error("Error stack:", error.stack);
 
     // Handle validation errors specifically
     if (error.code === "VALIDATION_ERROR") {
@@ -265,7 +339,7 @@ async function createCase(req, res) {
     res.status(500).json({
       success: false,
       message: "Failed to create case",
-      error: process.env.NODE_ENV === "development" ? error.message : "An unexpected error occurred. Please try again.",
+      error: error.message || "An unexpected error occurred. Please try again.",
     });
   }
 }

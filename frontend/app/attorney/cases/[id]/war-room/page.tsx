@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { useProtectedRoute } from "@/hooks/useProtectedRoute";
@@ -276,6 +276,7 @@ export default function WarRoomPage() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [filesToUpload, setFilesToUpload] = useState<FileToUpload[]>([]);
   const [uploadingDocuments, setUploadingDocuments] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Jury Charge
   const [juryChargeLocked, setJuryChargeLocked] = useState(false);
@@ -1564,6 +1565,7 @@ export default function WarRoomPage() {
                   <div>
                     <label className="block text-xs font-semibold text-[#455A7C] mb-1.5">Select Files</label>
                     <input
+                      ref={fileInputRef}
                       type="file"
                       multiple
                       accept=".jpg,.jpeg,.png,.gif,.webp,.svg,.bmp,.mp4,.mpeg,.mov,.avi,.wmv,.webm,.flv,.3gp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,image/*,video/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -1577,6 +1579,8 @@ export default function WarRoomPage() {
                             status: 'pending' as const
                           }));
                           setFilesToUpload([...filesToUpload, ...files]);
+                          // Reset file input so the filename disappears from the button
+                          if (fileInputRef.current) fileInputRef.current.value = '';
                         }
                       }}
                       className="w-full px-3 py-2 border border-[#C6CDD9] rounded-lg focus:ring-1 focus:ring-[#16305B] focus:border-[#16305B] bg-white text-[#0A2342] text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-[#16305B] file:text-white hover:file:bg-[#1e417a]"
@@ -2322,13 +2326,41 @@ export default function WarRoomPage() {
                       <label className="block text-sm font-semibold text-[#0A2342] mb-2">
                         New Time <span className="text-red-500">*</span>
                       </label>
-                      <input
-                        type="time"
-                        value={rescheduleData.newScheduledTime}
-                        onChange={(e) => setRescheduleData({ ...rescheduleData, newScheduledTime: e.target.value })}
-                        className="w-full px-4 py-2 border border-[#C6CDD9] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#16305B] text-sm"
-                        disabled={submittingReschedule}
-                      />
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={rescheduleData.newScheduledTime ? rescheduleData.newScheduledTime.split(':')[0] : ''}
+                          onChange={(e) => {
+                            const mins = rescheduleData.newScheduledTime ? rescheduleData.newScheduledTime.split(':')[1] || '00' : '00';
+                            setRescheduleData({ ...rescheduleData, newScheduledTime: `${e.target.value}:${mins}` });
+                          }}
+                          className="flex-1 px-3 py-2 border border-[#C6CDD9] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#16305B] text-sm"
+                          disabled={submittingReschedule}
+                        >
+                          <option value="">HH</option>
+                          {Array.from({ length: 24 }, (_, i) => (
+                            <option key={i} value={String(i).padStart(2, '0')}>
+                              {String(i).padStart(2, '0')}
+                            </option>
+                          ))}
+                        </select>
+                        <span className="text-lg font-bold text-[#0A2342]">:</span>
+                        <select
+                          value={rescheduleData.newScheduledTime ? rescheduleData.newScheduledTime.split(':')[1] || '' : ''}
+                          onChange={(e) => {
+                            const hrs = rescheduleData.newScheduledTime ? rescheduleData.newScheduledTime.split(':')[0] || '00' : '00';
+                            setRescheduleData({ ...rescheduleData, newScheduledTime: `${hrs}:${e.target.value}` });
+                          }}
+                          className="flex-1 px-3 py-2 border border-[#C6CDD9] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#16305B] text-sm"
+                          disabled={submittingReschedule}
+                        >
+                          <option value="">MM</option>
+                          {Array.from({ length: 60 }, (_, i) => (
+                            <option key={i} value={String(i).padStart(2, '0')}>
+                              {String(i).padStart(2, '0')}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                   </div>
 

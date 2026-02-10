@@ -56,7 +56,7 @@ async function requireTrialAccess(req, res, next) {
       );
     }
 
-    if (caseData.AttorneyStatus !== "join_trial") {
+    if (caseData.AttorneyStatus !== "join_trial" && caseData.AttorneyStatus !== "view_details") {
       console.error(`❌ Trial not active for case ${caseId} (status: ${caseData.AttorneyStatus})`);
       return sendError(
         res,
