@@ -962,11 +962,11 @@ async function submitResponses(req, res) {
       .input("jurorId", sql.Int, jurorId)
       .input("caseId", sql.Int, parseInt(caseId))
       .query(`
-        SELECT JurorId
-        FROM Jurors
-        WHERE JurorId = @jurorId
-        AND CaseId = @caseId
-        AND AdminApprovalStatus = 'approved'
+        SELECT ja.JurorId
+        FROM JurorApplications ja
+        WHERE ja.JurorId = @jurorId
+        AND ja.CaseId = @caseId
+        AND ja.Status = 'approved'
       `);
 
     if (jurorCheck.recordset.length === 0) {
