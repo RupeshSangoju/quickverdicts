@@ -958,7 +958,7 @@ export default function AdminConferenceClient() {
           }
         }
         // Redirect to admin dashboard
-        router.push('/admin');
+        router.push('/admin/dashboard');
       } else {
         throw new Error('Failed to end trial');
       }
