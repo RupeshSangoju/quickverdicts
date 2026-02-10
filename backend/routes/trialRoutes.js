@@ -1079,8 +1079,8 @@ router.post(
         }
       }
 
-      // Update meeting status to completed
-      await TrialMeeting.updateMeetingStatus(meeting.MeetingId, "completed");
+      // Update meeting status to ended
+      await TrialMeeting.updateMeetingStatus(meeting.MeetingId, "ended");
 
       // Update case status
       await Case.updateCaseStatus(caseId, {
