@@ -151,54 +151,27 @@ export default function JuryChargeBuilder({
   }
 
   async function handleSaveAllQuestions() {
-    console.log("🔍 [Jury Charge] Starting to save questions...");
-
     // Validate at least one question has text
     const validQuestions = newQuestions.filter(q => q.QuestionText.trim());
-
-    console.log(`🔍 [Jury Charge] Total questions: ${newQuestions.length}, Valid questions: ${validQuestions.length}`);
 
     if (validQuestions.length === 0) {
       toast.error("Please add at least one question with text");
       return;
     }
 
-    // Validate Multiple Choice questions have options
-    for (let i = 0; i < validQuestions.length; i++) {
-      const question = validQuestions[i];
-      if (question.QuestionType === "Multiple Choice") {
-        const options = question.Options.split("\n").map(o => o.trim()).filter(Boolean);
-        if (options.length < 2) {
-          toast.error(`Question ${i + 1}: Multiple Choice questions need at least 2 options`);
-          return;
-        }
-      }
-    }
-
     try {
       setSaving(true);
       const token = localStorage.getItem("token");
-
-      if (!token) {
-        toast.error("Authentication token missing. Please log in again.");
-        return;
-      }
-
       let successCount = 0;
       let failCount = 0;
-      const errors = [];
 
       // Add each question one by one
-      for (let i = 0; i < validQuestions.length; i++) {
-        const question = validQuestions[i];
-        console.log(`🔍 [Jury Charge] Saving question ${i + 1}/${validQuestions.length}: "${question.QuestionText.substring(0, 50)}..."`);
-
+      for (const question of validQuestions) {
         try {
           // Convert options string to array for Multiple Choice
           let optionsArray = null;
           if (question.QuestionType === "Multiple Choice" && question.Options) {
             optionsArray = question.Options.split("\n").map(o => o.trim()).filter(Boolean);
-            console.log(`🔍 [Jury Charge] Question ${i + 1} options:`, optionsArray);
           }
 
           const payload = {
@@ -211,8 +184,6 @@ export default function JuryChargeBuilder({
             maxValue: question.MaxValue,
           };
 
-          console.log(`🔍 [Jury Charge] Sending POST request for question ${i + 1}...`);
-
           const response = await fetch(`${API_BASE}/api/jury-charge/questions`, {
             method: "POST",
             headers: {
@@ -222,51 +193,37 @@ export default function JuryChargeBuilder({
             body: JSON.stringify(payload),
           });
 
-          console.log(`🔍 [Jury Charge] Response status for question ${i + 1}: ${response.status}`);
-
           if (response.ok) {
             successCount++;
-            console.log(`✅ [Jury Charge] Successfully saved question ${i + 1}`);
           } else {
             failCount++;
             const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
             const errorMsg = errorData.message || errorData.error || 'Unknown error';
-            console.error(`❌ [Jury Charge] Failed to add question ${i + 1}:`, errorMsg, errorData);
-            errors.push({ questionNum: i + 1, error: errorMsg });
-
-            // Show error toast for each failed question
-            toast.error(`Question ${i + 1} failed: ${errorMsg}`);
+            console.error(`Failed to add question: ${question.QuestionText}`, errorMsg);
+            toast.error(`Failed to add question: ${errorMsg}`);
           }
         } catch (err) {
           failCount++;
-          const errorMsg = err instanceof Error ? err.message : 'Network error';
-          console.error(`❌ [Jury Charge] Exception saving question ${i + 1}:`, err);
-          errors.push({ questionNum: i + 1, error: errorMsg });
-          toast.error(`Question ${i + 1} failed: ${errorMsg}`);
+          console.error(`Error adding question: ${question.QuestionText}`, err);
         }
       }
 
-      console.log(`🔍 [Jury Charge] Save complete. Success: ${successCount}, Failed: ${failCount}`);
-
       // Reload questions
-      console.log("🔍 [Jury Charge] Reloading questions...");
       await loadQuestions();
 
       // Show results and reset
       if (successCount > 0) {
-        toast.success(`Successfully added ${successCount} question(s)${failCount > 0 ? `. ${failCount} failed - check console for details` : ''}`);
+        toast.success(`Successfully added ${successCount} question(s)${failCount > 0 ? `. Failed: ${failCount}` : ''}`);
         setNewQuestions([]);
         setShowAddForm(false);
       } else {
-        toast.error("Failed to add questions. Check console for details.");
-        console.error("❌ [Jury Charge] All questions failed:", errors);
+        toast.error("Failed to add questions. Please try again.");
       }
     } catch (err) {
-      console.error("❌ [Jury Charge] Unexpected error saving questions:", err);
-      toast.error(`Failed to save questions: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      console.error("Error saving questions:", err);
+      toast.error("Failed to save questions. Please try again.");
     } finally {
       setSaving(false);
-      console.log("🔍 [Jury Charge] Save operation complete");
     }
   }
 
@@ -627,9 +584,8 @@ export default function JuryChargeBuilder({
 
             <button
               onClick={handleSaveAllQuestions}
-              disabled={saving || newQuestions.every(q => !q.QuestionText.trim())}
+              disabled={saving}
               className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl font-bold hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg"
-              title={newQuestions.every(q => !q.QuestionText.trim()) ? "Add at least one question with text" : "Save all questions to the database"}
             >
               {saving ? (
                 <>
@@ -639,7 +595,7 @@ export default function JuryChargeBuilder({
               ) : (
                 <>
                   <Save className="w-5 h-5" />
-                  Save All Questions ({newQuestions.filter(q => q.QuestionText.trim()).length})
+                  Save All Questions ({newQuestions.length})
                 </>
               )}
             </button>
