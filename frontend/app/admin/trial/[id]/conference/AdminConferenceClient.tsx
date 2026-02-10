@@ -835,8 +835,8 @@ export default function AdminConferenceClient() {
         return;
       }
 
-      // FIXED: Use the correct endpoint that reads from Verdicts table
-      const response = await fetch(`${API_BASE}/api/verdicts/case/${caseId}`, {
+      // Fetch from jury charge responses (where jurors actually submit)
+      const response = await fetch(`${API_BASE}/api/jury-charge/verdicts/${caseId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -851,84 +851,58 @@ export default function AdminConferenceClient() {
       const data = await response.json();
       console.log(`📥 [AdminConference] Data received:`, data);
 
-      // API returns { success: true, count: X, data: verdicts }
-      const verdicts = data.data || data.verdicts || [];
-      console.log(`📥 [AdminConference] Verdicts count: ${verdicts.length}`);
+      const rawVerdicts = data.verdicts || [];
+      console.log(`📥 [AdminConference] Raw verdict rows: ${rawVerdicts.length}`);
 
-      if (verdicts.length === 0) {
+      if (rawVerdicts.length === 0) {
         toast.error('No verdicts have been submitted yet', { duration: 5000 });
         return;
       }
 
-      // Get jury charge questions to match with responses
-      console.log(`📋 [AdminConference] Fetching questions for case ${caseId}...`);
-      const questionsResponse = await fetch(`${API_BASE}/api/jury-charge/questions/${caseId}`, {
-        headers: { Authorization: `Bearer ${token}` }
+      // Group responses by juror
+      const jurorMap = new Map<string, { name: string; email: string; submittedAt: string; responses: Record<number, string> }>();
+      const questionSet = new Map<number, string>(); // QuestionId -> QuestionText
+
+      rawVerdicts.forEach((row: any) => {
+        const key = row.JurorName || `Juror`;
+        if (!jurorMap.has(key)) {
+          jurorMap.set(key, {
+            name: row.JurorName || 'Unknown',
+            email: row.JurorEmail || 'Unknown',
+            submittedAt: row.SubmittedAt ? new Date(row.SubmittedAt).toLocaleString() : '',
+            responses: {},
+          });
+        }
+        jurorMap.get(key)!.responses[row.QuestionId] = row.Response || '';
+        if (!questionSet.has(row.QuestionId)) {
+          questionSet.set(row.QuestionId, row.QuestionText || `Question ${row.QuestionId}`);
+        }
       });
 
-      console.log(`📋 [AdminConference] Questions response status: ${questionsResponse.status}`);
+      // Sort questions by ID
+      const sortedQuestionIds = Array.from(questionSet.keys()).sort((a, b) => a - b);
 
-      let questions: any[] = [];
-      if (questionsResponse.ok) {
-        const questionsData = await questionsResponse.json();
-        console.log(`📋 [AdminConference] Questions data received:`, questionsData);
-
-        questions = (questionsData.questions || []).sort((a: any, b: any) =>
-          (a.OrderIndex || 0) - (b.OrderIndex || 0)
-        );
-
-        console.log(`📋 [AdminConference] Found ${questions.length} questions`);
-        if (questions.length > 0) {
-          console.log(`📋 [AdminConference] First question:`, questions[0]);
-        }
-      } else {
-        const errorText = await questionsResponse.text();
-        console.error(`❌ [AdminConference] Failed to fetch questions:`, errorText);
-        toast.error('Warning: Could not fetch questions for CSV headers', { duration: 5000 });
-      }
-
-      // Build CSV with questions as columns
+      // Build CSV
       const csvRows: string[] = [];
 
-      // Header row: Juror Name, Juror Email, Submitted At, [Question 1], [Question 2], ...
+      // Header row
       const headers = ['Juror Name', 'Juror Email', 'Submitted At'];
-      questions.forEach((q: any) => {
-        headers.push(q.QuestionText || `Question ${q.QuestionId}`);
+      sortedQuestionIds.forEach(qId => {
+        headers.push(questionSet.get(qId) || `Question ${qId}`);
       });
-
-      console.log(`📋 [AdminConference] CSV Headers (${headers.length} total):`, headers);
       csvRows.push(headers.map(h => `"${h.replace(/"/g, '""')}"`).join(','));
 
       // Data rows: one row per juror
-      verdicts.forEach((verdict: any, idx: number) => {
-        const jurorName = verdict.JurorName || `Juror #${verdict.JurorId}`;
-        const jurorEmail = verdict.JurorEmail || 'Unknown';
-        const submittedAt = verdict.SubmittedAt ? new Date(verdict.SubmittedAt).toLocaleString() : '';
-        const responses = verdict.Responses || {};
-
-        if (idx === 0) {
-          // Log first verdict's responses for debugging
-          console.log(`📋 [AdminConference] Sample verdict responses:`, {
-            jurorName,
-            responsesKeys: Object.keys(responses),
-            responsesCount: Object.keys(responses).length
-          });
-        }
-
+      jurorMap.forEach((juror) => {
         const row = [
-          `"${jurorName.replace(/"/g, '""')}"`,
-          `"${jurorEmail.replace(/"/g, '""')}"`,
-          `"${submittedAt}"`
+          `"${juror.name.replace(/"/g, '""')}"`,
+          `"${juror.email.replace(/"/g, '""')}"`,
+          `"${juror.submittedAt}"`
         ];
 
-        // Add response for each question in order
-        questions.forEach((q: any) => {
-          const questionId = String(q.QuestionId);
-          const response = responses[questionId];
-          const responseValue = response !== undefined && response !== null
-            ? (typeof response === 'object' ? JSON.stringify(response) : String(response))
-            : '';
-          row.push(`"${responseValue.replace(/"/g, '""')}"`);
+        sortedQuestionIds.forEach(qId => {
+          const val = juror.responses[qId] || '';
+          row.push(`"${String(val).replace(/"/g, '""')}"`);
         });
 
         csvRows.push(row.join(','));
@@ -946,8 +920,8 @@ export default function AdminConferenceClient() {
       link.click();
       document.body.removeChild(link);
 
-      console.log(`✅ [AdminConference] Downloaded ${verdicts.length} verdict(s) with ${questions.length} questions as columns`);
-      toast.success(`Downloaded ${verdicts.length} verdict(s) - each juror in one row!`, { duration: 4000 });
+      console.log(`✅ [AdminConference] Downloaded ${jurorMap.size} juror verdict(s)`);
+      toast.success(`Downloaded ${jurorMap.size} verdict(s)!`, { duration: 4000 });
     } catch (err) {
       console.error('❌ [AdminConference] Error downloading verdicts:', err);
       toast.error('Failed to download verdicts', { duration: 4000 });
