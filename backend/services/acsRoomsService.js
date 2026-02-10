@@ -289,12 +289,11 @@ async function addParticipantToRoom(
       );
     } catch (addError) {
       // If the error is about ACSRoleType conversion, stale participants have corrupted the room state.
-      // Fix: list all participants, remove them, then re-add only the new one.
       if (addError.message && addError.message.includes("ACSRoleType")) {
         console.warn(`⚠️ Room ${roomId} has corrupted participant state. Attempting cleanup...`);
 
+        // Strategy 1: Try list + remove all + re-add
         try {
-          // List existing participants
           const existingParticipants = [];
           const participantsIterator = roomsClient.listParticipants(roomId);
           for await (const p of participantsIterator) {
@@ -302,7 +301,6 @@ async function addParticipantToRoom(
           }
           console.log(`   Found ${existingParticipants.length} existing participants in room`);
 
-          // Remove all stale participants
           if (existingParticipants.length > 0) {
             const idsToRemove = existingParticipants.map(p => ({
               communicationUserId: p.id?.communicationUserId || p.communicationIdentifier?.communicationUserId
@@ -314,13 +312,41 @@ async function addParticipantToRoom(
             }
           }
 
-          // Now add the new participant to the clean room
           await roomsClient.addOrUpdateParticipants(roomId, [participant]);
           console.log(`✅ Participant added after room cleanup`);
-          return;
+          return { newRoomId: null };
         } catch (cleanupError) {
-          console.error(`❌ Room cleanup failed:`, cleanupError.message);
-          throw new Error(`Failed to add participant to room: ${addError.message}`);
+          console.warn(`⚠️ Room cleanup failed: ${cleanupError.message}`);
+          console.warn(`🔄 Attempting nuclear recovery: deleting room and creating a new one...`);
+
+          // Strategy 2: Delete corrupted room, create a fresh one, add participant
+          try {
+            // Delete the corrupted room
+            try {
+              await roomsClient.deleteRoom(roomId);
+              console.log(`   Deleted corrupted room ${roomId}`);
+            } catch (deleteErr) {
+              console.warn(`   Could not delete room (may already be gone): ${deleteErr.message}`);
+            }
+
+            // Create a new room with 24-hour validity
+            const newRoom = await roomsClient.createRoom({
+              validFrom: new Date(),
+              validUntil: new Date(Date.now() + 24 * 60 * 60 * 1000),
+              pstnDialOutEnabled: false,
+            });
+            console.log(`   Created new room: ${newRoom.id}`);
+
+            // Add participant to the new room
+            await roomsClient.addOrUpdateParticipants(newRoom.id, [participant]);
+            console.log(`✅ Participant added to new room ${newRoom.id} after nuclear recovery`);
+
+            // Return the new room ID so caller can update the database
+            return { newRoomId: newRoom.id };
+          } catch (nuclearError) {
+            console.error(`❌ Nuclear recovery also failed:`, nuclearError.message);
+            throw new Error(`Room ${roomId} is irrecoverably corrupted: ${addError.message}`);
+          }
         }
       }
       throw addError;
@@ -329,6 +355,7 @@ async function addParticipantToRoom(
     console.log(
       `✅ Participant ${participantId} added to room ${roomId} with role ${role}`
     );
+    return { newRoomId: null };
   } catch (error) {
     // Conflict = participant already exists, which is OK
     if (error.statusCode === 409) {

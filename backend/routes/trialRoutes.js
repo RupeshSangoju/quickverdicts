@@ -465,7 +465,20 @@ router.post(
       const acsUserId = identityResponse.communicationUserId;
 
       // Add participant to ACS Room (for video)
-      await addParticipantToRoom(meeting.RoomId, acsUserId, participantRole);
+      const roomResult = await addParticipantToRoom(meeting.RoomId, acsUserId, participantRole);
+
+      // If room was recreated due to corruption, update the database
+      let activeRoomId = meeting.RoomId;
+      if (roomResult && roomResult.newRoomId) {
+        console.log(`🔄 Room was recreated: ${meeting.RoomId} -> ${roomResult.newRoomId}`);
+        activeRoomId = roomResult.newRoomId;
+        const pool = await poolPromise;
+        await pool.request()
+          .input("meetingId", sql.Int, meeting.MeetingId)
+          .input("newRoomId", sql.NVarChar, roomResult.newRoomId)
+          .query("UPDATE dbo.TrialMeetings SET RoomId = @newRoomId WHERE MeetingId = @meetingId");
+        console.log(`✅ Database updated with new RoomId`);
+      }
 
       // Generate token with VoIP and Chat scopes
       const tokenResponse = await identityClient.getToken(identityResponse, [
@@ -521,7 +534,7 @@ router.post(
         expiresOn: tokenResponse.expiresOn,
         userId: acsUserId,
         displayName: displayName,
-        roomId: meeting.RoomId,
+        roomId: activeRoomId,
         chatThreadId: meeting.ChatThreadId,
         endpointUrl: ACS_ENDPOINT,
       });
@@ -665,7 +678,7 @@ router.post(
       }
 
       const data = verification.recordset[0];
-      const roomId = data.RoomId;
+      let activeRoomId = data.RoomId;
       const chatThreadId = data.ChatThreadId;
       const chatServiceUserId = data.ChatServiceUserId;
       const meetingId = data.MeetingId;
@@ -677,11 +690,23 @@ router.post(
 
       // Add to room (for video)
       try {
-        await addParticipantToRoom(
-          roomId,
+        const roomResult = await addParticipantToRoom(
+          activeRoomId,
           identity.communicationUserId,
           "Attendee"
         );
+
+        // If room was recreated due to corruption, update the database
+        if (roomResult && roomResult.newRoomId) {
+          console.log(`🔄 Room was recreated for juror: ${activeRoomId} -> ${roomResult.newRoomId}`);
+          activeRoomId = roomResult.newRoomId;
+          const pool = await poolPromise;
+          await pool.request()
+            .input("meetingId", sql.Int, meetingId)
+            .input("newRoomId", sql.NVarChar, roomResult.newRoomId)
+            .query("UPDATE dbo.TrialMeetings SET RoomId = @newRoomId WHERE MeetingId = @meetingId");
+          console.log(`✅ Database updated with new RoomId`);
+        }
       } catch (err) {
         if (err.statusCode !== 409) throw err; // Ignore if already added
       }
@@ -725,7 +750,7 @@ router.post(
         success: true,
         token: token.token,
         expiresOn: token.expiresOn,
-        roomId: roomId,
+        roomId: activeRoomId,
         displayName: `${jurorName} (Juror)`,
         userId: identity.communicationUserId,
         jurorId: jurorId,
@@ -907,8 +932,21 @@ router.post(
         throw idErr;
       }
 
+      let activeRoomId = trial.RoomId;
       try {
-        await addParticipantToRoom(trial.RoomId, acsUserId, "Presenter");
+        const roomResult = await addParticipantToRoom(trial.RoomId, acsUserId, "Presenter");
+
+        // If room was recreated due to corruption, update the database
+        if (roomResult && roomResult.newRoomId) {
+          console.log(`🔄 Room was recreated for admin: ${trial.RoomId} -> ${roomResult.newRoomId}`);
+          activeRoomId = roomResult.newRoomId;
+          const pool = await poolPromise;
+          await pool.request()
+            .input("meetingId", sql.Int, trial.MeetingId)
+            .input("newRoomId", sql.NVarChar, roomResult.newRoomId)
+            .query("UPDATE dbo.TrialMeetings SET RoomId = @newRoomId WHERE MeetingId = @meetingId");
+          console.log(`✅ Database updated with new RoomId`);
+        }
       } catch (roomErr) {
         console.error("Error adding admin to room:", roomErr && roomErr.message ? roomErr.message : roomErr);
         throw roomErr;
@@ -961,7 +999,7 @@ router.post(
         expiresOn: tokenResponse.expiresOn,
         userId: acsUserId,
         displayName: "Court Administrator",
-        roomId: trial.RoomId,
+        roomId: activeRoomId,
         chatThreadId: trial.ChatThreadId,
         endpointUrl: ACS_ENDPOINT,
       });
