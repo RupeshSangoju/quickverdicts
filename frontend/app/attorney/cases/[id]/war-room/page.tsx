@@ -974,7 +974,7 @@ export default function WarRoomPage() {
                   {/* Join Trial button removed per UX request; submit will enable join elsewhere */}
                   <button
                     onClick={submitWarRoom}
-                    disabled={submittingWarRoom || !isWarRoomStatus || !!pendingRescheduleRequest}
+                    disabled={submittingWarRoom || !isWarRoomStatus || !!pendingRescheduleRequest || approvedCount < 1}
                     className="px-4 py-1.5 bg-white text-[#16305B] rounded-lg font-semibold text-sm hover:bg-white/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
                     title={pendingRescheduleRequest ? 'Cannot submit while reschedule request is pending' : ''}
                   >
