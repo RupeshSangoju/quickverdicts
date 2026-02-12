@@ -360,7 +360,8 @@ export default function JurorApplyPage() {
                 <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
                 <span className="text-xs font-semibold text-green-200 uppercase tracking-wide">Open for Application</span>
               </div>
-              <h1 className="text-3xl font-bold mb-2">{caseName}</h1>
+              <h1 className="text-3xl font-bold mb-1">{caseName}</h1>
+              <p className="text-sm text-blue-200 mb-2">{caseData.CaseTitle} &bull; Case #{caseData.CaseId}</p>
               <div className="flex items-center gap-2 text-blue-100">
                 <BuildingOfficeIcon className="w-5 h-5" />
                 <p className="font-medium">{caseData.LawFirmName}</p>
