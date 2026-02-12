@@ -255,6 +255,7 @@ export default function AttorneyCasesSection({ onBack }: AttorneyCasesSectionPro
 };
 
   const handleNewCase = () => {
+    localStorage.removeItem("caseJurisdiction");
     router.push("/attorney/state/case-type");
   };
 

@@ -417,7 +417,7 @@ export default function AttorneyCalendarSection({ onBack }: AttorneyCalendarSect
           <h3 className="text-xl font-bold text-gray-900 mb-2">No Scheduled Cases</h3>
           <p className="text-gray-600 mb-6">You do not have any scheduled cases yet.</p>
           <button
-            onClick={() => router.push("/attorney/state/case-type")}
+            onClick={() => { localStorage.removeItem("caseJurisdiction"); router.push("/attorney/state/case-type"); }}
             className="px-6 py-3 bg-[#16305B] text-white rounded-lg hover:bg-[#1e417a] transition-colors font-semibold"
           >
             Create New Case
