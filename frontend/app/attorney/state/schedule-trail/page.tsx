@@ -255,6 +255,11 @@ export default function ScheduleTrialPage() {
   };
 
   const handlePrevMonth = () => {
+    const now = new Date();
+    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const viewingMonthStart = new Date(currentYear, currentMonth, 1);
+    // Don't allow navigating before the current month
+    if (viewingMonthStart <= currentMonthStart) return;
     const newDate = new Date(currentYear, currentMonth - 1, 1);
     setCurrentDate(newDate);
   };
@@ -687,9 +692,10 @@ export default function ScheduleTrialPage() {
 
                       {/* Month Navigation */}
                       <div className="flex items-center justify-between mb-6">
-                        <button 
+                        <button
                           onClick={handlePrevMonth}
-                          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                          disabled={new Date(currentYear, currentMonth, 1) <= new Date(new Date().getFullYear(), new Date().getMonth(), 1)}
+                          className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                           aria-label="Previous month"
                         >
                           <ChevronLeft className="w-5 h-5 text-gray-600" />
