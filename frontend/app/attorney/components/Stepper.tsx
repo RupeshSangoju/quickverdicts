@@ -88,14 +88,14 @@ export default function Stepper({ currentStep, onBack }: StepperProps) {
         <div className="mb-8 flex items-center gap-4">
           <button
             onClick={handleBack}
-            className="flex items-center gap-2 text-[#16305B] hover:text-[#1e417a] transition-colors group"
+            className="flex items-center gap-2 text-[#16305B] hover:text-[#1e417a] transition-colors group cursor-pointer"
           >
             <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
             <span className="font-semibold">Back</span>
           </button>
           <button
             onClick={() => router.push("/attorney")}
-            className="flex items-center gap-2 text-[#16305B] hover:text-[#1e417a] transition-colors group"
+            className="flex items-center gap-2 text-[#16305B] hover:text-[#1e417a] transition-colors group cursor-pointer"
           >
             <Home size={20} />
             <span className="font-semibold">Home</span>
