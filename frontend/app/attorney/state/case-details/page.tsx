@@ -22,6 +22,7 @@ export default function CaseDetailsPage() {
   const [availableCounties, setAvailableCounties] = useState<{ label: string; value: string }[]>([]);
   const [countiesLoading, setCountiesLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   // State search dropdown
   const [stateSearchTerm, setStateSearchTerm] = useState("");
@@ -47,6 +48,7 @@ export default function CaseDetailsPage() {
       setCaseTier(localStorage.getItem("caseTier") || "");
       // requiredJurors is always 7, no need to load from localStorage
       setCaseDescription(localStorage.getItem("caseDescription") || "");
+      setLoaded(true);
 
       // Set state search term from saved state
       const savedState = localStorage.getItem("state");
@@ -62,6 +64,17 @@ export default function CaseDetailsPage() {
       }
     }
   }, []);
+
+  // Auto-save form data as user types
+  useEffect(() => {
+    if (loaded) {
+      localStorage.setItem("state", state);
+      localStorage.setItem("county", county);
+      localStorage.setItem("caseType", caseType);
+      localStorage.setItem("caseTier", caseTier);
+      localStorage.setItem("caseDescription", caseDescription);
+    }
+  }, [state, county, caseType, caseTier, caseDescription, loaded]);
 
   // Fetch states on mount
   useEffect(() => {

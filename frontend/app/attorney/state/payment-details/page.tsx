@@ -16,6 +16,7 @@ export default function PaymentDetailsPage() {
   const [requiredJurors, setRequiredJurors] = useState("");
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const router = useRouter();
 
   // Fixed payment amounts based on tier (no per-juror calculation)
@@ -43,7 +44,16 @@ export default function PaymentDetailsPage() {
       const amount = getPaymentAmount(savedTier);
       setPaymentAmount(amount.toString());
     }
+    setLoaded(true);
   }, []);
+
+  // Auto-save as user changes payment method
+  useEffect(() => {
+    if (loaded) {
+      localStorage.setItem("paymentMethod", paymentMethod);
+      localStorage.setItem("paymentAmount", paymentAmount);
+    }
+  }, [paymentMethod, paymentAmount, loaded]);
 
   const validate = () => {
     const errors: Record<string, string> = {};
