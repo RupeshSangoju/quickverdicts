@@ -21,6 +21,7 @@ export default function VoirDirePart2() {
   const [questions, setQuestions] = useState<VoirDireQuestion[]>([{ question: "", type: "yesno" }]);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -40,7 +41,15 @@ export default function VoirDirePart2() {
         // Keep default
       }
     }
+    setLoaded(true);
   }, []);
+
+  // Auto-save as user types
+  useEffect(() => {
+    if (loaded) {
+      localStorage.setItem("voirDire2Questions", JSON.stringify(questions));
+    }
+  }, [questions, loaded]);
 
   const handleChange = (idx: number, field: "question" | "type", value: string) => {
     const newQuestions = [...questions];

@@ -13,24 +13,27 @@ export default function CaseTypePage() {
   const router = useRouter();
   const [selected, setSelected] = useState("");
 
-  // Clear all previous case data when this page loads
+  // Only clear previous case data when starting a fresh case (not when navigating back)
   useEffect(() => {
-    const keysToRemove = [
-      "caseJurisdiction",
-      "state",
-      "county",
-      "caseType",
-      "caseTier",
-      "caseDescription",
-      "plaintiffGroups",
-      "defendantGroups",
-      "voirDire2Questions",
-      "paymentMethod",
-      "paymentAmount",
-    ];
-
-    keysToRemove.forEach(key => localStorage.removeItem(key));
-    console.log("✅ Previous case data cleared");
+    const existingJurisdiction = localStorage.getItem("caseJurisdiction");
+    if (!existingJurisdiction) {
+      const keysToRemove = [
+        "state",
+        "county",
+        "caseType",
+        "caseTier",
+        "caseDescription",
+        "plaintiffGroups",
+        "defendantGroups",
+        "voirDire2Questions",
+        "paymentMethod",
+        "paymentAmount",
+      ];
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+    } else {
+      // Pre-select the saved jurisdiction
+      setSelected(existingJurisdiction.toLowerCase());
+    }
   }, []);
 
   const handleSelect = (jurisdiction: string) => {

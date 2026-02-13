@@ -18,6 +18,7 @@ export default function DefendantDetailsPage() {
   ]);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -29,7 +30,15 @@ export default function DefendantDetailsPage() {
         // Keep default
       }
     }
+    setLoaded(true);
   }, []);
+
+  // Auto-save as user types
+  useEffect(() => {
+    if (loaded) {
+      localStorage.setItem("defendantGroups", JSON.stringify(groups));
+    }
+  }, [groups, loaded]);
 
   const validate = () => {
     const errors: Record<string, string> = {};

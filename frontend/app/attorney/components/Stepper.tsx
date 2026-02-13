@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Check, FileText, Users, Scale, MessageSquare, CreditCard, ClipboardCheck, Calendar, Gavel } from "lucide-react";
+import { ArrowLeft, Home, Check, FileText, Users, Scale, MessageSquare, CreditCard, ClipboardCheck, Calendar, Gavel } from "lucide-react";
 import React from "react";
 
 type StepperProps = {
@@ -84,14 +84,21 @@ export default function Stepper({ currentStep, onBack }: StepperProps) {
     <div className="w-full bg-white border-b border-gray-200">
       <div className="w-full px-8 py-6">
 
-        {/* Back Button */}
-        <div className="mb-8">
+        {/* Back & Home Buttons */}
+        <div className="mb-8 flex items-center gap-4">
           <button
             onClick={handleBack}
-            className="flex items-center gap-2 text-[#16305B] hover:text-[#1e417a] transition-colors group"
+            className="flex items-center gap-2 text-[#16305B] hover:text-[#1e417a] transition-colors group cursor-pointer"
           >
             <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
             <span className="font-semibold">Back</span>
+          </button>
+          <button
+            onClick={() => router.push("/attorney")}
+            className="flex items-center gap-2 text-[#16305B] hover:text-[#1e417a] transition-colors group cursor-pointer"
+          >
+            <Home size={20} />
+            <span className="font-semibold">Home</span>
           </button>
         </div>
 
