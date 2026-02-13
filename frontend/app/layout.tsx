@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Toaster } from "react-hot-toast";
+import { ToastLimiter } from "@/components/ToastLimiter";
 import Script from "next/script";
 import { AppErrorBoundary } from "@/components/errors/AppErrorBoundary";
 import "./globals.css";
@@ -217,7 +218,8 @@ export default function RootLayout({
               },
             }}
           />
-          
+          <ToastLimiter max={1} />
+
           {/* Main Content */}
           {children}
         </AppErrorBoundary>
