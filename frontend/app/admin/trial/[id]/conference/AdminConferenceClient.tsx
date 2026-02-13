@@ -12,6 +12,7 @@ import { AzureCommunicationTokenCredential } from "@azure/communication-common";
 import { ChatClient } from "@azure/communication-chat";
 import RecordRTC, { RecordRTCPromisesHandler } from "recordrtc";
 import { getToken } from "@/lib/apiClient";
+import { useWebSocket } from "@/hooks/useWebSocket";
 import {
   Video,
   VideoOff,
@@ -118,6 +119,32 @@ export default function AdminConferenceClient() {
   const currentUserId = useRef<string>("");
   const callRef = useRef<any>(null);
   const callAgentRef = useRef<any>(null);
+
+  // WebSocket for real-time jury charge updates
+  const { on, off, joinRoom, leaveRoom, isConnected } = useWebSocket();
+
+  useEffect(() => {
+    if (!isConnected || !caseId) return;
+
+    joinRoom(`case_${caseId}`);
+
+    const handleQuestionChange = () => {
+      loadJuryCharge();
+    };
+
+    on('jury_charge:question_added', handleQuestionChange);
+    on('jury_charge:question_updated', handleQuestionChange);
+    on('jury_charge:question_deleted', handleQuestionChange);
+    on('jury_charge:questions_reordered', handleQuestionChange);
+
+    return () => {
+      off('jury_charge:question_added', handleQuestionChange);
+      off('jury_charge:question_updated', handleQuestionChange);
+      off('jury_charge:question_deleted', handleQuestionChange);
+      off('jury_charge:questions_reordered', handleQuestionChange);
+      leaveRoom(`case_${caseId}`);
+    };
+  }, [isConnected, caseId]);
 
   // Cleanup on page close/refresh
   useEffect(() => {
