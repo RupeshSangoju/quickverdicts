@@ -838,7 +838,8 @@ export default function TrialConferenceClient() {
           IsRequired: true,
         });
       } else {
-        alert('Failed to add question. Question cannot be added after release to jurors');
+        const errData = await response.json().catch(() => null);
+        alert(errData?.message || errData?.error || 'Failed to add question');
       }
     } catch (err) {
       console.error('Error adding question:', err);
@@ -1457,8 +1458,9 @@ export default function TrialConferenceClient() {
                     style={{ backgroundColor: "#ffffff", color: "#0A2342", borderColor: "#C6CDD9" }}
                   >
                     <option value="Multiple Choice">Multiple Choice</option>
-                    <option value="Text">Text</option>
+                    <option value="Text Response">Text Response</option>
                     <option value="Yes/No">Yes/No</option>
+                    <option value="Numeric Response">Numeric Response</option>
                   </select>
                 </div>
 
