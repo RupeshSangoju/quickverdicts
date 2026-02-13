@@ -415,9 +415,8 @@ export default function JurorWarRoomPage() {
         </button>
 
         <div className="bg-white rounded-lg shadow border border-[#C6CDD9] p-6 mb-6">
-          <h1 className="text-3xl font-bold text-[#0A2342] mb-2">{caseName}</h1>
           <p className="text-[#455A7C] mb-4">Case #{caseData.CaseId}</p>
-
+          <h1 className="text-xl font-bold mb-1">{caseData.CaseTitle}</h1>
           <div className="grid grid-cols-2 gap-4 text-sm mb-4">
             <div>
               <span className="font-semibold text-[#0A2342]">Trial Date:</span>
@@ -551,8 +550,8 @@ export default function JurorWarRoomPage() {
             <strong>Note:</strong> This is a read-only view. You can view documents in your browser, but cannot make any changes to case materials. Please review all materials before the trial date.
           </p>
         </div>
+{/* Team Members Section 
 
-        {/* Jury Charge Section */}
         <div className="mt-6 bg-white rounded-lg shadow border border-[#C6CDD9] p-6">
           <h2 className="text-xl font-bold text-[#0A2342] mb-4">Jury Charge - Verdict Form</h2>
           {juryChargeLoading ? (
@@ -573,6 +572,7 @@ export default function JurorWarRoomPage() {
             </div>
           )}
         </div>
+        */}
       </div>
 
       {renderDocumentViewer()}
