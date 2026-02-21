@@ -300,46 +300,107 @@ export default function AdminConferenceClient() {
 
   // Clear participant video and show avatar
 function clearParticipantVideo(participantId: string) {
-  console.log(`ADMIN CLEAR: Clearing video for ${participantId} → should show avatar now`);
+  console.log(`ADMIN CLEAR: Clearing ${participantId} → should show normal/avatar`);
 
+  const isScreenshare = participantId.startsWith("screenshare-") || participantId === "screenshare";
+
+  // 1. Clean remoteVideoRefs entry for screenshare
+  if (isScreenshare) {
+    const ref = remoteVideoRefs.current.get(participantId);
+    if (ref) {
+      try {
+        ref.renderer?.dispose();
+        console.log(`ADMIN CLEAR: Disposed renderer for screenshare ${participantId}`);
+      } catch (e) {
+        console.warn(`Dispose failed for ${participantId}:`, e);
+      }
+      // Stop any lingering tracks
+      if (ref.stream) {
+        ref.stream.getTracks?.().forEach((t: MediaStreamTrack) => t.stop?.());
+      }
+      remoteVideoRefs.current.delete(participantId);
+      console.log(`ADMIN CLEAR: Deleted remoteVideoRefs entry for ${participantId}`);
+    }
+  }
+
+  // 2. Clean thumbnail container (if exists)
   const container = participantVideoRefs.current.get(participantId);
   if (container) {
-    // Step 1: Clear innerHTML
     container.innerHTML = "";
-    // Step 2: Force remove every child (some browsers keep detached video elements)
     while (container.firstChild) {
       container.removeChild(container.firstChild);
     }
-    console.log(`ADMIN CLEAR: Container for ${participantId} now has ${container.children.length} children (should be 0)`);
+    container.replaceChildren(); // Extra force-clear
+
+    const videos = container.querySelectorAll('video');
+    videos.forEach(v => {
+      v.pause();
+      if (v.srcObject instanceof MediaStream) {
+        v.srcObject.getTracks().forEach(t => t.stop());
+      }
+      v.srcObject = null;
+      v.removeAttribute('src');
+      v.load();
+      v.remove(); // Extra: remove the node completely
+    });
+
+    console.log(
+      `ADMIN CLEAR: Thumbnail container for ${participantId} cleaned – children left: ${container.children.length}`
+    );
   }
 
-  // Dispose thumbnail
-  const thumbRenderer = thumbnailRenderers.current.get(participantId);
-  if (thumbRenderer) {
-    thumbRenderer.dispose()
-    thumbnailRenderers.current.delete(participantId);
-  }
-
-  // Featured cleanup
+  // 3. Featured view cleanup (critical for main screen freeze)
   if (featuredParticipant === participantId) {
+    console.log(`ADMIN CLEAR: Featured participant matches ${participantId} → aggressive featured cleanup`);
+
+    // Dispose renderer
     if (featuredRenderer.current) {
-      featuredRenderer.current.dispose();
+      try {
+        featuredRenderer.current.dispose();
+        console.log("ADMIN CLEAR: Featured renderer disposed");
+      } catch (e) {
+        console.warn("Featured dispose failed:", e);
+      }
       featuredRenderer.current = null;
     }
+
+    // Aggressive DOM clear for featured
     if (featuredVideoRef.current) {
+      // Step 1: innerHTML + loop
       featuredVideoRef.current.innerHTML = "";
       while (featuredVideoRef.current.firstChild) {
         featuredVideoRef.current.removeChild(featuredVideoRef.current.firstChild);
       }
-      console.log(`ADMIN CLEAR: Featured container cleared for ${participantId}`);
+
+      // Step 2: replaceChildren + query + remove
+      featuredVideoRef.current.replaceChildren();
+
+      const featuredVideos = featuredVideoRef.current.querySelectorAll('video');
+      featuredVideos.forEach(v => {
+        v.pause();
+        if (v.srcObject instanceof MediaStream) {
+          v.srcObject.getTracks().forEach(t => t.stop());
+        }
+        v.srcObject = null;
+        v.removeAttribute('src');
+        v.load();
+        v.remove(); // Remove node from DOM completely
+      });
+
+      console.log(
+        `ADMIN CLEAR: Featured container for ${participantId} cleaned – children left: ${featuredVideoRef.current.children.length}, videos removed: ${featuredVideos.length}`
+      );
     }
+
+    // Reset featured state
+    setFeaturedParticipant("local");
+    setPinnedParticipant(null);
     triggerReRender();
   }
-  // Extra: if featured is local and video just turned off, force trigger avatar
-  if (featuredParticipant === "local" && isVideoOff) {
-    triggerReRender(); // make sure React re-evaluates the JSX condition
-    console.log("ADMIN: Local video off → forcing re-render for avatar");
-  }
+
+  // Final force re-render (helps React re-evaluate avatar condition)
+  triggerReRender();
+  console.log(`ADMIN CLEAR: Finished for ${participantId} – re-render triggered`);
 }
 
 
@@ -362,6 +423,7 @@ function disposeFeaturedRenderer() {
     else{
       console.warn("Non-Error thrown during dispose:", e);
     }
+  }
     featuredRenderer.current = null;
   }
 }
@@ -374,7 +436,7 @@ function disposeThumbnailRenderer(participantId: string) {
       renderer.dispose();
       console.log(`Thumbnail renderer for ${participantId} disposed`);
     } catch (e) {
-      if (e.message?.includes("already disposed")) {
+      if (e instanceof Error && e.message.includes("already disposed")) {
         console.log(`Thumbnail for ${participantId} already disposed – ignoring`);
       } else {
         console.warn(`Thumbnail dispose warning for ${participantId}:`, e);
@@ -392,7 +454,9 @@ async function renderParticipantVideoInThumbnail(participantId: string) {
   container.innerHTML = "";
   const existing = thumbnailRenderers.current.get(participantId);
   if (existing) {
-    existing.dispose().catch(() => {});
+        try {
+      existing.dispose();
+    } catch (_) {}
     thumbnailRenderers.current.delete(participantId);
   }
 
@@ -406,7 +470,7 @@ async function renderParticipantVideoInThumbnail(participantId: string) {
     } else {
       const participant = participants.find(p => getUserId(p.identifier) === participantId);
       if (!participant) return;
-      const stream = participant.videoStreams?.find(s => s.mediaStreamType === "Video");
+      const stream = (participant.videoStreams as any[])?.find((s) => s.mediaStreamType === "Video");
       if (!stream?.isAvailable) return;
 
       const renderer = new VideoStreamRenderer(stream);
@@ -453,7 +517,7 @@ async function renderFeaturedVideo() {
     } else {
       const participant = participants.find(p => getUserId(p.identifier) === featuredParticipant);
       if (participant) {
-        const stream = participant.videoStreams?.find(s => s.mediaStreamType === "Video");
+        const stream = participant.videoStreams?.find((s: any) => s.mediaStreamType === "Video");
         if (stream?.isAvailable) {
           const renderer = new VideoStreamRenderer(stream);
           featuredRenderer.current = renderer;
@@ -473,7 +537,8 @@ async function renderFeaturedVideo() {
 
   // Render all participant thumbnails when participants or camera states change
   useEffect(() => {
-    // Render local participant thumbnail
+    // Render local
+    //  participant thumbnail
     renderParticipantVideoInThumbnail("local");
 
     // Render remote participant thumbnails
@@ -752,11 +817,20 @@ async function renderFeaturedVideo() {
                       triggerReRender();
                       } else {
                       // Screenshare stopped
-                      if (featuredParticipant === screenshareKey) {
-                        setFeaturedParticipant("local");
-                        setPinnedParticipant(null);
-                      }
-                      triggerReRender();
+                        console.log(`📺 SCREENSHARE STOPPED – cleaning up ${screenshareKey}`);
+                          clearParticipantVideo(screenshareKey);  // ← Add this line
+
+                          const ref = remoteVideoRefs.current.get(screenshareKey);
+                          if (ref) {
+                            try { ref.renderer?.dispose(); } catch {}
+                            remoteVideoRefs.current.delete(screenshareKey);
+                          }
+
+                          if (featuredParticipant === screenshareKey) {
+                            setFeaturedParticipant("local");
+                            setPinnedParticipant(null);
+                          }
+                          triggerReRender();
                     }
                   });
                 }
@@ -2233,5 +2307,4 @@ async function renderFeaturedVideo() {
       </div>
     </div>
   );
-}
 }

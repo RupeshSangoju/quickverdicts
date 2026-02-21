@@ -305,14 +305,18 @@ export default function JurorConferenceClient() {
     // Dispose thumbnail renderer safely
     const thumbRenderer = thumbnailRenderers.current.get(participantId);
     if (thumbRenderer) {
-      thumbRenderer.dispose().catch(() => {}); // silent ignore "already disposed"
+        try{
+        thumbRenderer.dispose();
+      } catch {}
       thumbnailRenderers.current.delete(participantId);
     }
 
     // If featured, clean it too
     if (featuredParticipant === participantId) {
       if (featuredRenderer.current) {
-        featuredRenderer.current.dispose().catch(() => {});
+        try{
+          featuredRenderer.current.dispose();
+        } catch{}
         featuredRenderer.current = null;
       }
       if (featuredVideoRef.current) {
@@ -330,7 +334,9 @@ export default function JurorConferenceClient() {
     container.innerHTML = "";
     const existing = thumbnailRenderers.current.get(participantId);
     if (existing) {
-      existing.dispose().catch(() => {});
+      try{
+        existing.dispose();
+      } catch{}
       thumbnailRenderers.current.delete(participantId);
     }
 
@@ -344,7 +350,7 @@ export default function JurorConferenceClient() {
       } else {
         const participant = participants.find(p => getUserId(p.identifier) === participantId);
         if (!participant) return;
-        const stream = participant.videoStreams?.find(s => s.mediaStreamType === "Video");
+        const stream = participant.videoStreams?.find((s: any) => s.mediaStreamType === "Video");
         if (!stream?.isAvailable) return;
 
         const renderer = new VideoStreamRenderer(stream);
@@ -362,7 +368,9 @@ export default function JurorConferenceClient() {
 
     featuredVideoRef.current.innerHTML = "";
     if (featuredRenderer.current) {
-      featuredRenderer.current.dispose().catch(() => {});
+        try {
+        featuredRenderer.current.dispose();
+      } catch {}
       featuredRenderer.current = null;
     }
 
@@ -377,7 +385,7 @@ export default function JurorConferenceClient() {
       } else {
         const participant = participants.find(p => getUserId(p.identifier) === featuredParticipant);
         if (participant) {
-          const stream = participant.videoStreams?.find(s => s.mediaStreamType === "Video");
+          const stream = participant.videoStreams?.find((s: any) => s.mediaStreamType === "Video");
           if (stream?.isAvailable) {
             const renderer = new VideoStreamRenderer(stream);
             featuredRenderer.current = renderer;

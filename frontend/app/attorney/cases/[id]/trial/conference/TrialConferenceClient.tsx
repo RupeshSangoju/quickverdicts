@@ -287,7 +287,9 @@ export default function TrialConferenceClient() {
     // Clean old
     featuredVideoRef.current.innerHTML = "";
     if (featuredRenderer.current) {
-      featuredRenderer.current.dispose().catch(() => {});
+        try {
+            featuredRenderer.current.dispose();
+        } catch {}
       featuredRenderer.current = null;
     }
 
@@ -787,7 +789,7 @@ export default function TrialConferenceClient() {
 
         setParticipants([...roomCall.remoteParticipants]);
         console.log(
-  `%c[ATTORNEY DASHBOARD CHECK] ${new Date().toISOString()} — Remote participants in call: ${roomCall.remoteParticipants.size}`,
+  `%c[ATTORNEY DASHBOARD CHECK] ${new Date().toISOString()} — Remote participants in call: ${roomCall.remoteParticipants.length}`,
   "background:#006; color:white; padding:8px; font-size:14px; font-weight:bold"
 );
 
