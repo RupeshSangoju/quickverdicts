@@ -25,6 +25,8 @@ import {
 } from "lucide-react";
 import { useWebSocket } from "@/hooks/useWebSocket";
 
+const POLL_INTERVAL_MS = 1500; // Adjust to 2000/3000 if desired to reduce load
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL
   ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api$/, '')
   : "http://localhost:4000";
@@ -81,6 +83,9 @@ export default function JurorConferenceClient() {
   const localVideoStream = useRef<any>(null);
   const remoteVideoRefs = useRef<Map<string, any>>(new Map());
   const participantVideoRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
+  const thumbnailRenderers = useRef<Map<string, VideoStreamRenderer>>(new Map()); // key = participantId or "local"
+  const featuredRenderer = useRef<VideoStreamRenderer | null>(null);
+  const debouncedRenderTrigger = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasInitialized = useRef(false);
   const chatMessagesEndRef = useRef<HTMLDivElement>(null);
   const currentUserId = useRef<string>("");
@@ -222,6 +227,11 @@ export default function JurorConferenceClient() {
         callRef.current.hangUp({ forEveryone: false }).catch((e: any) => console.error("Hangup error:", e));
       }
       remoteVideoRefs.current.forEach((r) => r.renderer?.dispose());
+      // Dispose any thumbnail and featured renderers
+      thumbnailRenderers.current.forEach(r => r?.dispose());
+      thumbnailRenderers.current.clear();
+      featuredRenderer.current?.dispose();
+      featuredRenderer.current = null;
     };
   }, []);
 
@@ -269,106 +279,123 @@ export default function JurorConferenceClient() {
     }
   }
 
+  const triggerReRender = () => {
+    if (debouncedRenderTrigger.current) {
+      clearTimeout(debouncedRenderTrigger.current);
+    }
+    debouncedRenderTrigger.current = setTimeout(() => {
+      setRenderTrigger(prev => prev + 1);
+      debouncedRenderTrigger.current = null;
+    }, 100); // 100ms debounce to avoid loops
+  };
+
   // Clear participant video and show avatar
   function clearParticipantVideo(participantId: string) {
-    console.log(`🧹 Clearing video for ${participantId} - will show avatar`);
+    console.log(`Juror: Clearing video for ${participantId} → showing avatar`);
 
-    // Clear container to remove frozen frame
-    const containerElement = participantVideoRefs.current.get(participantId);
-    if (containerElement) {
-      containerElement.innerHTML = "";
+    const container = participantVideoRefs.current.get(participantId);
+    if (container) {
+      container.innerHTML = "";
+      // Extra force cleanup – removes any lingering video elements
+      while (container.firstChild) {
+        container.removeChild(container.firstChild);
+      }
     }
 
-    // Dispose renderer
-    disposeVideoRenderer(participantId);
+    // Dispose thumbnail renderer safely
+    const thumbRenderer = thumbnailRenderers.current.get(participantId);
+    if (thumbRenderer) {
+        try{
+        thumbRenderer.dispose();
+      } catch {}
+      thumbnailRenderers.current.delete(participantId);
+    }
 
-    // Force re-render if this participant is featured
+    // If featured, clean it too
     if (featuredParticipant === participantId) {
-      setRenderTrigger(prev => prev + 1);
+      if (featuredRenderer.current) {
+        try{
+          featuredRenderer.current.dispose();
+        } catch{}
+        featuredRenderer.current = null;
+      }
+      if (featuredVideoRef.current) {
+        featuredVideoRef.current.innerHTML = "";
+      }
+      triggerReRender();
     }
   }
 
-  // Render participant video in thumbnail
   async function renderParticipantVideoInThumbnail(participantId: string) {
+    const container = participantVideoRefs.current.get(participantId);
+    if (!container) return;
+
+    // Always clean first
+    container.innerHTML = "";
+    const existing = thumbnailRenderers.current.get(participantId);
+    if (existing) {
+      try{
+        existing.dispose();
+      } catch{}
+      thumbnailRenderers.current.delete(participantId);
+    }
+
     try {
-      const containerElement = participantVideoRefs.current.get(participantId);
-      if (!containerElement) return;
-
-      // Clear existing content
-      containerElement.innerHTML = "";
-
-      // Check if this is local participant
       if (participantId === "local") {
-        if (!isVideoOff && localVideoStream.current) {
-          // Local camera is ON - render it
-          const renderer = new VideoStreamRenderer(localVideoStream.current);
-          const view = await renderer.createView({ scalingMode: 'Crop' });
-          containerElement.appendChild(view.target);
-          console.log("✅ Rendered local video in thumbnail");
-        }
-        // If camera is OFF, container stays empty (avatar will show via CSS)
+        if (isVideoOff || !localVideoStream.current) return;
+        const renderer = new VideoStreamRenderer(localVideoStream.current);
+        thumbnailRenderers.current.set("local", renderer);
+        const view = await renderer.createView({ scalingMode: 'Crop' });
+        container.appendChild(view.target);
       } else {
-        // Remote participant
-        const participant = participants.find((p: any) => getUserId(p.identifier) === participantId);
-        if (participant && participant.videoStreams) {
-          const videoStream = participant.videoStreams.find((s: any) => s.mediaStreamType === "Video");
-          if (videoStream && videoStream.isAvailable) {
-            // Remote camera is ON - render it
-            const renderer = new VideoStreamRenderer(videoStream);
-            const view = await renderer.createView({ scalingMode: 'Crop' });
-            containerElement.appendChild(view.target);
-            console.log(`✅ Rendered remote video in thumbnail for ${participantId}`);
-          }
-        }
-        // If no video or camera OFF, container stays empty (avatar will show via CSS)
+        const participant = participants.find(p => getUserId(p.identifier) === participantId);
+        if (!participant) return;
+        const stream = participant.videoStreams?.find((s: any) => s.mediaStreamType === "Video");
+        if (!stream?.isAvailable) return;
+
+        const renderer = new VideoStreamRenderer(stream);
+        thumbnailRenderers.current.set(participantId, renderer);
+        const view = await renderer.createView({ scalingMode: 'Crop' });
+        container.appendChild(view.target);
       }
     } catch (err) {
-      console.error(`Error rendering thumbnail for ${participantId}:`, err);
+      console.error("Juror thumbnail render failed:", err);
     }
   }
 
   async function renderFeaturedVideo() {
     if (!featuredVideoRef.current) return;
 
-    try {
-      featuredVideoRef.current.innerHTML = "";
+    featuredVideoRef.current.innerHTML = "";
+    if (featuredRenderer.current) {
+        try {
+        featuredRenderer.current.dispose();
+      } catch {}
+      featuredRenderer.current = null;
+    }
 
-      if (featuredParticipant && featuredParticipant.startsWith("screenshare-")) {
-        // Remote screenshare
-        const remoteRef = remoteVideoRefs.current.get(featuredParticipant);
-        if (remoteRef?.stream && remoteRef.stream.isAvailable) {
-          const renderer = new VideoStreamRenderer(remoteRef.stream);
-          const view = await renderer.createView();
-          featuredVideoRef.current.appendChild(view.target);
-          console.log(`✅ Featured: Remote screenshare ${featuredParticipant}`);
-        }
-      } else if (featuredParticipant === "local") {
-        // Local participant in main view
+    try {
+      if (featuredParticipant === "local") {
         if (!isVideoOff && localVideoStream.current) {
           const renderer = new VideoStreamRenderer(localVideoStream.current);
+          featuredRenderer.current = renderer;
           const view = await renderer.createView();
           featuredVideoRef.current.appendChild(view.target);
-          console.log("✅ Featured: Local video ON");
-        } else {
-          console.log("📹 Featured: Local video OFF - showing avatar");
         }
-      } else if (featuredParticipant && featuredParticipant !== "screenshare") {
-        // Remote participant in main view
-        const participant = participants.find((p: any) => getUserId(p.identifier) === featuredParticipant);
-        if (participant && participant.videoStreams) {
-          const videoStream = participant.videoStreams.find((s: any) => s.mediaStreamType === "Video");
-          if (videoStream && videoStream.isAvailable) {
-            const renderer = new VideoStreamRenderer(videoStream);
+      } else {
+        const participant = participants.find(p => getUserId(p.identifier) === featuredParticipant);
+        if (participant) {
+          const stream = participant.videoStreams?.find((s: any) => s.mediaStreamType === "Video");
+          if (stream?.isAvailable) {
+            const renderer = new VideoStreamRenderer(stream);
+            featuredRenderer.current = renderer;
             const view = await renderer.createView();
             featuredVideoRef.current.appendChild(view.target);
-            console.log(`✅ Featured: Remote video ON for ${featuredParticipant}`);
-          } else {
-            console.log(`📹 Featured: Remote video OFF for ${featuredParticipant} - showing avatar`);
           }
         }
       }
     } catch (err) {
-      console.error("Featured video render error:", err);
+      console.error("Juror featured render failed:", err);
     }
   }
 
@@ -497,7 +524,7 @@ export default function JurorConferenceClient() {
         setCallState(roomCall.state);
         if (roomCall.state === "Connected") {
           setIsMuted(roomCall.isMuted);
-          setRenderTrigger(prev => prev + 1);
+          triggerReRender();
         }
       });
 
@@ -538,24 +565,30 @@ export default function JurorConferenceClient() {
 
           participant.on('videoStreamsUpdated', async (streamEvent: any) => {
             streamEvent.added.forEach(async (stream: any) => {
-              if (stream.mediaStreamType === 'Video') {
-                // Update state immediately
-                setParticipantVideoStates(prev => {
-                  const updated = new Map(prev);
-                  updated.set(userId, stream.isAvailable);
-                  return updated;
-                });
+                if (stream.mediaStreamType === "Video") {
+                setParticipantVideoStates(prev => new Map(prev).set(userId, stream.isAvailable));
 
-                // Listen for camera toggle events
-                stream.on('isAvailableChanged', async () => {
-                  console.log(`📹 ${userId} camera ${stream.isAvailable ? 'ON' : 'OFF'}`);
+                if (stream.isAvailable) {
+                  await renderParticipantVideoInThumbnail(userId);
+                  if (featuredParticipant === userId) {
+                    await renderFeaturedVideo();
+                  }
+                }
 
-                  // Update state
-                  setParticipantVideoStates(prev => {
-                    const updated = new Map(prev);
-                    updated.set(userId, stream.isAvailable);
-                    return updated;
-                  });
+                // Attach listener for toggles
+                stream.on("isAvailableChanged", async () => {
+                  console.log(`Juror: Remote ${userId} camera changed → ${stream.isAvailable ? 'ON' : 'OFF'}`);
+                  
+                  setParticipantVideoStates(prev => new Map(prev).set(userId, stream.isAvailable));
+
+                  if (stream.isAvailable) {
+                    await renderParticipantVideoInThumbnail(userId);
+                    if (featuredParticipant === userId) {
+                      await renderFeaturedVideo();
+                    }
+                  } else {
+                    clearParticipantVideo(userId);
+                  }
                 });
               } else if (stream.mediaStreamType === 'ScreenSharing') {
                 // Remote participant started screensharing
@@ -571,28 +604,28 @@ export default function JurorConferenceClient() {
                   disposed: false
                 });
 
-                if (stream.isAvailable) {
+                  if (stream.isAvailable) {
                   // Stream is available, show it immediately
                   console.log(`✅ Screenshare is available, showing immediately`);
                   setFeaturedParticipant(screenshareKey);
                   setPinnedParticipant(screenshareKey);
-                  setRenderTrigger(prev => prev + 1);
+                  triggerReRender();
                 } else {
                   // Wait for stream to become available
                   console.log(`⏳ Screenshare not yet available, waiting...`);
                   stream.on("isAvailableChanged", async () => {
                     console.log(`📺 Screenshare availability changed: ${stream.isAvailable}`);
-                    if (stream.isAvailable) {
-                      setFeaturedParticipant(screenshareKey);
-                      setPinnedParticipant(screenshareKey);
-                      setRenderTrigger(prev => prev + 1);
+                      if (stream.isAvailable) {
+                        setFeaturedParticipant(screenshareKey);
+                        setPinnedParticipant(screenshareKey);
+                        triggerReRender();
                     } else {
                       // Screenshare stopped
                       if (featuredParticipant === screenshareKey) {
                         setFeaturedParticipant("local");
                         setPinnedParticipant(null);
                       }
-                      setRenderTrigger(prev => prev + 1);
+                      triggerReRender();
                     }
                   });
                 }
@@ -600,13 +633,9 @@ export default function JurorConferenceClient() {
             });
 
             streamEvent.removed.forEach((stream: any) => {
-              if (stream.mediaStreamType === 'Video') {
-                // Video stream removed
-                setParticipantVideoStates(prev => {
-                  const updated = new Map(prev);
-                  updated.set(userId, false);
-                  return updated;
-                });
+              if (stream.mediaStreamType === "Video") {
+                clearParticipantVideo(userId);
+                setParticipantVideoStates(prev => new Map(prev).set(userId, false));
               } else if (stream.mediaStreamType === 'ScreenSharing') {
                 const key = `screenshare-${userId}`;
                 const ref = remoteVideoRefs.current.get(key);
@@ -618,7 +647,7 @@ export default function JurorConferenceClient() {
                   featuredVideoRef.current.innerHTML = "";
                 }
                 setFeaturedParticipant("local");
-                setRenderTrigger(prev => prev + 1);
+                triggerReRender();
               }
             });
           });
@@ -645,22 +674,22 @@ export default function JurorConferenceClient() {
                 disposed: false
               });
 
-              if (stream.isAvailable) {
+                if (stream.isAvailable) {
                 // Stream is available, show it immediately
                 console.log(`✅ Existing screenshare is available, showing immediately`);
                 setFeaturedParticipant(screenshareKey);
                 setPinnedParticipant(screenshareKey);
-                setRenderTrigger(prev => prev + 1);
+                triggerReRender();
               } else {
                 // Wait for stream to become available
                 console.log(`⏳ Existing screenshare not yet available, waiting...`);
                 stream.on("isAvailableChanged", async () => {
                   console.log(`📺 Existing screenshare availability changed: ${stream.isAvailable}`);
                   if (stream.isAvailable) {
-                    setFeaturedParticipant(screenshareKey);
-                    setPinnedParticipant(screenshareKey);
-                    setRenderTrigger(prev => prev + 1);
-                  }
+                      setFeaturedParticipant(screenshareKey);
+                      setPinnedParticipant(screenshareKey);
+                      triggerReRender();
+                    }
                 });
               }
             }
@@ -837,6 +866,56 @@ export default function JurorConferenceClient() {
     return colors[hash % colors.length];
   };
 
+  // Polling fallback for remote video state changes (attorney/admin camera toggles)
+  // This ensures juror sees updates even if ACS events are missed
+  useEffect(() => {
+    if (!call || call.state !== "Connected" || participants.length === 0) return;
+
+    console.log("[JUROR POLL START] Checking attorney/admin camera states every 1.5s");
+
+    const pollInterval = setInterval(async () => {
+      let hasChange = false;
+
+      participants.forEach((p: any) => {
+        const userId = getUserId(p.identifier);
+        if (userId === "local") return; // skip self
+
+        const videoStream = p.videoStreams?.find((s: any) => s.mediaStreamType === "Video");
+        const currentAvailable = !!videoStream?.isAvailable;
+
+        const previousAvailable = participantVideoStates.get(userId);
+
+        if (previousAvailable !== currentAvailable) {
+          console.log(
+            `%c[JUROR POLLER DETECTED] Remote ${userId} (attorney/admin) camera: ${previousAvailable ? 'ON' : 'OFF'} → ${currentAvailable ? 'ON 🟢' : 'OFF 🔴'}`,
+            "background:#006600; color:white; padding:6px; font-weight:bold"
+          );
+
+          setParticipantVideoStates(prev => new Map(prev).set(userId, currentAvailable));
+          hasChange = true;
+
+          if (currentAvailable) {
+            renderParticipantVideoInThumbnail(userId);
+            if (featuredParticipant === userId) {
+              renderFeaturedVideo();
+            }
+          } else {
+            clearParticipantVideo(userId);
+          }
+        }
+      });
+
+      if (hasChange) {
+        triggerReRender();
+      }
+    }, POLL_INTERVAL_MS); // 1.5 seconds – fast enough to feel instant
+
+    return () => {
+      clearInterval(pollInterval);
+      console.log("[JUROR POLL STOP]");
+    };
+  }, [call?.state, participants, featuredParticipant, participantVideoStates, renderTrigger]);
+
   if (loading) {
     return (
       <div className="h-screen flex items-center justify-center" style={{ backgroundColor: "#f0ebe0" }}>
@@ -910,6 +989,8 @@ export default function JurorConferenceClient() {
     })),
     ...screenShareParticipants
   ];
+
+  
 
   return (
     <div className="h-screen flex flex-col overflow-hidden" style={{ backgroundColor: "#f0ebe0" }}>

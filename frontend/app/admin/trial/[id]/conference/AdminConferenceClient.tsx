@@ -114,6 +114,9 @@ export default function AdminConferenceClient() {
   const screenShareRenderer = useRef<any>(null);
   const remoteVideoRefs = useRef<Map<string, any>>(new Map());
   const participantVideoRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
+  const thumbnailRenderers = useRef<Map<string, VideoStreamRenderer>>(new Map()); // key = participantId or "local"
+  const featuredRenderer = useRef<VideoStreamRenderer | null>(null);
+  const debouncedRenderTrigger = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasInitialized = useRef(false);
   const chatMessagesEndRef = useRef<HTMLDivElement>(null);
   const currentUserId = useRef<string>("");
@@ -122,6 +125,7 @@ export default function AdminConferenceClient() {
 
   // WebSocket for real-time jury charge updates
   const { on, off, joinRoom, leaveRoom, isConnected } = useWebSocket();
+
 
   useEffect(() => {
     if (!isConnected || !caseId) return;
@@ -241,117 +245,291 @@ export default function AdminConferenceClient() {
     }
   }
 
-  // Clear participant video and show avatar
-  function clearParticipantVideo(participantId: string) {
-    console.log(`🧹 Clearing video for ${participantId} - will show avatar`);
-
-    // Clear container to remove frozen frame
-    const containerElement = participantVideoRefs.current.get(participantId);
-    if (containerElement) {
-      containerElement.innerHTML = "";
+  const triggerReRender = () => {
+    if (debouncedRenderTrigger.current) {
+      clearTimeout(debouncedRenderTrigger.current);
     }
+    debouncedRenderTrigger.current = setTimeout(() => {
+      setRenderTrigger(prev => prev + 1);
+      debouncedRenderTrigger.current = null;
+    }, 100); // 100ms debounce – prevents render storms
+  };
+
+  // Mirror local camera state into participantVideoStates so avatar logic can rely on the same map
+  useEffect(() => {
+    setParticipantVideoStates(prev => {
+      const updated = new Map(prev);
+      updated.set("local", !isVideoOff); // true when camera is on
+      return updated;
+    });
+  }, [isVideoOff]);
+
+  // Unmount cleanup: dispose any active renderers to avoid frozen frames
+  useEffect(() => {
+    return () => {
+      console.log("AdminConferenceClient unmounting – cleaning up renderers");
+
+      // Dispose all thumbnail renderers
+      thumbnailRenderers.current.forEach((renderer, id) => {
+        try {
+          renderer?.dispose();
+        } catch (e) {
+          console.warn(`Unmount dispose error for ${id}:`, e);
+        }
+      });
+      thumbnailRenderers.current.clear();
+
+      // Dispose featured renderer
+      if (featuredRenderer.current) {
+        try { featuredRenderer.current.dispose(); } catch (_) {}
+        featuredRenderer.current = null;
+      }
+
+      // Dispose screen share renderer if exists
+      if (screenShareRenderer.current) {
+        try { screenShareRenderer.current.dispose(); } catch (_) {}
+        screenShareRenderer.current = null;
+      }
+
+      // Optional: stop local stream tracks
+      try {
+        localVideoStream.current?.getMediaStream()?.getTracks().forEach((t: any) => t.stop());
+      } catch (_) {}
+    };
+  }, []);
+
+  // Clear participant video and show avatar
+function clearParticipantVideo(participantId: string) {
+  console.log(`ADMIN CLEAR: Clearing ${participantId} → should show normal/avatar`);
+
+  const isScreenshare = participantId.startsWith("screenshare-") || participantId === "screenshare";
+
+  // 1. Clean remoteVideoRefs entry for screenshare
+  if (isScreenshare) {
+    const ref = remoteVideoRefs.current.get(participantId);
+    if (ref) {
+      try {
+        ref.renderer?.dispose();
+        console.log(`ADMIN CLEAR: Disposed renderer for screenshare ${participantId}`);
+      } catch (e) {
+        console.warn(`Dispose failed for ${participantId}:`, e);
+      }
+      // Stop any lingering tracks
+      if (ref.stream) {
+        ref.stream.getTracks?.().forEach((t: MediaStreamTrack) => t.stop?.());
+      }
+      remoteVideoRefs.current.delete(participantId);
+      console.log(`ADMIN CLEAR: Deleted remoteVideoRefs entry for ${participantId}`);
+    }
+  }
+
+  // 2. Clean thumbnail container (if exists)
+  const container = participantVideoRefs.current.get(participantId);
+  if (container) {
+    container.innerHTML = "";
+    while (container.firstChild) {
+      container.removeChild(container.firstChild);
+    }
+    container.replaceChildren(); // Extra force-clear
+
+    const videos = container.querySelectorAll('video');
+    videos.forEach(v => {
+      v.pause();
+      if (v.srcObject instanceof MediaStream) {
+        v.srcObject.getTracks().forEach(t => t.stop());
+      }
+      v.srcObject = null;
+      v.removeAttribute('src');
+      v.load();
+      v.remove(); // Extra: remove the node completely
+    });
+
+    console.log(
+      `ADMIN CLEAR: Thumbnail container for ${participantId} cleaned – children left: ${container.children.length}`
+    );
+  }
+
+  // 3. Featured view cleanup (critical for main screen freeze)
+  if (featuredParticipant === participantId) {
+    console.log(`ADMIN CLEAR: Featured participant matches ${participantId} → aggressive featured cleanup`);
 
     // Dispose renderer
-    disposeVideoRenderer(participantId);
-
-    // Force re-render if this participant is featured
-    if (featuredParticipant === participantId) {
-      setRenderTrigger(prev => prev + 1);
-    }
-  }
-
-  // Render participant video in thumbnail
-  async function renderParticipantVideoInThumbnail(participantId: string) {
-    try {
-      const containerElement = participantVideoRefs.current.get(participantId);
-      if (!containerElement) return;
-
-      // Clear existing content
-      containerElement.innerHTML = "";
-
-      // Check if this is local participant
-      if (participantId === "local") {
-        if (!isVideoOff && localVideoStream.current) {
-          // Local camera is ON - render it
-          const renderer = new VideoStreamRenderer(localVideoStream.current);
-          const view = await renderer.createView({ scalingMode: 'Crop' });
-          containerElement.appendChild(view.target);
-          console.log("✅ Rendered local video in thumbnail");
-        }
-        // If camera is OFF, container stays empty (avatar will show via CSS)
-      } else {
-        // Remote participant
-        const participant = participants.find((p: any) => getUserId(p.identifier) === participantId);
-        if (participant && participant.videoStreams) {
-          const videoStream = participant.videoStreams.find((s: any) => s.mediaStreamType === "Video");
-          if (videoStream && videoStream.isAvailable) {
-            // Remote camera is ON - render it
-            const renderer = new VideoStreamRenderer(videoStream);
-            const view = await renderer.createView({ scalingMode: 'Crop' });
-            containerElement.appendChild(view.target);
-            console.log(`✅ Rendered remote video in thumbnail for ${participantId}`);
-          }
-        }
-        // If no video or camera OFF, container stays empty (avatar will show via CSS)
+    if (featuredRenderer.current) {
+      try {
+        featuredRenderer.current.dispose();
+        console.log("ADMIN CLEAR: Featured renderer disposed");
+      } catch (e) {
+        console.warn("Featured dispose failed:", e);
       }
-    } catch (err) {
-      console.error(`Error rendering thumbnail for ${participantId}:`, err);
+      featuredRenderer.current = null;
     }
-  }
 
-  async function renderFeaturedVideo() {
-    if (!featuredVideoRef.current) return;
-
-    try {
+    // Aggressive DOM clear for featured
+    if (featuredVideoRef.current) {
+      // Step 1: innerHTML + loop
       featuredVideoRef.current.innerHTML = "";
-
-      if (featuredParticipant === "screenshare" && screenShareStream.current) {
-        // Local screenshare
-        if (screenShareRenderer.current) {
-          screenShareRenderer.current.dispose();
-        }
-        screenShareRenderer.current = new VideoStreamRenderer(screenShareStream.current);
-        const view = await screenShareRenderer.current.createView();
-        featuredVideoRef.current.appendChild(view.target);
-        console.log("✅ Featured: Local screenshare");
-      } else if (featuredParticipant && featuredParticipant.startsWith("screenshare-")) {
-        // Remote screenshare
-        const remoteRef = remoteVideoRefs.current.get(featuredParticipant);
-        if (remoteRef?.stream && remoteRef.stream.isAvailable) {
-          const renderer = new VideoStreamRenderer(remoteRef.stream);
-          const view = await renderer.createView();
-          featuredVideoRef.current.appendChild(view.target);
-          console.log(`✅ Featured: Remote screenshare ${featuredParticipant}`);
-        }
-      } else if (featuredParticipant === "local") {
-        // Local participant in main view
-        if (!isVideoOff && localVideoStream.current) {
-          const renderer = new VideoStreamRenderer(localVideoStream.current);
-          const view = await renderer.createView();
-          featuredVideoRef.current.appendChild(view.target);
-          console.log("✅ Featured: Local video ON");
-        } else {
-          console.log("📹 Featured: Local video OFF - showing avatar");
-        }
-      } else if (featuredParticipant && featuredParticipant !== "screenshare") {
-        // Remote participant in main view
-        const participant = participants.find((p: any) => getUserId(p.identifier) === featuredParticipant);
-        if (participant && participant.videoStreams) {
-          const videoStream = participant.videoStreams.find((s: any) => s.mediaStreamType === "Video");
-          if (videoStream && videoStream.isAvailable) {
-            const renderer = new VideoStreamRenderer(videoStream);
-            const view = await renderer.createView();
-            featuredVideoRef.current.appendChild(view.target);
-            console.log(`✅ Featured: Remote video ON for ${featuredParticipant}`);
-          } else {
-            console.log(`📹 Featured: Remote video OFF for ${featuredParticipant} - showing avatar`);
-          }
-        }
+      while (featuredVideoRef.current.firstChild) {
+        featuredVideoRef.current.removeChild(featuredVideoRef.current.firstChild);
       }
-    } catch (err) {
-      console.error("Featured video render error:", err);
+
+      // Step 2: replaceChildren + query + remove
+      featuredVideoRef.current.replaceChildren();
+
+      const featuredVideos = featuredVideoRef.current.querySelectorAll('video');
+      featuredVideos.forEach(v => {
+        v.pause();
+        if (v.srcObject instanceof MediaStream) {
+          v.srcObject.getTracks().forEach(t => t.stop());
+        }
+        v.srcObject = null;
+        v.removeAttribute('src');
+        v.load();
+        v.remove(); // Remove node from DOM completely
+      });
+
+      console.log(
+        `ADMIN CLEAR: Featured container for ${participantId} cleaned – children left: ${featuredVideoRef.current.children.length}, videos removed: ${featuredVideos.length}`
+      );
+    }
+
+    // Reset featured state
+    setFeaturedParticipant("local");
+    setPinnedParticipant(null);
+    triggerReRender();
+  }
+
+  // Final force re-render (helps React re-evaluate avatar condition)
+  triggerReRender();
+  console.log(`ADMIN CLEAR: Finished for ${participantId} – re-render triggered`);
+}
+
+
+// Dispose featured renderer
+// Safe dispose for featured
+function disposeFeaturedRenderer() {
+  if (featuredRenderer.current) {
+    try {
+      featuredRenderer.current.dispose();
+      console.log("Featured renderer disposed successfully");
+    } catch (e) {
+      // Ignore "already disposed" error – it's harmless
+      if(e instanceof Error){
+      if (e.message?.includes("already disposed")) {
+        console.log("Featured renderer already disposed – ignoring");
+      } else {
+        console.warn("Featured dispose warning:", e);
+      }
+    }
+    else{
+      console.warn("Non-Error thrown during dispose:", e);
     }
   }
+    featuredRenderer.current = null;
+  }
+}
+
+// Safe dispose for thumbnail (per participant)
+function disposeThumbnailRenderer(participantId: string) {
+  const renderer = thumbnailRenderers.current.get(participantId);
+  if (renderer) {
+    try {
+      renderer.dispose();
+      console.log(`Thumbnail renderer for ${participantId} disposed`);
+    } catch (e) {
+      if (e instanceof Error && e.message.includes("already disposed")) {
+        console.log(`Thumbnail for ${participantId} already disposed – ignoring`);
+      } else {
+        console.warn(`Thumbnail dispose warning for ${participantId}:`, e);
+      }
+    }
+    thumbnailRenderers.current.delete(participantId);
+  }
+}
+
+async function renderParticipantVideoInThumbnail(participantId: string) {
+  const container = participantVideoRefs.current.get(participantId);
+  if (!container) return;
+
+  // Clean first
+  container.innerHTML = "";
+  const existing = thumbnailRenderers.current.get(participantId);
+  if (existing) {
+        try {
+      existing.dispose();
+    } catch (_) {}
+    thumbnailRenderers.current.delete(participantId);
+  }
+
+  try {
+    if (participantId === "local") {
+      if (isVideoOff || !localVideoStream.current) return;
+      const renderer = new VideoStreamRenderer(localVideoStream.current);
+      thumbnailRenderers.current.set("local", renderer);
+      const view = await renderer.createView({ scalingMode: 'Crop' });
+      container.appendChild(view.target);
+    } else {
+      const participant = participants.find(p => getUserId(p.identifier) === participantId);
+      if (!participant) return;
+      const stream = (participant.videoStreams as any[])?.find((s) => s.mediaStreamType === "Video");
+      if (!stream?.isAvailable) return;
+
+      const renderer = new VideoStreamRenderer(stream);
+      thumbnailRenderers.current.set(participantId, renderer);
+      const view = await renderer.createView({ scalingMode: 'Crop' });
+      container.appendChild(view.target);
+    }
+  } catch (err) {
+    console.error("Thumbnail render failed:", err);
+  }
+}
+
+async function renderFeaturedVideo() {
+  if (!featuredVideoRef.current) return;
+
+  // Clean old
+  featuredVideoRef.current.innerHTML = "";
+  if (featuredRenderer.current) {
+    featuredRenderer.current.dispose();
+    featuredRenderer.current = null;
+  }
+
+  try {
+    if (featuredParticipant === "screenshare" && screenShareStream.current) {
+      const renderer = new VideoStreamRenderer(screenShareStream.current);
+      featuredRenderer.current = renderer;
+      const view = await renderer.createView();
+      featuredVideoRef.current.appendChild(view.target);
+    } else if (featuredParticipant?.startsWith("screenshare-")) {
+      const ref = remoteVideoRefs.current.get(featuredParticipant);
+      if (ref?.stream?.isAvailable) {
+        const renderer = new VideoStreamRenderer(ref.stream);
+        featuredRenderer.current = renderer;
+        const view = await renderer.createView();
+        featuredVideoRef.current.appendChild(view.target);
+      }
+    } else if (featuredParticipant === "local") {
+      if (!isVideoOff && localVideoStream.current) {
+        const renderer = new VideoStreamRenderer(localVideoStream.current);
+        featuredRenderer.current = renderer;
+        const view = await renderer.createView();
+        featuredVideoRef.current.appendChild(view.target);
+      }
+    } else {
+      const participant = participants.find(p => getUserId(p.identifier) === featuredParticipant);
+      if (participant) {
+        const stream = participant.videoStreams?.find((s: any) => s.mediaStreamType === "Video");
+        if (stream?.isAvailable) {
+          const renderer = new VideoStreamRenderer(stream);
+          featuredRenderer.current = renderer;
+          const view = await renderer.createView();
+          featuredVideoRef.current.appendChild(view.target);
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Featured render failed:", err);
+  }
+}
 
   useEffect(() => {
     renderFeaturedVideo();
@@ -359,7 +537,8 @@ export default function AdminConferenceClient() {
 
   // Render all participant thumbnails when participants or camera states change
   useEffect(() => {
-    // Render local participant thumbnail
+    // Render local
+    //  participant thumbnail
     renderParticipantVideoInThumbnail("local");
 
     // Render remote participant thumbnails
@@ -504,7 +683,7 @@ export default function AdminConferenceClient() {
         setCallState(roomCall.state);
         if (roomCall.state === "Connected") {
           setIsMuted(roomCall.isMuted);
-          setRenderTrigger(prev => prev + 1);
+          triggerReRender();
         }
       });
 
@@ -514,7 +693,7 @@ export default function AdminConferenceClient() {
           if (stream.mediaStreamType === "ScreenSharing") {
             screenShareStream.current = stream;
             setFeaturedParticipant("screenshare");
-            setRenderTrigger(prev => prev + 1);
+            triggerReRender();
           }
         });
 
@@ -530,7 +709,7 @@ export default function AdminConferenceClient() {
             screenShareStream.current = null;
             setIsScreenSharing(false);
             setFeaturedParticipant("local");
-            setTimeout(() => setRenderTrigger(prev => prev + 1), 50);
+            setTimeout(() => triggerReRender(), 50);
           }
         });
       });
@@ -576,34 +755,34 @@ export default function AdminConferenceClient() {
           participant.on("videoStreamsUpdated", (streamEvent: any) => {
             streamEvent.added.forEach(async (stream: any) => {
               if (stream.mediaStreamType === "Video") {
-                // Update state immediately
-                setParticipantVideoStates(prev => {
-                  const updated = new Map(prev);
-                  updated.set(userId, stream.isAvailable);
-                  return updated;
-                });
+                console.log(`ADMIN: Video stream added for ${userId}, isAvailable: ${stream.isAvailable}`);
 
-                // Render if available now
+                setParticipantVideoStates(prev => new Map(prev).set(userId, stream.isAvailable));
+
+                // Render if available
                 if (stream.isAvailable) {
+                  console.log(`ADMIN: Rendering thumbnail & featured for ${userId} (available)`);
                   await renderParticipantVideoInThumbnail(userId);
+                  if (featuredParticipant === userId) {
+                    await renderFeaturedVideo();
+                  }
                 }
 
-                // Listen for camera toggle events
+                // Attach listener — this MUST fire when remote stops video
                 stream.on("isAvailableChanged", async () => {
-                  console.log(`📹 ${userId} camera ${stream.isAvailable ? 'ON' : 'OFF'}`);
+                  const ts = new Date().toISOString();
+                  console.log(`ADMIN EVENT: [${ts}] Remote ${userId} video isAvailable changed → ${stream.isAvailable ? 'ON' : 'OFF'}`);
 
-                  // Update state
-                  setParticipantVideoStates(prev => {
-                    const updated = new Map(prev);
-                    updated.set(userId, stream.isAvailable);
-                    return updated;
-                  });
+                  setParticipantVideoStates(prev => new Map(prev).set(userId, stream.isAvailable));
 
                   if (stream.isAvailable) {
-                    // Camera ON - render video
+                    console.log(`ADMIN EVENT: Rendering video for ${userId} (now ON)`);
                     await renderParticipantVideoInThumbnail(userId);
+                    if (featuredParticipant === userId) {
+                      await renderFeaturedVideo();
+                    }
                   } else {
-                    // Camera OFF - clear and show avatar
+                    console.log(`ADMIN EVENT: Clearing video for ${userId} (now OFF)`);
                     clearParticipantVideo(userId);
                   }
                 });
@@ -626,7 +805,7 @@ export default function AdminConferenceClient() {
                   console.log(`✅ Screenshare is available, showing immediately`);
                   setFeaturedParticipant(screenshareKey);
                   setPinnedParticipant(screenshareKey);
-                  setRenderTrigger(prev => prev + 1);
+                  triggerReRender();
                 } else {
                   // Wait for stream to become available
                   console.log(`⏳ Screenshare not yet available, waiting...`);
@@ -635,14 +814,23 @@ export default function AdminConferenceClient() {
                     if (stream.isAvailable) {
                       setFeaturedParticipant(screenshareKey);
                       setPinnedParticipant(screenshareKey);
-                      setRenderTrigger(prev => prev + 1);
-                    } else {
+                      triggerReRender();
+                      } else {
                       // Screenshare stopped
-                      if (featuredParticipant === screenshareKey) {
-                        setFeaturedParticipant("local");
-                        setPinnedParticipant(null);
-                      }
-                      setRenderTrigger(prev => prev + 1);
+                        console.log(`📺 SCREENSHARE STOPPED – cleaning up ${screenshareKey}`);
+                          clearParticipantVideo(screenshareKey);  // ← Add this line
+
+                          const ref = remoteVideoRefs.current.get(screenshareKey);
+                          if (ref) {
+                            try { ref.renderer?.dispose(); } catch {}
+                            remoteVideoRefs.current.delete(screenshareKey);
+                          }
+
+                          if (featuredParticipant === screenshareKey) {
+                            setFeaturedParticipant("local");
+                            setPinnedParticipant(null);
+                          }
+                          triggerReRender();
                     }
                   });
                 }
@@ -651,13 +839,10 @@ export default function AdminConferenceClient() {
 
             streamEvent.removed.forEach((stream: any) => {
               if (stream.mediaStreamType === "Video") {
+                console.log(`ADMIN: Video stream REMOVED for ${userId} → clearing`);
                 // Video stream removed - clear and show avatar
                 clearParticipantVideo(userId);
-                setParticipantVideoStates(prev => {
-                  const updated = new Map(prev);
-                  updated.set(userId, false);
-                  return updated;
-                });
+                setParticipantVideoStates(prev => new Map(prev).set(userId, false));
               } else if (stream.mediaStreamType === "ScreenSharing") {
                 const key = `screenshare-${userId}`;
                 const ref = remoteVideoRefs.current.get(key);
@@ -669,7 +854,7 @@ export default function AdminConferenceClient() {
                   featuredVideoRef.current.innerHTML = "";
                 }
                 setFeaturedParticipant("local");
-                setRenderTrigger(prev => prev + 1);
+                triggerReRender();
               }
             });
           });
@@ -677,16 +862,29 @@ export default function AdminConferenceClient() {
           // Process existing streams
           participant.videoStreams.forEach(async (stream: any) => {
             if (stream.mediaStreamType === "Video") {
+              console.log(`ADMIN: Existing video stream for ${userId}, isAvailable: ${stream.isAvailable}`);
+
               // Set initial video state
-              setParticipantVideoStates(prev => {
-                const updated = new Map(prev);
-                updated.set(userId, stream.isAvailable);
-                return updated;
-              });
+              setParticipantVideoStates(prev => new Map(prev).set(userId, stream.isAvailable));
 
               if (stream.isAvailable) {
                 await renderParticipantVideoInThumbnail(userId);
               }
+
+              // Attach listener to existing stream too
+              stream.on("isAvailableChanged", async () => {
+                const ts = new Date().toISOString();
+                console.log(`ADMIN EVENT (existing): [${ts}] Remote ${userId} video → ${stream.isAvailable ? 'ON' : 'OFF'}`);
+
+                setParticipantVideoStates(prev => new Map(prev).set(userId, stream.isAvailable));
+
+                if (stream.isAvailable) {
+                  await renderParticipantVideoInThumbnail(userId);
+                  if (featuredParticipant === userId) await renderFeaturedVideo();
+                } else {
+                  clearParticipantVideo(userId);
+                }
+              });
             } else if (stream.mediaStreamType === "ScreenSharing") {
               // Process existing screenshare when participant joins late
               console.log(`📺 Existing screenshare detected from ${userId}, isAvailable: ${stream.isAvailable}`);
@@ -701,12 +899,12 @@ export default function AdminConferenceClient() {
                 disposed: false
               });
 
-              if (stream.isAvailable) {
+                if (stream.isAvailable) {
                 // Stream is available, show it immediately
                 console.log(`✅ Existing screenshare is available, showing immediately`);
                 setFeaturedParticipant(screenshareKey);
                 setPinnedParticipant(screenshareKey);
-                setRenderTrigger(prev => prev + 1);
+                triggerReRender();
               } else {
                 // Wait for stream to become available
                 console.log(`⏳ Existing screenshare not yet available, waiting...`);
@@ -715,7 +913,7 @@ export default function AdminConferenceClient() {
                   if (stream.isAvailable) {
                     setFeaturedParticipant(screenshareKey);
                     setPinnedParticipant(screenshareKey);
-                    setRenderTrigger(prev => prev + 1);
+                    triggerReRender();
                   }
                 });
               }
@@ -1546,7 +1744,7 @@ export default function AdminConferenceClient() {
             </div>
           )}
           {featuredParticipant !== "local" && !featuredParticipant?.startsWith("screenshare") && participantVideoStates.get(featuredParticipant) !== true && (
-            <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
+            <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center z-10">
               <div className="text-center">
                 <div className={`w-40 h-40 rounded-full bg-gradient-to-br ${getAvatarColor(allParticipants.find(p => p.id === featuredParticipant)?.displayName || "User")} flex items-center justify-center mb-4 shadow-2xl`}>
                   <span className="text-white text-6xl font-bold">
