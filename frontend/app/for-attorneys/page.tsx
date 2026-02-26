@@ -141,7 +141,7 @@ export default function ForAttorneys() {
                   <div>
                     <h3 className="font-bold text-gray-900 mb-1">Create Your Case</h3>
                     <p className="text-gray-600">Log in to your Quick Verdicts dashboard to see your cases and their status. <br></br>
-                      Click +Create Case to start a new one and schedule it for “trial.”
+                      Click Create Case to start a new one and schedule it for “trial.”
                     </p>
                   </div>
                 </div>
