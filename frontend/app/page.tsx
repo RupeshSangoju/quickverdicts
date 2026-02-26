@@ -61,11 +61,7 @@ export default function QuickVerdictsLanding() {
             </h1>
 
             <p className="text-[18px] leading-[1.6] font-medium text-gray-600 max-w-3xl mx-auto mb-10">
-              Quick Verdicts connects attorneys with verified jurors
-              <br />
-              to resolve legally binding small claims cases online
-              <br />
-              faster, fairer, and more efficiently.
+Quick Verdicts connects attorneys with screened mock jurors for case presentation, deliberation and a final mock verdict.  Jurors are screened.  Mock trials are timed.  Costs are low. <br /> Currently serving cases in Texas.
             </p>
 
             <Link
@@ -94,7 +90,7 @@ export default function QuickVerdictsLanding() {
                 {/* Thumbnail */}
                 <img src="/images/hammer.png" className="w-full h-full object-cover"/>
 
-                {/* Play Button Overlay */}
+                {/* Play Button Overlay 
                 <button
                   onClick={() => setIsPlaying(true)}
                   className="absolute inset-0 flex items-center justify-center cursor-pointer bg-black/30 hover:bg-black/40 transition"
@@ -103,6 +99,7 @@ export default function QuickVerdictsLanding() {
                     <Play className="w-10 h-10 text-gray-900 ml-1" fill="currentColor" />
                   </div>
                 </button>
+                */}
               </>
             ) : (
               /* YouTube iframe */
@@ -127,29 +124,28 @@ export default function QuickVerdictsLanding() {
 
           <div>
             <h3 className="text-3xl font-bold text-gray-900 mb-6">
-              Security You Can Trust
+              Secure Connections
             </h3>
             <p className="text-gray-600 mb-4">
-              Protecting your case, your data, and your voice.
-            </p>
-            <p className="text-gray-600 mb-6">
-              At Quick Verdicts, your privacy and the integrity of every case are our highest priorities.
-            </p>
-            <p className="text-gray-600 mb-6">
-              That&apos;s why we built our platform with bank-level encryption, secure user authentication, and strict access controls for every participant.
+              We built our platform with a Teams-based conference call center accessible only after login.
+
             </p>
             <ul className="space-y-3 text-gray-700">
               <li className="flex items-start">
                 <span className="mr-2">•</span>
-                <span><strong>Data Encryption:</strong> Every piece of data—from user bios to case files—is encrypted in transit and at rest.</span>
+                <span>Multi-factor identification is used to ensure identification of participants.</span>
               </li>
               <li className="flex items-start">
                 <span className="mr-2">•</span>
-                <span><strong>Anonymous Jury Deliberations:</strong> We use advanced masking methods and all juror responses remain anonymous unless legally required.</span>
+                <span>Jurors appear live and deliberate face-to-face.</span>
               </li>
               <li className="flex items-start">
                 <span className="mr-2">•</span>
-                <span><strong>Compliance & Integrity:</strong> We follow industry best practices and align with legal standards to ensure digital proceedings are just as secure as in-person trials.</span>
+                <span>Demonstrative aids uploaded for jurors’ consideration are deleted following the trial</span>
+              </li>
+              <li className="flex items-start">
+                <span className="mr-2">•</span>
+                <span>Trial presentations are considered privileged under state and federal law</span>
               </li>
             </ul>
           </div>
@@ -172,19 +168,20 @@ export default function QuickVerdictsLanding() {
                 <h3 className="font-bold text-gray-900 mb-3">I&apos;m an Attorney</h3>
                 <ul className="space-y-2 text-gray-700 ml-4">
                   <li>• Create your profile in minutes</li>
-                  <li>• Submit your case details</li>
-                  <li>• Upload case materials securely</li>
-                  <li>• Receive verdicts and insights in days</li>
+                  <li>• Submit case details</li>
+                  <li>• Prepare Jury Charge in War Room</li>
+                  <li>• Select applicants for jurors</li>
+                  <li>• Present case live or by video</li>
                 </ul>
               </div>
 
               <div>
                 <h3 className="font-bold text-gray-900 mb-3">I Want to Be a Juror</h3>
                 <ul className="space-y-2 text-gray-700 ml-4">
-                  <li>• Make your voice count on your own schedule</li>
+                  <li>• Choose cases from the Job Board</li>
                   <li>• Complete a simple vetting process</li>
-                  <li>• Review real, legally-binding cases online</li>
-                  <li>• Deliberate and log your verdict remotely</li>
+                  <li>• Deliberate with your fellow jurors remotely</li>
+                  <li>• Your opinion helps the attorneys</li>
                   <li>• Get paid for your time</li>
                 </ul>
               </div>
@@ -208,16 +205,15 @@ export default function QuickVerdictsLanding() {
           <div className="space-y-8">
             <div>
               <h3 className="font-bold text-gray-900 mb-2">What is Quick Verdicts?</h3>
-              <p className="text-gray-600 mb-6">
-                Quick Verdicts is a virtual courtroom platform where attorneys can present small claims cases to real, local jurors, who then review evidence and issue binding verdicts—entirely online.
+              <p className="text-gray-600 mb-6">Quick Verdicts is a low-cost virtual courtroom platform where attorneys schedule and prepare a case for a timed presentation to local mock jurors who deliberate the issues and submit a final mock verdict.
               </p>
               <hr className="border-black" />
             </div>
 
             <div>
-              <h3 className="font-bold text-gray-900 mb-2">How does it work?</h3>
+              <h3 className="font-bold text-gray-900 mb-2">How does it work for attorneys?</h3>
               <p className="text-gray-600 mb-6">
-                Attorneys upload case materials, evidence, and questions. Jurors are selected from the local county, then join a secure virtual courtroom to review the case and render a decision. You receive a full verdict with juror feedback, analysis, and damages recommendations—typically within 48 hours.
+                Attorneys login to access the QV Courtroom and present a case either live or by video.  Jurors login separately and appear in the QV Courtroom where they receive basic juror instructions, listen to the case presentation, then privately deliberate the answers to the jury charge.    
               </p>
               <hr className="border-black" />
             </div>
@@ -225,7 +221,7 @@ export default function QuickVerdictsLanding() {
             <div>
               <h3 className="font-bold text-gray-900 mb-2">What types of cases work best?</h3>
               <p className="text-gray-600 mb-6">
-                Quick Verdicts is ideal for small claims, personal injury, contract disputes, landlord-tenant cases, and other civil matters under $25,000.
+                Cases work best where all sides of the presentation can be made within the allotted time.  Cases include vehicle accidents involving personal injury, property damage and contract disputes.  Disputes may turn on credibility issues, liability facts, and damages assessment.  
               </p>
               <hr className="border-black" />
             </div>
@@ -233,7 +229,7 @@ export default function QuickVerdictsLanding() {
             <div>
               <h3 className="font-bold text-gray-900 mb-2">What does a juror do on Quick Verdicts?</h3>
               <p className="text-gray-600">
-                As a juror, you join a secure virtual courtroom to review real small claims cases. You&apos;ll examine case files, watch video statements (if available), and answer deliberation questions. Once you deliver your verdict, you might view their case.
+                Jurors sign up and can access a Job Board for cases in their county of residence.  Jurors are paid by the case immediately following the case presentation.  Jurors may be asked to decide what caused an accident or an incident and how much money should be awarded to a plaintiff.  
               </p>
             </div>
           </div>
@@ -247,7 +243,7 @@ export default function QuickVerdictsLanding() {
             Ready to Get Started?
           </h2>
           <p className="text-gray-600 mb-8">
-            Sign up today and post your first case
+            Sign up today as an Attorney or a Juror
           </p>
           <Link href="/signup" className="bg-blue-900 text-white px-12 py-3 rounded hover:bg-blue-800 font-medium inline-block w-full max-w-md">
             Sign up
@@ -267,7 +263,7 @@ export default function QuickVerdictsLanding() {
             <div>
               <h3 className="font-bold mb-4">Contact</h3>
               <p className="text-gray-300">650-762-6574</p>
-              <p className="text-gray-300">hello@QV.com</p>
+              <p className="text-gray-300">QVTrial@quickverdicts.com</p>
             </div>
             <div>
               <h3 className="font-bold mb-4">Navigation</h3>
@@ -281,7 +277,7 @@ export default function QuickVerdictsLanding() {
 
           <div className="border-t border-gray-700 pt-8 flex flex-wrap justify-between items-center">
             <div className="flex space-x-6 text-sm text-gray-300">
-              <Link href="/" className="hover:text-white">Quick Verdicts®</Link>
+              <Link href="/" className="hover:text-white">Quick Verdicts</Link>
               <Link href="/" className="hover:text-white">Privacy</Link>
               <Link href="/" className="hover:text-white">Terms of Use</Link>
               <Link href="/" className="hover:text-white">Consumer Choice</Link>

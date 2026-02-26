@@ -65,12 +65,15 @@ export default function ForAttorneys() {
                 <span className="text-pink-500 text-xl">🖥️</span>
               </div>
               <h3 className="font-semibold text-gray-900">
-                Resolve Real Cases Digitally
+                Dashboard for Your Cases
               </h3>
               <p className="text-sm text-gray-600 mt-2 leading-relaxed">
-                Submit small claims cases to be heard and decided by verified jurors
-                in your county. Quick Verdict delivers legally binding decisions—
-                without stepping into a physical courtroom.
+                Submit multiple cases
+                and access the status of
+                each on your dashboard.
+                Watch notifications for
+                updates on juror applications.
+
               </p>
             </div>
 
@@ -79,11 +82,14 @@ export default function ForAttorneys() {
               <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center mb-4">
                 <span className="text-blue-600 text-xl">💼</span>
               </div>
-              <h3 className="font-semibold text-gray-900">Easy Case Upload</h3>
+              <h3 className="font-semibold text-gray-900">Efficient Case Preparation</h3>
               <p className="text-sm text-gray-600 mt-2 leading-relaxed">
-                Quickly upload case summaries, exhibits, and legal questions from your
-                dashboard. Our guided format ensures jurors see only what they need.
-                Head back to the home screen when needed with our dashboard.
+                Your case’s War Room has 
+                an easy-to-use jury charge
+                template and simple upload
+                system for demonstrative
+                aids.
+
               </p>
             </div>
 
@@ -92,11 +98,11 @@ export default function ForAttorneys() {
               <div className="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center mb-4">
                 <span className="text-orange-500 text-xl">⚖️</span>
               </div>
-              <h3 className="font-semibold text-gray-900">Legally Binding Verdicts</h3>
+              <h3 className="font-semibold text-gray-900">Low Cost</h3>
               <p className="text-sm text-gray-600 mt-2 leading-relaxed">
-                Jurors are vetted and sworn in virtually, and their decision carries
-                the same legal weight as a traditional in-person small claims trial.
-                Once a verdict is reached, the case is closed.
+                Tier One&nbsp;&nbsp;&nbsp;&nbsp;2.5 hrs $3,500 <br />
+                Tier Two&nbsp;&nbsp;&nbsp;&nbsp;3.5 hrs $4,500 <br />
+                Tier Three&nbsp;&nbsp;4.5 hrs $5,500
               </p>
             </div>
           </div>
@@ -134,34 +140,53 @@ export default function ForAttorneys() {
                 <div className="flex items-start">
                   <div>
                     <h3 className="font-bold text-gray-900 mb-1">Create Your Case</h3>
-                    <p className="text-gray-600">Log in to your Quick Verdict dashboard and upload your case summary, exhibits, and key facts.</p>
+                    <p className="text-gray-600">Log in to your Quick Verdicts dashboard to see your cases and their status. <br></br>
+                      Click +Create Case to start a new one and schedule it for “trial.”
+                    </p>
                   </div>
                 </div>
 
                 <div className="flex items-start">
                   <div>
                     <h3 className="font-bold text-gray-900 mb-1">Set Your Jury Criteria</h3>
-                    <p className="text-gray-600">Choose your target audience by county, age range, or demographics. Then upload your voi der questions.</p>
+                    <p className="text-gray-600">Jurors are generally pre-screened.  Add case- specific voir dire questions.  </p>
                   </div>
                 </div>
 
                 <div className="flex items-start">
                   <div>
-                    <h3 className="font-bold text-gray-900 mb-1">Launch in a Virtual Courtroom</h3>
-                    <p className="text-gray-600">Your case is presented to real people in a secure, private virtual environment. Jurors review materials, weigh the facts, and submit a verdict.</p>
+                    <h3 className="font-bold text-gray-900 mb-1">Draft the Jury Charge in the War Room</h3>
+                    <p className="text-gray-600">Access the War Room for your case.  
+                     Enter Jury Charge definitions, instructions and jury questions.
+                    </p>
                   </div>
                 </div>
 
                 <div className="flex items-start">
                   <div>
-                    <h3 className="font-bold text-gray-900 mb-1">Verdict Gets Rendered</h3>
-                    <p className="text-gray-600">Jurors you selected will render a verdict based on evidence submitted and witness testimony</p>
+                    <h3 className="font-bold text-gray-900 mb-1">Select Applicants for Jurors</h3>
+                    <p className="text-gray-600">Watch your Notifications and Dashboard for Applicants.
+                    Accept or reject up to 10 jurors for a panel of 6-8.
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-start">
                   <div>
-                    <h3 className="font-bold text-gray-900 mb-1">Case Closed</h3>
-                    <p className="text-gray-600">Review material before it gets removed and open another case.</p>
+                    <h3 className="font-bold text-gray-900 mb-1">Pre-record Presentation or Appear Live</h3>
+                    <p className="text-gray-600">If you pre-record the presentation, upload the .mp4 video in the War Room. <br></br>  
+                      If you appear live, go to the case in your dashboard and click “Join Trial.”
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start">
+                  <div>
+                    <h3 className="font-bold text-gray-900 mb-1">Debriefing Period</h3>
+                    <p className="text-gray-600">After you are notified that the jury has returned a 
+verdict, re-join the QV Courtroom for a debriefing
+period with the jurors.	
+
+</p>
                   </div>
                 </div>
 
@@ -202,7 +227,7 @@ export default function ForAttorneys() {
               /* YouTube iframe */
               <iframe
                 className="w-full h-full"
-                src={`https://www.youtube.com/embed/Jix-vP5M1R0?start=1&autoplay=1`}
+                src={`https://quickverdictsvideo.blob.core.windows.net/videos/QV_Video.mp4`}
                 title="YouTube video player"
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
