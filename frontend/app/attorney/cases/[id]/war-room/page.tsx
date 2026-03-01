@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import { useProtectedRoute } from "@/hooks/useProtectedRoute";
 import WitnessSection from "./components/WitnessSection";
 import JuryChargeBuilder from "./components/JuryChargeBuilder";
+import { useWebSocket } from "@/hooks/useWebSocket";
 import { formatDateString } from "@/lib/dateUtils";
 import {
   CheckCircleIcon,
@@ -310,9 +311,33 @@ export default function WarRoomPage() {
   const [submittingReschedule, setSubmittingReschedule] = useState(false);
   const [pendingRescheduleRequest, setPendingRescheduleRequest] = useState<any>(null);
 
+  const { isConnected: wsConnected, joinRoom, on: wsOn, off: wsOff } = useWebSocket();
+
   useEffect(() => {
     fetchWarRoomData();
   }, [caseId]);
+
+  // WebSocket: join case room + jury charge builder room, listen for lock events
+  useEffect(() => {
+    if (!wsConnected || !caseId) return;
+
+    joinRoom(`case_${caseId}`);
+    joinRoom(`jury_charge_builder_${caseId}`);
+
+    const handleJuryChargeLocked = () => {
+      setJuryChargeLocked(true);
+      toast('The jury charge has been released to jurors and is now locked for editing.', {
+        icon: '🔒',
+        duration: 5000,
+      });
+    };
+
+    wsOn('jury_charge:locked', handleJuryChargeLocked);
+
+    return () => {
+      wsOff('jury_charge:locked', handleJuryChargeLocked);
+    };
+  }, [wsConnected, caseId, joinRoom, wsOn, wsOff]);
 
   // Auto-open reschedule modal if admin rescheduled the case
   useEffect(() => {
