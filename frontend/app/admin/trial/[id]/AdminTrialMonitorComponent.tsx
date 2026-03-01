@@ -142,7 +142,7 @@ export default function AdminTrialMonitor() {
   const hasInitialized = useRef(false);
 
   // WebSocket connection for real-time verdict updates
-  const { isConnected: wsConnected, on: wsOn, off: wsOff, emit: wsEmit } = useWebSocket();
+  const { isConnected: wsConnected, on: wsOn, off: wsOff, emit: wsEmit, joinRoom: wsJoinRoom } = useWebSocket();
 
   // Fetch verdict status function - defined early to avoid hoisting issues
   const fetchVerdictStatus = useCallback(async () => {
@@ -231,8 +231,7 @@ export default function AdminTrialMonitor() {
     }
 
     console.log(`✅ ✅ ✅ WebSocket IS CONNECTED! Now joining verdict monitoring room for case ${caseId}`);
-    console.log(`📡 Emitting: join_verdict_monitoring with caseId: ${caseId}`);
-    wsEmit('join_verdict_monitoring', caseId);
+    wsJoinRoom(`verdict_monitoring_${caseId}`);
 
     // Listen for verdict submission events
     const handleVerdictSubmitted = (data: any) => {
@@ -277,7 +276,7 @@ export default function AdminTrialMonitor() {
       wsOff('verdict:status_update', handleVerdictStatusUpdate);
       wsOff('pong', handlePong);
     };
-  }, [wsConnected, caseId, wsEmit, wsOn, wsOff, fetchVerdictStatus]);
+  }, [wsConnected, caseId, wsEmit, wsOn, wsOff, wsJoinRoom, fetchVerdictStatus]);
 
   useEffect(() => {
     if (!meetingId) return;
