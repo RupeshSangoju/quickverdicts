@@ -684,7 +684,7 @@ router.post("/cases/:caseId/check-slot-availability", async (req, res) => {
     let timeString;
     if (caseData.ScheduledTime instanceof Date) {
       // Use UTC methods to avoid timezone issues
-      timeString = `${String(caseData.ScheduledTime.getUTCHours()).padStart(2, '0')}:${String(caseData.ScheduledTime.getUTCMinutes()).padStart(2, '0')}:${String(caseData.ScheduledTime.getUTCSeconds()).padStart(2, '0')}`;
+      timeString = `${String(caseData.ScheduledTime.getHours()).padStart(2, '0')}:${String(caseData.ScheduledTime.getMinutes()).padStart(2, '0')}:${String(caseData.ScheduledTime.getSeconds()).padStart(2, '0')}`;    
     } else if (typeof caseData.ScheduledTime === 'string') {
       timeString = caseData.ScheduledTime.split('.')[0]; // Remove microseconds
     }

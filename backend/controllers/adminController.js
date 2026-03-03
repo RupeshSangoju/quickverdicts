@@ -182,7 +182,9 @@ async function reviewCaseApproval(req, res) {
         caseId,
         type: Notification.NOTIFICATION_TYPES.CASE_APPROVED,
         title: "Case Approved",
-        message: `Your case "${caseData.CaseTitle}" has been approved and is now open for juror applications.`,
+        message: comments
+          ? `Your case "${caseData.CaseTitle}" has been approved. Admin comments: ${comments}`
+          : `Your case "${caseData.CaseTitle}" has been approved and is now open for juror applications.`,
       });
 
       return res.json({

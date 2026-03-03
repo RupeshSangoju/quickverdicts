@@ -60,7 +60,7 @@ console.log("ACS Identity Client initialized:", !!identityClient);
  */
 const joinTrialLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // 10 join attempts per 15 minutes
+  max: 20, // 10 join attempts per 15 minutes
   message: {
     success: false,
     message: "Too many join attempts. Please try again in 15 minutes.",

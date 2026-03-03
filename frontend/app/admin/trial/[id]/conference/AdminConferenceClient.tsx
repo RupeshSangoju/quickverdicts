@@ -562,49 +562,6 @@ async function renderFeaturedVideo() {
       }
     }
   }, [participants.length, featuredParticipant]);
-// Polling to detect screenshare stop (fallback for flaky events)
-useEffect(() => {
-  if (!call || call.state !== "Connected") return;
-
-  const pollInterval = setInterval(() => {
-    remoteVideoRefs.current.forEach((ref, key) => {
-      if (key.startsWith("screenshare-") && ref.stream) {
-        const isAvailable = ref.stream.isAvailable ?? false;
-
-        if (!isAvailable && featuredParticipant === key) {
-          console.log(`[POLL] Detected screenshare stop for ${key} (isAvailable=false)`);
-
-          clearParticipantVideo(key);
-          ref.renderer?.dispose?.();
-          remoteVideoRefs.current.delete(key);
-
-          // Auto-switch logic (same as before)
-          let nextFeatured = "local";
-          if (activeSpeaker && activeSpeaker !== key) {
-            nextFeatured = activeSpeaker;
-          } else {
-            for (const p of participants) {
-              const uid = getUserId(p.identifier);
-              if (participantVideoStates.get(uid) === true) {
-                nextFeatured = uid;
-                break;
-              }
-            }
-          }
-
-          setFeaturedParticipant(nextFeatured);
-          setPinnedParticipant(null);
-          setTimeout(() => renderFeaturedVideo(), 50);
-          triggerReRender();
-
-          console.log(`[POLL] Main screen switched to ${nextFeatured}`);
-        }
-      }
-    });
-  }, 1500); // Check every 1.5 seconds
-
-  return () => clearInterval(pollInterval);
-}, [call?.state, participants, featuredParticipant, activeSpeaker, participantVideoStates]);
 
   async function initializeChat(token: string, userId: string, threadId: string, endpoint: string) {
     try {
@@ -829,72 +786,55 @@ useEffect(() => {
                     clearParticipantVideo(userId);
                   }
                 });
-} else if (stream.mediaStreamType === "ScreenSharing") {
-  console.log(`📺 Remote screenshare detected from ${userId}, initial isAvailable: ${stream.isAvailable}`);
-  const screenshareKey = `screenshare-${userId}`;
+              } else if (stream.mediaStreamType === "ScreenSharing") {
+                // Remote participant started screensharing
+                console.log(`📺 Remote screenshare started by ${userId}, isAvailable: ${stream.isAvailable}`);
+                const screenshareKey = `screenshare-${userId}`;
 
-  remoteVideoRefs.current.set(screenshareKey, {
-    stream,
-    renderer: null,
-    view: null,
-    streamType: 'ScreenSharing',
-    disposed: false
-  });
+                // Store the screenshare stream
+                remoteVideoRefs.current.set(screenshareKey, {
+                  stream,
+                  renderer: null,
+                  view: null,
+                  streamType: 'ScreenSharing',
+                  disposed: false
+                });
 
-  // Attach listener once
-  stream.on("isAvailableChanged", async () => {
-    console.log(`📺 Screenshare availability changed: ${stream.isAvailable} for ${screenshareKey}`);
+                if (stream.isAvailable) {
+                  // Stream is available, show it immediately
+                  console.log(`✅ Screenshare is available, showing immediately`);
+                  setFeaturedParticipant(screenshareKey);
+                  setPinnedParticipant(screenshareKey);
+                  triggerReRender();
+                } else {
+                  // Wait for stream to become available
+                  console.log(`⏳ Screenshare not yet available, waiting...`);
+                  stream.on("isAvailableChanged", async () => {
+                    console.log(`📺 Screenshare availability changed: ${stream.isAvailable}`);
+                    if (stream.isAvailable) {
+                      setFeaturedParticipant(screenshareKey);
+                      setPinnedParticipant(screenshareKey);
+                      triggerReRender();
+                      } else {
+                      // Screenshare stopped
+                        console.log(`📺 SCREENSHARE STOPPED – cleaning up ${screenshareKey}`);
+                          clearParticipantVideo(screenshareKey);  // ← Add this line
 
-    if (stream.isAvailable) {
-      console.log(`✅ Screenshare now available – showing ${screenshareKey}`);
-      setFeaturedParticipant(screenshareKey);
-      setPinnedParticipant(screenshareKey);
-      triggerReRender();
-    } else {
-      // Stop detected
-      console.log(`📺 SCREENSHARE STOPPED – cleaning up ${screenshareKey}`);
+                          const ref = remoteVideoRefs.current.get(screenshareKey);
+                          if (ref) {
+                            try { ref.renderer?.dispose(); } catch {}
+                            remoteVideoRefs.current.delete(screenshareKey);
+                          }
 
-      clearParticipantVideo(screenshareKey);
-
-      const ref = remoteVideoRefs.current.get(screenshareKey);
-      if (ref) {
-        try { ref.renderer?.dispose(); } catch (e) {}
-        remoteVideoRefs.current.delete(screenshareKey);
-      }
-
-      let nextFeatured = "local";
-      if (activeSpeaker && activeSpeaker !== screenshareKey) {
-        nextFeatured = activeSpeaker;
-      } else {
-        for (const p of participants) {
-          const uid = getUserId(p.identifier);
-          if (participantVideoStates.get(uid) === true) {
-            nextFeatured = uid;
-            break;
-          }
-        }
-      }
-
-      if (featuredParticipant === screenshareKey) {
-        setFeaturedParticipant(nextFeatured);
-        setPinnedParticipant(null);
-        setTimeout(() => {
-          renderFeaturedVideo();
-          triggerReRender();
-        }, 50);
-        console.log(`Main screen switched from screenshare to ${nextFeatured}`);
-      }
-    }
-  });
-
-  // Initial check
-  if (stream.isAvailable) {
-    console.log(`✅ Initial screenshare available – showing ${screenshareKey}`);
-    setFeaturedParticipant(screenshareKey);
-    setPinnedParticipant(screenshareKey);
-    triggerReRender();
-  }
-}
+                          if (featuredParticipant === screenshareKey) {
+                            setFeaturedParticipant("local");
+                            setPinnedParticipant(null);
+                          }
+                          triggerReRender();
+                    }
+                  });
+                }
+              }
             });
 
             streamEvent.removed.forEach((stream: any) => {
@@ -913,29 +853,8 @@ useEffect(() => {
                 if (featuredVideoRef.current) {
                   featuredVideoRef.current.innerHTML = "";
                 }
-                // Auto-switch
-                let nextFeatured = "local";
-                if (activeSpeaker && activeSpeaker !== key) {
-                  nextFeatured = activeSpeaker;
-                } else {
-                  for (const p of participants) {
-                    const uid = getUserId(p.identifier);
-                    if (participantVideoStates.get(uid) === true) {
-                      nextFeatured = uid;
-                      break;
-                    }
-                  }
-                }
-                setFeaturedParticipant(nextFeatured);
-                setPinnedParticipant(null);
-                // Force render
-                setTimeout(() => {
-                  renderFeaturedVideo();
-                  triggerReRender();
-                }, 50);
-                renderFeaturedVideo(); // Force re-render
+                setFeaturedParticipant("local");
                 triggerReRender();
-                console.log(`Screenshare removed → switched to ${nextFeatured}`);
               }
             });
           });

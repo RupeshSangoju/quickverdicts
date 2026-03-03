@@ -390,55 +390,6 @@ export default function TrialConferenceClient() {
       console.log("[ATTORNEY VIDEO POLL] Stopped");
     };
   }, [call?.state, participants, featuredParticipant, participantVideoStates]);
-// Polling to detect remote screenshare stop (same as admin)
-
-useEffect(() => {
-  if (!call || call.state !== "Connected") return;
-
-  console.log("[ATTORNEY REMOTE SCREENSHARE POLL] Started – checking every 1.5s");
-
-  const pollInterval = setInterval(() => {
-    remoteVideoRefs.current.forEach((ref, key) => {
-      if (key.startsWith("screenshare-") && ref.stream) {
-        const isAvailable = ref.stream.isAvailable ?? false;
-
-        if (!isAvailable && featuredParticipant === key) {
-          console.log(`[ATTORNEY POLL] Detected remote screenshare STOP for ${key} (isAvailable=false)`);
-
-          clearParticipantVideo(key);
-          ref.renderer?.dispose?.();
-          remoteVideoRefs.current.delete(key);
-
-          // Auto-switch logic — same as admin
-          let nextFeatured = "local";
-          if (activeSpeaker && activeSpeaker !== key) {
-            nextFeatured = activeSpeaker;
-          } else {
-            for (const p of participants) {
-              const uid = getUserId(p.identifier);
-              if (participantVideoStates.get(uid) === true) {
-                nextFeatured = uid;
-                break;
-              }
-            }
-          }
-
-          setFeaturedParticipant(nextFeatured);
-          setPinnedParticipant(null);
-          setTimeout(() => renderFeaturedVideo(), 50);
-          triggerReRender();
-
-          console.log(`[ATTORNEY POLL] Main screen switched to ${nextFeatured}`);
-        }
-      }
-    });
-  }, 1500);
-
-  return () => {
-    clearInterval(pollInterval);
-    console.log("[ATTORNEY REMOTE SCREENSHARE POLL] Stopped");
-  };
-}, [call?.state, participants, featuredParticipant, activeSpeaker, participantVideoStates]);
 
   // Render all participant thumbnails when participants or camera states change
   useEffect(() => {
