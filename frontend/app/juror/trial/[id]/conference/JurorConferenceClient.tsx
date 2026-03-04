@@ -260,6 +260,47 @@ export default function JurorConferenceClient() {
     return identifier.rawId || 'unknown';
   };
 
+  // Choose an alternate participant to feature when a screenshare stops.
+  // Preference order:
+  // 1) Remote participant with camera available
+  // 2) Any remote participant
+  // 3) Local (if camera is on)
+  const chooseAlternateFeatured = (excludeKey?: string): string => {
+    try {
+      // Prefer remote participant with camera available
+      for (const p of participants) {
+        const userId = getUserId(p.identifier);
+        const screenshareKey = `screenshare-${userId}`;
+        if (excludeKey && (excludeKey === screenshareKey || excludeKey === userId)) continue;
+
+        const videoStream = p.videoStreams?.find((s: any) => s.mediaStreamType === 'Video');
+        const cached = participantVideoStates.get(userId);
+        if (cached === true || videoStream?.isAvailable) {
+          return userId;
+        }
+      }
+
+      // Fallback: any remote participant
+      if (participants.length > 0) {
+        for (const p of participants) {
+          const userId = getUserId(p.identifier);
+          const screenshareKey = `screenshare-${userId}`;
+          if (excludeKey && (excludeKey === screenshareKey || excludeKey === userId)) continue;
+          return userId;
+        }
+      }
+
+      // Fallback to local if camera is on
+      if (!isVideoOff && localVideoStream.current) return 'local';
+
+      // Final fallback: local (even if camera off)
+      return 'local';
+    } catch (e) {
+      console.warn('chooseAlternateFeatured error', e);
+      return 'local';
+    }
+  };
+
   useEffect(() => {
     if (!pinnedParticipant && activeSpeaker && activeSpeaker !== featuredParticipant) {
       console.log(`🔊 Auto-switching to active speaker: ${activeSpeaker}`);
@@ -682,7 +723,8 @@ export default function JurorConferenceClient() {
                       }
 
                       if (featuredParticipant === screenshareKey) {
-                        setFeaturedParticipant("local");
+                        const alt = chooseAlternateFeatured(screenshareKey);
+                        setFeaturedParticipant(alt);
                         setPinnedParticipant(null);
                       }
                       triggerReRender();
@@ -710,7 +752,9 @@ export default function JurorConferenceClient() {
                 }
                 // mark screenshare state false
                 setParticipantScreenShareStates(prev => new Map(prev).set(userId, false));
-                setFeaturedParticipant("local");
+                const alt = chooseAlternateFeatured(`screenshare-${userId}`);
+                setFeaturedParticipant(alt);
+                setPinnedParticipant(null);
                 triggerReRender();
               }
             });
@@ -745,13 +789,13 @@ export default function JurorConferenceClient() {
                 return updated;
               });
 
-                if (stream.isAvailable) {
-                // Stream is available, show it immediately
-                console.log(`✅ Existing screenshare is available, showing immediately`);
-                setFeaturedParticipant(screenshareKey);
-                setPinnedParticipant(screenshareKey);
-                triggerReRender();
-              } else {
+                      if (stream.isAvailable) {
+                        // Stream is available, show it immediately
+                        console.log(`✅ Existing screenshare is available, showing immediately`);
+                        setFeaturedParticipant(screenshareKey);
+                        setPinnedParticipant(screenshareKey);
+                        triggerReRender();
+                      } else {
                 // Wait for stream to become available
                 console.log(`⏳ Existing screenshare not yet available, waiting...`);
                 stream.on("isAvailableChanged", async () => {
@@ -775,7 +819,8 @@ export default function JurorConferenceClient() {
                       }
 
                       if (featuredParticipant === screenshareKey) {
-                        setFeaturedParticipant("local");
+                        const alt = chooseAlternateFeatured(screenshareKey);
+                        setFeaturedParticipant(alt);
                         setPinnedParticipant(null);
                       }
                       triggerReRender();
@@ -1017,6 +1062,12 @@ export default function JurorConferenceClient() {
           } else {
             // screenshare stopped
             try { clearParticipantVideo(screenshareKey); } catch(_) {}
+            if (featuredParticipant === screenshareKey) {
+              const alt = chooseAlternateFeatured(screenshareKey);
+              setFeaturedParticipant(alt);
+              setPinnedParticipant(null);
+              try { await renderFeaturedVideo(); } catch(_) {}
+            }
           }
         }
       });
