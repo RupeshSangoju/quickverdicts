@@ -49,6 +49,7 @@ export default function JurorConferenceClient() {
   const [renderTrigger, setRenderTrigger] = useState(0);
 
   const [participantVideoStates, setParticipantVideoStates] = useState<Map<string, boolean>>(new Map());
+  const [participantScreenShareStates, setParticipantScreenShareStates] = useState<Map<string, boolean>>(new Map());
   const [participantSpeakingStates, setParticipantSpeakingStates] = useState<Map<string, boolean>>(new Map());
   const [participantMuteStates, setParticipantMuteStates] = useState<Map<string, boolean>>(new Map());
   const [activeSpeaker, setActiveSpeaker] = useState<string | null>(null);
@@ -293,6 +294,25 @@ export default function JurorConferenceClient() {
   function clearParticipantVideo(participantId: string) {
     console.log(`Juror: Clearing video for ${participantId} → showing avatar`);
 
+    const isScreenshare = participantId.startsWith("screenshare-") || participantId === "screenshare";
+    // If screenshare, aggressively dispose remote refs and tracks
+    if (isScreenshare) {
+      const ref = remoteVideoRefs.current.get(participantId);
+      if (ref) {
+        try {
+          ref.renderer?.dispose();
+        } catch (e) {
+          console.warn(`Dispose warning for screenshare ${participantId}:`, e);
+        }
+        // Stop any lingering tracks if available
+        try {
+          ref.stream?.getTracks?.()?.forEach((t: any) => t.stop?.());
+        } catch (_) {}
+        // Mark disposed but keep the entry so future screenshare streams reuse listeners
+        try { ref.renderer = null; } catch(_) {}
+        try { ref.disposed = true; } catch(_) {}
+      }
+    }
     const container = participantVideoRefs.current.get(participantId);
     if (container) {
       container.innerHTML = "";
@@ -375,6 +395,18 @@ export default function JurorConferenceClient() {
     }
 
     try {
+      // Handle remote screenshare (keys like "screenshare-<userId>")
+      if (featuredParticipant?.startsWith("screenshare-")) {
+        const ref = remoteVideoRefs.current.get(featuredParticipant);
+        if (ref?.stream?.isAvailable) {
+          const renderer = new VideoStreamRenderer(ref.stream);
+          featuredRenderer.current = renderer;
+          const view = await renderer.createView();
+          featuredVideoRef.current.appendChild(view.target);
+          return;
+        }
+      }
+
       if (featuredParticipant === "local") {
         if (!isVideoOff && localVideoStream.current) {
           const renderer = new VideoStreamRenderer(localVideoStream.current);
@@ -604,6 +636,13 @@ export default function JurorConferenceClient() {
                   disposed: false
                 });
 
+                // Track initial screenshare availability
+                setParticipantScreenShareStates(prev => {
+                  const updated = new Map(prev);
+                  updated.set(userId, !!stream.isAvailable);
+                  return updated;
+                });
+
                   if (stream.isAvailable) {
                   // Stream is available, show it immediately
                   console.log(`✅ Screenshare is available, showing immediately`);
@@ -615,12 +654,33 @@ export default function JurorConferenceClient() {
                   console.log(`⏳ Screenshare not yet available, waiting...`);
                   stream.on("isAvailableChanged", async () => {
                     console.log(`📺 Screenshare availability changed: ${stream.isAvailable}`);
+                    // update tracked screenshare state
+                    setParticipantScreenShareStates(prev => {
+                      const updated = new Map(prev);
+                      updated.set(userId, !!stream.isAvailable);
+                      return updated;
+                    });
                       if (stream.isAvailable) {
                         setFeaturedParticipant(screenshareKey);
                         setPinnedParticipant(screenshareKey);
                         triggerReRender();
                     } else {
                       // Screenshare stopped
+                      // aggressive cleanup for screenshare to avoid black/blank featured view
+                      try {
+                        clearParticipantVideo(screenshareKey);
+                      } catch (e) {
+                        console.warn('Error clearing screenshare during stop cleanup', e);
+                      }
+
+                      const ref = remoteVideoRefs.current.get(screenshareKey);
+                      if (ref) {
+                        try { ref.renderer?.dispose(); } catch (_) {}
+                        // Keep the remoteVideoRefs entry (mark disposed) so future screenshare streams can reuse
+                        try { ref.renderer = null; } catch(_) {}
+                        try { ref.disposed = true; } catch(_) {}
+                      }
+
                       if (featuredParticipant === screenshareKey) {
                         setFeaturedParticipant("local");
                         setPinnedParticipant(null);
@@ -641,11 +701,15 @@ export default function JurorConferenceClient() {
                 const ref = remoteVideoRefs.current.get(key);
                 if (ref) {
                   ref.renderer?.dispose();
-                  remoteVideoRefs.current.delete(key);
+                  // keep the entry and mark disposed so future re-shares are detected
+                  try { ref.renderer = null; } catch(_) {}
+                  try { ref.disposed = true; } catch(_) {}
                 }
                 if (featuredVideoRef.current) {
                   featuredVideoRef.current.innerHTML = "";
                 }
+                // mark screenshare state false
+                setParticipantScreenShareStates(prev => new Map(prev).set(userId, false));
                 setFeaturedParticipant("local");
                 triggerReRender();
               }
@@ -674,6 +738,13 @@ export default function JurorConferenceClient() {
                 disposed: false
               });
 
+              // Track initial screenshare availability
+              setParticipantScreenShareStates(prev => {
+                const updated = new Map(prev);
+                updated.set(userId, !!stream.isAvailable);
+                return updated;
+              });
+
                 if (stream.isAvailable) {
                 // Stream is available, show it immediately
                 console.log(`✅ Existing screenshare is available, showing immediately`);
@@ -688,6 +759,25 @@ export default function JurorConferenceClient() {
                   if (stream.isAvailable) {
                       setFeaturedParticipant(screenshareKey);
                       setPinnedParticipant(screenshareKey);
+                      triggerReRender();
+                    }
+                    else {
+                      // existing screenshare stopped — cleanup
+                      try {
+                        clearParticipantVideo(screenshareKey);
+                      } catch (e) { console.warn('Error clearing existing screenshare', e); }
+
+                      const ref = remoteVideoRefs.current.get(screenshareKey);
+                      if (ref) {
+                        try { ref.renderer?.dispose(); } catch (_) {}
+                        try { ref.renderer = null; } catch(_) {}
+                        try { ref.disposed = true; } catch(_) {}
+                      }
+
+                      if (featuredParticipant === screenshareKey) {
+                        setFeaturedParticipant("local");
+                        setPinnedParticipant(null);
+                      }
                       triggerReRender();
                     }
                 });
@@ -876,7 +966,7 @@ export default function JurorConferenceClient() {
     const pollInterval = setInterval(async () => {
       let hasChange = false;
 
-      participants.forEach((p: any) => {
+      participants.forEach(async (p: any) => {
         const userId = getUserId(p.identifier);
         if (userId === "local") return; // skip self
 
@@ -903,6 +993,32 @@ export default function JurorConferenceClient() {
             clearParticipantVideo(userId);
           }
         }
+
+        // Also check for remote screenshare availability (fallback poll)
+        const screenStream = p.videoStreams?.find((s: any) => s.mediaStreamType === 'ScreenSharing');
+        const currentScreenAvailable = !!screenStream?.isAvailable;
+        const previousScreenAvailable = participantScreenShareStates.get(userId);
+
+        if (previousScreenAvailable !== currentScreenAvailable) {
+          console.log(`%c[JUROR POLLER DETECTED] Remote ${userId} screenshare: ${previousScreenAvailable ? 'ON' : 'OFF'} → ${currentScreenAvailable ? 'ON 🟢' : 'OFF 🔴'}`,
+            "background:#004466; color:white; padding:6px; font-weight:bold"
+          );
+
+          setParticipantScreenShareStates(prev => new Map(prev).set(userId, currentScreenAvailable));
+          hasChange = true;
+
+          const screenshareKey = `screenshare-${userId}`;
+          if (currentScreenAvailable) {
+            // Render and feature the screenshare
+            remoteVideoRefs.current.set(screenshareKey, { stream: screenStream, renderer: null, view: null, streamType: 'ScreenSharing', disposed: false });
+            setFeaturedParticipant(screenshareKey);
+            setPinnedParticipant(screenshareKey);
+            try { await renderFeaturedVideo(); } catch(_) { }
+          } else {
+            // screenshare stopped
+            try { clearParticipantVideo(screenshareKey); } catch(_) {}
+          }
+        }
       });
 
       if (hasChange) {
@@ -914,7 +1030,7 @@ export default function JurorConferenceClient() {
       clearInterval(pollInterval);
       console.log("[JUROR POLL STOP]");
     };
-  }, [call?.state, participants, featuredParticipant, participantVideoStates, renderTrigger]);
+  }, [call?.state, participants, featuredParticipant, participantVideoStates, participantScreenShareStates, renderTrigger]);
 
   if (loading) {
     return (
