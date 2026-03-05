@@ -756,12 +756,14 @@ async function renderFeaturedVideo() {
             : undefined,
         }
       );
+      console.log("[ADMIN INIT] roomCall created, initial state:", roomCall.state);
 
       setCall(roomCall);
       callRef.current = roomCall;
       setParticipantJoinTimes(prev => new Map(prev).set("local", new Date()));
 
       roomCall.on("stateChanged", async () => {
+        console.log("[ADMIN STATE] →", roomCall.state, roomCall.state === "Disconnected" ? roomCall.callEndReason : "");
         setCallState(roomCall.state);
         if (roomCall.state === "Connected") {
           setIsMuted(roomCall.isMuted);
@@ -1078,6 +1080,7 @@ async function renderFeaturedVideo() {
         setIsMuted(roomCall.isMuted);
       });
 
+      console.log("[ADMIN INIT] all handlers registered, calling setLoading(false)");
       setLoading(false);
     } catch (err: any) {
       if (err?.name === 'AbortError') return; // StrictMode cancelled first mount — ignore
