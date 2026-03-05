@@ -709,23 +709,12 @@ async function renderFeaturedVideo() {
         console.log("[ADMIN INIT] skipping chat init");
       }
 
-      setCallState("Initializing devices...");
+      // Admin is a monitor — no camera/mic needed; skip device init to avoid permission hangs
+      setCallState("Connecting to trial...");
       console.log("[ADMIN INIT] creating CallClient...");
 
       const callClient = new CallClient();
       const tokenCredential = new AzureCommunicationTokenCredential(data.token);
-      console.log("[ADMIN INIT] getDeviceManager...");
-      const deviceManager = await callClient.getDeviceManager();
-      console.log("[ADMIN INIT] askDevicePermission...");
-      await deviceManager.askDevicePermission({ video: true, audio: true });
-      console.log("[ADMIN INIT] device permission done");
-
-      const cameras = await deviceManager.getCameras();
-      if (cameras.length > 0) {
-        localVideoStream.current = new LocalVideoStream(cameras[0]);
-      }
-
-      setCallState("Connecting to trial...");
       console.log("[ADMIN INIT] createCallAgent...");
 
       const agent = await callClient.createCallAgent(tokenCredential, {
@@ -735,14 +724,7 @@ async function renderFeaturedVideo() {
 
       callAgentRef.current = agent;
 
-      const roomCall = agent.join(
-        { roomId: data.roomId },
-        {
-          videoOptions: localVideoStream.current
-            ? { localVideoStreams: [localVideoStream.current] }
-            : undefined,
-        }
-      );
+      const roomCall = agent.join({ roomId: data.roomId });
 
       setCall(roomCall);
       callRef.current = roomCall;
