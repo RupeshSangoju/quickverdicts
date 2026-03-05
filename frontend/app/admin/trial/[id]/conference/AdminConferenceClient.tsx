@@ -697,7 +697,7 @@ async function renderFeaturedVideo() {
         throw new Error(`Failed to join trial as admin (${response.status}): ${body}`);
       }
       const data = await response.json();
-      console.log("[ADMIN INIT] admin-join succeeded, roomId =", data.roomId);
+      console.log("[ADMIN INIT] admin-join succeeded, roomId =", data.roomId, "userId =", data.userId);
       setDisplayName(data.displayName || "Admin");
       console.log("[ADMIN INIT] chatThreadId =", data.chatThreadId, "endpointUrl =", !!data.endpointUrl);
 
@@ -763,7 +763,8 @@ async function renderFeaturedVideo() {
       setParticipantJoinTimes(prev => new Map(prev).set("local", new Date()));
 
       roomCall.on("stateChanged", async () => {
-        console.log("[ADMIN STATE] →", roomCall.state, roomCall.state === "Disconnected" ? roomCall.callEndReason : "");
+        const reason = roomCall.callEndReason;
+        console.log("[ADMIN STATE] →", roomCall.state, reason ? `code=${reason.code} subCode=${reason.subCode} msg=${reason.message}` : "");
         setCallState(roomCall.state);
         if (roomCall.state === "Connected") {
           setIsMuted(roomCall.isMuted);
