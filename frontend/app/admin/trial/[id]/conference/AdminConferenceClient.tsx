@@ -184,13 +184,13 @@ export default function AdminConferenceClient() {
   useEffect(() => {
     if (hasInitialized.current) return;
     hasInitialized.current = true;
+    const controller = new AbortController();
     const myId = ++initInvocationId.current;
-    initializeCall(myId);
+    initializeCall(myId, controller.signal);
     return () => {
       hasInitialized.current = false;
-      // Incrementing here means any in-flight call from this mount will see
-      // myId !== initInvocationId.current and bail out before touching ACS.
       ++initInvocationId.current;
+      controller.abort(); // cancel the in-flight fetch so the backend gets exactly one request
     };
   }, []);
 
@@ -672,7 +672,7 @@ async function renderFeaturedVideo() {
     }
   }
 
-  async function initializeCall(invocationId: number) {
+  async function initializeCall(invocationId: number, signal: AbortSignal) {
     console.log("[ADMIN INIT] initializeCall() starting, caseId =", caseId, "id =", invocationId);
     try {
       setCallState("Getting admin permissions...");
@@ -684,6 +684,7 @@ async function renderFeaturedVideo() {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
+        signal,
       });
 
       if (invocationId !== initInvocationId.current) {
@@ -1079,6 +1080,7 @@ async function renderFeaturedVideo() {
 
       setLoading(false);
     } catch (err: any) {
+      if (err?.name === 'AbortError') return; // StrictMode cancelled first mount — ignore
       if (invocationId !== initInvocationId.current) return; // stale — ignore
       console.error("[ADMIN INIT] initializeCall failed:", err);
       setError(err.message || "Failed to join trial");

@@ -130,11 +130,13 @@ export default function TrialConferenceClient() {
   useEffect(() => {
     if (hasInitialized.current) return;
     hasInitialized.current = true;
+    const controller = new AbortController();
     const myId = ++initInvocationId.current;
-    initializeCall(myId);
+    initializeCall(myId, controller.signal);
     return () => {
       hasInitialized.current = false;
       ++initInvocationId.current;
+      controller.abort(); // cancel the in-flight fetch so the backend gets exactly one request
     };
   }, []);
 
@@ -493,7 +495,7 @@ export default function TrialConferenceClient() {
     }
   }
 
-  async function initializeCall(invocationId: number) {
+  async function initializeCall(invocationId: number, signal: AbortSignal) {
     console.log("[ATTORNEY INIT] initializeCall() starting, caseId =", caseId, "id =", invocationId);
     try {
       setCallState("Getting permissions...");
@@ -505,6 +507,7 @@ export default function TrialConferenceClient() {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
+        signal,
       });
 
       if (invocationId !== initInvocationId.current) {
@@ -837,6 +840,7 @@ roomCall.remoteParticipants.forEach((p: any) => {
       console.log("[ATTORNEY INIT CHECK] Call connected — checking participants immediately");
 // Reuse the same logging block as above
     } catch (err: any) {
+      if (err?.name === 'AbortError') return; // StrictMode cancelled first mount — ignore
       if (invocationId !== initInvocationId.current) return; // stale — ignore
       console.error("[ATTORNEY INIT] initializeCall failed:", err);
       setError(err.message || "Failed to join trial");
