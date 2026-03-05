@@ -501,6 +501,17 @@ export default function TrialConferenceClient() {
       setCallState("Getting permissions...");
       const token = getToken();
 
+      // Debounce: React StrictMode fires cleanup immediately after first mount.
+      // Wait 100ms — if the abort signal fires before then, bail out without hitting the backend.
+      await new Promise<void>((resolve, reject) => {
+        const t = setTimeout(resolve, 100);
+        signal.addEventListener("abort", () => { clearTimeout(t); reject(new DOMException("Aborted", "AbortError")); });
+      });
+      if (signal.aborted || invocationId !== initInvocationId.current) {
+        console.log("[ATTORNEY INIT] aborted during debounce, bailing out");
+        return;
+      }
+
       const response = await fetch(`${API_BASE}/api/trial/join/${caseId}`, {
         method: "POST",
         headers: {

@@ -26,11 +26,10 @@ const Event = require("../models/Event");
 // Import ACS services
 const {
   createRoom,
-  updateRoom,
+  ensureRoomActive,
   addParticipantToRoom,
   removeParticipantFromRoom,
   listRoomParticipants,
-  getRoom,
   createChatThread,
   addParticipantToChat,
   removeParticipantFromChat,
@@ -95,6 +94,12 @@ const generalTrialLimiter = rateLimit({
  * Prevents two concurrent join requests from each creating a separate new room.
  */
 const roomRecoveryInProgress = new Set();
+
+/**
+ * Deduplicates concurrent participant join requests for the same caseId+userId.
+ * Key: `${caseId}-${userId}`  Value: Promise<joinResult>
+ */
+const participantJoinInFlight = new Map();
 
 /**
  * Deduplicates concurrent admin-join requests for the same caseId.
@@ -349,6 +354,21 @@ router.post(
       const caseId = req.validatedCaseId;
       const userId = req.user.id;
       const userType = req.user.type;
+
+      // Deduplicate concurrent join calls for the same user+case (StrictMode double-mount).
+      const joinKey = `${caseId}-${userId}`;
+      if (participantJoinInFlight.has(joinKey)) {
+        console.log(`⏳ join for case ${caseId} user ${userId} already in flight — reusing result`);
+        try {
+          const cachedResult = await participantJoinInFlight.get(joinKey);
+          return res.json(cachedResult);
+        } catch {
+          return res.status(500).json({ success: false, message: "Concurrent join failed" });
+        }
+      }
+      let resolveJoin, rejectJoin;
+      const joinPromise = new Promise((resolve, reject) => { resolveJoin = resolve; rejectJoin = reject; });
+      participantJoinInFlight.set(joinKey, joinPromise);
 
       console.log(`🎯 Trial join request - User: ${userType} (ID: ${userId}), Case: ${caseId}`);
 
@@ -620,7 +640,7 @@ router.post(
       console.log(`   ACS User ID: ${acsUserId}`);
       console.log(`   Chat Thread: ${meeting.ChatThreadId}`);
 
-      res.json({
+      const joinResult = {
         success: true,
         token: tokenResponse.token,
         expiresOn: tokenResponse.expiresOn,
@@ -629,8 +649,12 @@ router.post(
         roomId: activeRoomId,
         chatThreadId: meeting.ChatThreadId,
         endpointUrl: ACS_ENDPOINT,
-      });
+      };
+      resolveJoin(joinResult);
+      setTimeout(() => participantJoinInFlight.delete(joinKey), 10000);
+      res.json(joinResult);
     } catch (error) {
+      if (rejectJoin) { rejectJoin(error); setTimeout(() => participantJoinInFlight.delete(joinKey), 10000); }
       console.error("❌ Error joining trial:", error);
       res.status(500).json({
         success: false,
@@ -1086,28 +1110,6 @@ router.post(
         }
       }
 
-      // 🔑 Extend room validity if expired or expiring within 1 hour.
-      // The management API (addParticipant, listParticipants) ignores validUntil,
-      // but cpconv enforces it strictly — an expired room returns 403 at call-join time.
-      try {
-        const roomDetails = await getRoom(trial.RoomId);
-        const now = Date.now();
-        const validUntil = roomDetails.validUntil ? new Date(roomDetails.validUntil).getTime() : 0;
-        const oneHourMs = 60 * 60 * 1000;
-        if (validUntil < now + oneHourMs) {
-          const newValidFrom = roomDetails.validFrom && new Date(roomDetails.validFrom) > new Date(now - 24 * oneHourMs)
-            ? new Date(roomDetails.validFrom)
-            : new Date(now - oneHourMs); // start 1h in the past to be safe
-          const newValidUntil = new Date(now + 24 * oneHourMs);
-          console.log(`⏰ Room ${trial.RoomId} validUntil is ${roomDetails.validUntil || 'missing'} — extending to ${newValidUntil.toISOString()}`);
-          await updateRoom(trial.RoomId, newValidFrom, newValidUntil);
-        } else {
-          console.log(`✅ Room ${trial.RoomId} validity OK until ${new Date(validUntil).toISOString()}`);
-        }
-      } catch (validityErr) {
-        console.error("⚠️ Could not check/extend room validity (continuing):", validityErr.message);
-      }
-
       let identityResponse;
       let acsUserId;
       let tokenResponse;
@@ -1137,6 +1139,27 @@ router.post(
         .query("SELECT RoomId FROM dbo.TrialMeetings WHERE MeetingId = @meetingId");
       if (freshRoomA.recordset[0]?.RoomId) {
         activeRoomId = freshRoomA.recordset[0].RoomId;
+      }
+
+      // 🔑 Ensure room validity before joining. The management API ignores validUntil
+      // but cpconv enforces it — expired rooms get 403. Skip getRoom (unreliable for
+      // internally broken rooms) and directly attempt updateRoom. If that also fails,
+      // ensureRoomActive recreates the room and returns the new ID.
+      try {
+        const ensureResult = await ensureRoomActive(activeRoomId);
+        if (ensureResult.recreated) {
+          // Room was broken and recreated — update DB with new room ID
+          const ensurePool = await poolPromise;
+          await ensurePool.request()
+            .input("meetingId", sql.Int, trial.MeetingId)
+            .input("newRoomId", sql.NVarChar, ensureResult.roomId)
+            .input("oldRoomId", sql.NVarChar, activeRoomId)
+            .query("UPDATE dbo.TrialMeetings SET RoomId = @newRoomId WHERE MeetingId = @meetingId AND RoomId = @oldRoomId");
+          console.log(`✅ DB updated with recreated room: ${ensureResult.roomId}`);
+          activeRoomId = ensureResult.roomId;
+        }
+      } catch (ensureErr) {
+        console.error(`⚠️ ensureRoomActive failed (continuing): ${ensureErr.message}`);
       }
 
       try {
