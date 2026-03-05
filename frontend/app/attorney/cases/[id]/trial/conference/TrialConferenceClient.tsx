@@ -95,7 +95,7 @@ export default function TrialConferenceClient() {
   const featuredRenderer = useRef<VideoStreamRenderer | null>(null);
   const debouncedRenderTrigger = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasInitialized = useRef(false);
-  const initCancelledRef = useRef(false);
+  const initInvocationId = useRef(0);
   const chatMessagesEndRef = useRef<HTMLDivElement>(null);
   const currentUserId = useRef<string>("");
   const callRef = useRef<any>(null);
@@ -130,11 +130,11 @@ export default function TrialConferenceClient() {
   useEffect(() => {
     if (hasInitialized.current) return;
     hasInitialized.current = true;
-    initCancelledRef.current = false;
-    initializeCall();
+    const myId = ++initInvocationId.current;
+    initializeCall(myId);
     return () => {
-      initCancelledRef.current = true;
       hasInitialized.current = false;
+      ++initInvocationId.current;
     };
   }, []);
 
@@ -493,8 +493,8 @@ export default function TrialConferenceClient() {
     }
   }
 
-  async function initializeCall() {
-    console.log("[ATTORNEY INIT] initializeCall() starting, caseId =", caseId);
+  async function initializeCall(invocationId: number) {
+    console.log("[ATTORNEY INIT] initializeCall() starting, caseId =", caseId, "id =", invocationId);
     try {
       setCallState("Getting permissions...");
       const token = getToken();
@@ -507,8 +507,8 @@ export default function TrialConferenceClient() {
         },
       });
 
-      if (initCancelledRef.current) {
-        console.log("[ATTORNEY INIT] cancelled after fetch — bailing out");
+      if (invocationId !== initInvocationId.current) {
+        console.log("[ATTORNEY INIT] stale invocation", invocationId, "— bailing out");
         return;
       }
 
@@ -826,6 +826,7 @@ roomCall.remoteParticipants.forEach((p: any) => {
       console.log("[ATTORNEY INIT CHECK] Call connected — checking participants immediately");
 // Reuse the same logging block as above
     } catch (err: any) {
+      if (invocationId !== initInvocationId.current) return; // stale — ignore
       console.error("[ATTORNEY INIT] initializeCall failed:", err);
       setError(err.message || "Failed to join trial");
       setLoading(false);

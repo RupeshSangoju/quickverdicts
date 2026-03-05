@@ -119,7 +119,7 @@ export default function AdminConferenceClient() {
   const featuredRenderer = useRef<VideoStreamRenderer | null>(null);
   const debouncedRenderTrigger = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasInitialized = useRef(false);
-  const initCancelledRef = useRef(false);
+  const initInvocationId = useRef(0);
   const chatMessagesEndRef = useRef<HTMLDivElement>(null);
   const currentUserId = useRef<string>("");
   const callRef = useRef<any>(null);
@@ -184,12 +184,13 @@ export default function AdminConferenceClient() {
   useEffect(() => {
     if (hasInitialized.current) return;
     hasInitialized.current = true;
-    initCancelledRef.current = false;
-    initializeCall();
+    const myId = ++initInvocationId.current;
+    initializeCall(myId);
     return () => {
-      // Cancel the in-flight initializeCall so it doesn't race with the next one.
-      initCancelledRef.current = true;
       hasInitialized.current = false;
+      // Incrementing here means any in-flight call from this mount will see
+      // myId !== initInvocationId.current and bail out before touching ACS.
+      ++initInvocationId.current;
     };
   }, []);
 
@@ -671,8 +672,8 @@ async function renderFeaturedVideo() {
     }
   }
 
-  async function initializeCall() {
-    console.log("[ADMIN INIT] initializeCall() starting, caseId =", caseId);
+  async function initializeCall(invocationId: number) {
+    console.log("[ADMIN INIT] initializeCall() starting, caseId =", caseId, "id =", invocationId);
     try {
       setCallState("Getting admin permissions...");
       const token = getToken();
@@ -685,9 +686,8 @@ async function renderFeaturedVideo() {
         },
       });
 
-      // If StrictMode cancelled this invocation, bail out before doing any ACS work.
-      if (initCancelledRef.current) {
-        console.log("[ADMIN INIT] cancelled after fetch — bailing out");
+      if (invocationId !== initInvocationId.current) {
+        console.log("[ADMIN INIT] stale invocation", invocationId, "— bailing out");
         return;
       }
 
@@ -1056,6 +1056,7 @@ async function renderFeaturedVideo() {
 
       setLoading(false);
     } catch (err: any) {
+      if (invocationId !== initInvocationId.current) return; // stale — ignore
       console.error("[ADMIN INIT] initializeCall failed:", err);
       setError(err.message || "Failed to join trial");
       setLoading(false);
