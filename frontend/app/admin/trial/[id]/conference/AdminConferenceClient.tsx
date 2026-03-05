@@ -698,18 +698,27 @@ async function renderFeaturedVideo() {
       const data = await response.json();
       console.log("[ADMIN INIT] admin-join succeeded, roomId =", data.roomId);
       setDisplayName(data.displayName || "Admin");
+      console.log("[ADMIN INIT] chatThreadId =", data.chatThreadId, "endpointUrl =", !!data.endpointUrl);
 
       // Initialize chat
       if (data.chatThreadId && data.endpointUrl) {
+        console.log("[ADMIN INIT] starting initializeChat...");
         await initializeChat(data.token, data.userId, data.chatThreadId, data.endpointUrl);
+        console.log("[ADMIN INIT] initializeChat done");
+      } else {
+        console.log("[ADMIN INIT] skipping chat init");
       }
 
       setCallState("Initializing devices...");
+      console.log("[ADMIN INIT] creating CallClient...");
 
       const callClient = new CallClient();
       const tokenCredential = new AzureCommunicationTokenCredential(data.token);
+      console.log("[ADMIN INIT] getDeviceManager...");
       const deviceManager = await callClient.getDeviceManager();
+      console.log("[ADMIN INIT] askDevicePermission...");
       await deviceManager.askDevicePermission({ video: true, audio: true });
+      console.log("[ADMIN INIT] device permission done");
 
       const cameras = await deviceManager.getCameras();
       if (cameras.length > 0) {
@@ -717,10 +726,12 @@ async function renderFeaturedVideo() {
       }
 
       setCallState("Connecting to trial...");
+      console.log("[ADMIN INIT] createCallAgent...");
 
       const agent = await callClient.createCallAgent(tokenCredential, {
         displayName: data.displayName || "Admin Monitor",
       });
+      console.log("[ADMIN INIT] CallAgent created, joining room...");
 
       callAgentRef.current = agent;
 

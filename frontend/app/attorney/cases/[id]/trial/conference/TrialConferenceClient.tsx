@@ -519,17 +519,26 @@ export default function TrialConferenceClient() {
       const data = await response.json();
       console.log("[ATTORNEY INIT] trial-join succeeded, roomId =", data.roomId);
       setDisplayName(data.displayName);
+      console.log("[ATTORNEY INIT] chatThreadId =", data.chatThreadId, "endpointUrl =", !!data.endpointUrl);
 
       if (data.chatThreadId && data.endpointUrl) {
+        console.log("[ATTORNEY INIT] starting initializeChat...");
         await initializeChat(data.token, data.userId, data.chatThreadId, data.endpointUrl);
+        console.log("[ATTORNEY INIT] initializeChat done");
+      } else {
+        console.log("[ATTORNEY INIT] skipping chat init");
       }
 
       setCallState("Initializing devices...");
+      console.log("[ATTORNEY INIT] creating CallClient...");
 
       const callClient = new CallClient();
       const tokenCredential = new AzureCommunicationTokenCredential(data.token);
+      console.log("[ATTORNEY INIT] getDeviceManager...");
       const deviceManager = await callClient.getDeviceManager();
+      console.log("[ATTORNEY INIT] askDevicePermission...");
       await deviceManager.askDevicePermission({ video: true, audio: true });
+      console.log("[ATTORNEY INIT] device permission done");
 
       const cameras = await deviceManager.getCameras();
       if (cameras.length > 0) {
@@ -537,10 +546,12 @@ export default function TrialConferenceClient() {
       }
 
       setCallState("Connecting to trial...");
+      console.log("[ATTORNEY INIT] createCallAgent...");
 
       const agent = await callClient.createCallAgent(tokenCredential, {
         displayName: data.displayName,
       });
+      console.log("[ATTORNEY INIT] CallAgent created, joining room...");
 
       callAgentRef.current = agent;
 
