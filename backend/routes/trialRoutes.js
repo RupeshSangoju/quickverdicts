@@ -84,6 +84,39 @@ const generalTrialLimiter = rateLimit({
 });
 
 // ============================================
+// PER-CASE RECOVERY MUTEX
+// ============================================
+
+/**
+ * Tracks which caseIds are currently undergoing nuclear room recovery.
+ * Prevents two concurrent join requests from each creating a separate new room.
+ */
+const roomRecoveryInProgress = new Set();
+
+/**
+ * Wait up to maxWaitMs for a case's room recovery to finish, then return.
+ */
+async function waitForRoomRecovery(caseId, maxWaitMs = 6000) {
+  const pollInterval = 500;
+  let elapsed = 0;
+  while (roomRecoveryInProgress.has(caseId) && elapsed < maxWaitMs) {
+    await new Promise((resolve) => setTimeout(resolve, pollInterval));
+    elapsed += pollInterval;
+  }
+}
+
+/**
+ * Re-fetch the current RoomId for a meeting from the database.
+ */
+async function refetchRoomId(pool, meetingId) {
+  const result = await pool
+    .request()
+    .input("meetingId", sql.Int, meetingId)
+    .query("SELECT RoomId FROM dbo.TrialMeetings WHERE MeetingId = @meetingId");
+  return result.recordset[0]?.RoomId || null;
+}
+
+// ============================================
 // MIDDLEWARE
 // ============================================
 
@@ -456,19 +489,69 @@ router.post(
       const acsUserId = identityResponse.communicationUserId;
 
       // Add participant to ACS Room (for video)
-      const roomResult = await addParticipantToRoom(meeting.RoomId, acsUserId, participantRole);
+      // If another join is currently doing nuclear recovery for this case, wait for it to finish
+      // so we don't both create separate new rooms.
+      if (roomRecoveryInProgress.has(caseId)) {
+        console.log(`⏳ Waiting for concurrent room recovery on case ${caseId}...`);
+        await waitForRoomRecovery(caseId);
+      }
 
-      // If room was recreated due to corruption, update the database
       let activeRoomId = meeting.RoomId;
+
+      // Re-fetch room ID in case it was updated by a just-completed concurrent recovery
+      const pool2 = await poolPromise;
+      const freshRoomResult = await pool2
+        .request()
+        .input("meetingId", sql.Int, meeting.MeetingId)
+        .query("SELECT RoomId FROM dbo.TrialMeetings WHERE MeetingId = @meetingId");
+      if (freshRoomResult.recordset[0]?.RoomId) {
+        activeRoomId = freshRoomResult.recordset[0].RoomId;
+      }
+
+      let roomResult = await addParticipantToRoom(activeRoomId, acsUserId, participantRole);
+
+      // If the room was deleted by a concurrent recovery, re-fetch and retry once
+      if (roomResult && roomResult.roomGone) {
+        console.log(`🔄 Room ${activeRoomId} gone — re-fetching from DB and retrying...`);
+        const pool3 = await poolPromise;
+        const retryRoom = await refetchRoomId(pool3, meeting.MeetingId);
+        if (retryRoom) {
+          activeRoomId = retryRoom;
+          roomResult = await addParticipantToRoom(activeRoomId, acsUserId, participantRole);
+        }
+      }
+
+      // If room was recreated due to corruption, use conditional update (optimistic lock)
       if (roomResult && roomResult.newRoomId) {
-        console.log(`🔄 Room was recreated: ${meeting.RoomId} -> ${roomResult.newRoomId}`);
-        activeRoomId = roomResult.newRoomId;
-        const pool = await poolPromise;
-        await pool.request()
-          .input("meetingId", sql.Int, meeting.MeetingId)
-          .input("newRoomId", sql.NVarChar, roomResult.newRoomId)
-          .query("UPDATE dbo.TrialMeetings SET RoomId = @newRoomId WHERE MeetingId = @meetingId");
-        console.log(`✅ Database updated with new RoomId`);
+        console.log(`🔄 Room was recreated: ${activeRoomId} -> ${roomResult.newRoomId}`);
+        roomRecoveryInProgress.add(caseId);
+        try {
+          const oldRoomId = activeRoomId;
+          const pool4 = await poolPromise;
+          const updateResult = await pool4.request()
+            .input("meetingId", sql.Int, meeting.MeetingId)
+            .input("newRoomId", sql.NVarChar, roomResult.newRoomId)
+            .input("oldRoomId", sql.NVarChar, oldRoomId)
+            .query("UPDATE dbo.TrialMeetings SET RoomId = @newRoomId WHERE MeetingId = @meetingId AND RoomId = @oldRoomId");
+
+          if (updateResult.rowsAffected[0] > 0) {
+            // This request won the race — use the new room we created
+            activeRoomId = roomResult.newRoomId;
+            console.log(`✅ Database updated with new RoomId: ${activeRoomId}`);
+          } else {
+            // Another request already updated the room — use theirs and add participant to it
+            console.log(`ℹ️ Another request already did room recovery — joining their new room`);
+            const pool5 = await poolPromise;
+            const latestRoom = await refetchRoomId(pool5, meeting.MeetingId);
+            if (latestRoom) {
+              activeRoomId = latestRoom;
+              await addParticipantToRoom(activeRoomId, acsUserId, participantRole);
+              console.log(`✅ Joined concurrently-recovered room ${activeRoomId}`);
+            }
+          }
+        } finally {
+          roomRecoveryInProgress.delete(caseId);
+        }
       }
 
       // Generate token with VoIP and Chat scopes
@@ -680,23 +763,69 @@ router.post(
       const token = await identityClient.getToken(identity, ["voip", "chat"]);
 
       // Add to room (for video)
+      // If another join is currently doing nuclear recovery for this case, wait for it to finish
+      if (roomRecoveryInProgress.has(caseId)) {
+        console.log(`⏳ Waiting for concurrent room recovery on case ${caseId}...`);
+        await waitForRoomRecovery(caseId);
+      }
+
+      // Re-fetch room ID in case it was updated by a just-completed concurrent recovery
+      const freshPoolJ = await poolPromise;
+      const freshRoomJ = await freshPoolJ
+        .request()
+        .input("meetingId", sql.Int, meetingId)
+        .query("SELECT RoomId FROM dbo.TrialMeetings WHERE MeetingId = @meetingId");
+      if (freshRoomJ.recordset[0]?.RoomId) {
+        activeRoomId = freshRoomJ.recordset[0].RoomId;
+      }
+
       try {
-        const roomResult = await addParticipantToRoom(
+        let roomResult = await addParticipantToRoom(
           activeRoomId,
           identity.communicationUserId,
           "Attendee"
         );
 
-        // If room was recreated due to corruption, update the database
+        // If the room was deleted by a concurrent recovery, re-fetch and retry once
+        if (roomResult && roomResult.roomGone) {
+          console.log(`🔄 Room ${activeRoomId} gone for juror — re-fetching from DB and retrying...`);
+          const retryPoolJ = await poolPromise;
+          const retryRoomJ = await refetchRoomId(retryPoolJ, meetingId);
+          if (retryRoomJ) {
+            activeRoomId = retryRoomJ;
+            roomResult = await addParticipantToRoom(activeRoomId, identity.communicationUserId, "Attendee");
+          }
+        }
+
+        // If room was recreated due to corruption, use conditional update (optimistic lock)
         if (roomResult && roomResult.newRoomId) {
           console.log(`🔄 Room was recreated for juror: ${activeRoomId} -> ${roomResult.newRoomId}`);
-          activeRoomId = roomResult.newRoomId;
-          const pool = await poolPromise;
-          await pool.request()
-            .input("meetingId", sql.Int, meetingId)
-            .input("newRoomId", sql.NVarChar, roomResult.newRoomId)
-            .query("UPDATE dbo.TrialMeetings SET RoomId = @newRoomId WHERE MeetingId = @meetingId");
-          console.log(`✅ Database updated with new RoomId`);
+          roomRecoveryInProgress.add(caseId);
+          try {
+            const oldRoomIdJ = activeRoomId;
+            const updatePoolJ = await poolPromise;
+            const updateResultJ = await updatePoolJ.request()
+              .input("meetingId", sql.Int, meetingId)
+              .input("newRoomId", sql.NVarChar, roomResult.newRoomId)
+              .input("oldRoomId", sql.NVarChar, oldRoomIdJ)
+              .query("UPDATE dbo.TrialMeetings SET RoomId = @newRoomId WHERE MeetingId = @meetingId AND RoomId = @oldRoomId");
+
+            if (updateResultJ.rowsAffected[0] > 0) {
+              activeRoomId = roomResult.newRoomId;
+              console.log(`✅ Database updated with new RoomId: ${activeRoomId}`);
+            } else {
+              console.log(`ℹ️ Another request already did room recovery for juror — joining their new room`);
+              const latestPoolJ = await poolPromise;
+              const latestRoomJ = await refetchRoomId(latestPoolJ, meetingId);
+              if (latestRoomJ) {
+                activeRoomId = latestRoomJ;
+                await addParticipantToRoom(activeRoomId, identity.communicationUserId, "Attendee");
+                console.log(`✅ Juror joined concurrently-recovered room ${activeRoomId}`);
+              }
+            }
+          } finally {
+            roomRecoveryInProgress.delete(caseId);
+          }
         }
       } catch (err) {
         if (err.statusCode !== 409) throw err; // Ignore if already added
@@ -923,20 +1052,67 @@ router.post(
         throw idErr;
       }
 
-      let activeRoomId = trial.RoomId;
-      try {
-        const roomResult = await addParticipantToRoom(trial.RoomId, acsUserId, "Presenter");
+      // If another join is currently doing nuclear recovery for this case, wait for it to finish
+      if (roomRecoveryInProgress.has(caseId)) {
+        console.log(`⏳ Waiting for concurrent room recovery on case ${caseId} (admin)...`);
+        await waitForRoomRecovery(caseId);
+      }
 
-        // If room was recreated due to corruption, update the database
+      let activeRoomId = trial.RoomId;
+
+      // Re-fetch room ID in case it was updated by a just-completed concurrent recovery
+      const freshPoolA = await poolPromise;
+      const freshRoomA = await freshPoolA
+        .request()
+        .input("meetingId", sql.Int, trial.MeetingId)
+        .query("SELECT RoomId FROM dbo.TrialMeetings WHERE MeetingId = @meetingId");
+      if (freshRoomA.recordset[0]?.RoomId) {
+        activeRoomId = freshRoomA.recordset[0].RoomId;
+      }
+
+      try {
+        let roomResult = await addParticipantToRoom(activeRoomId, acsUserId, "Presenter");
+
+        // If the room was deleted by a concurrent recovery, re-fetch and retry once
+        if (roomResult && roomResult.roomGone) {
+          console.log(`🔄 Room ${activeRoomId} gone for admin — re-fetching from DB and retrying...`);
+          const retryPoolA = await poolPromise;
+          const retryRoomA = await refetchRoomId(retryPoolA, trial.MeetingId);
+          if (retryRoomA) {
+            activeRoomId = retryRoomA;
+            roomResult = await addParticipantToRoom(activeRoomId, acsUserId, "Presenter");
+          }
+        }
+
+        // If room was recreated due to corruption, use conditional update (optimistic lock)
         if (roomResult && roomResult.newRoomId) {
-          console.log(`🔄 Room was recreated for admin: ${trial.RoomId} -> ${roomResult.newRoomId}`);
-          activeRoomId = roomResult.newRoomId;
-          const pool = await poolPromise;
-          await pool.request()
-            .input("meetingId", sql.Int, trial.MeetingId)
-            .input("newRoomId", sql.NVarChar, roomResult.newRoomId)
-            .query("UPDATE dbo.TrialMeetings SET RoomId = @newRoomId WHERE MeetingId = @meetingId");
-          console.log(`✅ Database updated with new RoomId`);
+          console.log(`🔄 Room was recreated for admin: ${activeRoomId} -> ${roomResult.newRoomId}`);
+          roomRecoveryInProgress.add(caseId);
+          try {
+            const oldRoomIdA = activeRoomId;
+            const updatePoolA = await poolPromise;
+            const updateResultA = await updatePoolA.request()
+              .input("meetingId", sql.Int, trial.MeetingId)
+              .input("newRoomId", sql.NVarChar, roomResult.newRoomId)
+              .input("oldRoomId", sql.NVarChar, oldRoomIdA)
+              .query("UPDATE dbo.TrialMeetings SET RoomId = @newRoomId WHERE MeetingId = @meetingId AND RoomId = @oldRoomId");
+
+            if (updateResultA.rowsAffected[0] > 0) {
+              activeRoomId = roomResult.newRoomId;
+              console.log(`✅ Database updated with new RoomId (admin): ${activeRoomId}`);
+            } else {
+              console.log(`ℹ️ Another request already did room recovery for admin — joining their new room`);
+              const latestPoolA = await poolPromise;
+              const latestRoomA = await refetchRoomId(latestPoolA, trial.MeetingId);
+              if (latestRoomA) {
+                activeRoomId = latestRoomA;
+                await addParticipantToRoom(activeRoomId, acsUserId, "Presenter");
+                console.log(`✅ Admin joined concurrently-recovered room ${activeRoomId}`);
+              }
+            }
+          } finally {
+            roomRecoveryInProgress.delete(caseId);
+          }
         }
       } catch (roomErr) {
         console.error("Error adding admin to room:", roomErr && roomErr.message ? roomErr.message : roomErr);
