@@ -678,6 +678,19 @@ async function renderFeaturedVideo() {
       setCallState("Getting admin permissions...");
       const token = getToken();
 
+      // Debounce: wait 100ms before sending the request.
+      // React StrictMode unmounts immediately after the first mount, so the cleanup
+      // fires and aborts the signal before this delay expires — preventing the
+      // first (stale) request from ever reaching the backend.
+      await new Promise<void>((resolve, reject) => {
+        const t = setTimeout(resolve, 100);
+        signal.addEventListener("abort", () => { clearTimeout(t); reject(new DOMException("Aborted", "AbortError")); });
+      });
+      if (signal.aborted || invocationId !== initInvocationId.current) {
+        console.log("[ADMIN INIT] aborted during debounce, bailing out");
+        return;
+      }
+
       const response = await fetch(`${API_BASE}/api/trial/admin-join/${caseId}`, {
         method: "POST",
         headers: {

@@ -95,6 +95,15 @@ const generalTrialLimiter = rateLimit({
 const roomRecoveryInProgress = new Set();
 
 /**
+ * Deduplicates concurrent admin-join requests for the same caseId.
+ * Key: caseId string  Value: Promise<adminJoinResult>
+ * If a second admin-join arrives while the first is still processing,
+ * the second waits for and reuses the first's result — preventing two
+ * ACS identities being created and added to the room simultaneously.
+ */
+const adminJoinInFlight = new Map();
+
+/**
  * Wait up to maxWaitMs for a case's room recovery to finish, then return.
  */
 async function waitForRoomRecovery(caseId, maxWaitMs = 6000) {
@@ -984,6 +993,28 @@ router.post(
   async (req, res) => {
     try {
       const caseId = req.validatedCaseId;
+
+      // Deduplicate concurrent admin-join calls for the same case.
+      // React StrictMode (dev) sends two near-simultaneous requests; without this
+      // both would create separate ACS identities causing one to get a 403 from cpconv.
+      if (adminJoinInFlight.has(caseId)) {
+        console.log(`⏳ admin-join for case ${caseId} already in flight — reusing result`);
+        try {
+          const cachedResult = await adminJoinInFlight.get(caseId);
+          return res.json(cachedResult);
+        } catch (err) {
+          return res.status(500).json({ success: false, message: "Concurrent admin-join failed" });
+        }
+      }
+
+      let resolveInflight, rejectInflight;
+      const inflightPromise = new Promise((resolve, reject) => {
+        resolveInflight = resolve;
+        rejectInflight = reject;
+      });
+      adminJoinInFlight.set(caseId, inflightPromise);
+
+      try {
       const pool = await poolPromise;
 
       const result = await pool.request().input("caseId", sql.Int, caseId)
@@ -1193,7 +1224,7 @@ router.post(
 
       console.log(`✅ Admin joined trial ${caseId} with chat access`);
 
-      res.json({
+      const joinResult = {
         success: true,
         token: tokenResponse.token,
         expiresOn: tokenResponse.expiresOn,
@@ -1202,7 +1233,17 @@ router.post(
         roomId: activeRoomId,
         chatThreadId: trial.ChatThreadId,
         endpointUrl: ACS_ENDPOINT,
-      });
+      };
+
+      resolveInflight(joinResult);
+      res.json(joinResult);
+      } catch (innerError) {
+        rejectInflight(innerError);
+        throw innerError;
+      } finally {
+        // Clear after a short window so a genuine retry (page reload) goes through fresh
+        setTimeout(() => adminJoinInFlight.delete(caseId), 10000);
+      }
     } catch (error) {
       console.error("❌ Error joining trial as admin:", error);
       res.status(500).json({
