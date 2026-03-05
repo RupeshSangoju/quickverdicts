@@ -184,6 +184,11 @@ export default function AdminConferenceClient() {
     if (hasInitialized.current) return;
     hasInitialized.current = true;
     initializeCall();
+    return () => {
+      // Reset so a real remount (StrictMode second cycle, Fast Refresh, navigation)
+      // can re-run initializeCall instead of being skipped by the guard.
+      hasInitialized.current = false;
+    };
   }, []);
 
   useEffect(() => {
