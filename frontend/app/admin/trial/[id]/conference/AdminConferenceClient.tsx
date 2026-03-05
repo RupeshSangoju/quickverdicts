@@ -709,12 +709,35 @@ async function renderFeaturedVideo() {
         console.log("[ADMIN INIT] skipping chat init");
       }
 
-      // Admin is a monitor — no camera/mic needed; skip device init to avoid permission hangs
-      setCallState("Connecting to trial...");
+      setCallState("Initializing devices...");
       console.log("[ADMIN INIT] creating CallClient...");
 
       const callClient = new CallClient();
       const tokenCredential = new AzureCommunicationTokenCredential(data.token);
+
+      // getDeviceManager can hang on localhost if another tab already holds the camera.
+      // Race it against a 6-second timeout so admin always connects regardless.
+      console.log("[ADMIN INIT] getDeviceManager...");
+      const dmTimeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 6000));
+      const deviceManager = await Promise.race([callClient.getDeviceManager(), dmTimeout]);
+      console.log("[ADMIN INIT] getDeviceManager resolved, deviceManager =", deviceManager != null);
+
+      if (deviceManager) {
+        try {
+          await deviceManager.askDevicePermission({ video: true, audio: true });
+          const cameras = await deviceManager.getCameras();
+          if (cameras.length > 0) {
+            localVideoStream.current = new LocalVideoStream(cameras[0]);
+          }
+          console.log("[ADMIN INIT] device init done, cameras =", cameras.length);
+        } catch (devErr) {
+          console.warn("[ADMIN INIT] device permission failed (continuing without A/V):", devErr);
+        }
+      } else {
+        console.warn("[ADMIN INIT] getDeviceManager timed out — joining without local A/V");
+      }
+
+      setCallState("Connecting to trial...");
       console.log("[ADMIN INIT] createCallAgent...");
 
       const agent = await callClient.createCallAgent(tokenCredential, {
@@ -724,7 +747,14 @@ async function renderFeaturedVideo() {
 
       callAgentRef.current = agent;
 
-      const roomCall = agent.join({ roomId: data.roomId });
+      const roomCall = agent.join(
+        { roomId: data.roomId },
+        {
+          videoOptions: localVideoStream.current
+            ? { localVideoStreams: [localVideoStream.current] }
+            : undefined,
+        }
+      );
 
       setCall(roomCall);
       callRef.current = roomCall;
