@@ -95,6 +95,7 @@ export default function TrialConferenceClient() {
   const featuredRenderer = useRef<VideoStreamRenderer | null>(null);
   const debouncedRenderTrigger = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasInitialized = useRef(false);
+  const initCancelledRef = useRef(false);
   const chatMessagesEndRef = useRef<HTMLDivElement>(null);
   const currentUserId = useRef<string>("");
   const callRef = useRef<any>(null);
@@ -129,10 +130,10 @@ export default function TrialConferenceClient() {
   useEffect(() => {
     if (hasInitialized.current) return;
     hasInitialized.current = true;
+    initCancelledRef.current = false;
     initializeCall();
     return () => {
-      // Reset so a real remount (StrictMode second cycle, Fast Refresh, navigation)
-      // can re-run initializeCall instead of being skipped by the guard.
+      initCancelledRef.current = true;
       hasInitialized.current = false;
     };
   }, []);
@@ -493,6 +494,7 @@ export default function TrialConferenceClient() {
   }
 
   async function initializeCall() {
+    console.log("[ATTORNEY INIT] initializeCall() starting, caseId =", caseId);
     try {
       setCallState("Getting permissions...");
       const token = getToken();
@@ -505,8 +507,17 @@ export default function TrialConferenceClient() {
         },
       });
 
-      if (!response.ok) throw new Error("Failed to join trial");
+      if (initCancelledRef.current) {
+        console.log("[ATTORNEY INIT] cancelled after fetch — bailing out");
+        return;
+      }
+
+      if (!response.ok) {
+        const body = await response.text().catch(() => "");
+        throw new Error(`Failed to join trial (${response.status}): ${body}`);
+      }
       const data = await response.json();
+      console.log("[ATTORNEY INIT] trial-join succeeded, roomId =", data.roomId);
       setDisplayName(data.displayName);
 
       if (data.chatThreadId && data.endpointUrl) {
@@ -815,6 +826,7 @@ roomCall.remoteParticipants.forEach((p: any) => {
       console.log("[ATTORNEY INIT CHECK] Call connected — checking participants immediately");
 // Reuse the same logging block as above
     } catch (err: any) {
+      console.error("[ATTORNEY INIT] initializeCall failed:", err);
       setError(err.message || "Failed to join trial");
       setLoading(false);
     }

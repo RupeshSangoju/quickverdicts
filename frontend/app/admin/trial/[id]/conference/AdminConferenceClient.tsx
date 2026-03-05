@@ -119,6 +119,7 @@ export default function AdminConferenceClient() {
   const featuredRenderer = useRef<VideoStreamRenderer | null>(null);
   const debouncedRenderTrigger = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasInitialized = useRef(false);
+  const initCancelledRef = useRef(false);
   const chatMessagesEndRef = useRef<HTMLDivElement>(null);
   const currentUserId = useRef<string>("");
   const callRef = useRef<any>(null);
@@ -183,10 +184,11 @@ export default function AdminConferenceClient() {
   useEffect(() => {
     if (hasInitialized.current) return;
     hasInitialized.current = true;
+    initCancelledRef.current = false;
     initializeCall();
     return () => {
-      // Reset so a real remount (StrictMode second cycle, Fast Refresh, navigation)
-      // can re-run initializeCall instead of being skipped by the guard.
+      // Cancel the in-flight initializeCall so it doesn't race with the next one.
+      initCancelledRef.current = true;
       hasInitialized.current = false;
     };
   }, []);
@@ -670,6 +672,7 @@ async function renderFeaturedVideo() {
   }
 
   async function initializeCall() {
+    console.log("[ADMIN INIT] initializeCall() starting, caseId =", caseId);
     try {
       setCallState("Getting admin permissions...");
       const token = getToken();
@@ -682,8 +685,18 @@ async function renderFeaturedVideo() {
         },
       });
 
-      if (!response.ok) throw new Error("Failed to join trial as admin");
+      // If StrictMode cancelled this invocation, bail out before doing any ACS work.
+      if (initCancelledRef.current) {
+        console.log("[ADMIN INIT] cancelled after fetch — bailing out");
+        return;
+      }
+
+      if (!response.ok) {
+        const body = await response.text().catch(() => "");
+        throw new Error(`Failed to join trial as admin (${response.status}): ${body}`);
+      }
       const data = await response.json();
+      console.log("[ADMIN INIT] admin-join succeeded, roomId =", data.roomId);
       setDisplayName(data.displayName || "Admin");
 
       // Initialize chat
@@ -1043,6 +1056,7 @@ async function renderFeaturedVideo() {
 
       setLoading(false);
     } catch (err: any) {
+      console.error("[ADMIN INIT] initializeCall failed:", err);
       setError(err.message || "Failed to join trial");
       setLoading(false);
     }
