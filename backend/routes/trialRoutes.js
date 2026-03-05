@@ -510,15 +510,21 @@ router.post(
 
       let roomResult = await addParticipantToRoom(activeRoomId, acsUserId, participantRole);
 
-      // If the room was deleted by a concurrent recovery, re-fetch and retry once
-      if (roomResult && roomResult.roomGone) {
-        console.log(`🔄 Room ${activeRoomId} gone — re-fetching from DB and retrying...`);
-        const pool3 = await poolPromise;
-        const retryRoom = await refetchRoomId(pool3, meeting.MeetingId);
-        if (retryRoom) {
-          activeRoomId = retryRoom;
+      // If roomGone: concurrent recovery deleted the room before DB was updated.
+      // Poll until the other request commits its new RoomId (~3s max, 500ms intervals).
+      let roomGoneAttempts = 0;
+      while (roomResult?.roomGone && roomGoneAttempts < 6) {
+        console.log(`⏳ Room ${activeRoomId} gone (attempt ${roomGoneAttempts + 1}/6) — waiting for concurrent recovery to update DB...`);
+        await new Promise((r) => setTimeout(r, 500));
+        if (roomRecoveryInProgress.has(caseId)) await waitForRoomRecovery(caseId);
+        const poolGone = await poolPromise;
+        const freshId = await refetchRoomId(poolGone, meeting.MeetingId);
+        if (freshId && freshId !== activeRoomId) {
+          activeRoomId = freshId;
           roomResult = await addParticipantToRoom(activeRoomId, acsUserId, participantRole);
+          break;
         }
+        roomGoneAttempts++;
       }
 
       // If room was recreated due to corruption, use conditional update (optimistic lock)
@@ -786,15 +792,21 @@ router.post(
           "Attendee"
         );
 
-        // If the room was deleted by a concurrent recovery, re-fetch and retry once
-        if (roomResult && roomResult.roomGone) {
-          console.log(`🔄 Room ${activeRoomId} gone for juror — re-fetching from DB and retrying...`);
-          const retryPoolJ = await poolPromise;
-          const retryRoomJ = await refetchRoomId(retryPoolJ, meetingId);
-          if (retryRoomJ) {
-            activeRoomId = retryRoomJ;
+        // If roomGone: concurrent recovery deleted the room before DB was updated.
+        // Poll until the other request commits its new RoomId (~3s max, 500ms intervals).
+        let roomGoneAttemptsJ = 0;
+        while (roomResult?.roomGone && roomGoneAttemptsJ < 6) {
+          console.log(`⏳ Room ${activeRoomId} gone for juror (attempt ${roomGoneAttemptsJ + 1}/6) — waiting for concurrent recovery to update DB...`);
+          await new Promise((r) => setTimeout(r, 500));
+          if (roomRecoveryInProgress.has(caseId)) await waitForRoomRecovery(caseId);
+          const poolGoneJ = await poolPromise;
+          const freshIdJ = await refetchRoomId(poolGoneJ, meetingId);
+          if (freshIdJ && freshIdJ !== activeRoomId) {
+            activeRoomId = freshIdJ;
             roomResult = await addParticipantToRoom(activeRoomId, identity.communicationUserId, "Attendee");
+            break;
           }
+          roomGoneAttemptsJ++;
         }
 
         // If room was recreated due to corruption, use conditional update (optimistic lock)
@@ -975,7 +987,7 @@ router.post(
 
       const result = await pool.request().input("caseId", sql.Int, caseId)
         .query(`
-          SELECT 
+          SELECT TOP 1
             c.CaseId,
             c.CaseTitle,
             c.ScheduledDate,
@@ -989,6 +1001,7 @@ router.post(
           JOIN dbo.TrialMeetings tm ON c.CaseId = tm.CaseId
           WHERE c.CaseId = @caseId
             AND c.AdminApprovalStatus = 'approved'
+          ORDER BY tm.CreatedAt DESC
         `);
 
       if (result.recordset.length === 0) {
@@ -1073,15 +1086,21 @@ router.post(
       try {
         let roomResult = await addParticipantToRoom(activeRoomId, acsUserId, "Presenter");
 
-        // If the room was deleted by a concurrent recovery, re-fetch and retry once
-        if (roomResult && roomResult.roomGone) {
-          console.log(`🔄 Room ${activeRoomId} gone for admin — re-fetching from DB and retrying...`);
-          const retryPoolA = await poolPromise;
-          const retryRoomA = await refetchRoomId(retryPoolA, trial.MeetingId);
-          if (retryRoomA) {
-            activeRoomId = retryRoomA;
+        // If roomGone: concurrent recovery deleted the room before DB was updated.
+        // Poll until the other request commits its new RoomId (~3s max, 500ms intervals).
+        let roomGoneAttemptsA = 0;
+        while (roomResult?.roomGone && roomGoneAttemptsA < 6) {
+          console.log(`⏳ Room ${activeRoomId} gone for admin (attempt ${roomGoneAttemptsA + 1}/6) — waiting for concurrent recovery to update DB...`);
+          await new Promise((r) => setTimeout(r, 500));
+          if (roomRecoveryInProgress.has(caseId)) await waitForRoomRecovery(caseId);
+          const poolGoneA = await poolPromise;
+          const freshIdA = await refetchRoomId(poolGoneA, trial.MeetingId);
+          if (freshIdA && freshIdA !== activeRoomId) {
+            activeRoomId = freshIdA;
             roomResult = await addParticipantToRoom(activeRoomId, acsUserId, "Presenter");
+            break;
           }
+          roomGoneAttemptsA++;
         }
 
         // If room was recreated due to corruption, use conditional update (optimistic lock)
