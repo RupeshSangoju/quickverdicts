@@ -714,11 +714,32 @@ async function checkHealth() {
 // EXPORTS
 // ============================================
 
+/**
+ * List all participants in an ACS room (diagnostic)
+ */
+async function listRoomParticipants(roomId) {
+  try {
+    const participants = [];
+    const iter = roomsClient.listParticipants(roomId);
+    for await (const p of iter) {
+      participants.push({
+        id: p.id?.communicationUserId || JSON.stringify(p.id),
+        role: p.role,
+      });
+    }
+    return participants;
+  } catch (error) {
+    console.error(`❌ Error listing room participants:`, sanitizeError(error));
+    return null;
+  }
+}
+
 module.exports = {
   // Room management
   createRoom,
   addParticipantToRoom,
   removeParticipantFromRoom,
+  listRoomParticipants,
   getRoom,
   deleteRoom,
 

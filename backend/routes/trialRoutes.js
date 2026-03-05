@@ -28,6 +28,7 @@ const {
   createRoom,
   addParticipantToRoom,
   removeParticipantFromRoom,
+  listRoomParticipants,
   createChatThread,
   addParticipantToChat,
   removeParticipantFromChat,
@@ -1136,6 +1137,19 @@ router.post(
       } catch (roomErr) {
         console.error("Error adding admin to room:", roomErr && roomErr.message ? roomErr.message : roomErr);
         throw roomErr;
+      }
+
+      // 🔍 DIAGNOSTIC: verify admin is actually in the room before returning token
+      const roomParticipants = await listRoomParticipants(activeRoomId);
+      if (roomParticipants) {
+        const adminInRoom = roomParticipants.find(p => p.id === acsUserId);
+        console.log(`🔍 Room ${activeRoomId} has ${roomParticipants.length} participants`);
+        console.log(`🔍 Admin (${acsUserId}) in room: ${adminInRoom ? `YES (role=${adminInRoom.role})` : 'NO ⚠️'}`);
+        if (!adminInRoom) {
+          console.error(`❌ Admin identity NOT found in room after add — will retry add`);
+          await addParticipantToRoom(activeRoomId, acsUserId, "Presenter");
+          console.log(`✅ Admin re-added to room on retry`);
+        }
       }
 
       try {

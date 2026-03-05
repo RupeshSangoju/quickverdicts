@@ -748,32 +748,41 @@ async function renderFeaturedVideo() {
 
       callAgentRef.current = agent;
 
-      const roomCall = agent.join(
-        { roomId: data.roomId },
-        {
-          videoOptions: localVideoStream.current
-            ? { localVideoStreams: [localVideoStream.current] }
-            : undefined,
-        }
-      );
-      console.log("[ADMIN INIT] roomCall created, initial state:", roomCall.state);
+      let joinRetries = 0;
+      const doJoin = (callAgent: any, roomId: string): void => {
+        const call = callAgent.join(
+          { roomId },
+          {
+            videoOptions: localVideoStream.current
+              ? { localVideoStreams: [localVideoStream.current] }
+              : undefined,
+          }
+        );
+        console.log("[ADMIN INIT] roomCall created, initial state:", call.state);
 
-      setCall(roomCall);
-      callRef.current = roomCall;
-      setParticipantJoinTimes(prev => new Map(prev).set("local", new Date()));
+        setCall(call);
+        callRef.current = call;
+        setParticipantJoinTimes(prev => new Map(prev).set("local", new Date()));
 
-      roomCall.on("stateChanged", async () => {
-        const reason = roomCall.callEndReason;
-        console.log("[ADMIN STATE] →", roomCall.state, reason ? `code=${reason.code} subCode=${reason.subCode} msg=${reason.message}` : "");
-        setCallState(roomCall.state);
-        if (roomCall.state === "Connected") {
-          setIsMuted(roomCall.isMuted);
-          triggerReRender();
-        }
-      });
+        call.on("stateChanged", async () => {
+          const reason = call.callEndReason;
+          console.log("[ADMIN STATE] →", call.state, reason ? `code=${reason.code} subCode=${reason.subCode} msg=${reason.message}` : "");
+          setCallState(call.state);
+          if (call.state === "Connected") {
+            setIsMuted(call.isMuted);
+            triggerReRender();
+          }
+          if (call.state === "Disconnected" && reason?.code === 490 && reason?.subCode === 4502 && joinRetries < 3) {
+            joinRetries++;
+            console.log(`[ADMIN] cpconv 403 — retrying join in 5s (attempt ${joinRetries}/3)...`);
+            await new Promise(r => setTimeout(r, 5000));
+            if (invocationId !== initInvocationId.current) return; // stale — don't retry
+            doJoin(callAgentRef.current!, roomId);
+          }
+        });
 
       // Local video streams updated (screenshare)
-      roomCall.on("localVideoStreamsUpdated", (e: any) => {
+        call.on("localVideoStreamsUpdated", (e: any) => {
         e.added.forEach(async (stream: any) => {
           if (stream.mediaStreamType === "ScreenSharing") {
             screenShareStream.current = stream;
@@ -807,7 +816,7 @@ async function renderFeaturedVideo() {
       });
 
       // Remote participants updated
-      roomCall.on("remoteParticipantsUpdated", (e: any) => {
+        call.on("remoteParticipantsUpdated", (e: any) => {
         e.added.forEach((participant: any) => {
           const userId = getUserId(participant.identifier);
           setParticipantJoinTimes(prev => new Map(prev).set(userId, new Date()));
@@ -1074,13 +1083,15 @@ async function renderFeaturedVideo() {
           });
         });
 
-        setParticipants([...roomCall.remoteParticipants]);
-      });
+          setParticipants([...call.remoteParticipants]);
+        });
 
-      roomCall.on("isMutedChanged", () => {
-        setIsMuted(roomCall.isMuted);
-      });
+        call.on("isMutedChanged", () => {
+          setIsMuted(call.isMuted);
+        });
+      }; // end doJoin
 
+      doJoin(agent, data.roomId);
       console.log("[ADMIN INIT] all handlers registered, calling setLoading(false)");
       setLoading(false);
     } catch (err: any) {
