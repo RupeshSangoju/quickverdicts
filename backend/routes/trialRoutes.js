@@ -26,9 +26,11 @@ const Event = require("../models/Event");
 // Import ACS services
 const {
   createRoom,
+  updateRoom,
   addParticipantToRoom,
   removeParticipantFromRoom,
   listRoomParticipants,
+  getRoom,
   createChatThread,
   addParticipantToChat,
   removeParticipantFromChat,
@@ -1082,6 +1084,28 @@ router.post(
         } catch (cleanupError) {
           console.error("⚠️ Error cleaning up old admin (continuing anyway):", cleanupError.message);
         }
+      }
+
+      // 🔑 Extend room validity if expired or expiring within 1 hour.
+      // The management API (addParticipant, listParticipants) ignores validUntil,
+      // but cpconv enforces it strictly — an expired room returns 403 at call-join time.
+      try {
+        const roomDetails = await getRoom(trial.RoomId);
+        const now = Date.now();
+        const validUntil = roomDetails.validUntil ? new Date(roomDetails.validUntil).getTime() : 0;
+        const oneHourMs = 60 * 60 * 1000;
+        if (validUntil < now + oneHourMs) {
+          const newValidFrom = roomDetails.validFrom && new Date(roomDetails.validFrom) > new Date(now - 24 * oneHourMs)
+            ? new Date(roomDetails.validFrom)
+            : new Date(now - oneHourMs); // start 1h in the past to be safe
+          const newValidUntil = new Date(now + 24 * oneHourMs);
+          console.log(`⏰ Room ${trial.RoomId} validUntil is ${roomDetails.validUntil || 'missing'} — extending to ${newValidUntil.toISOString()}`);
+          await updateRoom(trial.RoomId, newValidFrom, newValidUntil);
+        } else {
+          console.log(`✅ Room ${trial.RoomId} validity OK until ${new Date(validUntil).toISOString()}`);
+        }
+      } catch (validityErr) {
+        console.error("⚠️ Could not check/extend room validity (continuing):", validityErr.message);
       }
 
       let identityResponse;

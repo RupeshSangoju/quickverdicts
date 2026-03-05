@@ -734,9 +734,38 @@ async function listRoomParticipants(roomId) {
   }
 }
 
+/**
+ * Update an ACS Room's validity window
+ *
+ * @param {string} roomId - The room ID
+ * @param {Date} validFrom - New start time
+ * @param {Date} validUntil - New end time
+ * @returns {Promise<Object>} Updated room object
+ */
+async function updateRoom(roomId, validFrom, validUntil) {
+  try {
+    if (!roomId || typeof roomId !== "string") {
+      throw new Error("Valid roomId is required");
+    }
+
+    const room = await retryOperation(
+      () => roomsClient.updateRoom(roomId, { validFrom, validUntil }),
+      `Update room ${roomId}`
+    );
+
+    console.log(`✅ Room ${roomId} validity extended to ${validUntil.toISOString()}`);
+    return room;
+  } catch (error) {
+    console.error(`❌ Error updating room:`, sanitizeError(error));
+    throw new Error(`Failed to update room: ${error.message}`);
+  }
+}
+
+
 module.exports = {
   // Room management
   createRoom,
+  updateRoom,
   addParticipantToRoom,
   removeParticipantFromRoom,
   listRoomParticipants,
