@@ -764,11 +764,11 @@ async function updateRoom(roomId, validFrom, validUntil) {
 /**
  * Ensure a room has an active (non-expired) validity window before a call join.
  * Skips getRoom (unreliable for internally broken rooms) and directly attempts
- * updateRoom. If that also fails (ACS 500 on broken rooms), performs nuclear
- * recovery: delete the broken room and create a fresh one.
+ * updateRoom. Returns { needsRecovery: true } if the room is broken/expired
+ * so the caller can coordinate nuclear recovery via roomRecoveryInProgress.
  *
  * @param {string} roomId - The current room ID
- * @returns {Promise<{roomId: string, recreated?: boolean}>}
+ * @returns {Promise<{roomId: string, needsRecovery: boolean}>}
  */
 async function ensureRoomActive(roomId) {
   const newValidFrom = new Date(Date.now() - 60 * 60 * 1000);   // 1h ago
@@ -778,26 +778,10 @@ async function ensureRoomActive(roomId) {
     // Single attempt — ACS 500 means the room is internally broken; retrying won't help.
     await roomsClient.updateRoom(roomId, { validFrom: newValidFrom, validUntil: newValidUntil });
     console.log(`✅ Room ${roomId} validity extended to ${newValidUntil.toISOString()}`);
-    return { roomId };
+    return { roomId, needsRecovery: false };
   } catch (err) {
     console.warn(`⚠️ updateRoom(${roomId}) failed (statusCode=${err.statusCode}): ${err.message}`);
-    console.log(`🔄 Nuclear recovery: recreating broken/expired room ${roomId}...`);
-
-    // Best-effort delete of the broken room
-    try {
-      await roomsClient.deleteRoom(roomId);
-      console.log(`   Deleted broken room ${roomId}`);
-    } catch (delErr) {
-      console.warn(`   Could not delete old room (continuing): ${delErr.message}`);
-    }
-
-    const newRoom = await roomsClient.createRoom({
-      validFrom: newValidFrom,
-      validUntil: newValidUntil,
-      pstnDialOutEnabled: false,
-    });
-    console.log(`✅ Fresh room created: ${newRoom.id}`);
-    return { roomId: newRoom.id, recreated: true };
+    return { roomId, needsRecovery: true };
   }
 }
 

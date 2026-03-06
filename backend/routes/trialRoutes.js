@@ -27,6 +27,7 @@ const Event = require("../models/Event");
 // Import ACS services
 const {
   createRoom,
+  deleteRoom,
   ensureRoomActive,
   addParticipantToRoom,
   removeParticipantFromRoom,
@@ -110,6 +111,46 @@ const participantJoinInFlight = new Map();
  * ACS identities being created and added to the room simultaneously.
  */
 const adminJoinInFlight = new Map();
+
+/**
+ * Perform nuclear room recovery: delete the broken room, create a fresh one,
+ * update the DB (optimistic lock so only the first winner writes), and notify
+ * all connected clients via WebSocket.
+ *
+ * Must be called with roomRecoveryInProgress.add(caseId) already set by the caller,
+ * and roomRecoveryInProgress.delete(caseId) in a finally block.
+ *
+ * @returns {Promise<string>} The new room ID (or current DB room if another request won)
+ */
+async function executeNuclearRecovery(caseId, brokenRoomId, meetingId) {
+  console.log(`🔄 Nuclear recovery: recreating broken/expired room ${brokenRoomId}...`);
+  const newValidFrom = new Date(Date.now() - 60 * 60 * 1000);
+  const newValidUntil = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+  try { await deleteRoom(brokenRoomId); console.log(`   Deleted broken room ${brokenRoomId}`); }
+  catch (e) { console.warn(`   Could not delete old room (continuing): ${e.message}`); }
+
+  const newRoom = await createRoom(newValidFrom, newValidUntil);
+  console.log(`✅ Fresh room created: ${newRoom.id}`);
+
+  const pool = await poolPromise;
+  const updateResult = await pool.request()
+    .input("meetingId", sql.Int, meetingId)
+    .input("newRoomId", sql.NVarChar, newRoom.id)
+    .input("oldRoomId", sql.NVarChar, brokenRoomId)
+    .query("UPDATE dbo.TrialMeetings SET RoomId = @newRoomId WHERE MeetingId = @meetingId AND RoomId = @oldRoomId");
+
+  if (updateResult.rowsAffected[0] > 0) {
+    console.log(`✅ DB updated with recreated room: ${newRoom.id}`);
+    notifyRoomRecreated(caseId, newRoom.id);
+    return newRoom.id;
+  } else {
+    // Another concurrent request already updated the DB — use their room ID
+    console.log(`ℹ️ Another request already did nuclear recovery — re-fetching room ID`);
+    const freshPool = await poolPromise;
+    return await refetchRoomId(freshPool, meetingId);
+  }
+}
 
 /**
  * Wait up to maxWaitMs for a case's room recovery to finish, then return.
@@ -539,6 +580,30 @@ router.post(
         .query("SELECT RoomId FROM dbo.TrialMeetings WHERE MeetingId = @meetingId");
       if (freshRoomResult.recordset[0]?.RoomId) {
         activeRoomId = freshRoomResult.recordset[0].RoomId;
+      }
+
+      // 🔑 Ensure room is active — same coordination as admin-join so both
+      // routes converge to the same room ID regardless of join order.
+      try {
+        const ensureResult = await ensureRoomActive(activeRoomId);
+        if (ensureResult.needsRecovery) {
+          if (roomRecoveryInProgress.has(caseId)) {
+            console.log(`⏳ Nuclear recovery already in progress for case ${caseId} (participant) — waiting...`);
+            await waitForRoomRecovery(caseId);
+            const fresh = await refetchRoomId(await poolPromise, meeting.MeetingId);
+            if (fresh) activeRoomId = fresh;
+          } else {
+            roomRecoveryInProgress.add(caseId);
+            try {
+              const newRoomId = await executeNuclearRecovery(caseId, activeRoomId, meeting.MeetingId);
+              if (newRoomId) activeRoomId = newRoomId;
+            } finally {
+              roomRecoveryInProgress.delete(caseId);
+            }
+          }
+        }
+      } catch (ensureErr) {
+        console.error(`⚠️ ensureRoomActive failed for participant (continuing): ${ensureErr.message}`);
       }
 
       let roomResult = await addParticipantToRoom(activeRoomId, acsUserId, participantRole);
@@ -1142,24 +1207,26 @@ router.post(
         activeRoomId = freshRoomA.recordset[0].RoomId;
       }
 
-      // 🔑 Ensure room validity before joining. The management API ignores validUntil
-      // but cpconv enforces it — expired rooms get 403. Skip getRoom (unreliable for
-      // internally broken rooms) and directly attempt updateRoom. If that also fails,
-      // ensureRoomActive recreates the room and returns the new ID.
+      // 🔑 Ensure room is active (expired → extend; broken → nuclear recovery).
+      // Coordinated via roomRecoveryInProgress so concurrent joins don't create
+      // separate new rooms — they wait and re-fetch the winner's new room ID.
       try {
         const ensureResult = await ensureRoomActive(activeRoomId);
-        if (ensureResult.recreated) {
-          // Room was broken and recreated — update DB with new room ID
-          const ensurePool = await poolPromise;
-          await ensurePool.request()
-            .input("meetingId", sql.Int, trial.MeetingId)
-            .input("newRoomId", sql.NVarChar, ensureResult.roomId)
-            .input("oldRoomId", sql.NVarChar, activeRoomId)
-            .query("UPDATE dbo.TrialMeetings SET RoomId = @newRoomId WHERE MeetingId = @meetingId AND RoomId = @oldRoomId");
-          console.log(`✅ DB updated with recreated room: ${ensureResult.roomId}`);
-          activeRoomId = ensureResult.roomId;
-          // Tell any attorneys/jurors already in the old room to rejoin with the new room ID
-          notifyRoomRecreated(caseId, ensureResult.roomId);
+        if (ensureResult.needsRecovery) {
+          if (roomRecoveryInProgress.has(caseId)) {
+            console.log(`⏳ Nuclear recovery already in progress for case ${caseId} (admin) — waiting...`);
+            await waitForRoomRecovery(caseId);
+            const fresh = await refetchRoomId(await poolPromise, trial.MeetingId);
+            if (fresh) activeRoomId = fresh;
+          } else {
+            roomRecoveryInProgress.add(caseId);
+            try {
+              const newRoomId = await executeNuclearRecovery(caseId, activeRoomId, trial.MeetingId);
+              if (newRoomId) activeRoomId = newRoomId;
+            } finally {
+              roomRecoveryInProgress.delete(caseId);
+            }
+          }
         }
       } catch (ensureErr) {
         console.error(`⚠️ ensureRoomActive failed (continuing): ${ensureErr.message}`);
