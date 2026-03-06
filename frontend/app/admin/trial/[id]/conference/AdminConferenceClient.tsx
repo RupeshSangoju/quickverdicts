@@ -240,7 +240,10 @@ export default function AdminConferenceClient() {
   // 3) Local (if camera is on)
   const chooseAlternateFeatured = (excludeKey?: string): string => {
     try {
-      for (const p of participants) {
+      // Use live ACS remoteParticipants (not React state — avoids stale closure)
+      const liveParticipants = callRef.current?.remoteParticipants ?? participants;
+
+      for (const p of liveParticipants) {
         const userId = getUserId(p.identifier);
         const screenshareKey = `screenshare-${userId}`;
         if (excludeKey && (excludeKey === screenshareKey || excludeKey === userId)) continue;
@@ -253,13 +256,11 @@ export default function AdminConferenceClient() {
       }
 
       // Fallback to any remote participant
-      if (participants.length > 0) {
-        for (const p of participants) {
-          const userId = getUserId(p.identifier);
-          const screenshareKey = `screenshare-${userId}`;
-          if (excludeKey && (excludeKey === screenshareKey || excludeKey === userId)) continue;
-          return userId;
-        }
+      for (const p of liveParticipants) {
+        const userId = getUserId(p.identifier);
+        const screenshareKey = `screenshare-${userId}`;
+        if (excludeKey && (excludeKey === screenshareKey || excludeKey === userId)) continue;
+        return userId;
       }
 
       // Fallback to local if camera is on
