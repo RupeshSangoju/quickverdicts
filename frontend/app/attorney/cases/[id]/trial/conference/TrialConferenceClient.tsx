@@ -752,11 +752,39 @@ export default function TrialConferenceClient() {
                               setPinnedParticipant(screenshareKey);
                               triggerReRender();
                             } else {
-                              // Screenshare stopped
-                              if (featuredParticipant === screenshareKey) {
-                                setFeaturedParticipant("local");
-                                setPinnedParticipant(null);
+                              // Screenshare stopped — featuredParticipant is stale here, don't guard with it
+                              if (featuredVideoRef.current) {
+                                featuredVideoRef.current.innerHTML = "";
                               }
+                              if (featuredRenderer.current) {
+                                try { featuredRenderer.current.dispose(); } catch (_) {}
+                                featuredRenderer.current = null;
+                              }
+                              const ref = remoteVideoRefs.current.get(screenshareKey);
+                              if (ref) {
+                                try { ref.renderer?.dispose(); } catch (_) {}
+                                try { ref.renderer = null; } catch(_) {}
+                                try { ref.disposed = true; } catch(_) {}
+                              }
+                              // Pick best available participant (use live ACS list — not stale React state)
+                              const liveParticipants = roomCall.remoteParticipants;
+                              let nextFeatured = "local";
+                              for (const p of liveParticipants) {
+                                const uid = getUserId(p.identifier);
+                                if (uid === userId) continue;
+                                const vs = p.videoStreams?.find((s: any) => s.mediaStreamType === 'Video');
+                                if (vs?.isAvailable) { nextFeatured = uid; break; }
+                              }
+                              if (nextFeatured === "local") {
+                                for (const p of liveParticipants) {
+                                  const uid = getUserId(p.identifier);
+                                  if (uid !== userId) { nextFeatured = uid; break; }
+                                }
+                              }
+                              console.log(`🎯 [ATTORNEY] Switching spotlight to: ${nextFeatured}`);
+                              setPinnedParticipant(null);
+                              setFeaturedParticipant(nextFeatured);
+                              setTimeout(() => renderFeaturedVideo(), 50);
                               triggerReRender();
                             }
                           });
@@ -821,6 +849,40 @@ export default function TrialConferenceClient() {
                     if (stream.isAvailable) {
                       setFeaturedParticipant(screenshareKey);
                       setPinnedParticipant(screenshareKey);
+                      triggerReRender();
+                    } else {
+                      // Existing screenshare stopped — same stale-closure fix
+                      if (featuredVideoRef.current) {
+                        featuredVideoRef.current.innerHTML = "";
+                      }
+                      if (featuredRenderer.current) {
+                        try { featuredRenderer.current.dispose(); } catch (_) {}
+                        featuredRenderer.current = null;
+                      }
+                      const ref = remoteVideoRefs.current.get(screenshareKey);
+                      if (ref) {
+                        try { ref.renderer?.dispose(); } catch (_) {}
+                        try { ref.renderer = null; } catch(_) {}
+                        try { ref.disposed = true; } catch(_) {}
+                      }
+                      const liveParticipants = roomCall.remoteParticipants;
+                      let nextFeatured = "local";
+                      for (const p of liveParticipants) {
+                        const uid = getUserId(p.identifier);
+                        if (uid === userId) continue;
+                        const vs = p.videoStreams?.find((s: any) => s.mediaStreamType === 'Video');
+                        if (vs?.isAvailable) { nextFeatured = uid; break; }
+                      }
+                      if (nextFeatured === "local") {
+                        for (const p of liveParticipants) {
+                          const uid = getUserId(p.identifier);
+                          if (uid !== userId) { nextFeatured = uid; break; }
+                        }
+                      }
+                      console.log(`🎯 [ATTORNEY] Switching spotlight to: ${nextFeatured}`);
+                      setPinnedParticipant(null);
+                      setFeaturedParticipant(nextFeatured);
+                      setTimeout(() => renderFeaturedVideo(), 50);
                       triggerReRender();
                     }
                   });
