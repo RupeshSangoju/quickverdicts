@@ -201,47 +201,109 @@ export default function TrialConferenceClient() {
   }, []);
 
   // Clear participant video and show avatar
-  function clearParticipantVideo(participantId: string) {
-    console.log(`Clearing video for ${participantId} → showing avatar`);
-    
-    const container = participantVideoRefs.current.get(participantId);
-    if (container) {
-      container.innerHTML = "";
-    }
-    
-    // Safe dispose thumbnail
-    const thumbRenderer = thumbnailRenderers.current.get(participantId);
-    if (thumbRenderer) {
-      try {
-        // dispose may be synchronous in some SDK versions
-        thumbRenderer.dispose();
-      } catch (e: any) {
-        if (!e?.message?.includes?.("already disposed")) {
-          console.warn("Thumbnail dispose warning:", e);
-        }
-      }
-      thumbnailRenderers.current.delete(participantId);
-    }
+function clearParticipantVideo(participantId: string) {
+  console.log(`ADMIN CLEAR: Clearing ${participantId} → should show normal/avatar`);
 
-    // If featured → clean featured view
-    if (featuredParticipant === participantId) {
-      if (featuredRenderer.current) {
-        try {
-          featuredRenderer.current.dispose();
-        } catch (e: any) {
-          if (!e?.message?.includes?.("already disposed")) {
-            console.warn("Featured dispose warning:", e);
-          }
-        }
-        featuredRenderer.current = null;
+  const isScreenshare = participantId.startsWith("screenshare-") || participantId === "screenshare";
+
+  // 1. Clean remoteVideoRefs entry for screenshare
+  if (isScreenshare) {
+    const ref = remoteVideoRefs.current.get(participantId);
+    if (ref) {
+      try {
+        ref.renderer?.dispose();
+        console.log(`ADMIN CLEAR: Disposed renderer for screenshare ${participantId}`);
+      } catch (e) {
+        console.warn(`Dispose failed for ${participantId}:`, e);
       }
-      if (featuredVideoRef.current) {
-        featuredVideoRef.current.innerHTML = "";
+      // Stop any lingering tracks
+      if (ref.stream) {
+        ref.stream.getTracks?.().forEach((t: MediaStreamTrack) => t.stop?.());
       }
-      triggerReRender();
+      // Mark disposed but keep the entry so future screenshare streams can reuse listeners
+      try { ref.renderer = null; } catch(_) {}
+      try { ref.disposed = true; } catch(_) {}
+      console.log(`ADMIN CLEAR: Marked remoteVideoRefs entry disposed for ${participantId}`);
     }
   }
 
+  // 2. Clean thumbnail container (if exists)
+  const container = participantVideoRefs.current.get(participantId);
+  if (container) {
+    container.innerHTML = "";
+    while (container.firstChild) {
+      container.removeChild(container.firstChild);
+    }
+    container.replaceChildren(); // Extra force-clear
+
+    const videos = container.querySelectorAll('video');
+    videos.forEach(v => {
+      v.pause();
+      if (v.srcObject instanceof MediaStream) {
+        v.srcObject.getTracks().forEach(t => t.stop());
+      }
+      v.srcObject = null;
+      v.removeAttribute('src');
+      v.load();
+      v.remove(); // Extra: remove the node completely
+    });
+
+    console.log(
+      `ADMIN CLEAR: Thumbnail container for ${participantId} cleaned – children left: ${container.children.length}`
+    );
+  }
+
+  // 3. Featured view cleanup (critical for main screen freeze)
+  if (featuredParticipant === participantId) {
+    console.log(`ADMIN CLEAR: Featured participant matches ${participantId} → aggressive featured cleanup`);
+
+    // Dispose renderer
+    if (featuredRenderer.current) {
+      try {
+        featuredRenderer.current.dispose();
+        console.log("ADMIN CLEAR: Featured renderer disposed");
+      } catch (e) {
+        console.warn("Featured dispose failed:", e);
+      }
+      featuredRenderer.current = null;
+    }
+
+    // Aggressive DOM clear for featured
+    if (featuredVideoRef.current) {
+      // Step 1: innerHTML + loop
+      featuredVideoRef.current.innerHTML = "";
+      while (featuredVideoRef.current.firstChild) {
+        featuredVideoRef.current.removeChild(featuredVideoRef.current.firstChild);
+      }
+
+      // Step 2: replaceChildren + query + remove
+      featuredVideoRef.current.replaceChildren();
+
+      const featuredVideos = featuredVideoRef.current.querySelectorAll('video');
+      featuredVideos.forEach(v => {
+        v.pause();
+        if (v.srcObject instanceof MediaStream) {
+          v.srcObject.getTracks().forEach(t => t.stop());
+        }
+        v.srcObject = null;
+        v.removeAttribute('src');
+        v.load();
+        v.remove(); // Remove node from DOM completely
+      });
+
+      console.log(
+        `ADMIN CLEAR: Featured container for ${participantId} cleaned – children left: ${featuredVideoRef.current.children.length}, videos removed: ${featuredVideos.length}`
+      );
+    }
+
+    // Do not change featured state here; caller decides what to feature next.
+    triggerReRender();
+  }
+
+  // Final force re-render (helps React re-evaluate avatar condition)
+  triggerReRender();
+  console.log(`ADMIN CLEAR: Finished for ${participantId} – re-render triggered`);
+}
   // Render participant video in thumbnail
   async function renderParticipantVideoInThumbnail(participantId: string) {
     const container = participantVideoRefs.current.get(participantId);
