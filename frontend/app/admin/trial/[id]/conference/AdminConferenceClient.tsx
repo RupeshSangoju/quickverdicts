@@ -892,11 +892,18 @@ async function renderFeaturedVideo() {
                         try { ref.disposed = true; } catch(_) {}
                       }
 
-                      if (featuredParticipant === screenshareKey) {
-                        const alt = chooseAlternateFeatured(screenshareKey);
-                        setFeaturedParticipant(alt);
-                        setPinnedParticipant(null);
-                      }
+                      // ⭐ Immediately select a new featured participant
+                      const nextFeatured = chooseAlternateFeatured(screenshareKey);
+
+                      console.log(`🎯 Switching spotlight to: ${nextFeatured}`);
+
+                      setPinnedParticipant(null);
+                      setFeaturedParticipant(nextFeatured);
+
+                      // Force re-render of featured video
+                      setTimeout(() => {
+                        renderFeaturedVideo();
+                      }, 50);
                       triggerReRender();
                     }
                   });
@@ -1001,12 +1008,18 @@ async function renderFeaturedVideo() {
                         try { ref.renderer = null; } catch(_) {}
                         try { ref.disposed = true; } catch(_) {}
                       }
+                      // ⭐ Immediately select a new featured participant
+                      const nextFeatured = chooseAlternateFeatured(screenshareKey);
 
-                      if (featuredParticipant === screenshareKey) {
-                        const alt = chooseAlternateFeatured(screenshareKey);
-                        setFeaturedParticipant(alt);
-                        setPinnedParticipant(null);
-                      }
+                      console.log(`🎯 Switching spotlight to: ${nextFeatured}`);
+
+                      setPinnedParticipant(null);
+                      setFeaturedParticipant(nextFeatured);
+
+                      // Force re-render of featured video
+                      setTimeout(() => {
+                        renderFeaturedVideo();
+                      }, 50);
                       triggerReRender();
                     }
                 });
