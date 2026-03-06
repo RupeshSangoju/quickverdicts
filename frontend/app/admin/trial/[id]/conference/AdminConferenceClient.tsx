@@ -960,11 +960,15 @@ async function renderFeaturedVideo() {
                         try { ref.disposed = true; } catch(_) {}
                       }
 
-                      if (featuredParticipant === screenshareKey) {
-                        const alt = chooseAlternateFeatured(screenshareKey);
-                        setFeaturedParticipant(alt);
-                        setPinnedParticipant(null);
-                      }
+                      // ⭐ Always switch — featuredParticipant is a stale closure here
+                      const nextFeatured = chooseAlternateFeatured(screenshareKey);
+                      console.log(`🎯 Switching spotlight to: ${nextFeatured}`);
+                      setPinnedParticipant(null);
+                      setFeaturedParticipant(nextFeatured);
+                      // Force re-render of featured video
+                      setTimeout(() => {
+                        renderFeaturedVideo();
+                      }, 50);
                       triggerReRender();
                     }
                   });
@@ -1070,11 +1074,15 @@ async function renderFeaturedVideo() {
                         try { ref.disposed = true; } catch(_) {}
                       }
 
-                      if (featuredParticipant === screenshareKey) {
-                        const alt = chooseAlternateFeatured(screenshareKey);
-                        setFeaturedParticipant(alt);
-                        setPinnedParticipant(null);
-                      }
+                      // ⭐ Always switch — featuredParticipant is a stale closure here
+                      const nextFeatured = chooseAlternateFeatured(screenshareKey);
+                      console.log(`🎯 Switching spotlight to: ${nextFeatured}`);
+                      setPinnedParticipant(null);
+                      setFeaturedParticipant(nextFeatured);
+                      // Force re-render of featured video
+                      setTimeout(() => {
+                        renderFeaturedVideo();
+                      }, 50);
                       triggerReRender();
                     }
                 });
