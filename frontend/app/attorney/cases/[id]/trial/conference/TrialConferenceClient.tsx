@@ -11,6 +11,7 @@ import { AzureCommunicationTokenCredential } from "@azure/communication-common";
 import { ChatClient } from "@azure/communication-chat";
 import { getToken } from "@/lib/apiClient";
 import toast from "react-hot-toast";
+import { useWebSocket } from "@/hooks/useWebSocket";
 import {
   Video,
   VideoOff,
@@ -34,6 +35,8 @@ export default function TrialConferenceClient() {
   const { id } = useParams();
   const router = useRouter();
   const caseId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";
+
+  const { on, off } = useWebSocket();
 
   const [call, setCall] = useState<any>(null);
   const [callState, setCallState] = useState("Initializing...");
@@ -139,6 +142,18 @@ export default function TrialConferenceClient() {
       controller.abort(); // cancel the in-flight fetch so the backend gets exactly one request
     };
   }, []);
+
+  // When the admin triggers nuclear room recovery, the old room is deleted.
+  // Reload so we re-fetch a fresh token pointing to the new room.
+  useEffect(() => {
+    const handleRoomRecreated = (data: any) => {
+      console.log("[ATTORNEY] room_recreated received:", data.newRoomId, "— reloading to rejoin");
+      toast.error("Trial room was reset — reconnecting...", { duration: 3000 });
+      setTimeout(() => window.location.reload(), 2000);
+    };
+    on("room_recreated", handleRoomRecreated);
+    return () => off("room_recreated", handleRoomRecreated);
+  }, [on, off]);
 
   useEffect(() => {
     if (chatMessagesEndRef.current) {

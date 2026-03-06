@@ -200,8 +200,16 @@ export default function JurorConferenceClient() {
 
     wsOn("jury_charge:released", handleJuryChargeReleased);
 
+    const handleRoomRecreated = (data: any) => {
+      console.log("[JUROR] room_recreated received:", data.newRoomId, "— reloading to rejoin");
+      toast.error("Trial room was reset — reconnecting...", { duration: 3000 });
+      setTimeout(() => window.location.reload(), 2000);
+    };
+    wsOn("room_recreated", handleRoomRecreated);
+
     return () => {
       wsOff("jury_charge:released", handleJuryChargeReleased);
+      wsOff("room_recreated", handleRoomRecreated);
     };
   }, [wsConnected, caseId]);
 

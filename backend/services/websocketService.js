@@ -411,6 +411,32 @@ function getClientsInRoom(roomName) {
 }
 
 // ============================================
+// TRIAL ROOM EVENTS
+// ============================================
+
+/**
+ * Notify all participants in a case that the ACS room was recreated.
+ * Fired after nuclear recovery so attorneys/jurors know to rejoin
+ * using the new room ID.
+ *
+ * @param {number|string} caseId
+ * @param {string} newRoomId - The newly created ACS room ID
+ */
+function notifyRoomRecreated(caseId, newRoomId) {
+  try {
+    const caseRoom = `case_${caseId}`;
+    getIO().to(caseRoom).emit("room_recreated", {
+      caseId,
+      newRoomId,
+      timestamp: new Date().toISOString(),
+    });
+    console.log(`📡 [WebSocket] room_recreated emitted to ${caseRoom}: newRoomId=${newRoomId}`);
+  } catch (error) {
+    console.error("❌ [WebSocket] Error emitting room_recreated:", error);
+  }
+}
+
+// ============================================
 // EXPORTS
 // ============================================
 
@@ -431,6 +457,9 @@ module.exports = {
   notifyVerdictSubmitted,
   notifyVerdictStatusUpdate,
   notifyVerdictResultsPublished,
+
+  // Trial Room Events
+  notifyRoomRecreated,
 
   // Utility Functions
   notifyUser,

@@ -6,6 +6,7 @@
 const express = require("express");
 const router = express.Router();
 const rateLimit = require("express-rate-limit");
+const { notifyRoomRecreated } = require("../services/websocketService");
 const {
   CommunicationIdentityClient,
 } = require("@azure/communication-identity");
@@ -1157,6 +1158,8 @@ router.post(
             .query("UPDATE dbo.TrialMeetings SET RoomId = @newRoomId WHERE MeetingId = @meetingId AND RoomId = @oldRoomId");
           console.log(`✅ DB updated with recreated room: ${ensureResult.roomId}`);
           activeRoomId = ensureResult.roomId;
+          // Tell any attorneys/jurors already in the old room to rejoin with the new room ID
+          notifyRoomRecreated(caseId, ensureResult.roomId);
         }
       } catch (ensureErr) {
         console.error(`⚠️ ensureRoomActive failed (continuing): ${ensureErr.message}`);
