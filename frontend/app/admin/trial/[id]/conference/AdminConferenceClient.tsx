@@ -1285,43 +1285,51 @@ async function renderFeaturedVideo() {
       // Sort questions by ID
       const sortedQuestionIds = Array.from(questionSet.keys()).sort((a, b) => a - b);
 
-      // Build CSV
-      const csvRows: string[] = [];
-
-      // Header row
+      // Build Excel rows
       const headers = ['Juror Name', 'Juror Email', 'Submitted At'];
       sortedQuestionIds.forEach(qId => {
         headers.push(questionSet.get(qId) || `Question ${qId}`);
       });
-      csvRows.push(headers.map(h => `"${h.replace(/"/g, '""')}"`).join(','));
 
-      // Data rows: one row per juror
+      const dataRows: string[][] = [];
       jurorMap.forEach((juror) => {
-        const row = [
-          `"${juror.name.replace(/"/g, '""')}"`,
-          `"${juror.email.replace(/"/g, '""')}"`,
-          `"${juror.submittedAt}"`
-        ];
-
+        const row = [juror.name, juror.email, juror.submittedAt];
         sortedQuestionIds.forEach(qId => {
-          const val = juror.responses[qId] || '';
-          row.push(`"${String(val).replace(/"/g, '""')}"`);
+          row.push(juror.responses[qId] || '');
         });
-
-        csvRows.push(row.join(','));
+        dataRows.push(row);
       });
 
-      // Download CSV
-      const csvContent = csvRows.join('\n');
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', `case-${caseId}-verdicts-${Date.now()}.csv`);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      // Build worksheet data (header + data rows)
+      const wsData = [headers, ...dataRows];
+
+      // Auto-fit column widths based on longest content per column
+      const colWidths = headers.map((h, colIdx) => {
+        const maxLen = wsData.reduce((max, row) => {
+          const cellLen = String(row[colIdx] || '').length;
+          return Math.max(max, cellLen);
+        }, h.length);
+        return { wch: Math.min(maxLen + 4, 80) }; // cap at 80 chars wide
+      });
+
+      // Create workbook using SheetJS
+      const XLSX = await import('xlsx');
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      ws['!cols'] = colWidths;
+
+      // Bold the header row
+      headers.forEach((_h, colIdx) => {
+        const cellAddr = XLSX.utils.encode_cell({ r: 0, c: colIdx });
+        if (ws[cellAddr]) {
+          ws[cellAddr].s = { font: { bold: true } };
+        }
+      });
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Verdicts');
+
+      // Download as .xlsx
+      XLSX.writeFile(wb, `case-${caseId}-verdicts-${Date.now()}.xlsx`);
 
       console.log(`✅ [AdminConference] Downloaded ${jurorMap.size} juror verdict(s)`);
       toast.success(`Downloaded ${jurorMap.size} verdict(s)!`, { duration: 4000 });
