@@ -200,7 +200,7 @@ const SignupPage: FC = () => {
           {/* Heading */}
           <header className="text-center mb-12">
             <h1 className="text-3xl md:text-4xl font-bold text-[#0A2342] mb-4">
-              Create Your Quick Verdicts Account
+              Create Your Quick Verdicts Profile
             </h1>
             <p className="text-[#0A2342] text-lg">
               It only takes a few minutes to get started. Please enter your
@@ -220,7 +220,7 @@ const SignupPage: FC = () => {
                   Attorney Sign-Up
                 </h2>
                 <p className="text-[#0A2342] font-semibold text-base text-center mb-8">
-                  Start, manage, or join a small claims trial as a licensed
+                  Start, manage, or join a trial as a licensed
                   attorney.
                 </p>
 
@@ -255,7 +255,7 @@ const SignupPage: FC = () => {
                   Juror Sign-Up
                 </h2>
                 <p className="text-[#0A2342] font-semibold text-base text-center mb-8">
-                  Sign up to serve in real trials and get paid for your time—100%
+                  Sign up to serve in mock trials and get paid for your time—100%
                   online.
                 </p>
 

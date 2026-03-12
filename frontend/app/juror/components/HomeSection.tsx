@@ -644,7 +644,7 @@ export default function HomeSection({ sidebarCollapsed }: { sidebarCollapsed: bo
               <div>
                 <h2 className="text-2xl font-bold text-[#0C2D57]">My Assigned Cases</h2>
                 <p className="text-sm text-slate-600">
-                  Cases you've been selected for — review details and access war rooms
+                  Cases you’ve been selected for—review details and Join Trial when QV Courtroom opens.
                 </p>
               </div>
               <div className="px-4 py-2 bg-blue-50 rounded-lg">
@@ -760,7 +760,7 @@ export default function HomeSection({ sidebarCollapsed }: { sidebarCollapsed: bo
                     <div className="space-y-2">
                       <div className="w-full px-3 py-2 bg-slate-100 text-slate-500 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 cursor-not-allowed">
                         <Lock className="w-3.5 h-3.5" />
-                        War Room Locked
+                        Courtroom Locked
                       </div>
                       <p className="text-xs text-center text-slate-600">
                         {hoursUntilTrial > 24

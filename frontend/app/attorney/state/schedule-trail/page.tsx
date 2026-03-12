@@ -605,7 +605,7 @@ export default function ScheduleTrialPage() {
             </h1>
             <p className={`text-base ${scheduled ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>
               {scheduled
-                ? "Thank you! Confirmation of your requested trial date is pending."
+                ? "Thank you! Confirmation of your requested trial date is pending.Please click Complete and Go to Dashboard to finalize your request."
                 : "Choose your preferred date and time for this trial."}
             </p>
           </div>

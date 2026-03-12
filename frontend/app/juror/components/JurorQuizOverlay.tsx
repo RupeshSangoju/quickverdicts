@@ -5,17 +5,17 @@ import { X } from "lucide-react";
 
 const quizQuestions = [
   {
-    question: "Quick Verdict simulates real jury trials using actual people as mock jurors.",
+    question: "The Quick Verdicts Courtroom provides an attorney presentation of a lawsuit or a claim to mock jurors who deliberate the answers to the Final Mock Verdict.",
     options: ["True", "False"],
     answer: "True",
     explanation: "Quick Verdict collects feedback from real participants to simulate how a jury might respond to a case."
   },
   {
-    question: "Which of these are required at all times while in the court room?",
+    question: "Which of these are required at all times while in the QV Courtroom?",
     options: [
-      "Camera enabled for the full duration of the trial",
-      "Business casual attire",
-      "A stable internet connection",
+      "Camera enabled for the full duration of the trial and deliberations",
+      "Each juror appears full face on the camera at all times",
+      "Only desktop or laptop computers will work with the platform (no mobile devices). ",
       "All of the above"
     ],
     answer: "All of the above",
@@ -48,7 +48,7 @@ const quizQuestions = [
     options: [
       "Close the tab and leave",
       "Wait for your results to be posted online",
-      "Complete the witness believability form, confirm payment, and leave feedback",
+      "Complete the debriefing period with the attorneys and confirm payment",
       "Restart the case"
     ],
     answer: "Complete the witness believability form, confirm payment, and leave feedback",
@@ -61,18 +61,18 @@ const quizQuestions = [
     explanation: "You should always notify the team if you cannot attend."
   },
   {
-    question: "What does the randomly selected foreperson do in a Quick Verdict session?",
+    question: "What does the randomly selected Juror do in a Quick Verdict session?",
     options: [
       "Decides the outcome of the case",
-      "Asks the attorneys questions",
-      "Helps guide discussion and keeps things organized",
-      "Shares legal advice with the group"
+      "Ask the attorneys questions on behalf of the jury panel",
+      "Helps guide discussion and enters answers to the Jury Charge on behalf of the jury panel",
+      "Shares legal advice learned from previous cases with the jury panel"
     ],
     answer: "Helps guide discussion and keeps things organized",
     explanation: "The foreperson helps guide the group and keeps things on track."
   },
   {
-    question: "Quick Verdict uses a timer during the trial session to help keep the discussion focused and on track.",
+    question: "Quick Verdicts times the case presentation, deliberations and debriefing period to finalize the case within the time allotted. ",
     options: ["True", "False"],
     answer: "True",
     explanation: "A timer is used to keep the session focused and on schedule."

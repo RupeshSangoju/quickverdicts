@@ -831,7 +831,7 @@ router.post(
 
           // Send email
           const emailContent = `
-            <h2 style="color: #16305B; margin-top: 0;">War Room Submitted</h2>
+            <h2 style="color: #16305B; margin-top: 0;">Trial Confirmed</h2>
             <p style="color: #666; line-height: 1.6;">Dear ${juror.Name},</p>
             <p style="color: #666; line-height: 1.6;">
               The attorney has completed all preparations for the trial <strong>"${caseData.CaseTitle}"</strong>.
@@ -845,7 +845,7 @@ router.post(
               </p>
             </div>
               <p style="color: #666; line-height: 1.6;">
-              <strong>Important:</strong> The war room is now accessible. Please join the trial now.
+              <strong>Important:</strong> Please join the trial a few minutes before the time for the trial.
             </p>
             <p style="color: #666; line-height: 1.6;">
               Please be prepared and available at the scheduled time.

@@ -253,7 +253,7 @@ export default function VideoIntroOverlay({ open, onClose, onNext, sidebarCollap
             <div className="p-5 bg-gray-50">
               <h3 className="text-base font-semibold text-[#0C2D57] mb-2">Welcome to Quick Verdicts</h3>
               <p className="text-gray-700 text-sm leading-relaxed mb-3">
-                Watch this short introduction video to learn how Quick Verdicts works. You'll see a mock trial demonstration and understand how you'll participate as a juror.
+                Watch this short introduction video to learn how the Quick Verdicts process works, then take the quiz to demonstrate your understanding of how QV online mock jury trials work.
               </p>
               <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 rounded">
                 <div className="flex items-start gap-2.5">

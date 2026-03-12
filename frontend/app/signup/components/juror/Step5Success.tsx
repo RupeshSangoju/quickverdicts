@@ -259,7 +259,7 @@ export function Step5Success({
                 process:
               </p>
               <ul className="text-xs text-gray-600 space-y-1" role="list">
-                <li>• Watch the juror orientation video (10 minutes)</li>
+                <li>• Watch the juror orientation video (~2 minutes)</li>
                 <li>• Pass the juror qualification quiz (80% required)</li>
                 <li>• Review platform guidelines and code of conduct</li>
               </ul>
@@ -286,15 +286,7 @@ export function Step5Success({
                   <Mail size={16} aria-hidden="true" />
                   <span>Email Support</span>
                 </a>
-                <span className="hidden sm:inline text-gray-400">•</span>
-                <a
-                  href="tel:+1-555-123-4567"
-                  className="text-[#0A2342] hover:underline text-sm font-semibold flex items-center gap-1 focus:outline-none focus:ring-2 focus:ring-[#0A2342] focus:ring-offset-2 rounded px-2 py-1 transition-colors"
-                  aria-label="Call support at +1-555-123-4567"
-                >
-                  <Shield size={16} aria-hidden="true" />
-                  <span>Call Support</span>
-                </a>
+                
               </div>
             </section>
 
