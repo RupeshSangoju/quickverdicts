@@ -844,11 +844,28 @@ async function getQuestionsForJuror(req, res) {
       Options: safeJSONParse(q.Options, []),
     }));
 
+    // Check if this juror has already submitted responses for this case
+    let alreadySubmitted = false;
+    if (req.user && req.user.id) {
+      const submittedCheck = await pool
+        .request()
+        .input("caseId", sql.Int, parseInt(caseId))
+        .input("jurorId", sql.Int, req.user.id)
+        .query(`
+          SELECT TOP 1 jcr.ResponseId
+          FROM JuryChargeResponses jcr
+          INNER JOIN JuryChargeQuestions jcq ON jcr.QuestionId = jcq.QuestionId
+          WHERE jcq.CaseId = @caseId AND jcr.JurorId = @jurorId
+        `);
+      alreadySubmitted = submittedCheck.recordset.length > 0;
+    }
+
     res.json({
       success: true,
       questions,
       totalQuestions: questions.length,
       releasedAt: caseResult.recordset[0].JuryChargeReleasedAt,
+      alreadySubmitted,
     });
   } catch (error) {
     console.error("❌ [getQuestionsForJuror] Error:", error);

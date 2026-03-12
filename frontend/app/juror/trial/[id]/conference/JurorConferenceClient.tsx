@@ -111,6 +111,10 @@ export default function JurorConferenceClient() {
         if (data.questions && data.questions.length > 0) {
           setJuryChargeQuestions(data.questions);
           setJuryChargeAvailable(true);
+          // If juror already submitted in a previous session, mark as submitted immediately
+          if (data.alreadySubmitted) {
+            setJuryChargeSubmitted(true);
+          }
           // Auto-open the panel when questions arrive
           setShowJuryChargePanel(true);
           // Close chat panel if open to avoid UI clutter
