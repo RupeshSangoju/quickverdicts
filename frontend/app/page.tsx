@@ -2,12 +2,12 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Play, Facebook, Twitter, Linkedin, Youtube } from 'lucide-react';
+import { Play, Facebook, Twitter, Linkedin, Youtube, Space } from 'lucide-react';
 import Image from "next/image";
 
 export default function QuickVerdictsLanding() {
   const [isPlaying, setIsPlaying] = useState(false);
-
+  const [selectedState, setSelectedState] = useState("");
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -57,12 +57,43 @@ export default function QuickVerdictsLanding() {
           {/* Hero Content */}
           <div className="text-center pt-40 pb-12">
             <h1 className="text-[44px] leading-[1.1] font-bold text-gray-900 mb-6">
-              Real Cases. Real Impact. Remotely.
+              An Online Mock Jury Platform 
             </h1>
-
+            <h2 className="text-[30px] leading-[1.1] text-gray-900 mb-6">
+              Real-time.  Remote.  Reasonably Priced.
+            </h2>
             <p className="text-[18px] leading-[1.6] font-medium text-gray-600 max-w-3xl mx-auto mb-10">
-Quick Verdicts connects attorneys with screened mock jurors for case presentation, deliberation and a final mock verdict.  Jurors are screened.  Mock trials are timed.  Costs are low. <br /> Currently serving cases in Texas.
-            </p>
+Quick Verdicts is the latest in legal tech for mock jury trials.  QV connects attorneys with 
+local, screened mock jurors for case presentation, deliberation and a final mock verdict.  
+Jurors get paid.  Mock trials are for a set time period.  Costs are low.  <br></br>
+Currently serving 
+cases in:            </p>
+    <div className="flex flex-col md:flex-row gap-4 justify-center items-center mb-10">
+
+      {/* State Dropdown */}
+      <select
+        className="border border-gray-300 rounded-md px-4 py-2 text-gray-700"
+        value={selectedState}
+        onChange={(e) => setSelectedState(e.target.value)}
+      >
+        <option value="">State</option>
+        <option value="texas">Texas</option>
+      </select>
+
+      {/* County Dropdown */}
+      <select
+        className="border border-gray-300 rounded-md px-4 py-2 text-gray-700 disabled:bg-gray-200 disabled:cursor-not-border border-gray-300 rounded-md px-4 py-2 text-gray-700 
+             disabled:bg-gray-100 disabled:text-gray-400 
+             disabled:cursor-not-allowed disabled:opacity-70"
+        disabled={!selectedState}
+      >
+        <option value="">County</option>
+        {selectedState === "texas" && (
+          <option value="dallas">Dallas</option>
+        )}
+      </select>
+
+    </div>
 
             <Link
               href="/signup"
@@ -80,9 +111,11 @@ Quick Verdicts connects attorneys with screened mock jurors for case presentatio
           <h2 className="text-3xl font-bold text-center text-gray-900 mb-4">
             Welcome to Quick Verdicts
           </h2>
+          {/* Video Section 
           <p className="text-center text-gray-600 mb-8">
             Watch this quick video to see how our virtual courtroom helps attorneys and jurors move cases forward fast.
           </p>
+          */}
           <div className="flex justify-center">
           <div className="relative w-[800px] rounded-lg overflow-hidden aspect-video shadow-lg bg-black">
             {!isPlaying ? (
@@ -262,7 +295,9 @@ Quick Verdicts connects attorneys with screened mock jurors for case presentatio
           <div className="grid md:grid-cols-2 gap-8 mb-8">
             <div>
               <h3 className="font-bold mb-4">Contact</h3>
-              <p className="text-gray-300">650-762-6574</p>
+              <p className="text-gray-300">Hours:</p>
+              <p className="text-gray-300">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;8:30 a.m. to 5:00 p.m. M-F (or as needed) </p>
+              <p className='text-gray-300'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;9:00 a.m. to 2:00 p.m. Sat.</p>
               <p className="text-gray-300">QVTrial@quickverdicts.com</p>
             </div>
             <div>

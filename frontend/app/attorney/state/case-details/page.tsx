@@ -230,6 +230,14 @@ export default function CaseDetailsPage() {
                 <label className="block mb-1 text-[#16305B] font-medium">
                   State <span className="text-red-500">*</span>
                 </label>
+  {/* Disclaimer always visible */}
+  <p className="text-s text-red-600">
+    Serving Texas jurisdictions at this time
+  </p>
+
+  {validationErrors.state && (
+    <p className="text-red-500 text-sm mt-1">{validationErrors.state}</p>
+  )}
                 <div className="relative">
                   <input
                     type="text"

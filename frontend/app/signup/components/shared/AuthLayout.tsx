@@ -380,7 +380,7 @@ export function AuthLayout({
         >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-500">
-              <p>© 2025 QuickVerdicts. All rights reserved.</p>
+              <p>© 2025 QuickVerdicts™. All rights reserved.</p>
               <div className="flex items-center gap-4">
                 <Link
                   href="/privacy"

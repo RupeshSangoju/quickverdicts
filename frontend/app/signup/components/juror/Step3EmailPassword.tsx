@@ -479,7 +479,7 @@ export function Step3EmailPassword({
       {/* Header */}
       <header className="mb-8">
         <h1 className="text-3xl font-bold text-[#0A2342] mb-2">
-          Create Your Account
+          Create Your Profile
         </h1>
         <p className="text-gray-600">
           Set up your secure login credentials. All fields marked with{" "}

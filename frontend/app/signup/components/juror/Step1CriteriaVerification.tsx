@@ -448,7 +448,7 @@ export function Step1CriteriaVerification({
           <ul className="text-xs text-blue-800 space-y-1" role="list">
             <li>• All answers are subject to verification</li>
             <li>
-              • Providing false information may result in legal consequences
+              • Adaki, LLC d/b/a Quick Verdicts and its attorney users rely on the veracity of your representations 
             </li>
             <li>
               • Additional eligibility criteria may apply based on your
