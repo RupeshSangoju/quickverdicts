@@ -16,7 +16,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL
 interface JuryChargeQuestion {
   QuestionId: number;
   QuestionText: string;
-  QuestionType: "Multiple Choice" | "Yes/No" | "Text Response" | "Numeric Response";
+  QuestionType: "Multiple Choice" | "Yes/No" | "Text Response";
   Options: string[] | string; // Can be array from backend or string
   IsRequired: boolean;
   MinValue?: number;
@@ -481,36 +481,7 @@ function QuestionInput({ question, value, onChange }: QuestionInputProps) {
     );
   }
 
-  if (question.QuestionType === "Numeric Response") {
-    return (
-      <div>
-        <input
-          type="number"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          min={question.MinValue}
-          max={question.MaxValue}
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          placeholder={`Enter a number${
-            question.MinValue !== undefined || question.MaxValue !== undefined
-              ? ` (${question.MinValue !== undefined ? `Min: ${question.MinValue}` : ""}${
-                  question.MinValue !== undefined && question.MaxValue !== undefined ? ", " : ""
-                }${question.MaxValue !== undefined ? `Max: ${question.MaxValue}` : ""})`
-              : ""
-          }`}
-        />
-        {(question.MinValue !== undefined || question.MaxValue !== undefined) && (
-          <p className="text-xs text-gray-700 mt-1 font-medium">
-            {question.MinValue !== undefined && `Minimum: ${question.MinValue}`}
-            {question.MinValue !== undefined && question.MaxValue !== undefined && " • "}
-            {question.MaxValue !== undefined && `Maximum: ${question.MaxValue}`}
-          </p>
-        )}
-      </div>
-    );
-  }
-
-  if (question.QuestionType === "Text Response") {
+if (question.QuestionType === "Text Response") {
     return (
       <textarea
         value={value}

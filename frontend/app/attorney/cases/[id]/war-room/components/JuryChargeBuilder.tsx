@@ -17,7 +17,7 @@ interface JuryChargeQuestion {
   QuestionId: number;
   CaseId: number;
   QuestionText: string;
-  QuestionType: "Multiple Choice" | "Yes/No" | "Text Response" | "Numeric Response";
+  QuestionType: "Multiple Choice" | "Yes/No" | "Text Response";
   Options: string[] | string; // Can be array from backend or string from form
   OrderIndex: number;
   IsRequired: boolean;
@@ -508,7 +508,6 @@ export default function JuryChargeBuilder({
                       <option value="Multiple Choice">Multiple Choice</option>
                       <option value="Yes/No">Yes/No</option>
                       <option value="Text Response">Text Response</option>
-                      <option value="Numeric Response">Numeric Response</option>
                     </select>
                   </div>
 
@@ -541,32 +540,6 @@ export default function JuryChargeBuilder({
                   </div>
                 )}
 
-                {/* Min/Max for Numeric */}
-                {question.QuestionType === "Numeric Response" && (
-                  <div className="grid grid-cols-2 gap-4 mt-4">
-                    <div>
-                      <label className="block text-sm font-bold text-gray-900 mb-2">Min Value</label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={question.MinValue || ""}
-                        onChange={(e) => updateNewQuestion(index, "MinValue", e.target.value ? Number(e.target.value) : undefined)}
-                        className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium"
-                        placeholder="Minimum"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-bold text-gray-900 mb-2">Max Value</label>
-                      <input
-                        type="number"
-                        value={question.MaxValue || ""}
-                        onChange={(e) => updateNewQuestion(index, "MaxValue", e.target.value ? Number(e.target.value) : undefined)}
-                        className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium"
-                        placeholder="Maximum"
-                      />
-                    </div>
-                  </div>
-                )}
               </div>
             ))}
           </div>
@@ -685,7 +658,6 @@ function QuestionForm({
     "Multiple Choice",
     "Yes/No",
     "Text Response",
-    "Numeric Response",
   ];
 
   return (
@@ -750,45 +722,6 @@ function QuestionForm({
         </div>
       )}
 
-      {/* Min/Max Values (for Numeric Response) */}
-      {formData.QuestionType === "Numeric Response" && (
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Minimum Value (optional)
-            </label>
-            <input
-              type="number"
-              value={formData.MinValue || ""}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  MinValue: e.target.value ? Number(e.target.value) : undefined,
-                })
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Min"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Maximum Value (optional)
-            </label>
-            <input
-              type="number"
-              value={formData.MaxValue || ""}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  MaxValue: e.target.value ? Number(e.target.value) : undefined,
-                })
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Max"
-            />
-          </div>
-        </div>
-      )}
 
       {/* Is Required */}
       <div className="flex items-center">
@@ -919,20 +852,6 @@ function QuestionCard({
             </ul>
           )}
 
-          {/* Show min/max for Numeric Response */}
-          {question.QuestionType === "Numeric Response" && (
-            <div className="mt-2 text-sm text-gray-800 font-medium">
-              {question.MinValue !== undefined && (
-                <span>Min: {question.MinValue}</span>
-              )}
-              {question.MinValue !== undefined && question.MaxValue !== undefined && (
-                <span className="mx-2">•</span>
-              )}
-              {question.MaxValue !== undefined && (
-                <span>Max: {question.MaxValue}</span>
-              )}
-            </div>
-          )}
         </div>
 
         {/* Actions */}

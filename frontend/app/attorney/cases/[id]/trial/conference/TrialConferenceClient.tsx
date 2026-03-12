@@ -1730,7 +1730,6 @@ roomCall.remoteParticipants.forEach((p: any) => {
                     <option value="Multiple Choice">Multiple Choice</option>
                     <option value="Text Response">Text Response</option>
                     <option value="Yes/No">Yes/No</option>
-                    <option value="Numeric Response">Numeric Response</option>
                   </select>
                 </div>
 

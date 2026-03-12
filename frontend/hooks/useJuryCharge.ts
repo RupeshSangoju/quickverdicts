@@ -5,7 +5,7 @@ interface JuryChargeQuestion {
   QuestionId: number;
   CaseId: number;
   QuestionText: string;
-  QuestionType: 'Multiple Choice' | 'Yes/No' | 'Text Response' | 'Numeric Response';
+  QuestionType: 'Multiple Choice' | 'Yes/No' | 'Text Response';
   Options: string;
   OrderIndex: number;
   IsRequired: boolean;

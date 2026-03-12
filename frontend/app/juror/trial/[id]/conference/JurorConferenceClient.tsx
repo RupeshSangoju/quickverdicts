@@ -1624,28 +1624,6 @@ export default function JurorConferenceClient() {
                     </div>
                   )}
 
-                  {/* Numeric Response */}
-                  {question.QuestionType === "Numeric Response" && (
-                    <div className="ml-9">
-                      <input
-                        type="number"
-                        value={juryChargeResponses[question.QuestionId] || ""}
-                        onChange={(e) => setJuryChargeResponses(prev => ({ ...prev, [question.QuestionId]: e.target.value }))}
-                        placeholder="Enter a number..."
-                        min={question.MinValue}
-                        max={question.MaxValue}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                        style={{ color: "#0A2342" }}
-                      />
-                      {(question.MinValue !== null || question.MaxValue !== null) && (
-                        <p className="text-xs text-gray-500 mt-1">
-                          {question.MinValue !== null && `Min: ${question.MinValue}`}
-                          {question.MinValue !== null && question.MaxValue !== null && " | "}
-                          {question.MaxValue !== null && `Max: ${question.MaxValue}`}
-                        </p>
-                      )}
-                    </div>
-                  )}
                 </div>
               ))}
             </>
