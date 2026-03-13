@@ -301,7 +301,10 @@ function JurorSignupInner() {
         const cities = data
           .slice(1)
           .map((r: [string, string, string], idx: number) => ({
-            label: r[0].trim(),
+            label: r[0]
+              .replace(/, [^,]+$/, "")
+              .replace(/\s+(city|town|village|borough|CDP|township|municipality)\s*$/i, "")
+              .trim(),
             value: `${selectedState.value}-${r[2] || idx}`,
           }))
           .sort((a, b) => a.label.localeCompare(b.label));
