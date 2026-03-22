@@ -332,6 +332,7 @@ async function getApplicationsByJuror(jurorId) {
           INNER JOIN dbo.Cases c ON ja.CaseId = c.CaseId
           INNER JOIN dbo.Attorneys a ON c.AttorneyId = a.AttorneyId
           WHERE ja.JurorId = @jurorId
+            AND c.IsDeleted = 0
           ORDER BY ja.AppliedAt DESC
         `);
 

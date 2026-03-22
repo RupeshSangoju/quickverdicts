@@ -426,11 +426,6 @@ async function deleteCase(req, res) {
     // Get attorney information
     const attorney = await Attorney.findById(caseData.AttorneyId);
 
-    // Get all jurors who applied to this case (all statuses - approved, pending, rejected)
-    const allApplications = await JurorApplication.getApplicationsByCase(caseId);
-
-    console.log(`👥 [deleteCase] Found ${allApplications.length} juror applications for case ${caseId}`);
-
     // Soft delete the case
     await Case.softDeleteCase(caseId);
 
@@ -457,22 +452,10 @@ async function deleteCase(req, res) {
       });
     }
 
-    // Notify all jurors who had any interaction with this case
-    allApplications.forEach((application) => {
-      notifications.push({
-        userId: application.JurorId,
-        userType: "juror",
-        caseId: parseInt(caseId),
-        type: "case_deleted",
-        title: "Case Deleted",
-        message: `The case "${caseData.CaseTitle}" you applied to has been deleted by the administrator.`,
-      });
-    });
-
-    // Send all notifications at once using bulk insert
+    // Send attorney notification
     if (notifications.length > 0) {
       await Notification.createBulkNotifications(notifications);
-      console.log(`📧 Sent ${notifications.length} notifications for deleted case ${caseId}`);
+      console.log(`📧 Sent ${notifications.length} notification for deleted case ${caseId}`);
     }
 
     // Log admin action
@@ -493,7 +476,6 @@ async function deleteCase(req, res) {
         caseTitle: caseData.CaseTitle,
         notificationsSent: notifications.length,
         attorneyNotified: attorney ? true : false,
-        jurorsNotified: allApplications.length,
         isDeleted: deletedCase?.IsDeleted,
       },
     });
