@@ -320,6 +320,11 @@ export default function JurorWarRoomPage() {
     const ext = getFileExtension(viewingDoc.FileName);
     const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(ext);
     const isPdf = ext === 'pdf';
+    const isVideo = ['mp4', 'webm', 'mov', 'avi', 'wmv'].includes(ext);
+    const isOffice = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext);
+    const officeViewerUrl = isOffice
+      ? `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(viewingDoc.FileUrl)}`
+      : null;
 
     return (
       <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4">
@@ -339,8 +344,8 @@ export default function JurorWarRoomPage() {
 
           <div className="flex-1 overflow-auto p-4">
             {isImage ? (
-              <img 
-                src={viewingDoc.FileUrl} 
+              <img
+                src={viewingDoc.FileUrl}
                 alt={viewingDoc.FileName}
                 className="max-w-full h-auto mx-auto"
                 onError={(e) => {
@@ -354,10 +359,22 @@ export default function JurorWarRoomPage() {
                 className="w-full h-[70vh] border-0"
                 title={viewingDoc.FileName}
               />
+            ) : isVideo ? (
+              <video
+                src={viewingDoc.FileUrl}
+                controls
+                controlsList="nodownload"
+                className="w-full max-h-[70vh]"
+              />
+            ) : isOffice ? (
+              <iframe
+                src={officeViewerUrl!}
+                className="w-full h-[70vh] border-0"
+                title={viewingDoc.FileName}
+              />
             ) : (
               <div className="text-center py-12">
                 <p className="text-gray-600 mb-4">Preview not available for this file type (.{ext})</p>
-                <p className="text-sm text-gray-500">This file can only be viewed in a separate window</p>
               </div>
             )}
           </div>

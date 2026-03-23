@@ -3,7 +3,7 @@
 // FIXED: Added validation, error handling, retry logic, security
 // =============================================
 
-const { BlobServiceClient } = require("@azure/storage-blob");
+const { BlobServiceClient, generateBlobSASQueryParameters, BlobSASPermissions } = require("@azure/storage-blob");
 const path = require("path");
 const crypto = require("crypto");
 
@@ -596,6 +596,43 @@ async function checkHealth() {
   }
 }
 
+/**
+ * Generate a short-lived read-only SAS URL for a blob.
+ * Falls back to the original URL if SAS generation fails.
+ */
+async function generateSasUrl(fileUrl, expiryMinutes = 60) {
+  try {
+    if (!AZURE_STORAGE_CONNECTION_STRING || !fileUrl) return fileUrl;
+
+    const urlObj = new URL(fileUrl);
+    // Strip any existing query string (old SAS token) before regenerating
+    const cleanUrl = `${urlObj.protocol}//${urlObj.host}${urlObj.pathname}`;
+    const blobName = decodeURIComponent(urlObj.pathname.split("/").pop());
+
+    const blobServiceClient = BlobServiceClient.fromConnectionString(AZURE_STORAGE_CONNECTION_STRING);
+    const containerClient = blobServiceClient.getContainerClient(CONTAINER_NAME);
+    const blobClient = containerClient.getBlobClient(blobName);
+
+    const sasOptions = {
+      containerName: CONTAINER_NAME,
+      blobName,
+      permissions: BlobSASPermissions.parse("r"),
+      startsOn: new Date(),
+      expiresOn: new Date(Date.now() + expiryMinutes * 60 * 1000),
+    };
+
+    const sasToken = generateBlobSASQueryParameters(
+      sasOptions,
+      blobServiceClient.credential
+    ).toString();
+
+    return `${blobClient.url}?${sasToken}`;
+  } catch (error) {
+    console.error("SAS URL generation error:", error.message);
+    return fileUrl;
+  }
+}
+
 // ============================================
 // EXPORTS
 // ============================================
@@ -615,6 +652,9 @@ module.exports = {
 
   // Health
   checkHealth,
+
+  // SAS URL generation
+  generateSasUrl,
 
   // Utilities
   sanitizeFilename,

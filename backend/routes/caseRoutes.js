@@ -22,6 +22,7 @@ const { poolPromise, sql } = require("../config/db");
 // Import models
 const Case = require("../models/Case");
 const JurorApplication = require("../models/JurorApplication");
+const { generateSasUrl } = require("../utils/azureBlob");
 
 // ============================================
 // RATE LIMITERS (MUST BE DEFINED FIRST!)
@@ -488,9 +489,17 @@ router.get(
           ORDER BY UploadedAt DESC
         `);
 
+      // Generate fresh SAS URLs so jurors can view documents inline
+      const documents = await Promise.all(
+        (result.recordset || []).map(async (doc) => ({
+          ...doc,
+          FileUrl: await generateSasUrl(doc.FileUrl),
+        }))
+      );
+
       res.json({
         success: true,
-        documents: result.recordset || [],
+        documents,
       });
     } catch (error) {
       console.error("Get case documents error:", error);
