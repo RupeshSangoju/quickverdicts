@@ -28,6 +28,7 @@ type CaseData = {
 
 type Document = {
   Id: number;
+  CaseId: number;
   FileName: string;
   Description: string;
   FileUrl: string;
@@ -319,7 +320,11 @@ export default function JurorWarRoomPage() {
     if (ext === 'csv') {
       setCsvLoading(true);
       try {
-        const res = await fetch(doc.FileUrl);
+        const token = getToken();
+        const res = await fetch(
+          `${API_BASE}/api/case/cases/${doc.CaseId}/documents/${doc.Id}/raw`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
         const text = await res.text();
         const rows = text.trim().split('\n').map(row =>
           row.split(',').map(cell => cell.replace(/^"|"$/g, '').trim())

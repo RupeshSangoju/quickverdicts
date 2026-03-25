@@ -512,6 +512,58 @@ router.get(
 );
 
 /**
+ * GET /api/case/cases/:caseId/documents/:docId/raw
+ * Proxy a single war room document's content through the server.
+ * Used for file types (e.g. CSV) that Azure Blob Storage blocks via CORS.
+ */
+router.get(
+  "/cases/:caseId/documents/:docId/raw",
+  caseOperationsLimiter,
+  authMiddleware,
+  validateCaseId,
+  loadCase,
+  verifyCaseAccess,
+  async (req, res) => {
+    try {
+      const caseId = req.validatedCaseId;
+      const docId = parseInt(req.params.docId, 10);
+      if (isNaN(docId) || docId <= 0) {
+        return res.status(400).json({ success: false, message: "Invalid document ID" });
+      }
+
+      const pool = await poolPromise;
+      const result = await pool
+        .request()
+        .input("caseId", sql.Int, caseId)
+        .input("docId", sql.Int, docId)
+        .query(`SELECT FileUrl, FileName, MimeType FROM WarRoomDocuments WHERE Id = @docId AND CaseId = @caseId`);
+
+      if (!result.recordset.length) {
+        return res.status(404).json({ success: false, message: "Document not found" });
+      }
+
+      const { FileUrl, FileName, MimeType } = result.recordset[0];
+      const sasUrl = await generateSasUrl(FileUrl);
+      const upstream = await fetch(sasUrl);
+
+      if (!upstream.ok) {
+        return res.status(502).json({ success: false, message: "Failed to fetch document from storage" });
+      }
+
+      res.setHeader("Content-Type", MimeType || "application/octet-stream");
+      res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(FileName)}"`);
+      res.setHeader("Cache-Control", "private, max-age=300");
+
+      const buffer = await upstream.arrayBuffer();
+      res.send(Buffer.from(buffer));
+    } catch (error) {
+      console.error("Document raw proxy error:", error);
+      res.status(500).json({ success: false, message: "Failed to proxy document" });
+    }
+  }
+);
+
+/**
  * GET /api/case/cases/:caseId/witnesses
  * Get witnesses for a case
  * Accessible to attorneys (own cases), jurors (approved), and admins
