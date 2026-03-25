@@ -126,7 +126,7 @@ export default function ForAttorneys() {
             <div>
               {/* Placeholder image - user will replace */}
               <img
-                src="\images\g.png" alt="Attorney in courtroom" className="rounded-lg shadow-lg w-full"
+                src="\images\k.png" alt="Attorney in courtroom" className="rounded-lg shadow-lg w-full"
               />
             </div>
 
@@ -200,10 +200,10 @@ period with the jurors.
       <section className="bg-gray-50 py-16">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-3xl font-bold text-center text-gray-900 mb-4">
-            Testimonial
+            How It Works
           </h2>
           <p className="text-center text-gray-600 mb-8">
-            Hear from attorneys who have used Quick Verdicts
+            Click on the below video for a close up of the Attorney Journey
           </p>
 
           {/* Video Player - user will replace with YouTube embed */}
@@ -211,7 +211,7 @@ period with the jurors.
             {!isPlaying ? (
               <>
                 {/* Thumbnail */}
-                <img src="/images/hammer.png" className="w-full h-full object-cover"/>
+                <img src="/images/l.png" className="w-full h-full object-cover"/>
 
                 {/* Play Button Overlay */}
                 <button
@@ -227,7 +227,7 @@ period with the jurors.
               /* YouTube iframe */
               <iframe
                 className="w-full h-full"
-                src={`https://quickverdictsvideo.blob.core.windows.net/videos/QV_Video.mp4`}
+                src={`https://quickverdictsvideo.blob.core.windows.net/videos/How it Works for Attorneys.mp4`}
                 title="YouTube video player"
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
