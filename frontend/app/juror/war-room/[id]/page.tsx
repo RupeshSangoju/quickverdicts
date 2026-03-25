@@ -135,6 +135,8 @@ export default function JurorWarRoomPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [viewingDoc, setViewingDoc] = useState<Document | null>(null);
+  const [csvData, setCsvData] = useState<string[][]>([]);
+  const [csvLoading, setCsvLoading] = useState(false);
   const [juryChargeReleased, setJuryChargeReleased] = useState(false);
   const [juryChargeLoading, setJuryChargeLoading] = useState(true);
   const [jurorId, setJurorId] = useState<number | null>(null);
@@ -310,8 +312,25 @@ export default function JurorWarRoomPage() {
     }
   }, [isConnected, socket, caseId, joinRoom, on, off]);
 
-  const handleViewDocument = (doc: Document) => {
+  const handleViewDocument = async (doc: Document) => {
+    setCsvData([]);
     setViewingDoc(doc);
+    const ext = getFileExtension(doc.FileName);
+    if (ext === 'csv') {
+      setCsvLoading(true);
+      try {
+        const res = await fetch(doc.FileUrl);
+        const text = await res.text();
+        const rows = text.trim().split('\n').map(row =>
+          row.split(',').map(cell => cell.replace(/^"|"$/g, '').trim())
+        );
+        setCsvData(rows);
+      } catch {
+        setCsvData([]);
+      } finally {
+        setCsvLoading(false);
+      }
+    }
   };
 
   const renderDocumentViewer = () => {
@@ -322,6 +341,7 @@ export default function JurorWarRoomPage() {
     const isPdf = ext === 'pdf';
     const isVideo = ['mp4', 'webm', 'mov', 'avi', 'wmv'].includes(ext);
     const isOffice = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext);
+    const isCsv = ext === 'csv';
     const officeViewerUrl = isOffice
       ? `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(viewingDoc.FileUrl)}`
       : null;
@@ -372,9 +392,44 @@ export default function JurorWarRoomPage() {
                 className="w-full h-[70vh] border-0"
                 title={viewingDoc.FileName}
               />
+            ) : isCsv ? (
+              csvLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="w-8 h-8 border-4 border-[#C6CDD9] border-t-[#16305B] rounded-full animate-spin"></div>
+                </div>
+              ) : csvData.length > 0 ? (
+                <div className="overflow-auto max-h-[65vh]">
+                  <table className="min-w-full text-sm border-collapse">
+                    <thead className="sticky top-0 bg-[#16305B] text-white">
+                      <tr>
+                        {csvData[0].map((header, i) => (
+                          <th key={i} className="px-3 py-2 text-left font-semibold border border-[#0A2342] whitespace-nowrap">
+                            {header}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {csvData.slice(1).map((row, ri) => (
+                        <tr key={ri} className={ri % 2 === 0 ? 'bg-white' : 'bg-[#FAF9F6]'}>
+                          {row.map((cell, ci) => (
+                            <td key={ci} className="px-3 py-2 border border-[#C6CDD9]/50 text-[#0A2342]">
+                              {cell}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-gray-500 text-sm">Could not load CSV content.</p>
+                </div>
+              )
             ) : (
               <div className="text-center py-12">
-                <p className="text-gray-600 mb-4">Preview not available for this file type (.{ext})</p>
+                <p className="text-gray-600">Preview not available for this file type (.{ext})</p>
               </div>
             )}
           </div>
