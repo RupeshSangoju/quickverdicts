@@ -286,6 +286,7 @@ export default function WarRoomPage() {
 
   // Submit war room
   const [submittingWarRoom, setSubmittingWarRoom] = useState(false);
+  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -875,6 +876,7 @@ export default function WarRoomPage() {
   };
 
   return (
+    <>
     <div className="min-h-screen bg-[#f9f7f2]">
       <div className="max-w-7xl mx-auto p-6 space-y-6">
         {/* Back Button */}
@@ -973,7 +975,7 @@ export default function WarRoomPage() {
                   )}
                   {/* Join Trial button removed per UX request; submit will enable join elsewhere */}
                   <button
-                    onClick={submitWarRoom}
+                    onClick={() => setShowSubmitConfirm(true)}
                     disabled={submittingWarRoom || !isWarRoomStatus || !!pendingRescheduleRequest || approvedCount < 1}
                     className="px-4 py-1.5 bg-white text-[#16305B] rounded-lg font-semibold text-sm hover:bg-white/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
                     title={pendingRescheduleRequest ? 'Cannot submit while reschedule request is pending' : ''}
@@ -2434,5 +2436,41 @@ export default function WarRoomPage() {
         )}
       </div>
     </div>
+
+    {/* Submit Case for Trial confirmation modal */}
+    {showSubmitConfirm && (
+      <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+          <div className="flex items-start gap-3 mb-4">
+            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-amber-600" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-[#0A2342]">Submit Case for Trial?</h3>
+              <p className="mt-1 text-sm text-[#455A7C]">
+                Submitting opens the <strong>QV Courtroom</strong> and no further juror applications will be accepted.
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-3 mt-6">
+            <button
+              onClick={() => setShowSubmitConfirm(false)}
+              className="px-5 py-2 rounded-lg text-sm font-semibold text-[#455A7C] bg-[#FAF9F6] hover:bg-[#f0ede6] transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => { setShowSubmitConfirm(false); submitWarRoom(); }}
+              className="px-5 py-2 rounded-lg text-sm font-semibold text-white bg-[#16305B] hover:bg-[#0A2342] transition-colors"
+            >
+              Yes, Submit
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
