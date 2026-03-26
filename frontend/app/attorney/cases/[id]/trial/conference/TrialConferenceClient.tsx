@@ -1003,7 +1003,7 @@ roomCall.remoteParticipants.forEach((p: any) => {
     try {
       setLoadingCaseFiles(true);
       const token = getToken();
-      const response = await fetch(`${API_BASE}/api/war-room-documents/cases/${caseId}/war-room/documents`, {
+      const response = await fetch(`${API_BASE}/api/war-room/cases/${caseId}/war-room/documents`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.ok) {
