@@ -25,6 +25,7 @@ import {
   MoreVertical,
   Pin,
   Volume2,
+  FileText,
 } from "lucide-react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL
@@ -87,6 +88,11 @@ export default function TrialConferenceClient() {
     Options: '',
     IsRequired: true,
   });
+
+  // Case Files states
+  const [showCaseFilesPanel, setShowCaseFilesPanel] = useState(false);
+  const [caseFiles, setCaseFiles] = useState<any[]>([]);
+  const [loadingCaseFiles, setLoadingCaseFiles] = useState(false);
 
   const featuredVideoRef = useRef<HTMLDivElement>(null);
   const localVideoStream = useRef<any>(null);
@@ -960,6 +966,7 @@ roomCall.remoteParticipants.forEach((p: any) => {
   const toggleChatPanel = () => {
     setShowChatPanel(!showChatPanel);
     if (!showChatPanel) {
+      setShowCaseFilesPanel(false);
       setUnreadCount(0);
       setShowChatNotification(false);
     }
@@ -987,8 +994,36 @@ roomCall.remoteParticipants.forEach((p: any) => {
   const toggleJuryChargePanel = () => {
     if (!showJuryChargePanel) {
       loadJuryCharge();
+      setShowCaseFilesPanel(false);
     }
     setShowJuryChargePanel(!showJuryChargePanel);
+  };
+
+  const loadCaseFiles = async () => {
+    try {
+      setLoadingCaseFiles(true);
+      const token = getToken();
+      const response = await fetch(`${API_BASE}/api/case/cases/${caseId}/case-files`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setCaseFiles(data.documents || []);
+      }
+    } catch (err) {
+      console.error("Error loading case files:", err);
+    } finally {
+      setLoadingCaseFiles(false);
+    }
+  };
+
+  const toggleCaseFilesPanel = () => {
+    if (!showCaseFilesPanel) {
+      loadCaseFiles();
+      setShowChatPanel(false);
+      setShowJuryChargePanel(false);
+    }
+    setShowCaseFilesPanel(!showCaseFilesPanel);
   };
 
   const startEditingQuestion = (question: any) => {
@@ -1340,7 +1375,7 @@ roomCall.remoteParticipants.forEach((p: any) => {
       <div className="flex-1 flex overflow-hidden relative">
         {/* Main Content Area - More space for video when panels open */}
         <div className={`flex flex-col transition-all duration-300 ${
-          showChatPanel || showJuryChargePanel ? 'w-4/5' : 'w-4/5 mx-auto'
+          showChatPanel || showJuryChargePanel || showCaseFilesPanel ? 'w-4/5' : 'w-4/5 mx-auto'
         }`}>
           {/* Header */}
           <div className="px-6 py-3 flex items-center justify-between shadow-lg" style={{ backgroundColor: "#16305B" }}>
@@ -1591,6 +1626,15 @@ roomCall.remoteParticipants.forEach((p: any) => {
               </div>
               <span className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
                 Jury Charge
+              </span>
+            </button>
+
+            <button onClick={toggleCaseFilesPanel} className="flex flex-col items-center gap-1 hover:scale-110 transition-transform group relative" title="Case Files">
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: showCaseFilesPanel ? "#5B9BD5" : "#FDB71A" }}>
+                <FileText className="w-6 h-6 text-white" />
+              </div>
+              <span className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                Case Files
               </span>
             </button>
 
@@ -1902,6 +1946,82 @@ roomCall.remoteParticipants.forEach((p: any) => {
                       </div>
                     </div>
                   )}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Case Files Panel */}
+      {showCaseFilesPanel && (
+        <div className="w-1/5 flex flex-col shadow-2xl" style={{ backgroundColor: "#ffffff", borderLeft: "1px solid #C6CDD9" }}>
+          <div className="p-5 flex items-center justify-between" style={{ backgroundColor: "#16305B", borderBottom: "1px solid #C6CDD9" }}>
+            <div>
+              <h3 className="text-lg font-bold text-white">Case Files</h3>
+              <p className="text-sm text-white opacity-80">{caseFiles.length} files</p>
+            </div>
+            <button onClick={toggleCaseFilesPanel} className="text-white hover:text-gray-300">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            {loadingCaseFiles ? (
+              <div className="text-center mt-10" style={{ color: "#455A7C" }}>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400 mx-auto mb-2"></div>
+                Loading files...
+              </div>
+            ) : caseFiles.length === 0 ? (
+              <div className="text-center mt-10" style={{ color: "#455A7C" }}>
+                <svg className="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <p className="font-semibold">No case files</p>
+                <p className="text-sm mt-2">No filing documents attached to this case</p>
+              </div>
+            ) : (
+              caseFiles.map((doc) => (
+                <div key={doc.DocumentId} className="rounded-lg p-4 transition" style={{ backgroundColor: "#f9f7f2", border: "1px solid #C6CDD9" }}>
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0">
+                      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: "#16305B" }}>
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold truncate" style={{ color: "#0A2342" }}>{doc.FileName}</p>
+                      {doc.Description && (
+                        <p className="text-sm mt-1" style={{ color: "#455A7C" }}>{doc.Description}</p>
+                      )}
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <span className="text-xs font-medium px-2 py-0.5 rounded capitalize" style={{ backgroundColor: "#16305B20", color: "#16305B" }}>
+                          {doc.DocumentType}
+                        </span>
+                        {doc.IsVerified === 1 && (
+                          <span className="text-xs font-medium px-2 py-0.5 rounded bg-green-100 text-green-700">Verified</span>
+                        )}
+                      </div>
+                      <p className="text-xs mt-1" style={{ color: "#455A7C" }}>
+                        {new Date(doc.UploadedAt).toLocaleDateString()}
+                      </p>
+                      <a
+                        href={doc.FileUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 mt-2 px-3 py-1 text-white rounded text-xs font-semibold transition"
+                        style={{ backgroundColor: "#16305B" }}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                        View
+                      </a>
+                    </div>
+                  </div>
                 </div>
               ))
             )}
