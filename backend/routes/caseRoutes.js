@@ -22,6 +22,7 @@ const { poolPromise, sql } = require("../config/db");
 // Import models
 const Case = require("../models/Case");
 const JurorApplication = require("../models/JurorApplication");
+const CaseDocument = require("../models/CaseDocument");
 const { generateSasUrl } = require("../utils/azureBlob");
 
 // ============================================
@@ -558,6 +559,82 @@ router.get(
       res.send(Buffer.from(buffer));
     } catch (error) {
       console.error("Document raw proxy error:", error);
+      res.status(500).json({ success: false, message: "Failed to proxy document" });
+    }
+  }
+);
+
+/**
+ * GET /api/case/cases/:caseId/case-files
+ * Get original case filing documents (CaseDocuments table) for the attorney who owns the case.
+ * Attorneys see their own case's filing documents; admins have full access.
+ */
+router.get(
+  "/cases/:caseId/case-files",
+  caseOperationsLimiter,
+  authMiddleware,
+  validateCaseId,
+  loadCase,
+  verifyCaseAccess,
+  async (req, res) => {
+    try {
+      const caseId = req.validatedCaseId;
+      const docs = await CaseDocument.getDocumentsByCase(caseId);
+
+      // Generate fresh SAS URLs for inline viewing
+      const documents = await Promise.all(
+        docs.map(async (doc) => ({
+          ...doc,
+          FileUrl: doc.FileUrl ? await generateSasUrl(doc.FileUrl) : null,
+        }))
+      );
+
+      res.json({ success: true, documents });
+    } catch (error) {
+      console.error("Get case-files error:", error);
+      res.status(500).json({ success: false, message: "Failed to fetch case files" });
+    }
+  }
+);
+
+/**
+ * GET /api/case/cases/:caseId/case-files/:docId/raw
+ * Proxy a single CaseDocument's content to avoid CORS issues (e.g. CSV preview).
+ */
+router.get(
+  "/cases/:caseId/case-files/:docId/raw",
+  caseOperationsLimiter,
+  authMiddleware,
+  validateCaseId,
+  loadCase,
+  verifyCaseAccess,
+  async (req, res) => {
+    try {
+      const caseId = req.validatedCaseId;
+      const docId = parseInt(req.params.docId, 10);
+      if (isNaN(docId) || docId <= 0) {
+        return res.status(400).json({ success: false, message: "Invalid document ID" });
+      }
+
+      const doc = await CaseDocument.findById(docId);
+      if (!doc || doc.CaseId !== caseId) {
+        return res.status(404).json({ success: false, message: "Document not found" });
+      }
+
+      const sasUrl = await generateSasUrl(doc.FileUrl);
+      const upstream = await fetch(sasUrl);
+      if (!upstream.ok) {
+        return res.status(502).json({ success: false, message: "Failed to fetch document from storage" });
+      }
+
+      res.setHeader("Content-Type", doc.MimeType || "application/octet-stream");
+      res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(doc.FileName)}"`);
+      res.setHeader("Cache-Control", "private, max-age=300");
+
+      const buffer = await upstream.arrayBuffer();
+      res.send(Buffer.from(buffer));
+    } catch (error) {
+      console.error("Case-file raw proxy error:", error);
       res.status(500).json({ success: false, message: "Failed to proxy document" });
     }
   }

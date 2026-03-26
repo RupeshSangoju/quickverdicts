@@ -26,7 +26,8 @@ import {
   CreditCardIcon,
   CalendarIcon,
   UserIcon,
-  ArrowLeftIcon
+  ArrowLeftIcon,
+  EyeIcon
 } from "@heroicons/react/24/outline";
 
 type TeamMember = {
@@ -41,6 +42,18 @@ type Document = {
   FileName: string;
   Description: string;
   FileUrl: string;
+};
+
+type CaseFile = {
+  DocumentId: number;
+  CaseId: number;
+  DocumentType: string;
+  FileName: string;
+  FileUrl: string;
+  MimeType: string;
+  Description: string;
+  IsVerified: number;
+  UploadedAt: string;
 };
 
 type FileToUpload = {
@@ -262,6 +275,10 @@ export default function WarRoomPage() {
   const [caseData, setCaseData] = useState<CaseData | null>(null);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [documents, setDocuments] = useState<Document[]>([]);
+  const [caseFiles, setCaseFiles] = useState<CaseFile[]>([]);
+  const [viewingCaseFile, setViewingCaseFile] = useState<CaseFile | null>(null);
+  const [caseFileCsvData, setCaseFileCsvData] = useState<string[][]>([]);
+  const [caseFileCsvLoading, setCaseFileCsvLoading] = useState(false);
   const [applications, setApplications] = useState<Application[]>([]);
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
   const [showApplicationModal, setShowApplicationModal] = useState(false);
@@ -334,7 +351,7 @@ export default function WarRoomPage() {
     }
 
     try {
-      const [caseRes, teamRes, docsRes, appsRes, rescheduleRes] = await Promise.all([
+      const [caseRes, teamRes, docsRes, appsRes, rescheduleRes, caseFilesRes] = await Promise.all([
         fetch(`${API_BASE}/api/case/cases/${caseId}`, {
           headers: createAuthHeaders(token)
         }),
@@ -349,7 +366,10 @@ export default function WarRoomPage() {
         }),
         fetch(`${API_BASE}/api/attorney/cases/${caseId}/reschedule-status`, {
           headers: createAuthHeaders(token)
-        })
+        }),
+        fetch(`${API_BASE}/api/case/cases/${caseId}/case-files`, {
+          headers: createAuthHeaders(token)
+        }),
       ]);
 
       if (caseRes.ok) {
@@ -377,6 +397,11 @@ export default function WarRoomPage() {
         // Only set pending request if status is 'pending'
         const request = rescheduleJson.rescheduleRequest;
         setPendingRescheduleRequest(request && request.Status === 'pending' ? request : null);
+      }
+
+      if (caseFilesRes.ok) {
+        const caseFilesJson = await caseFilesRes.json();
+        setCaseFiles(caseFilesJson.documents || []);
       }
     } catch (error) {
       console.error("Error fetching war room data:", error);
@@ -874,6 +899,140 @@ export default function WarRoomPage() {
       setSubmittingReschedule(false);
     }
   };
+
+  function getCaseFileExt(fileName: string) {
+    return fileName.split('.').pop()?.toLowerCase() || '';
+  }
+
+  async function handleViewCaseFile(doc: CaseFile) {
+    setCaseFileCsvData([]);
+    setViewingCaseFile(doc);
+    if (getCaseFileExt(doc.FileName) === 'csv') {
+      setCaseFileCsvLoading(true);
+      try {
+        const token = getToken();
+        const res = await fetch(
+          `${API_BASE}/api/case/cases/${doc.CaseId}/case-files/${doc.DocumentId}/raw`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        const text = await res.text();
+        const rows = text.trim().split('\n').map(row =>
+          row.split(',').map(cell => cell.replace(/^"|"$/g, '').trim())
+        );
+        setCaseFileCsvData(rows);
+      } catch {
+        setCaseFileCsvData([]);
+      } finally {
+        setCaseFileCsvLoading(false);
+      }
+    }
+  }
+
+  function renderCaseFileViewer() {
+    if (!viewingCaseFile) return null;
+    const ext = getCaseFileExt(viewingCaseFile.FileName);
+    const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(ext);
+    const isPdf = ext === 'pdf';
+    const isVideo = ['mp4', 'webm', 'mov', 'avi', 'wmv'].includes(ext);
+    const isOffice = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext);
+    const isCsv = ext === 'csv';
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] flex flex-col">
+          <div className="flex items-center justify-between p-4 border-b">
+            <div>
+              <h3 className="text-lg font-semibold text-[#16305B]">{viewingCaseFile.FileName}</h3>
+              {viewingCaseFile.Description && (
+                <p className="text-sm text-gray-600 italic">{viewingCaseFile.Description}</p>
+              )}
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-xs font-medium px-2 py-0.5 rounded bg-[#16305B]/10 text-[#16305B] capitalize">
+                  {viewingCaseFile.DocumentType}
+                </span>
+                {viewingCaseFile.IsVerified === 1 && (
+                  <span className="text-xs font-medium px-2 py-0.5 rounded bg-green-100 text-green-700">
+                    Verified
+                  </span>
+                )}
+              </div>
+            </div>
+            <button
+              onClick={() => setViewingCaseFile(null)}
+              className="p-2 hover:bg-gray-100 rounded-full transition"
+            >
+              <XMarkIcon className="w-6 h-6 text-gray-600" />
+            </button>
+          </div>
+          <div className="flex-1 overflow-auto p-4">
+            {isImage ? (
+              <img
+                src={viewingCaseFile.FileUrl}
+                alt={viewingCaseFile.FileName}
+                className="max-w-full h-auto mx-auto"
+              />
+            ) : isPdf ? (
+              <iframe
+                src={viewingCaseFile.FileUrl}
+                className="w-full h-[70vh] border-0"
+                title={viewingCaseFile.FileName}
+              />
+            ) : isVideo ? (
+              <video
+                src={viewingCaseFile.FileUrl}
+                controls
+                controlsList="nodownload"
+                className="w-full max-h-[70vh]"
+              />
+            ) : isOffice ? (
+              <iframe
+                src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(viewingCaseFile.FileUrl)}`}
+                className="w-full h-[70vh] border-0"
+                title={viewingCaseFile.FileName}
+              />
+            ) : isCsv ? (
+              caseFileCsvLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="w-8 h-8 border-4 border-[#C6CDD9] border-t-[#16305B] rounded-full animate-spin"></div>
+                </div>
+              ) : caseFileCsvData.length > 0 ? (
+                <div className="overflow-auto max-h-[65vh]">
+                  <table className="min-w-full text-sm border-collapse">
+                    <thead className="sticky top-0 bg-[#16305B] text-white">
+                      <tr>
+                        {caseFileCsvData[0].map((header, i) => (
+                          <th key={i} className="px-3 py-2 text-left font-semibold border border-[#0A2342] whitespace-nowrap">
+                            {header}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {caseFileCsvData.slice(1).map((row, ri) => (
+                        <tr key={ri} className={ri % 2 === 0 ? 'bg-white' : 'bg-[#FAF9F6]'}>
+                          {row.map((cell, ci) => (
+                            <td key={ci} className="px-3 py-2 border border-[#C6CDD9]/50 text-[#0A2342]">
+                              {cell}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-center text-gray-500 py-12 text-sm">Could not load CSV content.</p>
+              )
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-gray-600">Preview not available for this file type (.{ext})</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -1486,6 +1645,76 @@ export default function WarRoomPage() {
           isLocked={juryChargeLocked}
           onLockStatusChange={setJuryChargeLocked}
         />
+
+        {/* Case Files Card */}
+        <div className="bg-white rounded-lg shadow border border-[#C6CDD9] overflow-hidden">
+          <div className="relative p-5" style={{ backgroundColor: "#16305B" }}>
+            <div className="relative flex items-center gap-3">
+              <div className="p-2 bg-white/10 rounded-lg">
+                <DocumentCheckIcon className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold text-white">Case Files</h2>
+                <p className="text-sm text-white/80 mt-0.5">Original filing documents submitted with this case</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-5">
+            {caseFiles.length === 0 ? (
+              <div className="text-center py-8">
+                <div className="inline-flex items-center justify-center w-12 h-12 bg-[#16305B]/10 rounded-full mb-3">
+                  <DocumentCheckIcon className="w-6 h-6 text-[#16305B]" />
+                </div>
+                <p className="text-[#455A7C] font-semibold text-sm mb-1">No Case Files</p>
+                <p className="text-[#455A7C] text-xs">No filing documents have been attached to this case</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {caseFiles.map((doc) => (
+                  <div
+                    key={doc.DocumentId}
+                    className="bg-white rounded-lg p-4 border border-[#C6CDD9] hover:border-[#16305B] transition-all"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3 flex-1 min-w-0">
+                        <div className="p-1.5 bg-[#16305B]/10 rounded flex-shrink-0">
+                          <DocumentTextIcon className="w-4 h-4 text-[#16305B]" />
+                        </div>
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <h4 className="font-semibold text-[#0A2342] text-sm truncate">{doc.FileName}</h4>
+                          {doc.Description && (
+                            <p className="text-xs text-[#455A7C]">{doc.Description}</p>
+                          )}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-medium px-2 py-0.5 rounded bg-[#16305B]/10 text-[#16305B] capitalize">
+                              {doc.DocumentType}
+                            </span>
+                            {doc.IsVerified === 1 && (
+                              <span className="text-xs font-medium px-2 py-0.5 rounded bg-green-100 text-green-700">
+                                Verified
+                              </span>
+                            )}
+                            <span className="text-xs text-[#455A7C]">
+                              {new Date(doc.UploadedAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleViewCaseFile(doc)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-[#16305B] text-white rounded-lg text-xs font-semibold hover:bg-[#0A2342] transition-colors flex-shrink-0"
+                      >
+                        <EyeIcon className="w-4 h-4" />
+                        View
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* Documents Card */}
         <div className="bg-white rounded-lg shadow border border-[#C6CDD9] overflow-hidden">
@@ -2436,6 +2665,8 @@ export default function WarRoomPage() {
         )}
       </div>
     </div>
+
+    {renderCaseFileViewer()}
 
     {/* Submit Case for Trial confirmation modal */}
     {showSubmitConfirm && (
