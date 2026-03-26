@@ -1003,7 +1003,7 @@ roomCall.remoteParticipants.forEach((p: any) => {
     try {
       setLoadingCaseFiles(true);
       const token = getToken();
-      const response = await fetch(`${API_BASE}/api/case/cases/${caseId}/case-files`, {
+      const response = await fetch(`${API_BASE}/api/war-room-documents/cases/${caseId}/war-room/documents`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.ok) {
@@ -1984,7 +1984,7 @@ roomCall.remoteParticipants.forEach((p: any) => {
               </div>
             ) : (
               caseFiles.map((doc) => (
-                <div key={doc.DocumentId} className="rounded-lg p-4 transition" style={{ backgroundColor: "#f9f7f2", border: "1px solid #C6CDD9" }}>
+                <div key={doc.Id} className="rounded-lg p-4 transition" style={{ backgroundColor: "#f9f7f2", border: "1px solid #C6CDD9" }}>
                   <div className="flex items-start gap-3">
                     <div className="flex-shrink-0">
                       <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: "#16305B" }}>
@@ -1996,14 +1996,13 @@ roomCall.remoteParticipants.forEach((p: any) => {
                       {doc.Description && (
                         <p className="text-sm mt-1" style={{ color: "#455A7C" }}>{doc.Description}</p>
                       )}
-                      <div className="flex items-center gap-2 mt-1 flex-wrap">
-                        <span className="text-xs font-medium px-2 py-0.5 rounded capitalize" style={{ backgroundColor: "#16305B20", color: "#16305B" }}>
-                          {doc.DocumentType}
-                        </span>
-                        {doc.IsVerified === 1 && (
-                          <span className="text-xs font-medium px-2 py-0.5 rounded bg-green-100 text-green-700">Verified</span>
-                        )}
-                      </div>
+                      {doc.Type && (
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <span className="text-xs font-medium px-2 py-0.5 rounded capitalize" style={{ backgroundColor: "#16305B20", color: "#16305B" }}>
+                            {doc.Type}
+                          </span>
+                        </div>
+                      )}
                       <p className="text-xs mt-1" style={{ color: "#455A7C" }}>
                         {new Date(doc.UploadedAt).toLocaleDateString()}
                       </p>
