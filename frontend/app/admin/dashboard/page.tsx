@@ -420,25 +420,10 @@ export default function AdminDashboard() {
         throw new Error('Failed to block any time slots');
       }
 
-      // Send notifications to all attorneys and jurors
-      const notifyResponse = await fetchWithAuth(`${API_BASE}/api/admin/notify-blocked-date`, {
-        method: 'POST',
-        body: JSON.stringify({
-          date: blockDateForm.date,
-          reason: blockDateForm.reason,
-          blockedTimeSlots: timeSlotsToBlock,
-          isWholeDay: blockWholeDay
-        })
-      });
-
       const totalSlots = blockWholeDay ? 48 : selectedTimeSlots.length;
       const blockType = blockWholeDay ? "whole day" : `${selectedTimeSlots.length} time slot(s)`;
 
-      if (notifyResponse.ok) {
-        toast.success(`${blockType} blocked for ${blockDateForm.date}! ${successful}/${totalSlots} slots blocked. Notifications sent to all users.`);
-      } else {
-        toast.success(`${blockType} blocked for ${blockDateForm.date}! ${successful}/${totalSlots} slots blocked.`);
-      }
+      toast.success(`${blockType} blocked for ${blockDateForm.date}! ${successful}/${totalSlots} slots blocked.`);
 
       // Reset form and close modal
       setBlockDateForm({ date: "", reason: "" });
@@ -478,20 +463,7 @@ export default function AdminDashboard() {
 
         await Promise.all(unblockPromises);
 
-        // Send notifications to all attorneys and jurors
-        const notifyResponse = await fetchWithAuth(`${API_BASE}/api/admin/notify-unblocked-date`, {
-          method: 'POST',
-          body: JSON.stringify({
-            date: unblockDate,
-            unblockCount: slotsToUnblock.length
-          })
-        });
-
-        if (notifyResponse.ok) {
-          toast.success(`Date ${unblockDate} unblocked successfully! Notifications sent to all users.`);
-        } else {
-          toast.success(`Date ${unblockDate} unblocked successfully!`);
-        }
+        toast.success(`Date ${unblockDate} unblocked successfully!`);
 
         setShowUnblockModal(false);
         setUnblockDate("");
