@@ -3635,7 +3635,6 @@ function formatTime(timeString: string, scheduledDate: string) {
               </p>
               <ul className="text-sm text-yellow-700 mt-2 ml-4 list-disc space-y-1">
                 <li>The attorney will be notified</li>
-                <li>All jurors will be notified</li>
                 <li>The case will disappear from all user views</li>
               </ul>
             </div>
