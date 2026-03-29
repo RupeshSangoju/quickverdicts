@@ -575,7 +575,12 @@ async function getAllAttorneys(options = {}) {
           AttorneyId, FirstName, MiddleName, LastName, Email, PhoneNumber,
           State, LawFirmName, StateBarNumber,
           VerificationStatus, IsVerified, TierLevel, IsActive,
-          CreatedAt, LastLoginAt, UpdatedAt
+          CreatedAt, LastLoginAt, UpdatedAt,
+          (
+            SELECT STRING_AGG(CAST(c.CaseId AS NVARCHAR(20)), ', ')
+            FROM dbo.Cases c
+            WHERE c.AttorneyId = dbo.Attorneys.AttorneyId AND c.IsDeleted = 0
+          ) AS CaseIds
         FROM dbo.Attorneys
         ${whereClause}
         ORDER BY ${sortColumn} ${sortOrder}
