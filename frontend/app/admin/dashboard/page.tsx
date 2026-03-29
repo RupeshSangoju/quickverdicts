@@ -91,6 +91,7 @@ type Juror = {
   CreatedAt: string;
   VerificationStatus?: string;
   CriteriaResponses?: { question: string; answer: string }[];
+  ApprovedCaseIds?: string | null;
 };
 
 type Notification = {
@@ -2686,13 +2687,14 @@ function formatTime(timeString: string, scheduledDate: string) {
                       )}
                     </div>
                   </th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Case No.</th>
                   <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 bg-white">
                 {loadingJurors ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-16 text-center">
+                    <td colSpan={8} className="px-6 py-16 text-center">
                       <div className="flex flex-col items-center justify-center">
                         <div className="animate-spin h-12 w-12 border-4 border-green-500 border-t-transparent rounded-full mb-4"></div>
                         <p className="text-gray-500 font-medium text-lg">Loading jurors...</p>
@@ -2701,7 +2703,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                   </tr>
                 ) : jurors.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-16 text-center">
+                    <td colSpan={8} className="px-6 py-16 text-center">
                       <Users className="h-16 w-16 text-gray-300 mx-auto mb-4" />
                       <p className="text-gray-500 font-medium text-lg">No jurors found</p>
                     </td>
@@ -2763,6 +2765,19 @@ function formatTime(timeString: string, scheduledDate: string) {
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600">
                         {new Date(juror.CreatedAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4">
+                        {juror.ApprovedCaseIds ? (
+                          <div className="flex flex-wrap gap-1">
+                            {juror.ApprovedCaseIds.split(', ').map((id) => (
+                              <span key={id} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-800">
+                                #{id}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-xs">—</span>
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         {!juror.IsVerified && juror.VerificationStatus !== "declined" && (

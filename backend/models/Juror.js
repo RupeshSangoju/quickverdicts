@@ -688,17 +688,22 @@ async function getAllJurors(options = {}) {
 
       const query = `
         SELECT
-          JurorId, Name, Email, County, State, PhoneNumber,
-          VerificationStatus, IsVerified, IsActive,
-          OnboardingCompleted, IntroVideoCompleted, JurorQuizCompleted, ProfileComplete,
-          CreatedAt, LastLoginAt, UpdatedAt
-        FROM dbo.Jurors
+          j.JurorId, j.Name, j.Email, j.County, j.State, j.PhoneNumber,
+          j.VerificationStatus, j.IsVerified, j.IsActive,
+          j.OnboardingCompleted, j.IntroVideoCompleted, j.JurorQuizCompleted, j.ProfileComplete,
+          j.CreatedAt, j.LastLoginAt, j.UpdatedAt,
+          (
+            SELECT STRING_AGG(CAST(ja.CaseId AS NVARCHAR(20)), ', ')
+            FROM dbo.JurorApplications ja
+            WHERE ja.JurorId = j.JurorId AND ja.Status = 'approved'
+          ) AS ApprovedCaseIds
+        FROM dbo.Jurors j
         ${whereClause}
         ORDER BY ${sortColumn} ${sortOrder}
         OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY;
 
         SELECT COUNT(*) AS total
-        FROM dbo.Jurors
+        FROM dbo.Jurors j
         ${whereClause};
       `;
 

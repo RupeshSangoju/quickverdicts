@@ -1830,6 +1830,12 @@ export default function WarRoomPage() {
                           {app.Status}
                         </span>
 
+                        {app.Status === "approved" && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-800">
+                            #{caseId}
+                          </span>
+                        )}
+
                         <div className="flex items-center gap-1 text-xs font-semibold text-[#16305B]">
                           <span>View</span>
                           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
