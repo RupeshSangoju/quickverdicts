@@ -2368,7 +2368,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                         </div>
                         <div className="flex items-center gap-1.5 text-sm text-red-600 line-through mt-0.5">
                           <Clock className="h-3.5 w-3.5" />
-                          <span>{formatTime(request.CurrentScheduledTime)}</span>
+                          <span>{request.CurrentScheduledTime ? request.CurrentScheduledTime.split('.')[0].split(':').slice(0,2).join(':') : 'N/A'}</span>
                         </div>
                       </div>
                       <div>
@@ -2379,7 +2379,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                         </div>
                         <div className="flex items-center gap-1.5 text-sm text-green-600 font-semibold mt-0.5">
                           <Clock className="h-3.5 w-3.5" />
-                          <span>{formatTime(request.NewScheduledTime)}</span>
+                          <span>{request.NewScheduledTime ? request.NewScheduledTime.split('.')[0].split(':').slice(0,2).join(':') : 'N/A'}</span>
                         </div>
                       </div>
                     </div>
