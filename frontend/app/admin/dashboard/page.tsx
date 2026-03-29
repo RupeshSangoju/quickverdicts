@@ -3898,7 +3898,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                     )}
                   </button>
                   <p className="text-sm text-gray-600">
-                    ⚠️ This will {blockWholeDay ? 'block all time slots' : `block ${selectedTimeSlots.length} selected time slot(s)`} for {blockDateForm.date && new Date(blockDateForm.date).toLocaleDateString()} and send notifications to all attorneys and jurors.
+                    ⚠️ This will {blockWholeDay ? 'block all time slots' : `block ${selectedTimeSlots.length} selected time slot(s)`} for {blockDateForm.date && new Date(blockDateForm.date).toLocaleDateString()}.
                   </p>
                 </div>
               </div>
