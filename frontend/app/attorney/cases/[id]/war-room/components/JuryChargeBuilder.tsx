@@ -591,9 +591,10 @@ export default function JuryChargeBuilder({
       <div className="space-y-4">
         {questions.length === 0 ? (
           <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-            <p className="text-gray-800 text-lg font-semibold">No questions yet</p>
-            <p className="text-gray-600 text-sm mt-2">
-              Click "Add Question" or "Bulk Add Questions" to create your jury charge questions
+            <p className="text-gray-800 text-lg font-semibold">No Questions Yet</p>
+            <p className="text-sm text-gray-700 font-medium mt-1">
+              Click “Add Question” to create Jury Charge.  <br />
+              For instructions and definitions, enter the instruction or definition followed by a question directing the QV Juror to indicate “Yes”,<br/> that he or she has read and understood the instruction or definition.  
             </p>
           </div>
         ) : (

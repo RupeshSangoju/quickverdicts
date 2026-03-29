@@ -29,19 +29,18 @@ export default function JurorTrialSetupPage() {
             <h3 className="font-semibold text-blue-900 mb-2">Before You Join</h3>
             <ul className="text-sm text-blue-800 space-y-1">
               <li>• Ensure you're in a quiet, private location</li>
-              <li>• Check your camera and microphone are working</li>
+              <li>• Ensure your camera and microphone are working</li>
               <li>• Have a stable internet connection</li>
-              <li>• Review the case materials in the War Room</li>
             </ul>
           </div>
 
           <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4">
             <h3 className="font-semibold text-yellow-900 mb-2">Professional Conduct</h3>
             <ul className="text-sm text-yellow-800 space-y-1">
-              <li>• Dress professionally</li>
+              <li>• Dress appropriately and remain full face on camera except during breaks</li>
               <li>• Remain attentive throughout the trial</li>
               <li>• Avoid distractions</li>
-              <li>• Follow all judicial instructions</li>
+              <li>• Follow all instructions given to you</li>
             </ul>
           </div>
         </div>

@@ -66,9 +66,9 @@ export default function ForAttorneys() {
               Earn Money for Each Case Completed
             </h3>
             <p className="text-sm text-gray-600 mt-2 leading-relaxed">
-                Get paid $25-575 per case you complete. Sessions 
-                typically take 30-60 minutes, and you can participate 
-                anytime, from anywhere
+                Get paid $75-$125 per case you complete. Trials
+                are set for 2.5 hours, 3.5 hours and
+                4.5 hours
             </p>
           </div>
 
@@ -92,7 +92,11 @@ Browse available cases in your area and choose the ones that fit your schedule. 
               Step Into a Virtual Courtroom
             </h3>
             <p className="text-sm text-gray-600 mt-2 leading-relaxed">
-Join real small claims cases from your county. Review case files, weigh in on evidence, and deliver your verdict -no legal background required
+              Join a presentation of a real
+              dispute.  Consider arguments,
+              weigh in on evidence, and
+              debate the Final Verdict with
+              your co-jurors.
             </p>
           </div>
         </div>
@@ -115,7 +119,7 @@ Join real small claims cases from your county. Review case files, weigh in on ev
             <div>
               {/* Placeholder image - user will replace */}
               <img
-                src="\images\i.png" alt="Attorney in courtroom" className="rounded-lg shadow-lg w-full"
+                src="\images\k.png" alt="Attorney in courtroom" className="rounded-lg shadow-lg w-full"
               />
             </div>
 
@@ -181,7 +185,7 @@ Join real small claims cases from your county. Review case files, weigh in on ev
             {!isPlaying ? (
               <>
                 {/* Thumbnail */}
-                <img src="/images/hammer.png" className="w-full h-full object-cover"/>
+                <img src="/images/m.png" className="w-full h-full object-cover"/>
 
                 {/* Play Button Overlay */}
                 <button
@@ -197,7 +201,7 @@ Join real small claims cases from your county. Review case files, weigh in on ev
               /* YouTube iframe */
               <iframe
                 className="w-full h-full"
-                src={`https://www.youtube.com/embed/Lo58uzXStms?start=1&autoplay=1`}
+                src={`https://quickverdictsvideo.blob.core.windows.net/videos/Juror How it Works for Info Page.mp4`}
                 title="YouTube video player"
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"

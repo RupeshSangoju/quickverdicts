@@ -24,7 +24,7 @@ export default function JurorBestPracticesPage() {
             <ul className="text-sm text-gray-700 space-y-2 list-disc pl-5">
               <li>Position your camera at eye level</li>
               <li>Ensure good lighting - face a window or light source</li>
-              <li>Test your microphone and speakers before joining</li>
+              <li>In the QV Courtroom, there is a chat box where you can type messages</li>
               <li>Close unnecessary browser tabs and applications</li>
             </ul>
           </div>
@@ -34,7 +34,7 @@ export default function JurorBestPracticesPage() {
             <ul className="text-sm text-gray-700 space-y-2 list-disc pl-5">
               <li>Keep your camera on at all times unless instructed otherwise</li>
               <li>Mute your microphone when not speaking</li>
-              <li>Pay attention and take notes as needed</li>
+              <li>Pay close attention</li>
               <li>Avoid side conversations or distractions</li>
             </ul>
           </div>

@@ -396,7 +396,7 @@ router.patch(
 
         const notificationMessage =
           status === "approved"
-            ? `Congratulations! Your application for "${caseData.CaseTitle}" has been approved.`
+            ? `Congratulations! Your application for "${caseData.CaseTitle}" has been approved.Mark your calendar for the trial date.Login a few minutes before the start of trial.`
             : status === "rejected"
             ? `Your application for "${caseData.CaseTitle}" was not selected at this time.`
             : `Your application status for "${caseData.CaseTitle}" has been updated.`;

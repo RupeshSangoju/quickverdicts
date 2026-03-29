@@ -505,7 +505,7 @@ function AttorneySignupInner() {
       sidebarContent={{
         title: "Attorney Registration",
         description:
-          "Join Quick Verdicts to resolve small claims cases faster with virtual trials and real jurors.",
+          "Join Quick Verdicts to learn local attitudes about your client’s case or claim with a virtual trial.",
       }}
       onBack={handleBack}
     >

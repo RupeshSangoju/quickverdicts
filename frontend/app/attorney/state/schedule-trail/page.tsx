@@ -605,7 +605,7 @@ export default function ScheduleTrialPage() {
             </h1>
             <p className={`text-base ${scheduled ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>
               {scheduled
-                ? "Thank you! Confirmation of your requested trial date is pending.Please click Complete and Go to Dashboard to finalize your request."
+                ? "Please confirm scheduling request.See your Notifications for scheduling confirmation.Once scheduling is confirmed, access War Room through your dashboard."
                 : "Choose your preferred date and time for this trial."}
             </p>
           </div>
@@ -673,7 +673,7 @@ export default function ScheduleTrialPage() {
                     onClick={handleComplete}
                     disabled={redirecting}
                   >
-                    {redirecting ? "Creating Case..." : "Complete & Go to Dashboard"}
+                    {redirecting ? "Creating Case..." : "Confirm scheduling request."}
                   </button>
                 </div>
               </div>
