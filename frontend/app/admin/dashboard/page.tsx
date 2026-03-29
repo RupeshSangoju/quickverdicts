@@ -244,6 +244,8 @@ export default function AdminDashboard() {
   const [jurorSearchQuery, setJurorSearchQuery] = useState("");
   const [jurorSortBy, setJurorSortBy] = useState<"name" | "email" | "county" | "state" | "status" | "jurorStatus" | "onboarding" | "date" | "default">("default");
   const [jurorSortOrder, setJurorSortOrder] = useState<"asc" | "desc">("desc");
+  const [expandedJurorCases, setExpandedJurorCases] = useState<Set<number>>(new Set());
+  const [expandedAttorneyCases, setExpandedAttorneyCases] = useState<Set<number>>(new Set());
 
   const [showCaseRejectModal, setShowCaseRejectModal] = useState(false);
   const [rejectCaseId, setRejectCaseId] = useState<number | null>(null);
@@ -2457,15 +2459,39 @@ function formatTime(timeString: string, scheduledDate: string) {
                         {new Date(attorney.CreatedAt).toLocaleDateString()}
                       </td>
                       <td className="px-6 py-4">
-                        {attorney.CaseIds ? (
-                          <div className="flex flex-wrap gap-1">
-                            {attorney.CaseIds.split(', ').map((id) => (
-                              <span key={id} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-800">
-                                #{id}
+                        {attorney.CaseIds ? (() => {
+                          const ids = attorney.CaseIds!.split(', ');
+                          const isExpanded = expandedAttorneyCases.has(attorney.AttorneyId);
+                          const extra = ids.length - 1;
+                          return (
+                            <div className="flex flex-wrap gap-1 items-center">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-800">
+                                #{ids[0]}
                               </span>
-                            ))}
-                          </div>
-                        ) : (
+                              {extra > 0 && !isExpanded && (
+                                <button
+                                  onClick={() => setExpandedAttorneyCases(prev => new Set(prev).add(attorney.AttorneyId))}
+                                  className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer"
+                                >
+                                  +{extra} more
+                                </button>
+                              )}
+                              {isExpanded && ids.slice(1).map((id) => (
+                                <span key={id} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-800">
+                                  #{id}
+                                </span>
+                              ))}
+                              {isExpanded && (
+                                <button
+                                  onClick={() => setExpandedAttorneyCases(prev => { const s = new Set(prev); s.delete(attorney.AttorneyId); return s; })}
+                                  className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer"
+                                >
+                                  ✕
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })() : (
                           <span className="text-gray-400 text-xs">—</span>
                         )}
                       </td>
@@ -2783,15 +2809,39 @@ function formatTime(timeString: string, scheduledDate: string) {
                         {new Date(juror.CreatedAt).toLocaleDateString()}
                       </td>
                       <td className="px-6 py-4">
-                        {juror.ApprovedCaseIds ? (
-                          <div className="flex flex-wrap gap-1">
-                            {juror.ApprovedCaseIds.split(', ').map((id) => (
-                              <span key={id} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-800">
-                                #{id}
+                        {juror.ApprovedCaseIds ? (() => {
+                          const ids = juror.ApprovedCaseIds!.split(', ');
+                          const isExpanded = expandedJurorCases.has(juror.JurorId);
+                          const extra = ids.length - 1;
+                          return (
+                            <div className="flex flex-wrap gap-1 items-center">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-800">
+                                #{ids[0]}
                               </span>
-                            ))}
-                          </div>
-                        ) : (
+                              {extra > 0 && !isExpanded && (
+                                <button
+                                  onClick={() => setExpandedJurorCases(prev => new Set(prev).add(juror.JurorId))}
+                                  className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer"
+                                >
+                                  +{extra} more
+                                </button>
+                              )}
+                              {isExpanded && ids.slice(1).map((id) => (
+                                <span key={id} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-800">
+                                  #{id}
+                                </span>
+                              ))}
+                              {isExpanded && (
+                                <button
+                                  onClick={() => setExpandedJurorCases(prev => { const s = new Set(prev); s.delete(juror.JurorId); return s; })}
+                                  className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer"
+                                >
+                                  ✕
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })() : (
                           <span className="text-gray-400 text-xs">—</span>
                         )}
                       </td>
