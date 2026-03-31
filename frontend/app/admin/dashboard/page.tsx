@@ -883,6 +883,7 @@ export default function AdminDashboard() {
         CreatedAt: j.CreatedAt ?? j.createdAt,
         VerificationStatus: j.VerificationStatus,
         CriteriaResponses: j.CriteriaResponses ?? j.criteriaResponses ?? [],
+        ApprovedCaseIds: j.ApprovedCaseIds ?? null,
       })));
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
