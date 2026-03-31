@@ -388,7 +388,9 @@ export default function JurorWarRoomPage() {
               <video
                 src={viewingDoc.FileUrl}
                 controls
-                controlsList="nodownload"
+                controlsList="nodownload nofullscreen"
+                disablePictureInPicture
+                onContextMenu={(e) => e.preventDefault()}
                 className="w-full max-h-[70vh]"
               />
             ) : isOffice ? (
