@@ -3331,6 +3331,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                     <FileText className="h-5 w-5 mr-2 text-green-600" />
                     <h3 className="font-semibold text-gray-900">Jury Charge Questions ({selectedCase.juryQuestions.length})</h3>
                   </div>
+                  {/* 
                   <div className="flex gap-2">
                     <button onClick={() => handleDownloadJuryQuestionsText(selectedCase.CaseId)} className="flex items-center gap-2 px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium">
                       <Download className="h-4 w-4" />Text
@@ -3339,6 +3340,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                       <Download className="h-4 w-4" />MS Forms
                     </button>
                   </div>
+                  */}
                 </div>
                 {selectedCase.juryQuestions.length === 0 ? (
                   <p className="text-gray-500 text-sm">No jury questions added</p>

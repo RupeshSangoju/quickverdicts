@@ -50,11 +50,11 @@ export default function ForAttorneys() {
 
           {/* Heading */}
           <h2 className="text-center text-3xl md:text-4xl font-bold text-gray-900">
-            Why Become a Quick Verdicts Attorney?
+            Why Use Quick Verdicts for your Mock Trials? 
           </h2>
 
           <p className="text-center text-gray-700 mt-3 text-base md:text-lg">
-            Explore the top benefits of joining our secure, virtual jury platform.
+            Explore the benefits of joining our easy-to-use, virtual jury platform.
           </p>
 
           {/* Cards */}
@@ -265,7 +265,7 @@ period with the jurors.
             <div>
               <h3 className="font-bold mb-4">Contact</h3>
               <p className="text-gray-300">650-762-6574</p>
-              <p className="text-gray-300">hello@QV.com</p>
+              <p className="text-gray-300">QVTrial@quickverdicts.com</p>
             </div>
             <div>
               <h3 className="font-bold mb-4">Navigation</h3>
@@ -279,10 +279,9 @@ period with the jurors.
 
           <div className="border-t border-gray-700 pt-8 flex flex-wrap justify-between items-center">
             <div className="flex space-x-6 text-sm text-gray-300">
-              <Link href="/" className="hover:text-white">Quick Verdicts®</Link>
+              <Link href="/" className="hover:text-white">Quick Verdicts<sup className="text-[12px]">®</sup></Link>
               <Link href="/" className="hover:text-white">Privacy</Link>
               <Link href="/" className="hover:text-white">Terms of Use</Link>
-              <Link href="/" className="hover:text-white">Consumer Choice</Link>
             </div>
             <div className="flex items-center space-x-4 mt-4 md:mt-0">
               <span className="text-sm text-gray-300">Follow Us</span>

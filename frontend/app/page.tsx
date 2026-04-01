@@ -180,6 +180,10 @@ cases in:            </p>
                 <span className="mr-2">•</span>
                 <span>Trial presentations are considered privileged under state and federal law</span>
               </li>
+              <li className="flex items-start">
+                <span className="mr-2">•</span>
+                <span>QV admin assistance during trial</span>
+              </li>
             </ul>
           </div>
         </div>

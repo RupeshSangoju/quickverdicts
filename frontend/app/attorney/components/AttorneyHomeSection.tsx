@@ -564,7 +564,7 @@ export default function AttorneyHomeSection() {
             className="text-[#16305B] hover:text-[#1e417a] transition-colors font-semibold cursor-pointer" 
             onClick={() => setShowHelp(true)}
           >
-            Help & Support
+            Tutorials & FAQs
           </button>
         </div>
       </div>

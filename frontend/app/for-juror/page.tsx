@@ -52,7 +52,7 @@ export default function ForAttorneys() {
           Why Become a Quick Verdicts Juror?
         </h2>
         <p className="text-center text-gray-600 mt-2">
-          Explore the top benefits of joining our secure, virtual jury platform.
+          Get paid for your time providing your opinions about a real case. 
         </p>
 
         {/* Cards */}
@@ -174,11 +174,9 @@ Browse available cases in your area and choose the ones that fit your schedule. 
       <section className="bg-gray-50 py-16">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-3xl font-bold text-center text-gray-900 mb-4">
-            Testimonial
+            How It Works
           </h2>
-          <p className="text-center text-gray-600 mb-8">
-            Hear from attorneys who have used Quick Verdicts
-          </p>
+
 
           {/* Video Player - user will replace with YouTube embed */}
           <div className="relative rounded-lg overflow-hidden aspect-video shadow-lg bg-black">
@@ -223,7 +221,7 @@ Browse available cases in your area and choose the ones that fit your schedule. 
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/signup/attorney" className="bg-blue-900 text-white px-12 py-3 rounded hover:bg-blue-800 font-medium">
-              Sign up as Attorney
+              Sign up as Juror
             </Link>
             <Link href="/login" className="bg-white text-blue-900 border-2 border-blue-900 px-12 py-3 rounded hover:bg-blue-50 font-medium">
               Already have an account? Login
@@ -239,7 +237,7 @@ Browse available cases in your area and choose the ones that fit your schedule. 
             <div>
               <h3 className="font-bold mb-4">Contact</h3>
               <p className="text-gray-300">650-762-6574</p>
-              <p className="text-gray-300">hello@QV.com</p>
+              <p className="text-gray-300">QVTrial@quickverdicts.com</p>
             </div>
             <div>
               <h3 className="font-bold mb-4">Navigation</h3>
@@ -253,10 +251,9 @@ Browse available cases in your area and choose the ones that fit your schedule. 
 
           <div className="border-t border-gray-700 pt-8 flex flex-wrap justify-between items-center">
             <div className="flex space-x-6 text-sm text-gray-300">
-              <Link href="/" className="hover:text-white">Quick Verdicts®</Link>
+              <Link href="/" className="hover:text-white">Quick Verdicts<sup className="text-[12px]">®</sup></Link>
               <Link href="/" className="hover:text-white">Privacy</Link>
               <Link href="/" className="hover:text-white">Terms of Use</Link>
-              <Link href="/" className="hover:text-white">Consumer Choice</Link>
             </div>
             <div className="flex items-center space-x-4 mt-4 md:mt-0">
               <span className="text-sm text-gray-300">Follow Us</span>
