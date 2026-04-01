@@ -349,7 +349,7 @@ export default function WarRoomPage() {
         }),
         fetch(`${API_BASE}/api/attorney/cases/${caseId}/reschedule-status`, {
           headers: createAuthHeaders(token)
-        })
+        }),
       ]);
 
       if (caseRes.ok) {
@@ -1829,6 +1829,12 @@ export default function WarRoomPage() {
                         }`}>
                           {app.Status}
                         </span>
+
+                        {app.Status === "approved" && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-800">
+                            #{caseId}
+                          </span>
+                        )}
 
                         <div className="flex items-center gap-1 text-xs font-semibold text-[#16305B]">
                           <span>View</span>

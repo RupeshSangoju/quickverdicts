@@ -220,8 +220,7 @@ const SignupPage: FC = () => {
                   Attorney Sign-Up
                 </h2>
                 <p className="text-[#0A2342] font-semibold text-base text-center mb-8">
-                  Start, manage, or join a trial as a licensed
-                  attorney.
+                  Start, prepare and present a case dispute to gauge local opinions.
                 </p>
 
                 <Link

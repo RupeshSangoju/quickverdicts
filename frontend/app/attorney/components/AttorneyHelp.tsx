@@ -41,23 +41,23 @@ const tutorialVideos = [
 const faqs = [
   {
     q: "What is Quick Verdicts?",
-    a: `Quick Verdicts is an online platform designed to streamline the trial experience for both attorneys and jurors. Attorneys can present real cases in a secure, efficient digital environment, while jurors have the opportunity to participate, deliberate, and earn compensation—all from the comfort of their own home. Each case is designed to be quick and focused, lasting no more than 8 hours total, including introductions, trial presentations, and jury deliberation. Attorneys benefit from valuable insights, and jurors are paid for their time and perspective.`,
+    a: `Quick Verdicts is an online platform designed to streamline the trial experience for both attorneys and jurors. Attorneys can present real cases in a secure, efficient digital environment, while jurors have the opportunity to participate, deliberate, and earn compensation—all from the comfort of their own home. Each case is designed to be quick and focused, lasting no more than 4.5 hours total, including introductions, trial presentations, and jury deliberation. Attorneys benefit from valuable insights, and jurors are paid for their time and perspective.`,
   },
   {
-    q: "As a potential juror, how do I sign up for trial cases?",
-    a: "To sign up for trial cases, register on the Quick Verdicts platform and complete the onboarding process. Once your profile is set up, you will be notified about available cases and can choose to participate in those that match your interests and qualifications.",
+    q: "How do jurors get picked?",
+    a: "Once the attorney selects the appropriate county and schedules a case for trial, the basic information about the trial appears on jurors’ Job Boards.Interested jurors will answer your custom voir dire questions and apply for the case.  Check your War Room to review juror applications and either “approve” or “reject” the juror.",
   },
   {
-    q: "As a potential juror, how do I qualify to be a jury?",
-    a: "To qualify as a juror, you must complete the onboarding steps, watch the introduction video, and pass the qualification quiz with a perfect score. This ensures you understand the process and your responsibilities before participating in any trial.",
+    q: "How do I get notified of juror applications?",
+    a: "Check your Notifications page for notice of juror applications.  Respond to the juror applications timely so the juror can plan accordingly.",
   },
   {
-    q: "How do jurors get paid?",
-    a: "Jurors are compensated for their participation in each case. After successfully completing a trial, payment is processed electronically and sent to the account details provided during registration. You will receive a notification once your payment is issued.",
+    q: "What happens if fewer than 6 jurors are accepted for trial?",
+    a: "If fewer than 6 jurors are accepted for trial by 1 week before trial, the QV admin will reset the trial date.  Accepted jurors will be released, but they may re-apply.",
   },
   {
-    q: "As an attorney, how do I submit my trial cases?",
-    a: "Attorneys can submit new trial cases directly from their dashboard by clicking the '+ New Case' button. You will be guided through entering case details, uploading necessary documents, and scheduling the trial for review and approval.",
+    q: "What happens if fewer than 6 jurors appear for QV trial?",
+    a: "Trials will be scheduled with 8 jurors to allow for no-shows.  Trials will proceed with six (6) jurors; otherwise, the trial will be reset.  Jurors who appear and are dismissed will be paid a stipend.",
   },
 ];
 

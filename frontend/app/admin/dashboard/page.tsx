@@ -64,6 +64,26 @@ const isAuthenticated = () => {
   return true;
 };
 
+type RescheduleRequest = {
+  RequestId: number;
+  CaseId: number;
+  NewScheduledDate: string;
+  NewScheduledTime: string;
+  CurrentScheduledDate: string;
+  CurrentScheduledTime: string;
+  Reason: string | null;
+  AttorneyComments: string | null;
+  CaseTitle: string;
+  CaseType: string;
+  County: string;
+  State: string;
+  AttorneyName: string;
+  AttorneyEmail: string;
+  LawFirmName: string | null;
+  ApprovedJurors: number;
+  CreatedAt: string;
+};
+
 type Attorney = {
   AttorneyId: number;
   FirstName: string;
@@ -76,6 +96,7 @@ type Attorney = {
   IsVerified: boolean;
   CreatedAt: string;
   VerificationStatus?: string;
+  CaseIds?: string | null;
 };
 
 type Juror = {
@@ -91,6 +112,7 @@ type Juror = {
   CreatedAt: string;
   VerificationStatus?: string;
   CriteriaResponses?: { question: string; answer: string }[];
+  ApprovedCaseIds?: string | null;
 };
 
 type Notification = {
@@ -242,6 +264,8 @@ export default function AdminDashboard() {
   const [jurorSearchQuery, setJurorSearchQuery] = useState("");
   const [jurorSortBy, setJurorSortBy] = useState<"name" | "email" | "county" | "state" | "status" | "jurorStatus" | "onboarding" | "date" | "default">("default");
   const [jurorSortOrder, setJurorSortOrder] = useState<"asc" | "desc">("desc");
+  const [expandedJurorCases, setExpandedJurorCases] = useState<Set<number>>(new Set());
+  const [expandedAttorneyCases, setExpandedAttorneyCases] = useState<Set<number>>(new Set());
 
   const [showCaseRejectModal, setShowCaseRejectModal] = useState(false);
   const [rejectCaseId, setRejectCaseId] = useState<number | null>(null);
@@ -302,6 +326,14 @@ export default function AdminDashboard() {
   const [rescheduling, setRescheduling] = useState(false);
 
   const [approvalComments, setApprovalComments] = useState("");
+
+  // Attorney reschedule requests (inline display)
+  const [rescheduleRequests, setRescheduleRequests] = useState<RescheduleRequest[]>([]);
+  const [selectedRescheduleRequest, setSelectedRescheduleRequest] = useState<RescheduleRequest | null>(null);
+  const [showRescheduleApproveModal, setShowRescheduleApproveModal] = useState(false);
+  const [showRescheduleRejectModal, setShowRescheduleRejectModal] = useState(false);
+  const [rescheduleAdminComments, setRescheduleAdminComments] = useState("");
+  const [rescheduleActionLoading, setRescheduleActionLoading] = useState(false);
 
   // Date blocking functions
   const fetchBlockedDates = async () => {
@@ -416,25 +448,10 @@ export default function AdminDashboard() {
         throw new Error('Failed to block any time slots');
       }
 
-      // Send notifications to all attorneys and jurors
-      const notifyResponse = await fetchWithAuth(`${API_BASE}/api/admin/notify-blocked-date`, {
-        method: 'POST',
-        body: JSON.stringify({
-          date: blockDateForm.date,
-          reason: blockDateForm.reason,
-          blockedTimeSlots: timeSlotsToBlock,
-          isWholeDay: blockWholeDay
-        })
-      });
-
       const totalSlots = blockWholeDay ? 48 : selectedTimeSlots.length;
       const blockType = blockWholeDay ? "whole day" : `${selectedTimeSlots.length} time slot(s)`;
 
-      if (notifyResponse.ok) {
-        toast.success(`${blockType} blocked for ${blockDateForm.date}! ${successful}/${totalSlots} slots blocked. Notifications sent to all users.`);
-      } else {
-        toast.success(`${blockType} blocked for ${blockDateForm.date}! ${successful}/${totalSlots} slots blocked.`);
-      }
+      toast.success(`${blockType} blocked for ${blockDateForm.date}! ${successful}/${totalSlots} slots blocked.`);
 
       // Reset form and close modal
       setBlockDateForm({ date: "", reason: "" });
@@ -474,20 +491,7 @@ export default function AdminDashboard() {
 
         await Promise.all(unblockPromises);
 
-        // Send notifications to all attorneys and jurors
-        const notifyResponse = await fetchWithAuth(`${API_BASE}/api/admin/notify-unblocked-date`, {
-          method: 'POST',
-          body: JSON.stringify({
-            date: unblockDate,
-            unblockCount: slotsToUnblock.length
-          })
-        });
-
-        if (notifyResponse.ok) {
-          toast.success(`Date ${unblockDate} unblocked successfully! Notifications sent to all users.`);
-        } else {
-          toast.success(`Date ${unblockDate} unblocked successfully!`);
-        }
+        toast.success(`Date ${unblockDate} unblocked successfully!`);
 
         setShowUnblockModal(false);
         setUnblockDate("");
@@ -844,6 +848,9 @@ export default function AdminDashboard() {
       }
 
       const pendingRescheduleCount = rescheduleData.success ? (rescheduleData.count || 0) : 0;
+      if (rescheduleData.success) {
+        setRescheduleRequests(rescheduleData.requests || []);
+      }
 
       if (statsData.success) {
         setStats({
@@ -876,6 +883,7 @@ export default function AdminDashboard() {
         CreatedAt: j.CreatedAt ?? j.createdAt,
         VerificationStatus: j.VerificationStatus,
         CriteriaResponses: j.CriteriaResponses ?? j.criteriaResponses ?? [],
+        ApprovedCaseIds: j.ApprovedCaseIds ?? null,
       })));
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
@@ -957,6 +965,7 @@ export default function AdminDashboard() {
           CreatedAt: j.CreatedAt ?? j.createdAt,
           VerificationStatus: j.VerificationStatus,
           CriteriaResponses: j.CriteriaResponses ?? j.criteriaResponses ?? [],
+          ApprovedCaseIds: j.ApprovedCaseIds ?? null,
         })));
         setJurorTotal(data.total || 0);
         setJurorTotalPages(data.totalPages || 1);
@@ -1641,6 +1650,60 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleApproveRescheduleRequest = async () => {
+    if (!selectedRescheduleRequest) return;
+    setRescheduleActionLoading(true);
+    try {
+      const response = await fetchWithAuth(
+        `${API_BASE}/api/admin/reschedule-requests/${selectedRescheduleRequest.RequestId}/approve`,
+        { method: "POST", body: JSON.stringify({ adminComments: rescheduleAdminComments }) }
+      );
+      if (response.ok) {
+        toast.success("Reschedule request approved successfully!");
+        setShowRescheduleApproveModal(false);
+        setSelectedRescheduleRequest(null);
+        setRescheduleAdminComments("");
+        fetchDashboardData();
+      } else {
+        const err = await response.json();
+        toast.error(`Failed to approve: ${err.message}`);
+      }
+    } catch {
+      toast.error("Failed to approve reschedule request");
+    } finally {
+      setRescheduleActionLoading(false);
+    }
+  };
+
+  const handleRejectRescheduleRequest = async () => {
+    if (!selectedRescheduleRequest) return;
+    if (!rescheduleAdminComments.trim()) {
+      toast.error("Please provide a reason for rejection");
+      return;
+    }
+    setRescheduleActionLoading(true);
+    try {
+      const response = await fetchWithAuth(
+        `${API_BASE}/api/admin/reschedule-requests/${selectedRescheduleRequest.RequestId}/reject`,
+        { method: "POST", body: JSON.stringify({ adminComments: rescheduleAdminComments }) }
+      );
+      if (response.ok) {
+        toast.success("Reschedule request rejected successfully!");
+        setShowRescheduleRejectModal(false);
+        setSelectedRescheduleRequest(null);
+        setRescheduleAdminComments("");
+        fetchDashboardData();
+      } else {
+        const err = await response.json();
+        toast.error(`Failed to reject: ${err.message}`);
+      }
+    } catch {
+      toast.error("Failed to reject reschedule request");
+    } finally {
+      setRescheduleActionLoading(false);
+    }
+  };
+
   const getJurorDecisionLabel = (status?: string) => {
     const normalized = (status || "").toString().trim().toLowerCase();
     if (normalized === 'approved') return 'Accepted';
@@ -2252,15 +2315,113 @@ function formatTime(timeString: string, scheduledDate: string) {
             </span>
           </div>
 
-          <div className="flex justify-center">
-            <button
-              onClick={() => router.push('/admin/reschedule-requests')}
-              className="bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all flex items-center gap-2 cursor-pointer"
-            >
-              <Calendar className="h-5 w-5" />
-              View All Reschedule Requests
-            </button>
-          </div>
+          {rescheduleRequests.length === 0 ? (
+            <div className="flex justify-center">
+              <button
+                onClick={() => router.push('/admin/reschedule-requests')}
+                className="bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all flex items-center gap-2 cursor-pointer"
+              >
+                <Calendar className="h-5 w-5" />
+                View All Reschedule Requests
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {rescheduleRequests.map((request) => (
+                <div key={request.RequestId} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                  {/* Header */}
+                  <div className="p-5 border-b border-gray-200 bg-amber-50">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0" />
+                          <h4 className="text-base font-semibold text-gray-900">{request.CaseTitle}</h4>
+                          <span className="px-2 py-0.5 bg-amber-200 text-amber-800 text-xs font-medium rounded-full whitespace-nowrap">Reschedule Request</span>
+                        </div>
+                        <div className="ml-8 space-y-1 text-sm text-gray-700">
+                          <div className="flex items-center gap-2">
+                            <UserIcon className="h-3.5 w-3.5 flex-shrink-0" />
+                            <span><span className="font-medium">Attorney:</span> {request.AttorneyName} ({request.AttorneyEmail}){request.LawFirmName ? ` · ${request.LawFirmName}` : ''}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Briefcase className="h-3.5 w-3.5 flex-shrink-0" />
+                            <span><span className="font-medium">Case:</span> {request.CaseType} — {request.County}, {request.State}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <UserIcon className="h-3.5 w-3.5 flex-shrink-0" />
+                            <span className="font-medium">Approved Jurors:</span>
+                            <span className="font-semibold text-red-600">{request.ApprovedJurors}</span>
+                            <span className="text-xs text-gray-500">(all applications will be deleted on approval)</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Schedule details + actions */}
+                  <div className="p-5">
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Current Schedule</p>
+                        <div className="flex items-center gap-1.5 text-sm text-red-600 line-through">
+                          <Calendar className="h-3.5 w-3.5" />
+                          <span>{formatDateString(request.CurrentScheduledDate)}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-sm text-red-600 line-through mt-0.5">
+                          <Clock className="h-3.5 w-3.5" />
+                          <span>{request.CurrentScheduledTime ? request.CurrentScheduledTime.split('.')[0].split(':').slice(0,2).join(':') : 'N/A'}</span>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Requested New Schedule</p>
+                        <div className="flex items-center gap-1.5 text-sm text-green-600 font-semibold">
+                          <Calendar className="h-3.5 w-3.5" />
+                          <span>{formatDateString(request.NewScheduledDate)}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-sm text-green-600 font-semibold mt-0.5">
+                          <Clock className="h-3.5 w-3.5" />
+                          <span>{request.NewScheduledTime ? request.NewScheduledTime.split('.')[0].split(':').slice(0,2).join(':') : 'N/A'}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {(request.Reason || request.AttorneyComments) && (
+                      <div className="mb-4 p-3 bg-gray-50 rounded-lg text-sm text-gray-700 space-y-1">
+                        {request.Reason && <p><span className="font-semibold">Reason:</span> {request.Reason}</p>}
+                        {request.AttorneyComments && <p><span className="font-semibold">Comments:</span> {request.AttorneyComments}</p>}
+                      </div>
+                    )}
+
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => { setSelectedRescheduleRequest(request); setRescheduleAdminComments(""); setShowRescheduleApproveModal(true); }}
+                        className="flex-1 py-2 px-4 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                      >
+                        <CheckCircle2 className="h-4 w-4" />
+                        Approve & Reschedule
+                      </button>
+                      <button
+                        onClick={() => { setSelectedRescheduleRequest(request); setRescheduleAdminComments(""); setShowRescheduleRejectModal(true); }}
+                        className="flex-1 py-2 px-4 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                      >
+                        <XCircle className="h-4 w-4" />
+                        Reject Request
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              <div className="flex justify-center pt-2">
+                <button
+                  onClick={() => router.push('/admin/reschedule-requests')}
+                  className="text-orange-600 hover:text-orange-700 text-sm font-semibold underline cursor-pointer"
+                >
+                  View full reschedule requests page →
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Attorneys Table */}
@@ -2389,13 +2550,14 @@ function formatTime(timeString: string, scheduledDate: string) {
                     </div>
                   </th>
 
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Case No.</th>
                   <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 bg-white">
                 {loadingAttorneys ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-16 text-center">
+                    <td colSpan={8} className="px-6 py-16 text-center">
                       <div className="flex flex-col items-center justify-center">
                         <div className="animate-spin h-12 w-12 border-4 border-blue-500 border-t-transparent rounded-full mb-4"></div>
                         <p className="text-gray-500 font-medium text-lg">Loading attorneys...</p>
@@ -2404,7 +2566,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                   </tr>
                 ) : attorneys.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-16 text-center">
+                    <td colSpan={8} className="px-6 py-16 text-center">
                       <Building2 className="h-16 w-16 text-gray-300 mx-auto mb-4" />
                       <p className="text-gray-500 font-medium text-lg">No attorneys found</p>
                     </td>
@@ -2451,6 +2613,43 @@ function formatTime(timeString: string, scheduledDate: string) {
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600">
                         {new Date(attorney.CreatedAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4">
+                        {attorney.CaseIds ? (() => {
+                          const ids = attorney.CaseIds!.split(', ');
+                          const isExpanded = expandedAttorneyCases.has(attorney.AttorneyId);
+                          const extra = ids.length - 1;
+                          return (
+                            <div className="flex flex-wrap gap-1 items-center">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-800">
+                                #{ids[0]}
+                              </span>
+                              {extra > 0 && !isExpanded && (
+                                <button
+                                  onClick={() => setExpandedAttorneyCases(prev => new Set(prev).add(attorney.AttorneyId))}
+                                  className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer"
+                                >
+                                  +{extra} more
+                                </button>
+                              )}
+                              {isExpanded && ids.slice(1).map((id) => (
+                                <span key={id} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-800">
+                                  #{id}
+                                </span>
+                              ))}
+                              {isExpanded && (
+                                <button
+                                  onClick={() => setExpandedAttorneyCases(prev => { const s = new Set(prev); s.delete(attorney.AttorneyId); return s; })}
+                                  className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer"
+                                >
+                                  ✕
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })() : (
+                          <span className="text-gray-400 text-xs">—</span>
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         {!attorney.IsVerified && attorney.VerificationStatus !== "declined" && (
@@ -2686,13 +2885,14 @@ function formatTime(timeString: string, scheduledDate: string) {
                       )}
                     </div>
                   </th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Case No.</th>
                   <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 bg-white">
                 {loadingJurors ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-16 text-center">
+                    <td colSpan={8} className="px-6 py-16 text-center">
                       <div className="flex flex-col items-center justify-center">
                         <div className="animate-spin h-12 w-12 border-4 border-green-500 border-t-transparent rounded-full mb-4"></div>
                         <p className="text-gray-500 font-medium text-lg">Loading jurors...</p>
@@ -2701,7 +2901,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                   </tr>
                 ) : jurors.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-16 text-center">
+                    <td colSpan={8} className="px-6 py-16 text-center">
                       <Users className="h-16 w-16 text-gray-300 mx-auto mb-4" />
                       <p className="text-gray-500 font-medium text-lg">No jurors found</p>
                     </td>
@@ -2763,6 +2963,43 @@ function formatTime(timeString: string, scheduledDate: string) {
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600">
                         {new Date(juror.CreatedAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4">
+                        {juror.ApprovedCaseIds ? (() => {
+                          const ids = juror.ApprovedCaseIds!.split(', ');
+                          const isExpanded = expandedJurorCases.has(juror.JurorId);
+                          const extra = ids.length - 1;
+                          return (
+                            <div className="flex flex-wrap gap-1 items-center">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-800">
+                                #{ids[0]}
+                              </span>
+                              {extra > 0 && !isExpanded && (
+                                <button
+                                  onClick={() => setExpandedJurorCases(prev => new Set(prev).add(juror.JurorId))}
+                                  className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer"
+                                >
+                                  +{extra} more
+                                </button>
+                              )}
+                              {isExpanded && ids.slice(1).map((id) => (
+                                <span key={id} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-800">
+                                  #{id}
+                                </span>
+                              ))}
+                              {isExpanded && (
+                                <button
+                                  onClick={() => setExpandedJurorCases(prev => { const s = new Set(prev); s.delete(juror.JurorId); return s; })}
+                                  className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer"
+                                >
+                                  ✕
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })() : (
+                          <span className="text-gray-400 text-xs">—</span>
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         {!juror.IsVerified && juror.VerificationStatus !== "declined" && (
@@ -3094,6 +3331,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                     <FileText className="h-5 w-5 mr-2 text-green-600" />
                     <h3 className="font-semibold text-gray-900">Jury Charge Questions ({selectedCase.juryQuestions.length})</h3>
                   </div>
+                  {/* 
                   <div className="flex gap-2">
                     <button onClick={() => handleDownloadJuryQuestionsText(selectedCase.CaseId)} className="flex items-center gap-2 px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium">
                       <Download className="h-4 w-4" />Text
@@ -3102,6 +3340,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                       <Download className="h-4 w-4" />MS Forms
                     </button>
                   </div>
+                  */}
                 </div>
                 {selectedCase.juryQuestions.length === 0 ? (
                   <p className="text-gray-500 text-sm">No jury questions added</p>
@@ -3314,6 +3553,74 @@ function formatTime(timeString: string, scheduledDate: string) {
         </div>
       )}
 
+      {/* Approve Reschedule Request Modal */}
+      {showRescheduleApproveModal && selectedRescheduleRequest && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg">
+            <div className="bg-green-600 text-white p-5 rounded-t-xl">
+              <h3 className="text-xl font-bold">Approve Reschedule Request</h3>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+                <p className="font-semibold mb-1">Approving will:</p>
+                <ul className="list-disc ml-4 space-y-0.5">
+                  <li>Update the case to the new scheduled date/time</li>
+                  <li>Delete all {selectedRescheduleRequest.ApprovedJurors} approved juror application(s)</li>
+                  <li>Notify the attorney of the approval</li>
+                </ul>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Comments (optional)</label>
+                <textarea
+                  value={rescheduleAdminComments}
+                  onChange={(e) => setRescheduleAdminComments(e.target.value)}
+                  rows={3}
+                  placeholder="Optional comments for the attorney..."
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-black focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+              <div className="flex gap-3 justify-end">
+                <button onClick={() => setShowRescheduleApproveModal(false)} disabled={rescheduleActionLoading} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium disabled:opacity-50">Cancel</button>
+                <button onClick={handleApproveRescheduleRequest} disabled={rescheduleActionLoading} className="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-semibold disabled:opacity-50 inline-flex items-center gap-2">
+                  {rescheduleActionLoading ? <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span> : <CheckCircle2 className="h-4 w-4" />}
+                  Approve & Reschedule
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reject Reschedule Request Modal */}
+      {showRescheduleRejectModal && selectedRescheduleRequest && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg">
+            <div className="bg-red-600 text-white p-5 rounded-t-xl">
+              <h3 className="text-xl font-bold">Reject Reschedule Request</h3>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Reason for Rejection <span className="text-red-500">*</span></label>
+                <textarea
+                  value={rescheduleAdminComments}
+                  onChange={(e) => setRescheduleAdminComments(e.target.value)}
+                  rows={3}
+                  placeholder="Provide a reason for rejecting this request..."
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-black focus:outline-none focus:ring-2 focus:ring-red-500"
+                />
+              </div>
+              <div className="flex gap-3 justify-end">
+                <button onClick={() => setShowRescheduleRejectModal(false)} disabled={rescheduleActionLoading} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium disabled:opacity-50">Cancel</button>
+                <button onClick={handleRejectRescheduleRequest} disabled={rescheduleActionLoading || !rescheduleAdminComments.trim()} className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-semibold disabled:opacity-50 inline-flex items-center gap-2">
+                  {rescheduleActionLoading ? <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span> : <XCircle className="h-4 w-4" />}
+                  Reject Request
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Delete Case Confirmation Modal */}
       {showDeleteCaseModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/10 backdrop-blur-md">
@@ -3331,7 +3638,6 @@ function formatTime(timeString: string, scheduledDate: string) {
               </p>
               <ul className="text-sm text-yellow-700 mt-2 ml-4 list-disc space-y-1">
                 <li>The attorney will be notified</li>
-                <li>All jurors will be notified</li>
                 <li>The case will disappear from all user views</li>
               </ul>
             </div>
@@ -3845,7 +4151,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                     )}
                   </button>
                   <p className="text-sm text-gray-600">
-                    ⚠️ This will {blockWholeDay ? 'block all time slots' : `block ${selectedTimeSlots.length} selected time slot(s)`} for {blockDateForm.date && new Date(blockDateForm.date).toLocaleDateString()} and send notifications to all attorneys and jurors.
+                    ⚠️ This will {blockWholeDay ? 'block all time slots' : `block ${selectedTimeSlots.length} selected time slot(s)`} for {blockDateForm.date && new Date(blockDateForm.date).toLocaleDateString()}.
                   </p>
                 </div>
               </div>
