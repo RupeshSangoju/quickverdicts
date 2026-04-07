@@ -296,6 +296,12 @@ export default function AdminDashboard() {
   const [deleteJurorCaseId, setDeleteJurorCaseId] = useState<number | null>(null);
   const [deletingJuror, setDeletingJuror] = useState(false);
 
+  // Juror account delete modal states
+  const [showDeleteJurorAccountModal, setShowDeleteJurorAccountModal] = useState(false);
+  const [deleteJurorAccountId, setDeleteJurorAccountId] = useState<number | null>(null);
+  const [deleteJurorAccountName, setDeleteJurorAccountName] = useState<string>("");
+  const [deletingJurorAccount, setDeletingJurorAccount] = useState(false);
+
   // Date blocking modal states
   const [showBlockDateModal, setShowBlockDateModal] = useState(false);
   const [blockDateForm, setBlockDateForm] = useState({ date: "", reason: "" });
@@ -1278,6 +1284,37 @@ export default function AdminDashboard() {
       });
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  const handleDeleteJurorAccount = (jurorId: number, jurorName: string) => {
+    setDeleteJurorAccountId(jurorId);
+    setDeleteJurorAccountName(jurorName);
+    setShowDeleteJurorAccountModal(true);
+  };
+
+  const confirmDeleteJurorAccount = async () => {
+    if (!deleteJurorAccountId) return;
+    setDeletingJurorAccount(true);
+    try {
+      const response = await fetchWithAuth(`${API_BASE}/api/admin/jurors/${deleteJurorAccountId}`, {
+        method: "DELETE",
+      });
+      const data = await response.json();
+      if (data.success) {
+        toast.success(`Juror "${deleteJurorAccountName}" deleted successfully`);
+        setShowDeleteJurorAccountModal(false);
+        setDeleteJurorAccountId(null);
+        setDeleteJurorAccountName("");
+        fetchJurors();
+      } else {
+        toast.error(data.message || "Failed to delete juror");
+      }
+    } catch (error) {
+      console.error("Error deleting juror:", error);
+      toast.error("Failed to delete juror");
+    } finally {
+      setDeletingJurorAccount(false);
     }
   };
 
@@ -3002,28 +3039,37 @@ function formatTime(timeString: string, scheduledDate: string) {
                         )}
                       </td>
                       <td className="px-6 py-4">
-                        {!juror.IsVerified && juror.VerificationStatus !== "declined" && (
-                          <div className="flex justify-center space-x-2">
-                            <button 
-                              onClick={() => handleVerifyJuror(juror.JurorId)} 
-                              disabled={actionLoading === juror.JurorId} 
-                              className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold text-white bg-green-600 hover:bg-green-700 hover:shadow-lg disabled:opacity-50 transition-all"
-                            >
-                              {actionLoading === juror.JurorId ? (
-                                <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
-                              ) : (
-                                <><CheckCircle2 className="h-4 w-4 mr-1" />Verify</>
-                              )}
-                            </button>
-                            <button 
-                              onClick={() => handleDeclineJuror(juror.JurorId)} 
-                              disabled={actionLoading === juror.JurorId} 
-                              className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold text-white bg-red-600 hover:bg-red-700 hover:shadow-lg disabled:opacity-50 transition-all"
-                            >
-                              <XCircle className="h-4 w-4 mr-1" />Decline
-                            </button>
-                          </div>
-                        )}
+                        <div className="flex justify-center flex-wrap gap-2">
+                          {!juror.IsVerified && juror.VerificationStatus !== "declined" && (
+                            <>
+                              <button
+                                onClick={() => handleVerifyJuror(juror.JurorId)}
+                                disabled={actionLoading === juror.JurorId}
+                                className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold text-white bg-green-600 hover:bg-green-700 hover:shadow-lg disabled:opacity-50 transition-all"
+                              >
+                                {actionLoading === juror.JurorId ? (
+                                  <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
+                                ) : (
+                                  <><CheckCircle2 className="h-4 w-4 mr-1" />Verify</>
+                                )}
+                              </button>
+                              <button
+                                onClick={() => handleDeclineJuror(juror.JurorId)}
+                                disabled={actionLoading === juror.JurorId}
+                                className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold text-white bg-red-600 hover:bg-red-700 hover:shadow-lg disabled:opacity-50 transition-all"
+                              >
+                                <XCircle className="h-4 w-4 mr-1" />Decline
+                              </button>
+                            </>
+                          )}
+                          <button
+                            onClick={() => handleDeleteJurorAccount(juror.JurorId, juror.Name)}
+                            disabled={actionLoading === juror.JurorId}
+                            className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold text-white bg-gray-700 hover:bg-gray-900 hover:shadow-lg disabled:opacity-50 transition-all"
+                          >
+                            <Trash2 className="h-4 w-4 mr-1" />Delete
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -3616,6 +3662,44 @@ function formatTime(timeString: string, scheduledDate: string) {
                   Reject Request
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Juror Account Modal */}
+      {showDeleteJurorAccountModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/10 backdrop-blur-md">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md">
+            <div className="flex items-center mb-4">
+              <Trash2 className="h-6 w-6 text-red-600 mr-3" />
+              <h3 className="text-xl font-semibold text-gray-900">Delete Juror</h3>
+            </div>
+            <p className="text-gray-600 mb-2">
+              Are you sure you want to delete <span className="font-semibold">"{deleteJurorAccountName}"</span>?
+            </p>
+            <p className="text-sm text-red-600 bg-red-50 rounded-lg p-3 mb-6">
+              This will permanently remove the juror's account. Their applications will remain in the system for record-keeping. This action cannot be undone.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => { setShowDeleteJurorAccountModal(false); setDeleteJurorAccountId(null); setDeleteJurorAccountName(""); }}
+                disabled={deletingJurorAccount}
+                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteJurorAccount}
+                disabled={deletingJurorAccount}
+                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 font-medium disabled:opacity-50 inline-flex items-center"
+              >
+                {deletingJurorAccount ? (
+                  <><span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></span>Deleting...</>
+                ) : (
+                  <><Trash2 className="h-4 w-4 mr-2" />Delete Juror</>
+                )}
+              </button>
             </div>
           </div>
         </div>
