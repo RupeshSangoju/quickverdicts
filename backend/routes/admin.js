@@ -640,6 +640,33 @@ router.delete("/calendar/unblock/:calendarId", async (req, res) => {
 // ============================================
 
 router.get("/cases/pending", getCasesPendingApproval);
+router.get("/cases/deleted", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request().query(`
+      SELECT
+        c.CaseId, c.CaseTitle, c.CaseType, c.CaseDescription,
+        c.County, c.State, c.ScheduledDate, c.ScheduledTime,
+        c.AdminApprovalStatus, c.AttorneyStatus, c.UpdatedAt,
+        a.FirstName + ' ' + a.LastName AS AttorneyName,
+        a.Email AS AttorneyEmail,
+        a.PhoneNumber AS AttorneyPhone,
+        a.LawFirmName,
+        (
+          SELECT COUNT(*) FROM dbo.JurorApplications ja
+          WHERE ja.CaseId = c.CaseId AND ja.Status = 'approved'
+        ) AS ApprovedJurors
+      FROM dbo.Cases c
+      LEFT JOIN dbo.Attorneys a ON c.AttorneyId = a.AttorneyId
+      WHERE c.IsDeleted = 1
+      ORDER BY c.UpdatedAt DESC
+    `);
+    res.json({ success: true, cases: result.recordset });
+  } catch (error) {
+    console.error("Error fetching deleted cases:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch deleted cases" });
+  }
+});
 router.get("/cases", getAllCases);
 router.get("/cases/:caseId", getCaseDetailsForAdmin);
 router.post("/cases/:caseId/review", reviewCaseApproval);
