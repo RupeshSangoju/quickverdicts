@@ -289,7 +289,7 @@ period with the jurors.
 
           <div className="border-t border-gray-700 pt-8 flex flex-wrap justify-between items-center">
             <div className="flex space-x-6 text-sm text-gray-300">
-              <Link href="/" className="hover:text-white">Quick Verdicts<sup className="text-[12px]">®</sup></Link>
+              <Link href="/" className="hover:text-white">Quick Verdicts<sup className="text-[12px]">™</sup></Link>
               <Link href="/" className="hover:text-white">Privacy</Link>
               <Link href="/" className="hover:text-white">Terms of Use</Link>
             </div>

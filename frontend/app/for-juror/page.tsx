@@ -125,7 +125,7 @@ Browse available cases in your area and choose the ones that fit your schedule. 
 
             <div>
               <h2 className="text-3xl font-bold text-gray-900 mb-6">
-                How It Works for Jurors
+                How It Works for Mock Jurors
               </h2>
 
 
@@ -251,7 +251,7 @@ Browse available cases in your area and choose the ones that fit your schedule. 
 
           <div className="border-t border-gray-700 pt-8 flex flex-wrap justify-between items-center">
             <div className="flex space-x-6 text-sm text-gray-300">
-              <Link href="/" className="hover:text-white">Quick Verdicts<sup className="text-[12px]">®</sup></Link>
+              <Link href="/" className="hover:text-white">Quick Verdicts<sup className="text-[12px]">™</sup></Link>
               <Link href="/" className="hover:text-white">Privacy</Link>
               <Link href="/" className="hover:text-white">Terms of Use</Link>
             </div>
