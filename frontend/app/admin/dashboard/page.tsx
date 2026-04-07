@@ -2377,120 +2377,6 @@ function formatTime(timeString: string, scheduledDate: string) {
             )}
           </div>
 
-        {/* Deleted Cases */}
-        {deletedCases.length > 0 && (() => {
-          const totalPages = Math.ceil(deletedCases.length / DELETED_CASES_PER_PAGE);
-          const pageItems = deletedCases.slice(
-            (deletedCasesPage - 1) * DELETED_CASES_PER_PAGE,
-            deletedCasesPage * DELETED_CASES_PER_PAGE
-          );
-          return (
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-red-200">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center">
-                  <div className="p-2 bg-red-100 rounded-lg mr-3">
-                    <Trash2 className="h-6 w-6 text-red-600" />
-                  </div>
-                  <h3 className="text-2xl font-bold text-red-700">Deleted Cases</h3>
-                  <span className="ml-4 px-4 py-1.5 bg-red-100 text-red-800 text-sm font-bold rounded-full">
-                    {deletedCases.length} deleted
-                  </span>
-                </div>
-                {totalPages > 1 && (
-                  <span className="text-sm text-gray-500 font-medium">
-                    Page {deletedCasesPage} of {totalPages}
-                  </span>
-                )}
-              </div>
-
-              <div className="space-y-4">
-                {pageItems.map((c) => (
-                  <div key={c.CaseId} className="border border-red-200 rounded-xl p-5 bg-red-50 opacity-80">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <span className="text-lg font-bold text-gray-700">{c.CaseTitle}</span>
-                        <span className="px-3 py-1 bg-red-600 text-white text-xs font-bold rounded-full flex items-center gap-1">
-                          <Trash2 className="h-3 w-3" />Case Deleted
-                        </span>
-                        <span className="text-xs text-gray-500 font-medium">#{c.CaseId}</span>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm text-gray-700">
-                      <div className="flex items-center gap-2">
-                        <UserIcon className="h-4 w-4 text-blue-400 flex-shrink-0" />
-                        <span><strong>Attorney:</strong> {c.AttorneyName}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4 text-purple-400 flex-shrink-0" />
-                        <span><strong>Law Firm:</strong> {c.LawFirmName || '—'}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Mail className="h-4 w-4 text-blue-400 flex-shrink-0" />
-                        <span><strong>Email:</strong> {c.AttorneyEmail}</span>
-                      </div>
-                      {c.AttorneyPhone && (
-                        <div className="flex items-center gap-2">
-                          <Phone className="h-4 w-4 text-green-400 flex-shrink-0" />
-                          <span><strong>Phone:</strong> {c.AttorneyPhone}</span>
-                        </div>
-                      )}
-                      <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4 text-green-400 flex-shrink-0" />
-                        <span><strong>Location:</strong> {c.County}{c.State ? `, ${c.State}` : ''}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Briefcase className="h-4 w-4 text-orange-400 flex-shrink-0" />
-                        <span><strong>Case Type:</strong> {c.CaseType}</span>
-                      </div>
-                      {c.ScheduledDate && (
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                          <span><strong>Scheduled:</strong> {new Date(c.ScheduledDate).toLocaleDateString()}{c.ScheduledTime ? ` at ${c.ScheduledTime.split('.')[0].split(':').slice(0,2).join(':')}` : ''}</span>
-                        </div>
-                      )}
-                      <div className="flex items-center gap-2">
-                        <UserIcon className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                        <span><strong>Approved Jurors:</strong> {c.ApprovedJurors}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {totalPages > 1 && (
-                <div className="flex items-center justify-center gap-2 mt-5 pt-4 border-t border-red-100">
-                  <button
-                    onClick={() => setDeletedCasesPage(p => Math.max(1, p - 1))}
-                    disabled={deletedCasesPage === 1}
-                    className="p-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </button>
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(pg => (
-                    <button
-                      key={pg}
-                      onClick={() => setDeletedCasesPage(pg)}
-                      className={`w-8 h-8 rounded-lg text-sm font-bold transition ${
-                        pg === deletedCasesPage
-                          ? 'bg-red-600 text-white'
-                          : 'border border-gray-300 text-gray-600 hover:bg-gray-50'
-                      }`}
-                    >
-                      {pg}
-                    </button>
-                  ))}
-                  <button
-                    onClick={() => setDeletedCasesPage(p => Math.min(totalPages, p + 1))}
-                    disabled={deletedCasesPage === totalPages}
-                    className="p-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
-                </div>
-              )}
-            </div>
-          );
-        })()}
 
         {/* Reschedule Requests */}
         <div ref={rescheduleRequestsSectionRef} className="bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 rounded-xl shadow-lg p-6 border-2 border-orange-300">
@@ -3331,6 +3217,121 @@ function formatTime(timeString: string, scheduledDate: string) {
             </div>
           </div>
         </div>
+        {/* Deleted Cases */}
+        {deletedCases.length > 0 && (() => {
+          const totalPages = Math.ceil(deletedCases.length / DELETED_CASES_PER_PAGE);
+          const pageItems = deletedCases.slice(
+            (deletedCasesPage - 1) * DELETED_CASES_PER_PAGE,
+            deletedCasesPage * DELETED_CASES_PER_PAGE
+          );
+          return (
+            <div className="bg-white rounded-xl shadow-sm p-6 border border-red-200">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center">
+                  <div className="p-2 bg-red-100 rounded-lg mr-3">
+                    <Trash2 className="h-6 w-6 text-red-600" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-red-700">Deleted Cases</h3>
+                  <span className="ml-4 px-4 py-1.5 bg-red-100 text-red-800 text-sm font-bold rounded-full">
+                    {deletedCases.length} deleted
+                  </span>
+                </div>
+                {totalPages > 1 && (
+                  <span className="text-sm text-gray-500 font-medium">
+                    Page {deletedCasesPage} of {totalPages}
+                  </span>
+                )}
+              </div>
+
+              <div className="space-y-4">
+                {pageItems.map((c) => (
+                  <div key={c.CaseId} className="border border-red-200 rounded-xl p-5 bg-red-50 opacity-80">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <span className="text-lg font-bold text-gray-700">{c.CaseTitle}</span>
+                        <span className="px-3 py-1 bg-red-600 text-white text-xs font-bold rounded-full flex items-center gap-1">
+                          <Trash2 className="h-3 w-3" />Case Deleted
+                        </span>
+                        <span className="text-xs text-gray-500 font-medium">#{c.CaseId}</span>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm text-gray-700">
+                      <div className="flex items-center gap-2">
+                        <UserIcon className="h-4 w-4 text-blue-400 flex-shrink-0" />
+                        <span><strong>Attorney:</strong> {c.AttorneyName}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Building2 className="h-4 w-4 text-purple-400 flex-shrink-0" />
+                        <span><strong>Law Firm:</strong> {c.LawFirmName || '—'}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Mail className="h-4 w-4 text-blue-400 flex-shrink-0" />
+                        <span><strong>Email:</strong> {c.AttorneyEmail}</span>
+                      </div>
+                      {c.AttorneyPhone && (
+                        <div className="flex items-center gap-2">
+                          <Phone className="h-4 w-4 text-green-400 flex-shrink-0" />
+                          <span><strong>Phone:</strong> {c.AttorneyPhone}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-green-400 flex-shrink-0" />
+                        <span><strong>Location:</strong> {c.County}{c.State ? `, ${c.State}` : ''}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Briefcase className="h-4 w-4 text-orange-400 flex-shrink-0" />
+                        <span><strong>Case Type:</strong> {c.CaseType}</span>
+                      </div>
+                      {c.ScheduledDate && (
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                          <span><strong>Scheduled:</strong> {new Date(c.ScheduledDate).toLocaleDateString()}{c.ScheduledTime ? ` at ${c.ScheduledTime.split('.')[0].split(':').slice(0,2).join(':')}` : ''}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <UserIcon className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                        <span><strong>Approved Jurors:</strong> {c.ApprovedJurors}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-2 mt-5 pt-4 border-t border-red-100">
+                  <button
+                    onClick={() => setDeletedCasesPage(p => Math.max(1, p - 1))}
+                    disabled={deletedCasesPage === 1}
+                    className="p-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(pg => (
+                    <button
+                      key={pg}
+                      onClick={() => setDeletedCasesPage(pg)}
+                      className={`w-8 h-8 rounded-lg text-sm font-bold transition ${
+                        pg === deletedCasesPage
+                          ? 'bg-red-600 text-white'
+                          : 'border border-gray-300 text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      {pg}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setDeletedCasesPage(p => Math.min(totalPages, p + 1))}
+                    disabled={deletedCasesPage === totalPages}
+                    className="p-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
       </div>
 
       {/* Case Details Modal */}

@@ -7,16 +7,16 @@ import { ChevronDown, ChevronLeft, ChevronRight, Search, Play, ArrowLeft, Mail, 
 
 const tutorialVideos = [
   {
-    iframe: "https://sway.cloud.microsoft/s/xiTqe3J7SmB3uuiM/embed",
-    title: "Lesson #01 - What is Quick Verdict?"
+    iframe: "https://sway.cloud.microsoft/s/oYHROIR7dxun9bf6/embed",
+    title: "Lesson #01 - Drafting the Jury Charge"
   },
   {
-    iframe:"https://sway.cloud.microsoft/s/PtIkHBCRNzTO9h6J/embed",
-    title: "Lesson #02 - How to set new trial?"
+    iframe:"https://sway.cloud.microsoft/s/i2IaFEbSsV1vnmGR/embed",
+    title: "Lesson #02 - The Jury"
   },
   {
-    iframe:"https://sway.cloud.microsoft/s/ggYDY1oM0YdIhy9y/embed",
-    title: "Lesson #03 - How do I use my War Room?"
+    iframe:"https://sway.cloud.microsoft/s/PGHgbdhrLkkwI9rU/embed",
+    title: "Lesson #03 - Trial Presentation"
   },
   {
     src: "/help_video1.png",
