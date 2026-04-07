@@ -431,6 +431,26 @@ async function deleteCase(req, res) {
 
     console.log(`✅ [deleteCase] Soft delete completed for case ${caseId}`);
 
+    // Delete associated documents and jury charge questions
+    try {
+      const { poolPromise } = require("../config/db");
+      const pool = await poolPromise;
+      const id = parseInt(caseId, 10);
+
+      await pool.request().input("caseId", id).query(
+        `DELETE FROM dbo.WarRoomDocuments WHERE CaseId = @caseId`
+      );
+      await pool.request().input("caseId", id).query(
+        `DELETE FROM dbo.CaseDocuments WHERE CaseId = @caseId`
+      );
+      await pool.request().input("caseId", id).query(
+        `DELETE FROM dbo.JuryChargeQuestions WHERE CaseId = @caseId`
+      );
+      console.log(`🗑️  [deleteCase] Deleted documents and questions for case ${caseId}`);
+    } catch (cleanupErr) {
+      console.error(`⚠️  [deleteCase] Error cleaning up docs/questions for case ${caseId}:`, cleanupErr.message);
+    }
+
     // Verify deletion
     const deletedCase = await Case.findById(caseId, { includeDeleted: true });
     console.log(
