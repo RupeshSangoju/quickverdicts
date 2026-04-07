@@ -1434,6 +1434,20 @@ router.get("/attorneys", async (req, res) => {
 router.get("/attorneys/pending", getAttorneysPendingVerification);
 router.post("/attorneys/:attorneyId/verify", verifyAttorney);
 
+router.delete("/attorneys/:attorneyId", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const attorneyId = parseInt(req.params.attorneyId, 10);
+    if (isNaN(attorneyId) || attorneyId <= 0) {
+      return res.status(400).json({ success: false, message: "Valid attorney ID is required" });
+    }
+    await Attorney.softDeleteAccount(attorneyId);
+    res.json({ success: true, message: "Attorney deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting attorney:", error);
+    res.status(500).json({ success: false, message: "Failed to delete attorney", error: error.message });
+  }
+});
+
 router.post("/attorneys/:id/verify", async (req, res) => {
   try {
     const attorneyId = parseInt(req.params.id, 10);
