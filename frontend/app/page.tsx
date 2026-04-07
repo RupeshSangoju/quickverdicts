@@ -300,7 +300,7 @@ cases in:            </p>
             <div>
               <h3 className="font-bold mb-4">Contact</h3>
               <p className="text-gray-300">Hours:</p>
-              <p className="text-gray-300">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;8:30 a.m. to 5:00 p.m. M-F (or as needed) </p>
+              <p className="text-gray-300">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;9:00 a.m. to 5:00 p.m. M-F (or as needed) </p>
               <p className='text-gray-300'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;9:00 a.m. to 2:00 p.m. Sat.</p>
               <p className="text-gray-300">QVTrial@quickverdicts.com</p>
             </div>

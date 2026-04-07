@@ -3687,8 +3687,6 @@ function formatTime(timeString: string, scheduledDate: string) {
                 ✅ This will make the date available again:
               </p>
               <ul className="text-sm text-green-700 mt-2 ml-4 list-disc space-y-1">
-                <li>All attorneys will be notified</li>
-                <li>All jurors will be notified</li>
                 <li>The date will be available for case scheduling</li>
               </ul>
             </div>

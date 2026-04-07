@@ -203,7 +203,7 @@ period with the jurors.
             How It Works
           </h2>
           <p className="text-center text-gray-600 mb-8">
-            Click on the below video for a close up of the Attorney Journey
+            Click on the below video for a close up of the Attorney Journey<sup>1</sup>
           </p>
 
           {/* Video Player - user will replace with YouTube embed */}
@@ -237,7 +237,17 @@ period with the jurors.
           </div>
         </div>
       </section>
-
+<div className="mt-12 px-10 text-sm text-gray-600">
+  <hr className="mb-4" />
+  <p id="footnote-1">
+    <sup>1</sup> In a 2026 study published in the American Psychological Association, researchers found that virtual
+    (remote) deliberating jurors were just as attentive and thoughtful and deliberations were generally
+    comparable with those of in person deliberations. <i>Virtually the Same? A Comparison Between In-Person and
+    Virtual Mock Jury Deliberations</i>, pages 1, 16. https://doi.org/101037/lhb0000643.
+    Published Jan. 29, 2026. Authors: Krystia Reed, Valerie P. Hans, Vivian N. Rotenstein,
+    Peter McKendall, Addison Rodriguez, Rebecca K. Helm, and Valerie F. Reyna.
+  </p>
+</div>
       {/* CTA Section */}
       <section className="bg-white py-16">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
