@@ -1483,6 +1483,20 @@ router.get("/jurors", async (req, res) => {
 router.get("/jurors/pending", getJurorsPendingVerification);
 router.post("/jurors/:jurorId/verify", verifyJuror);
 
+router.delete("/jurors/:jurorId", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const jurorId = parseInt(req.params.jurorId, 10);
+    if (isNaN(jurorId) || jurorId <= 0) {
+      return res.status(400).json({ success: false, message: "Valid juror ID is required" });
+    }
+    await Juror.softDeleteJuror(jurorId);
+    res.json({ success: true, message: "Juror deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting juror:", error);
+    res.status(500).json({ success: false, message: "Failed to delete juror", error: error.message });
+  }
+});
+
 router.post("/jurors/:id/verify", async (req, res) => {
   try {
     const jurorId = parseInt(req.params.id, 10);
