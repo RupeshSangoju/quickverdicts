@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { ChevronDown, ChevronLeft, ChevronRight, Search, Play, ArrowLeft, Mail, Video, HelpCircle } from "lucide-react";
 
-const tutorialVideos: { src: string; title: string; length: string; category?: string }[] = [
+const tutorialVideos: { src?: string; iframe?: string; title: string; length?: string; category?: string }[] = [
   {
     iframe: "https://sway.cloud.microsoft/s/oYHROIR7dxun9bf6/embed",
     title: "Lesson #01 - Drafting the Jury Charge"
@@ -174,7 +174,7 @@ export default function AttorneyHelp({ onContact }: { onContact: () => void }) {
   ) : (
     <>
       <Image
-        src={v.src}
+        src={v.src!}
         alt={v.title}
         fill
         className="object-cover group-hover:scale-105 transition-transform duration-300"
