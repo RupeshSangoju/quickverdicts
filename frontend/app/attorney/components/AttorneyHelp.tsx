@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { ChevronDown, ChevronLeft, ChevronRight, Search, Play, ArrowLeft, Mail, Video, HelpCircle } from "lucide-react";
 
-const tutorialVideos = [
+const tutorialVideos: { src: string; title: string; length: string; category?: string }[] = [
   {
     iframe: "https://sway.cloud.microsoft/s/oYHROIR7dxun9bf6/embed",
     title: "Lesson #01 - Drafting the Jury Charge"
