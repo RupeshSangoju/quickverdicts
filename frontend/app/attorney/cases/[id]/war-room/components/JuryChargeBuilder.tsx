@@ -17,7 +17,7 @@ interface JuryChargeQuestion {
   QuestionId: number;
   CaseId: number;
   QuestionText: string;
-  QuestionType: "Multiple Choice" | "Yes/No" | "Text Response";
+  QuestionType: "Multiple Choice" | "Multiple Select" | "Yes/No" | "Text Response";
   Options: string[] | string; // Can be array from backend or string from form
   OrderIndex: number;
   IsRequired: boolean;
@@ -168,9 +168,9 @@ export default function JuryChargeBuilder({
       // Add each question one by one
       for (const question of validQuestions) {
         try {
-          // Convert options string to array for Multiple Choice
+          // Convert options string to array for Multiple Choice / Multiple Select
           let optionsArray = null;
-          if (question.QuestionType === "Multiple Choice" && question.Options) {
+          if ((question.QuestionType === "Multiple Choice" || question.QuestionType === "Multiple Select") && question.Options) {
             optionsArray = question.Options.split("\n").map(o => o.trim()).filter(Boolean);
           }
 
@@ -241,9 +241,9 @@ export default function JuryChargeBuilder({
       setSaving(true);
       const token = localStorage.getItem("token");
 
-      // Convert options string to array for Multiple Choice
+      // Convert options string to array for Multiple Choice / Multiple Select
       let optionsArray = null;
-      if (formData.QuestionType === "Multiple Choice" && formData.Options) {
+      if ((formData.QuestionType === "Multiple Choice" || formData.QuestionType === "Multiple Select") && formData.Options) {
         optionsArray = formData.Options.split("\n").map(o => o.trim()).filter(Boolean);
       }
 
@@ -505,7 +505,8 @@ export default function JuryChargeBuilder({
                       onChange={(e) => updateNewQuestion(index, "QuestionType", e.target.value)}
                       className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium"
                     >
-                      <option value="Multiple Choice">Multiple Choice</option>
+                      <option value="Multiple Choice">Multiple Choice (single answer)</option>
+                      <option value="Multiple Select">Multiple Select (multiple answers)</option>
                       <option value="Yes/No">Yes/No</option>
                       <option value="Text Response">Text Response</option>
                     </select>
@@ -524,11 +525,14 @@ export default function JuryChargeBuilder({
                   </div>
                 </div>
 
-                {/* Options for Multiple Choice */}
-                {question.QuestionType === "Multiple Choice" && (
+                {/* Options for Multiple Choice / Multiple Select */}
+                {(question.QuestionType === "Multiple Choice" || question.QuestionType === "Multiple Select") && (
                   <div className="mt-4">
                     <label className="block text-sm font-bold text-gray-900 mb-2">
                       Answer Options (one per line)
+                      {question.QuestionType === "Multiple Select" && (
+                        <span className="ml-2 text-xs font-normal text-blue-600">(jurors can select more than one)</span>
+                      )}
                     </label>
                     <textarea
                       value={question.Options}
@@ -655,10 +659,11 @@ function QuestionForm({
   saving,
   title,
 }: QuestionFormProps) {
-  const questionTypes: JuryChargeQuestion["QuestionType"][] = [
-    "Multiple Choice",
-    "Yes/No",
-    "Text Response",
+  const questionTypes: { value: JuryChargeQuestion["QuestionType"]; label: string }[] = [
+    { value: "Multiple Choice", label: "Multiple Choice (single answer)" },
+    { value: "Multiple Select", label: "Multiple Select (multiple answers)" },
+    { value: "Yes/No", label: "Yes/No" },
+    { value: "Text Response", label: "Text Response" },
   ];
 
   return (
@@ -697,18 +702,21 @@ function QuestionForm({
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         >
           {questionTypes.map((type) => (
-            <option key={type} value={type}>
-              {type}
+            <option key={type.value} value={type.value}>
+              {type.label}
             </option>
           ))}
         </select>
       </div>
 
-      {/* Options (for Multiple Choice) */}
-      {formData.QuestionType === "Multiple Choice" && (
+      {/* Options (for Multiple Choice / Multiple Select) */}
+      {(formData.QuestionType === "Multiple Choice" || formData.QuestionType === "Multiple Select") && (
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Options (one per line)
+            {formData.QuestionType === "Multiple Select" && (
+              <span className="ml-2 text-xs text-blue-600">(jurors can select more than one)</span>
+            )}
           </label>
           <textarea
             value={formData.Options}
@@ -717,9 +725,7 @@ function QuestionForm({
             rows={4}
             placeholder="Option 1&#10;Option 2&#10;Option 3"
           />
-          <p className="text-xs text-gray-500 mt-1">
-            Enter each option on a new line
-          </p>
+          <p className="text-xs text-gray-500 mt-1">Enter each option on a new line</p>
         </div>
       )}
 
@@ -839,13 +845,29 @@ function QuestionCard({
 
           <p className="text-gray-900 font-medium">{question.QuestionText}</p>
 
-          {/* Show options for Multiple Choice */}
+          {/* Show options for Multiple Choice (radio) */}
           {question.QuestionType === "Multiple Choice" && options.length > 0 && (
             <ul className="mt-3 space-y-1">
               {options.map((option, idx) => (
                 <li key={idx} className="text-sm text-gray-800 font-medium flex items-center gap-2">
                   <span className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-700">
                     {String.fromCharCode(65 + idx)}
+                  </span>
+                  {option}
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {/* Show options for Multiple Select (checkbox) */}
+          {question.QuestionType === "Multiple Select" && options.length > 0 && (
+            <ul className="mt-3 space-y-1">
+              {options.map((option, idx) => (
+                <li key={idx} className="text-sm text-gray-800 font-medium flex items-center gap-2">
+                  <span className="w-5 h-5 rounded border-2 border-blue-400 bg-blue-50 flex items-center justify-center flex-shrink-0">
+                    <svg className="w-3 h-3 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
                   </span>
                   {option}
                 </li>

@@ -300,7 +300,7 @@ cases in:            </p>
             <div>
               <h3 className="font-bold mb-4">Contact</h3>
               <p className="text-gray-300">Hours:</p>
-              <p className="text-gray-300">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;8:30 a.m. to 5:00 p.m. M-F (or as needed) </p>
+              <p className="text-gray-300">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;9:00 a.m. to 5:00 p.m. M-F (or as needed) </p>
               <p className='text-gray-300'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;9:00 a.m. to 2:00 p.m. Sat.</p>
               <p className="text-gray-300">QVTrial@quickverdicts.com</p>
             </div>
@@ -316,7 +316,7 @@ cases in:            </p>
 
           <div className="border-t border-gray-700 pt-8 flex flex-wrap justify-between items-center">
             <div className="flex space-x-6 text-sm text-gray-300">
-              <Link href="/" className="hover:text-white">Quick Verdicts</Link>
+              <Link href="/" className="hover:text-white">Quick Verdicts<sup className="text-[12px]">™</sup></Link>
               <Link href="/" className="hover:text-white">Privacy</Link>
               <Link href="/" className="hover:text-white">Terms of Use</Link>
               <Link href="/" className="hover:text-white">Consumer Choice</Link>

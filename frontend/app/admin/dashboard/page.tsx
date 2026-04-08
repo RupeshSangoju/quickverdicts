@@ -209,6 +209,9 @@ export default function AdminDashboard() {
   const [attorneys, setAttorneys] = useState<Attorney[]>([]);
   const [jurors, setJurors] = useState<Juror[]>([]);
   const [pendingCases, setPendingCases] = useState<PendingCase[]>([]);
+  const [deletedCases, setDeletedCases] = useState<any[]>([]);
+  const [deletedCasesPage, setDeletedCasesPage] = useState(1);
+  const DELETED_CASES_PER_PAGE = 2;
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -295,6 +298,17 @@ export default function AdminDashboard() {
   const [deleteJurorName, setDeleteJurorName] = useState<string>("");
   const [deleteJurorCaseId, setDeleteJurorCaseId] = useState<number | null>(null);
   const [deletingJuror, setDeletingJuror] = useState(false);
+
+  // Juror account delete modal states
+  const [showDeleteJurorAccountModal, setShowDeleteJurorAccountModal] = useState(false);
+  const [deleteJurorAccountId, setDeleteJurorAccountId] = useState<number | null>(null);
+  const [deleteJurorAccountName, setDeleteJurorAccountName] = useState<string>("");
+  const [deletingJurorAccount, setDeletingJurorAccount] = useState(false);
+
+  const [showDeleteAttorneyModal, setShowDeleteAttorneyModal] = useState(false);
+  const [deleteAttorneyId, setDeleteAttorneyId] = useState<number | null>(null);
+  const [deleteAttorneyName, setDeleteAttorneyName] = useState<string>("");
+  const [deletingAttorney, setDeletingAttorney] = useState(false);
 
   // Date blocking modal states
   const [showBlockDateModal, setShowBlockDateModal] = useState(false);
@@ -827,12 +841,13 @@ export default function AdminDashboard() {
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      const [dashboardRes, jurRes, casesRes, statsRes, rescheduleRes] = await Promise.all([
+      const [dashboardRes, jurRes, casesRes, statsRes, rescheduleRes, deletedCasesRes] = await Promise.all([
         fetchWithAuth(`${API_BASE}/api/admin/dashboard`),
         fetchWithAuth(`${API_BASE}/api/admin/jurors?limit=10`),
         fetchWithAuth(`${API_BASE}/api/admin/cases/pending`),
         fetchWithAuth(`${API_BASE}/api/admin/stats/comprehensive`),
         fetchWithAuth(`${API_BASE}/api/admin/reschedule-requests`),
+        fetchWithAuth(`${API_BASE}/api/admin/cases/deleted`),
       ]);
 
       const dashboardData = await dashboardRes.json();
@@ -840,6 +855,11 @@ export default function AdminDashboard() {
       const casesData = await casesRes.json();
       const statsData = await statsRes.json();
       const rescheduleData = await rescheduleRes.json();
+      const deletedCasesData = await deletedCasesRes.json();
+
+      if (deletedCasesData.success) {
+        setDeletedCases(deletedCasesData.cases || []);
+      }
 
       if (dashboardData.success) {
         // Filter out any deleted cases as extra safeguard
@@ -1278,6 +1298,67 @@ export default function AdminDashboard() {
       });
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  const handleDeleteJurorAccount = (jurorId: number, jurorName: string) => {
+    setDeleteJurorAccountId(jurorId);
+    setDeleteJurorAccountName(jurorName);
+    setShowDeleteJurorAccountModal(true);
+  };
+
+  const confirmDeleteJurorAccount = async () => {
+    if (!deleteJurorAccountId) return;
+    setDeletingJurorAccount(true);
+    try {
+      const response = await fetchWithAuth(`${API_BASE}/api/admin/jurors/${deleteJurorAccountId}`, {
+        method: "DELETE",
+      });
+      const data = await response.json();
+      if (data.success) {
+        toast.success(`Juror "${deleteJurorAccountName}" deleted successfully`);
+        setShowDeleteJurorAccountModal(false);
+        setDeleteJurorAccountId(null);
+        setDeleteJurorAccountName("");
+        fetchJurors();
+      } else {
+        toast.error(data.message || "Failed to delete juror");
+      }
+    } catch (error) {
+      console.error("Error deleting juror:", error);
+      toast.error("Failed to delete juror");
+    } finally {
+      setDeletingJurorAccount(false);
+    }
+  };
+
+  const handleDeleteAttorney = (attorneyId: number, name: string) => {
+    setDeleteAttorneyId(attorneyId);
+    setDeleteAttorneyName(name);
+    setShowDeleteAttorneyModal(true);
+  };
+
+  const confirmDeleteAttorney = async () => {
+    if (!deleteAttorneyId) return;
+    setDeletingAttorney(true);
+    try {
+      const response = await fetchWithAuth(`${API_BASE}/api/admin/attorneys/${deleteAttorneyId}`, {
+        method: "DELETE",
+      });
+      const data = await response.json();
+      if (data.success) {
+        toast.success(`Attorney "${deleteAttorneyName}" deleted successfully`);
+        setShowDeleteAttorneyModal(false);
+        setDeleteAttorneyId(null);
+        setDeleteAttorneyName("");
+        fetchAttorneys();
+      } else {
+        toast.error(data.message || "Failed to delete attorney");
+      }
+    } catch {
+      toast.error("Failed to delete attorney");
+    } finally {
+      setDeletingAttorney(false);
     }
   };
 
@@ -2296,6 +2377,7 @@ function formatTime(timeString: string, scheduledDate: string) {
             )}
           </div>
 
+
         {/* Reschedule Requests */}
         <div ref={rescheduleRequestsSectionRef} className="bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 rounded-xl shadow-lg p-6 border-2 border-orange-300">
           <div className="flex items-center justify-between mb-4">
@@ -2652,28 +2734,37 @@ function formatTime(timeString: string, scheduledDate: string) {
                         )}
                       </td>
                       <td className="px-6 py-4">
-                        {!attorney.IsVerified && attorney.VerificationStatus !== "declined" && (
-                          <div className="flex justify-center space-x-2">
-                            <button 
-                              onClick={() => handleVerifyAttorney(attorney.AttorneyId)} 
-                              disabled={actionLoading === attorney.AttorneyId} 
-                              className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold text-white bg-green-600 hover:bg-green-700 hover:shadow-lg disabled:opacity-50 transition-all cursor-pointer"
-                            >
-                              {actionLoading === attorney.AttorneyId ? (
-                                <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
-                              ) : (
-                                <><CheckCircle2 className="h-4 w-4 mr-1" />Verify</>
-                              )}
-                            </button>
-                            <button 
-                              onClick={() => handleDeclineAttorney(attorney.AttorneyId)} 
-                              disabled={actionLoading === attorney.AttorneyId} 
-                              className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold text-white bg-red-600 hover:bg-red-700 hover:shadow-lg disabled:opacity-50 transition-all cursor-pointer"
-                            >
-                              <XCircle className="h-4 w-4 mr-1" />Decline
-                            </button>
-                          </div>
-                        )}
+                        <div className="flex justify-center flex-wrap gap-2">
+                          {!attorney.IsVerified && attorney.VerificationStatus !== "declined" && (
+                            <>
+                              <button
+                                onClick={() => handleVerifyAttorney(attorney.AttorneyId)}
+                                disabled={actionLoading === attorney.AttorneyId}
+                                className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold text-white bg-green-600 hover:bg-green-700 hover:shadow-lg disabled:opacity-50 transition-all cursor-pointer"
+                              >
+                                {actionLoading === attorney.AttorneyId ? (
+                                  <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
+                                ) : (
+                                  <><CheckCircle2 className="h-4 w-4 mr-1" />Verify</>
+                                )}
+                              </button>
+                              <button
+                                onClick={() => handleDeclineAttorney(attorney.AttorneyId)}
+                                disabled={actionLoading === attorney.AttorneyId}
+                                className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold text-white bg-red-600 hover:bg-red-700 hover:shadow-lg disabled:opacity-50 transition-all cursor-pointer"
+                              >
+                                <XCircle className="h-4 w-4 mr-1" />Decline
+                              </button>
+                            </>
+                          )}
+                          <button
+                            onClick={() => handleDeleteAttorney(attorney.AttorneyId, `${attorney.FirstName} ${attorney.LastName}`)}
+                            disabled={actionLoading === attorney.AttorneyId}
+                            className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold text-white bg-gray-700 hover:bg-gray-900 hover:shadow-lg disabled:opacity-50 transition-all cursor-pointer"
+                          >
+                            <Trash2 className="h-4 w-4 mr-1" />Delete
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -3002,28 +3093,37 @@ function formatTime(timeString: string, scheduledDate: string) {
                         )}
                       </td>
                       <td className="px-6 py-4">
-                        {!juror.IsVerified && juror.VerificationStatus !== "declined" && (
-                          <div className="flex justify-center space-x-2">
-                            <button 
-                              onClick={() => handleVerifyJuror(juror.JurorId)} 
-                              disabled={actionLoading === juror.JurorId} 
-                              className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold text-white bg-green-600 hover:bg-green-700 hover:shadow-lg disabled:opacity-50 transition-all"
-                            >
-                              {actionLoading === juror.JurorId ? (
-                                <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
-                              ) : (
-                                <><CheckCircle2 className="h-4 w-4 mr-1" />Verify</>
-                              )}
-                            </button>
-                            <button 
-                              onClick={() => handleDeclineJuror(juror.JurorId)} 
-                              disabled={actionLoading === juror.JurorId} 
-                              className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold text-white bg-red-600 hover:bg-red-700 hover:shadow-lg disabled:opacity-50 transition-all"
-                            >
-                              <XCircle className="h-4 w-4 mr-1" />Decline
-                            </button>
-                          </div>
-                        )}
+                        <div className="flex justify-center flex-wrap gap-2">
+                          {!juror.IsVerified && juror.VerificationStatus !== "declined" && (
+                            <>
+                              <button
+                                onClick={() => handleVerifyJuror(juror.JurorId)}
+                                disabled={actionLoading === juror.JurorId}
+                                className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold text-white bg-green-600 hover:bg-green-700 hover:shadow-lg disabled:opacity-50 transition-all"
+                              >
+                                {actionLoading === juror.JurorId ? (
+                                  <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
+                                ) : (
+                                  <><CheckCircle2 className="h-4 w-4 mr-1" />Verify</>
+                                )}
+                              </button>
+                              <button
+                                onClick={() => handleDeclineJuror(juror.JurorId)}
+                                disabled={actionLoading === juror.JurorId}
+                                className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold text-white bg-red-600 hover:bg-red-700 hover:shadow-lg disabled:opacity-50 transition-all"
+                              >
+                                <XCircle className="h-4 w-4 mr-1" />Decline
+                              </button>
+                            </>
+                          )}
+                          <button
+                            onClick={() => handleDeleteJurorAccount(juror.JurorId, juror.Name)}
+                            disabled={actionLoading === juror.JurorId}
+                            className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold text-white bg-gray-700 hover:bg-gray-900 hover:shadow-lg disabled:opacity-50 transition-all"
+                          >
+                            <Trash2 className="h-4 w-4 mr-1" />Delete
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -3117,6 +3217,121 @@ function formatTime(timeString: string, scheduledDate: string) {
             </div>
           </div>
         </div>
+        {/* Deleted Cases */}
+        {deletedCases.length > 0 && (() => {
+          const totalPages = Math.ceil(deletedCases.length / DELETED_CASES_PER_PAGE);
+          const pageItems = deletedCases.slice(
+            (deletedCasesPage - 1) * DELETED_CASES_PER_PAGE,
+            deletedCasesPage * DELETED_CASES_PER_PAGE
+          );
+          return (
+            <div className="bg-white rounded-xl shadow-sm p-6 border border-red-200">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center">
+                  <div className="p-2 bg-red-100 rounded-lg mr-3">
+                    <Trash2 className="h-6 w-6 text-red-600" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-red-700">Deleted Cases</h3>
+                  <span className="ml-4 px-4 py-1.5 bg-red-100 text-red-800 text-sm font-bold rounded-full">
+                    {deletedCases.length} deleted
+                  </span>
+                </div>
+                {totalPages > 1 && (
+                  <span className="text-sm text-gray-500 font-medium">
+                    Page {deletedCasesPage} of {totalPages}
+                  </span>
+                )}
+              </div>
+
+              <div className="space-y-4">
+                {pageItems.map((c) => (
+                  <div key={c.CaseId} className="border border-red-200 rounded-xl p-5 bg-red-50 opacity-80">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <span className="text-lg font-bold text-gray-700">{c.CaseTitle}</span>
+                        <span className="px-3 py-1 bg-red-600 text-white text-xs font-bold rounded-full flex items-center gap-1">
+                          <Trash2 className="h-3 w-3" />Case Deleted
+                        </span>
+                        <span className="text-xs text-gray-500 font-medium">#{c.CaseId}</span>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm text-gray-700">
+                      <div className="flex items-center gap-2">
+                        <UserIcon className="h-4 w-4 text-blue-400 flex-shrink-0" />
+                        <span><strong>Attorney:</strong> {c.AttorneyName}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Building2 className="h-4 w-4 text-purple-400 flex-shrink-0" />
+                        <span><strong>Law Firm:</strong> {c.LawFirmName || '—'}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Mail className="h-4 w-4 text-blue-400 flex-shrink-0" />
+                        <span><strong>Email:</strong> {c.AttorneyEmail}</span>
+                      </div>
+                      {c.AttorneyPhone && (
+                        <div className="flex items-center gap-2">
+                          <Phone className="h-4 w-4 text-green-400 flex-shrink-0" />
+                          <span><strong>Phone:</strong> {c.AttorneyPhone}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-green-400 flex-shrink-0" />
+                        <span><strong>Location:</strong> {c.County}{c.State ? `, ${c.State}` : ''}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Briefcase className="h-4 w-4 text-orange-400 flex-shrink-0" />
+                        <span><strong>Case Type:</strong> {c.CaseType}</span>
+                      </div>
+                      {c.ScheduledDate && (
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                          <span><strong>Scheduled:</strong> {new Date(c.ScheduledDate).toLocaleDateString()}{c.ScheduledTime ? ` at ${c.ScheduledTime.split('.')[0].split(':').slice(0,2).join(':')}` : ''}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <UserIcon className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                        <span><strong>Approved Jurors:</strong> {c.ApprovedJurors}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-2 mt-5 pt-4 border-t border-red-100">
+                  <button
+                    onClick={() => setDeletedCasesPage(p => Math.max(1, p - 1))}
+                    disabled={deletedCasesPage === 1}
+                    className="p-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(pg => (
+                    <button
+                      key={pg}
+                      onClick={() => setDeletedCasesPage(pg)}
+                      className={`w-8 h-8 rounded-lg text-sm font-bold transition ${
+                        pg === deletedCasesPage
+                          ? 'bg-red-600 text-white'
+                          : 'border border-gray-300 text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      {pg}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setDeletedCasesPage(p => Math.min(totalPages, p + 1))}
+                    disabled={deletedCasesPage === totalPages}
+                    className="p-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
       </div>
 
       {/* Case Details Modal */}
@@ -3621,6 +3836,82 @@ function formatTime(timeString: string, scheduledDate: string) {
         </div>
       )}
 
+      {/* Delete Juror Account Modal */}
+      {showDeleteJurorAccountModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/10 backdrop-blur-md">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md">
+            <div className="flex items-center mb-4">
+              <Trash2 className="h-6 w-6 text-red-600 mr-3" />
+              <h3 className="text-xl font-semibold text-gray-900">Delete Juror</h3>
+            </div>
+            <p className="text-gray-600 mb-2">
+              Are you sure you want to delete <span className="font-semibold">"{deleteJurorAccountName}"</span>?
+            </p>
+            <p className="text-sm text-red-600 bg-red-50 rounded-lg p-3 mb-6">
+              This will permanently remove the juror's account. Their applications will remain in the system for record-keeping. This action cannot be undone.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => { setShowDeleteJurorAccountModal(false); setDeleteJurorAccountId(null); setDeleteJurorAccountName(""); }}
+                disabled={deletingJurorAccount}
+                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteJurorAccount}
+                disabled={deletingJurorAccount}
+                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 font-medium disabled:opacity-50 inline-flex items-center"
+              >
+                {deletingJurorAccount ? (
+                  <><span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></span>Deleting...</>
+                ) : (
+                  <><Trash2 className="h-4 w-4 mr-2" />Delete Juror</>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Attorney Modal */}
+      {showDeleteAttorneyModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/10 backdrop-blur-md">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md">
+            <div className="flex items-center mb-4">
+              <Trash2 className="h-6 w-6 text-red-600 mr-3" />
+              <h3 className="text-xl font-semibold text-gray-900">Delete Attorney</h3>
+            </div>
+            <p className="text-gray-600 mb-2">
+              Are you sure you want to delete <span className="font-semibold">"{deleteAttorneyName}"</span>?
+            </p>
+            <p className="text-sm text-red-600 bg-red-50 rounded-lg p-3 mb-6">
+              This will permanently remove the attorney's account. Their cases will remain in the system for record-keeping. This action cannot be undone.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => { setShowDeleteAttorneyModal(false); setDeleteAttorneyId(null); setDeleteAttorneyName(""); }}
+                disabled={deletingAttorney}
+                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteAttorney}
+                disabled={deletingAttorney}
+                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 font-medium disabled:opacity-50 inline-flex items-center"
+              >
+                {deletingAttorney ? (
+                  <><span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></span>Deleting...</>
+                ) : (
+                  <><Trash2 className="h-4 w-4 mr-2" />Delete Attorney</>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Delete Case Confirmation Modal */}
       {showDeleteCaseModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/10 backdrop-blur-md">
@@ -3687,8 +3978,6 @@ function formatTime(timeString: string, scheduledDate: string) {
                 ✅ This will make the date available again:
               </p>
               <ul className="text-sm text-green-700 mt-2 ml-4 list-disc space-y-1">
-                <li>All attorneys will be notified</li>
-                <li>All jurors will be notified</li>
                 <li>The date will be available for case scheduling</li>
               </ul>
             </div>

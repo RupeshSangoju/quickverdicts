@@ -16,7 +16,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL
 interface JuryChargeQuestion {
   QuestionId: number;
   QuestionText: string;
-  QuestionType: "Multiple Choice" | "Yes/No" | "Text Response";
+  QuestionType: "Multiple Choice" | "Multiple Select" | "Yes/No" | "Text Response";
   Options: string[] | string; // Can be array from backend or string
   IsRequired: boolean;
   MinValue?: number;
@@ -473,6 +473,38 @@ function QuestionInput({ question, value, onChange }: QuestionInputProps) {
               checked={value === option}
               onChange={(e) => onChange(e.target.value)}
               className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+            />
+            <span className="text-gray-900">{option}</span>
+          </label>
+        ))}
+      </div>
+    );
+  }
+
+  if (question.QuestionType === "Multiple Select") {
+    const options = question.Options
+      ? Array.isArray(question.Options)
+        ? question.Options
+        : question.Options.split("\n").filter(Boolean)
+      : [];
+    const selected = value ? value.split(",").map(v => v.trim()).filter(Boolean) : [];
+    const handleToggle = (option: string) => {
+      const next = selected.includes(option)
+        ? selected.filter(v => v !== option)
+        : [...selected, option];
+      onChange(next.join(", "));
+    };
+    return (
+      <div className="space-y-2">
+        <p className="text-xs text-blue-600 font-medium mb-1">Select all that apply</p>
+        {options.map((option, idx) => (
+          <label key={idx} className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              value={option}
+              checked={selected.includes(option)}
+              onChange={() => handleToggle(option)}
+              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
             />
             <span className="text-gray-900">{option}</span>
           </label>

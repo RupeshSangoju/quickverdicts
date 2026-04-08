@@ -51,7 +51,7 @@ const quizQuestions = [
       "Complete the debriefing period with the attorneys and confirm payment",
       "Restart the case"
     ],
-    answer: "Complete the witness believability form, confirm payment, and leave feedback",
+    answer: "Complete the debriefing period with the attorneys and confirm payment",
     explanation: "You must complete all post-case steps before leaving."
   },
   {

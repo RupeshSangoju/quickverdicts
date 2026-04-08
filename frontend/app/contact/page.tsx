@@ -18,24 +18,20 @@ export default function Contact() {
             <div className="font-semibold mb-4 text-[20px] text-[#0A2342]">Business Hours</div>
             <div className="grid grid-cols-2 gap-x-12 gap-y-3">
               <div className="text-[#0A2342]">Monday ~ Friday</div>
-              <div className="text-[#455A7C]">8:00 AM ~ 5:00 PM</div>
+              <div className="text-[#455A7C]">9:00 AM ~ 5:00 PM</div>
               <div className="text-[#0A2342]">Saturday</div>
-              <div className="text-[#455A7C]">8:00 AM ~ 2:00 PM</div>
+              <div className="text-[#455A7C]">9:00 AM ~ 2:00 PM</div>
               <div className="text-[#0A2342]">Sunday</div>
               <div className="text-[#455A7C]">Closed</div>
             </div>
           </div>
-          <div className="mb-10">
-            <div className="font-semibold mb-4 text-[20px] text-[#0A2342]">Phone</div>
-            <div className="text-[#455A7C]">(123) 456-7890</div>
-          </div>
           <div className="mb-2">
             <div className="font-semibold mb-4 text-[20px] text-[#0A2342]">Email</div>
             <a
-              href="mailto:support@quickverdict.com"
+              href="mailto:QVTrial@quickverdicts.com"
               className="text-[#0A2342] underline hover:text-[#1a3666]"
             >
-              support@quickverdict.com
+              QVTrial@quickverdicts.com
             </a>
           </div>
         </div>

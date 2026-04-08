@@ -7,19 +7,16 @@ import { ChevronDown, ChevronLeft, ChevronRight, Search, Play, ArrowLeft, Mail, 
 
 const tutorialVideos = [
   {
-    src: "/help_video1.png",
-    title: "Lesson #01 - What is Quick Verdict?",
-    length: "3 mins",
+    iframe: "https://sway.cloud.microsoft/s/oYHROIR7dxun9bf6/embed",
+    title: "Lesson #01 - Drafting the Jury Charge"
   },
   {
-    src: "/help_video2.png",
-    title: "Lesson #02 - How to set new trial?",
-    length: "7 mins",
+    iframe:"https://sway.cloud.microsoft/s/i2IaFEbSsV1vnmGR/embed",
+    title: "Lesson #02 - The Jury"
   },
   {
-    src: "/help_video3.png",
-    title: "Lesson #03 - How do I use my War Room?",
-    length: "3 mins",
+    iframe:"https://sway.cloud.microsoft/s/PGHgbdhrLkkwI9rU/embed",
+    title: "Lesson #03 - Trial Presentation"
   },
   {
     src: "/help_video1.png",
@@ -167,23 +164,34 @@ export default function AttorneyHelp({ onContact }: { onContact: () => void }) {
                     key={v.title + idx}
                     className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden flex-1 min-w-[280px] max-w-[360px] group cursor-pointer border border-gray-200"
                   >
-                    <div className="relative w-full h-52 bg-gradient-to-br from-blue-50 to-gray-100 overflow-hidden">
-                      <Image 
-                        src={v.src} 
-                        alt={v.title} 
-                        fill 
-                        className="object-cover group-hover:scale-105 transition-transform duration-300" 
-                      />
-                      <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-colors" />
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="bg-white/95 rounded-full p-4 shadow-lg group-hover:scale-110 transition-transform">
-                          <Play className="text-[#16305B] fill-[#16305B]" size={24} />
-                        </div>
-                      </div>
-                      <div className="absolute bottom-3 right-3 bg-black/70 text-white text-xs px-2 py-1 rounded">
-                        {v.length}
-                      </div>
-                    </div>
+<div className="relative w-full h-52 bg-gradient-to-br from-blue-50 to-gray-100 overflow-hidden">
+  {v.iframe ? (
+    <iframe
+      src={v.iframe}
+      className="w-full h-full border-0"
+      allowFullScreen
+    />
+  ) : (
+    <>
+      <Image
+        src={v.src}
+        alt={v.title}
+        fill
+        className="object-cover group-hover:scale-105 transition-transform duration-300"
+      />
+      <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-colors" />
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="bg-white/95 rounded-full p-4 shadow-lg group-hover:scale-110 transition-transform">
+          <Play className="text-[#16305B] fill-[#16305B]" size={24} />
+        </div>
+      </div>
+    </>
+  )}
+
+  <div className="absolute bottom-3 right-3 bg-black/70 text-white text-xs px-2 py-1 rounded">
+    {v.length}
+  </div>
+</div>
                     <div className="p-4">
                       <h3 className="font-semibold text-[#16305B] mb-1 line-clamp-2 min-h-[48px]">
                         {v.title}

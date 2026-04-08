@@ -169,7 +169,7 @@ export default function LoginPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 lg:gap-10 justify-center items-start max-w-4xl mx-auto">
             <RoleCard
               title="Attorney Login"
-              description="Start, manage, or join a small claims trial as a licensed attorney."
+              description="Start, manage, and join a mock jury trial as a licensed attorney. "
               loginHref="/login/attorney"
               signupHref="/signup/attorney"
               icon={Gavel}
@@ -178,7 +178,7 @@ export default function LoginPage() {
             />
             <RoleCard
               title="Juror Login"
-              description="Serve in real trials and get paid for your time—100% online."
+              description="Serve in mock trials and get paid for your time—100% online. "
               loginHref="/login/juror"
               signupHref="/signup/juror"
               icon={Users}
