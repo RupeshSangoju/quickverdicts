@@ -1142,12 +1142,86 @@ async function getVerdicts(req, res) {
   }
 }
 
+/**
+ * PUT /api/jury-charge/reorder/:caseId
+ * Reorder questions by updating OrderIndex values
+ * Attorney only
+ */
+async function reorderQuestions(req, res) {
+  try {
+    const { caseId } = req.params;
+    const { questions } = req.body; // Array of { questionId, orderIndex }
+
+    if (!Array.isArray(questions) || questions.length === 0) {
+      return res.status(400).json({ success: false, message: "Questions array is required" });
+    }
+
+    const pool = await poolPromise;
+
+    // Verify attorney owns case
+    if (req.user && req.user.type === "attorney") {
+      const owns = await verifyAttorneyOwnsCase(pool, parseInt(caseId), req.user.id);
+      if (!owns) {
+        return res.status(403).json({ success: false, message: "Not authorized to modify this case" });
+      }
+    }
+
+    // Check if locked
+    const lockResult = await pool
+      .request()
+      .input("caseId", sql.Int, parseInt(caseId))
+      .query("SELECT JuryChargeStatus FROM Cases WHERE CaseId = @caseId");
+
+    if (lockResult.recordset.length > 0 && lockResult.recordset[0].JuryChargeStatus === "completed") {
+      return res.status(403).json({ success: false, message: "Jury charge is locked and cannot be edited" });
+    }
+
+    // Update each question's OrderIndex
+    for (const { questionId, orderIndex } of questions) {
+      await pool
+        .request()
+        .input("questionId", sql.Int, parseInt(questionId))
+        .input("caseId", sql.Int, parseInt(caseId))
+        .input("orderIndex", sql.Int, orderIndex)
+        .query("UPDATE JuryChargeQuestions SET OrderIndex = @orderIndex WHERE QuestionId = @questionId AND CaseId = @caseId");
+    }
+
+    // Fetch updated questions in new order
+    const updatedResult = await pool
+      .request()
+      .input("caseId", sql.Int, parseInt(caseId))
+      .query("SELECT * FROM JuryChargeQuestions WHERE CaseId = @caseId ORDER BY OrderIndex ASC");
+
+    const updatedQuestions = updatedResult.recordset.map((q) => ({
+      ...q,
+      Options: safeJSONParse(q.Options, []),
+    }));
+
+    // Notify via WebSocket so admin ECS room updates immediately
+    try {
+      websocketService.notifyQuestionsReordered(parseInt(caseId), updatedQuestions);
+    } catch (wsError) {
+      console.error("WebSocket notification failed:", wsError);
+    }
+
+    res.json({ success: true, message: "Questions reordered successfully", questions: updatedQuestions });
+  } catch (error) {
+    console.error("Error reordering questions:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to reorder questions",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+}
+
 module.exports = {
   addQuestion, // NEW - Add single question with WebSocket
   saveJuryChargeQuestions, // Bulk save/replace all questions
   getJuryChargeQuestions,
   updateJuryChargeQuestion, // Updated with WebSocket
   deleteJuryChargeQuestion, // Updated with WebSocket
+  reorderQuestions, // Drag-and-drop reorder with WebSocket
   exportAsText,
   exportAsMSFormsTemplate,
   releaseToJury, // Admin releases to jury - Updated with WebSocket

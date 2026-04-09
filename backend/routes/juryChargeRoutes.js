@@ -110,6 +110,17 @@ router.delete(
   juryChargeController.deleteJuryChargeQuestion
 );
 
+/**
+ * PUT /api/jury-charge/reorder/:caseId
+ * Reorder questions (drag-and-drop)
+ * Attorney only
+ */
+router.put(
+  "/reorder/:caseId",
+  questionLimiter,
+  juryChargeController.reorderQuestions
+);
+
 // ============================================
 // ADMIN CONTROLS
 // ============================================

@@ -27,6 +27,9 @@ const {
   updateSchedule,
 } = require("../controllers/adminController");
 
+// Import email utility
+const { sendNotificationEmail } = require("../utils/email");
+
 // Import models
 const Attorney = require("../models/Attorney");
 const Juror = require("../models/Juror");
@@ -1440,7 +1443,39 @@ router.delete("/attorneys/:attorneyId", authMiddleware, requireAdmin, async (req
     if (isNaN(attorneyId) || attorneyId <= 0) {
       return res.status(400).json({ success: false, message: "Valid attorney ID is required" });
     }
+    const pool = await poolPromise;
+    const attorneyResult = await pool.request()
+      .input("attorneyId", sql.Int, attorneyId)
+      .query("SELECT Email, FirstName, LastName FROM dbo.Attorneys WHERE AttorneyId = @attorneyId");
+    const attorney = attorneyResult.recordset[0];
+
     await Attorney.softDeleteAccount(attorneyId);
+
+    if (attorney && attorney.Email) {
+      const name = `${attorney.FirstName || ""} ${attorney.LastName || ""}`.trim() || "Attorney";
+      await sendNotificationEmail(
+        attorney.Email,
+        "Your QuickVerdicts Account Has Been Deleted",
+        `<h2 style="color: #16305B; margin-top: 0;">Account Deletion Notice</h2>
+        <p style="color: #666; line-height: 1.6;">Dear ${name},</p>
+        <p style="color: #666; line-height: 1.6;">
+          We are writing to inform you that your QuickVerdicts attorney account has been deleted by the administrator.
+        </p>
+        <div style="background: #fee; border-left: 4px solid #dc2626; padding: 15px; margin: 20px 0; border-radius: 4px;">
+          <p style="color: #991b1b; margin: 0; font-size: 14px;">
+            <strong>Your account has been deactivated and you will no longer be able to log in.</strong>
+          </p>
+        </div>
+        <p style="color: #666; line-height: 1.6;">
+          If you believe this was done in error or have any questions, please contact our support team.
+        </p>
+        <p style="color: #666; line-height: 1.6;">
+          Thank you for being part of Quick Verdicts.<br/>
+          Quick Verdicts Team
+        </p>`
+      ).catch(err => console.error("Failed to send account deletion email to attorney:", err.message));
+    }
+
     res.json({ success: true, message: "Attorney deleted successfully" });
   } catch (error) {
     console.error("Error deleting attorney:", error);
@@ -1530,7 +1565,39 @@ router.delete("/jurors/:jurorId", authMiddleware, requireAdmin, async (req, res)
     if (isNaN(jurorId) || jurorId <= 0) {
       return res.status(400).json({ success: false, message: "Valid juror ID is required" });
     }
+    const pool = await poolPromise;
+    const jurorResult = await pool.request()
+      .input("jurorId", sql.Int, jurorId)
+      .query("SELECT Email, FirstName, LastName FROM dbo.Jurors WHERE JurorId = @jurorId");
+    const juror = jurorResult.recordset[0];
+
     await Juror.softDeleteJuror(jurorId);
+
+    if (juror && juror.Email) {
+      const name = `${juror.FirstName || ""} ${juror.LastName || ""}`.trim() || "Juror";
+      await sendNotificationEmail(
+        juror.Email,
+        "Your QuickVerdicts Account Has Been Deleted",
+        `<h2 style="color: #16305B; margin-top: 0;">Account Deletion Notice</h2>
+        <p style="color: #666; line-height: 1.6;">Dear ${name},</p>
+        <p style="color: #666; line-height: 1.6;">
+          We are writing to inform you that your QuickVerdicts juror account has been deleted by the administrator.
+        </p>
+        <div style="background: #fee; border-left: 4px solid #dc2626; padding: 15px; margin: 20px 0; border-radius: 4px;">
+          <p style="color: #991b1b; margin: 0; font-size: 14px;">
+            <strong>Your account has been deactivated and you will no longer be able to log in.</strong>
+          </p>
+        </div>
+        <p style="color: #666; line-height: 1.6;">
+          If you believe this was done in error or have any questions, please contact our support team.
+        </p>
+        <p style="color: #666; line-height: 1.6;">
+          Thank you for being part of Quick Verdicts.<br/>
+          Quick Verdicts Team
+        </p>`
+      ).catch(err => console.error("Failed to send account deletion email to juror:", err.message));
+    }
+
     res.json({ success: true, message: "Juror deleted successfully" });
   } catch (error) {
     console.error("Error deleting juror:", error);

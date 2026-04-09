@@ -7,15 +7,15 @@ import { ChevronDown, ChevronLeft, ChevronRight, Search, Play, ArrowLeft, Mail, 
 
 const tutorialVideos: { src?: string; iframe?: string; title: string; length?: string; category?: string }[] = [
   {
-    iframe: "https://sway.cloud.microsoft/s/oYHROIR7dxun9bf6/embed",
+    iframe: "https://sway.cloud.microsoft/s/zMXVkMjuP4CrlLQV/embed",
     title: "Lesson #01 - Drafting the Jury Charge"
   },
   {
-    iframe:"https://sway.cloud.microsoft/s/i2IaFEbSsV1vnmGR/embed",
+    iframe:"https://sway.cloud.microsoft/s/awk1CWdCl2CmMIMj/embed",
     title: "Lesson #02 - The Jury"
   },
   {
-    iframe:"https://sway.cloud.microsoft/s/PGHgbdhrLkkwI9rU/embed",
+    iframe:"https://sway.cloud.microsoft/s/xzEhufcRKXTUqmkT/embed",
     title: "Lesson #03 - Trial Presentation"
   },
   {

@@ -47,6 +47,8 @@ export default function JuryChargeBuilder({
   const [editingId, setEditingId] = useState<number | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   // State for adding multiple questions at once
   const [newQuestions, setNewQuestions] = useState<Array<{
@@ -360,6 +362,58 @@ export default function JuryChargeBuilder({
   }
 
   // ============================================
+  // DRAG AND DROP REORDER
+  // ============================================
+
+  function handleDragStart(index: number) {
+    setDragIndex(index);
+  }
+
+  function handleDragOver(e: React.DragEvent, index: number) {
+    e.preventDefault();
+    setDragOverIndex(index);
+  }
+
+  function handleDragEnd() {
+    setDragIndex(null);
+    setDragOverIndex(null);
+  }
+
+  async function handleDrop(dropIndex: number) {
+    if (dragIndex === null || dragIndex === dropIndex) {
+      setDragIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+
+    // Reorder locally for instant feedback
+    const reordered = [...questions];
+    const [moved] = reordered.splice(dragIndex, 1);
+    reordered.splice(dropIndex, 0, moved);
+    setQuestions(reordered);
+    setDragIndex(null);
+    setDragOverIndex(null);
+
+    // Persist new order to backend
+    try {
+      const token = localStorage.getItem("token");
+      const payload = reordered.map((q, i) => ({ questionId: q.QuestionId, orderIndex: i }));
+      const response = await fetch(`${API_BASE}/api/jury-charge/reorder/${caseId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ questions: payload }),
+      });
+      if (!response.ok) {
+        toast.error("Failed to save new order. Refreshing...");
+        await loadQuestions();
+      }
+    } catch {
+      toast.error("Failed to save new order. Refreshing...");
+      await loadQuestions();
+    }
+  }
+
+  // ============================================
   // RENDER
   // ============================================
 
@@ -616,6 +670,12 @@ export default function JuryChargeBuilder({
               onCancel={cancelEdit}
               onDelete={() => handleDeleteQuestion(question.QuestionId)}
               saving={saving}
+              isDragging={dragIndex === index}
+              isDragOver={dragOverIndex === index}
+              onDragStart={() => handleDragStart(index)}
+              onDragOver={(e) => handleDragOver(e, index)}
+              onDragEnd={handleDragEnd}
+              onDrop={() => handleDrop(index)}
             />
           ))
         )}
@@ -628,8 +688,8 @@ export default function JuryChargeBuilder({
             Total Questions: {questions.length}
           </p>
           <p className="text-xs text-[#455A7C] mt-1.5">
-            💡 Tip: You can continue editing questions until the admin releases them to jurors.
-            Once released, all questions become locked and cannot be modified.
+            💡 Tip: Drag the <span className="font-semibold">⠿</span> handle to reorder questions. Changes take effect immediately in the admin view.
+            You can continue editing until the admin releases them to jurors — once released, all questions are locked.
           </p>
         </div>
       )}
@@ -784,6 +844,12 @@ interface QuestionCardProps {
   onCancel: () => void;
   onDelete: () => void;
   saving: boolean;
+  isDragging?: boolean;
+  isDragOver?: boolean;
+  onDragStart?: () => void;
+  onDragOver?: (e: React.DragEvent) => void;
+  onDragEnd?: () => void;
+  onDrop?: () => void;
 }
 
 function QuestionCard({
@@ -798,6 +864,12 @@ function QuestionCard({
   onCancel,
   onDelete,
   saving,
+  isDragging,
+  isDragOver,
+  onDragStart,
+  onDragOver,
+  onDragEnd,
+  onDrop,
 }: QuestionCardProps) {
   if (isEditing) {
     return (
@@ -820,8 +892,28 @@ function QuestionCard({
     : [];
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-5 hover:shadow-md transition">
+    <div
+      className={`bg-white border rounded-lg p-5 transition-all ${
+        isDragging ? "opacity-40 scale-95" : ""
+      } ${
+        isDragOver ? "border-blue-400 border-2 bg-blue-50 shadow-lg" : "border-gray-200 hover:shadow-md"
+      }`}
+      draggable={!isLocked}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDragEnd={onDragEnd}
+      onDrop={(e) => { e.preventDefault(); onDrop?.(); }}
+    >
       <div className="flex items-start justify-between">
+        <div className="flex items-start gap-3 flex-1">
+          {!isLocked && (
+            <div
+              className="mt-1 cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 flex-shrink-0"
+              title="Drag to reorder"
+            >
+              <GripVertical className="w-5 h-5" />
+            </div>
+          )}
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-sm font-semibold text-blue-600">
@@ -875,6 +967,7 @@ function QuestionCard({
             </ul>
           )}
 
+        </div>
         </div>
 
         {/* Actions */}
