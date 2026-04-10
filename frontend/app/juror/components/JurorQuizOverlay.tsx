@@ -68,7 +68,7 @@ const quizQuestions = [
       "Helps guide discussion and enters answers to the Jury Charge on behalf of the jury panel",
       "Shares legal advice learned from previous cases with the jury panel"
     ],
-    answer: "Helps guide discussion and keeps things organized",
+    answer: "Helps guide discussion and enters answers to the Jury Charge on behalf of the jury panel",
     explanation: "The foreperson helps guide the group and keeps things on track."
   },
   {
@@ -113,7 +113,7 @@ export default function JurorQuizOverlay({ open, onClose, onFinish, sidebarColla
               </svg>
             </div>
             <div>
-              <h2 className="text-lg font-bold text-white">Juror Qualification Quiz</h2>
+              <h2 className="text-lg font-bold text-white">Presiding Juror Qualification Quiz</h2>
               <p className="text-xs text-blue-100">Required to access job board</p>
             </div>
           </div>
