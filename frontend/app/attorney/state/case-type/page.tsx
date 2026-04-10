@@ -80,7 +80,7 @@ export default function CaseTypePage() {
 
         <FormContainer title="Case Type">
           <div className="space-y-6">
-            <p className="text-gray-700 text-center">Please select which type of case you are filing for.</p>
+            <p className="text-gray-700 text-center">Please select the jurisdiction your case is in:</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <button
                 className={`bg-[#f5ecd7] px-8 py-8 rounded-lg shadow-md text-2xl font-bold text-[#16305B] border-4 transition-all hover:shadow-xl ${
@@ -90,7 +90,8 @@ export default function CaseTypePage() {
               >
                 State
                 <div className="mt-3 text-sm font-normal text-[#16305B] leading-relaxed">
-                  Cases involving state laws such as family disputes, contracts, property, and most crimes.
+                  Currently limited to state cases in Texas
+
                 </div>
               </button>
               <button
@@ -101,7 +102,7 @@ export default function CaseTypePage() {
               >
                 Federal
                 <div className="mt-3 text-sm font-normal text-[#16305B] leading-relaxed">
-                  Cases involving federal laws, constitutional issues, or disputes between citizens of different states with high dollar amounts.
+                  Currently limited to one county within Texas federal jurisdictions.  
                 </div>
               </button>
             </div>
