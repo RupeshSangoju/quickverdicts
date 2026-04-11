@@ -354,7 +354,7 @@ export function Step4Agreement({
           <button
             type="button"
             onClick={handlePrint}
-            className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#0A2342] focus:ring-offset-2 flex items-center gap-2 transition-colors"
+            className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#0A2342] focus:ring-offset-2 flex items-center gap-2 transition-colors cursor-pointer"
             aria-label="Print agreement"
           >
             <Printer size={16} aria-hidden="true" />
@@ -363,7 +363,7 @@ export function Step4Agreement({
           <button
             type="button"
             onClick={handleDownload}
-            className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#0A2342] focus:ring-offset-2 flex items-center gap-2 transition-colors"
+            className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#0A2342] focus:ring-offset-2 flex items-center gap-2 transition-colors cursor-pointer"
             aria-label="Download agreement"
           >
             <Download size={16} aria-hidden="true" />
