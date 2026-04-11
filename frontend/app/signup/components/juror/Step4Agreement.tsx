@@ -211,23 +211,96 @@ export function Step4Agreement({
 
   const handleDownload = useCallback(() => {
     const jurorName = formData.personalDetails2?.name?.trim() || "Juror";
-    const htmlContent = generateAgreementHTML(jurorName);
-    const blob = new Blob([htmlContent], { type: "text/html" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
+    const date = getFormattedDate();
 
-    link.href = url;
-    link.download = `QuickVerdicts-Juror-Agreement-${Date.now()}.html`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    import("jspdf").then(({ jsPDF }) => {
+      const doc = new jsPDF({ unit: "pt", format: "letter" });
+      const pageW = doc.internal.pageSize.getWidth();
+      const margin = 50;
+      const maxW = pageW - margin * 2;
+      let y = margin;
+
+      const addText = (text: string, size: number, bold: boolean, color: [number, number, number] = [0, 0, 0], extra = 0) => {
+        doc.setFontSize(size);
+        doc.setFont("helvetica", bold ? "bold" : "normal");
+        doc.setTextColor(...color);
+        const lines = doc.splitTextToSize(text, maxW);
+        lines.forEach((line: string) => {
+          if (y + size + 4 > doc.internal.pageSize.getHeight() - margin) {
+            doc.addPage();
+            y = margin;
+          }
+          doc.text(line, margin, y);
+          y += size + 4;
+        });
+        y += extra;
+      };
+
+      const addBullet = (text: string) => {
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(0, 0, 0);
+        const lines = doc.splitTextToSize(text, maxW - 16);
+        lines.forEach((line: string, i: number) => {
+          if (y + 14 > doc.internal.pageSize.getHeight() - margin) { doc.addPage(); y = margin; }
+          doc.text(i === 0 ? "•" : " ", margin + 2, y);
+          doc.text(line, margin + 16, y);
+          y += 14;
+        });
+      };
+
+      // Header bar
+      doc.setFillColor(10, 35, 66);
+      doc.rect(0, 0, pageW, 60, "F");
+      doc.setFontSize(20);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(255, 255, 255);
+      doc.text("Juror User Agreement for QuickVerdicts", margin, 38);
+      y = 80;
+
+      addText(`Effective Date: ${date}`, 10, false, [80, 80, 80]);
+      addText(`Version: ${AGREEMENT_VERSION}`, 10, false, [80, 80, 80]);
+      addText(`Juror: ${jurorName}`, 10, false, [80, 80, 80], 10);
+
+      doc.setDrawColor(10, 35, 66);
+      doc.setLineWidth(1);
+      doc.line(margin, y, pageW - margin, y);
+      y += 16;
+
+      addText("Welcome to QuickVerdicts. This Juror User Agreement (\"Agreement\") governs your use of our virtual courtroom platform (\"Platform\"). By registering or using QuickVerdicts as a juror, you (\"Juror,\" \"You,\" or \"Your\") agree to the following terms and conditions.", 10, false, [0, 0, 0], 10);
+
+      const sections: { title: string; bullets: string[] }[] = [
+        { title: "1. Eligibility and Verification", bullets: ["You must meet all eligibility requirements to participate as a juror on QuickVerdicts.", "You agree to provide accurate and current verification information.", "You acknowledge that verification steps may be required before you can access full platform features."] },
+        { title: "2. Use of the Platform", bullets: ["You may use QuickVerdicts solely for legitimate jury service and in compliance with all applicable laws and regulations.", "You are responsible for all activity conducted under your account.", "You agree not to misuse the platform, including attempting unauthorized access, disrupting proceedings, or engaging in inappropriate conduct."] },
+        { title: "3. Jury Service and Proceedings", bullets: ["You acknowledge that virtual jury proceedings may differ from traditional in-person jury service and agree to adapt accordingly.", "You are responsible for maintaining confidentiality of case materials and deliberations as required by law.", "You agree to participate actively and professionally in all assigned proceedings."] },
+        { title: "4. Professional Conduct and Confidentiality", bullets: ["You agree to maintain appropriate standards of conduct at all times while using the Platform.", "You must not discuss cases outside of official proceedings or with unauthorized individuals.", "You are responsible for ensuring your environment is appropriate for jury service (quiet, private, and free from distractions).", "You must not record, screenshot, or share any case materials, testimony, or deliberations without explicit authorization.", "Violations of confidentiality may result in immediate account termination and potential legal consequences."] },
+        { title: "5. Compensation and Payment", bullets: ["QuickVerdicts will provide compensation for jury service as outlined in individual case assignments.", "Payment will be processed through your selected payment method after completion of service.", "You are responsible for any applicable taxes on compensation received.", "Compensation may be withheld if you fail to complete assigned duties or violate this Agreement."] },
+        { title: "6. Limitation of Liability", bullets: ["QuickVerdicts provides the platform \"as is\" and does not guarantee specific outcomes.", "QuickVerdicts is not liable for technical failures, delays, or any indirect consequences arising from platform use.", "Your participation is voluntary and you acknowledge the inherent responsibilities of jury service."] },
+        { title: "7. Account Termination", bullets: ["QuickVerdicts reserves the right to suspend or terminate your access for violations of this Agreement.", "You may deactivate your account at any time by contacting support, subject to completion of any ongoing case assignments."] },
+        { title: "8. Updates to Agreement", bullets: ["QuickVerdicts may modify this Agreement at any time with notice to users.", "Continued use after changes constitutes acceptance of updated terms."] },
+        { title: "9. Governing Law", bullets: ["This Agreement shall be governed by the laws of the State of Texas."] },
+        { title: "10. Contact Information", bullets: ["For questions or support, please contact us at QVTrail@quickverdicts.com."] },
+      ];
+
+      sections.forEach(({ title, bullets }) => {
+        addText(title, 12, true, [10, 35, 66], 4);
+        bullets.forEach(addBullet);
+        y += 10;
+      });
+
+      // Footer
+      doc.setFillColor(240, 240, 240);
+      doc.rect(margin, y, maxW, 50, "F");
+      y += 14;
+      addText("END OF AGREEMENT", 11, true, [10, 35, 66]);
+      addText(`Accepted on: ${date}`, 10, false, [80, 80, 80]);
+      addText(`Juror Signature: ${jurorName}`, 10, false, [80, 80, 80]);
+
+      doc.save(`QuickVerdicts-Juror-Agreement-${Date.now()}.pdf`);
+    });
 
     if (typeof window !== "undefined" && (window as any).gtag) {
-      (window as any).gtag("event", "agreement_downloaded", {
-        form_type: "juror_signup",
-        step: 4,
-      });
+      (window as any).gtag("event", "agreement_downloaded", { form_type: "juror_signup", step: 4 });
     }
   }, [formData.personalDetails2]);
 

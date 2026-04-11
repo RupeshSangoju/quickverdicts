@@ -222,23 +222,96 @@ export function Step4Agreement({
 
   const handleDownload = useCallback(() => {
     const attorneyName = `${formData.firstName} ${formData.lastName}`.trim();
-    const htmlContent = generateAgreementHTML(attorneyName);
-    const blob = new Blob([htmlContent], { type: "text/html" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
+    const date = getFormattedDate();
 
-    link.href = url;
-    link.download = `QuickVerdicts-Agreement-${Date.now()}.html`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    import("jspdf").then(({ jsPDF }) => {
+      const doc = new jsPDF({ unit: "pt", format: "letter" });
+      const pageW = doc.internal.pageSize.getWidth();
+      const margin = 50;
+      const maxW = pageW - margin * 2;
+      let y = margin;
+
+      const addText = (text: string, size: number, bold: boolean, color: [number, number, number] = [0, 0, 0], extra = 0) => {
+        doc.setFontSize(size);
+        doc.setFont("helvetica", bold ? "bold" : "normal");
+        doc.setTextColor(...color);
+        const lines = doc.splitTextToSize(text, maxW);
+        lines.forEach((line: string) => {
+          if (y + size + 4 > doc.internal.pageSize.getHeight() - margin) {
+            doc.addPage();
+            y = margin;
+          }
+          doc.text(line, margin, y);
+          y += size + 4;
+        });
+        y += extra;
+      };
+
+      const addBullet = (text: string) => {
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(0, 0, 0);
+        const lines = doc.splitTextToSize(text, maxW - 16);
+        lines.forEach((line: string, i: number) => {
+          if (y + 14 > doc.internal.pageSize.getHeight() - margin) { doc.addPage(); y = margin; }
+          doc.text(i === 0 ? "•" : " ", margin + 2, y);
+          doc.text(line, margin + 16, y);
+          y += 14;
+        });
+      };
+
+      // Header bar
+      doc.setFillColor(10, 35, 66);
+      doc.rect(0, 0, pageW, 60, "F");
+      doc.setFontSize(20);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(255, 255, 255);
+      doc.text("Attorney User Agreement for QuickVerdicts", margin, 38);
+      y = 80;
+
+      addText(`Effective Date: ${date}`, 10, false, [80, 80, 80]);
+      addText(`Version: ${AGREEMENT_VERSION}`, 10, false, [80, 80, 80]);
+      addText(`Attorney: ${attorneyName}`, 10, false, [80, 80, 80], 10);
+
+      doc.setDrawColor(10, 35, 66);
+      doc.setLineWidth(1);
+      doc.line(margin, y, pageW - margin, y);
+      y += 16;
+
+      addText("This Attorney User Agreement (\"Agreement\") is entered into between QuickVerdicts (\"Platform\", \"we\", \"us\") and you (\"Attorney\", \"you\") as of the date of your electronic acceptance.", 10, false, [0, 0, 0], 10);
+
+      const sections: { title: string; body?: string; bullets?: string[] }[] = [
+        { title: "1. Acceptance of Terms", body: "By creating an attorney account on QuickVerdicts, you acknowledge that you have read, understood, and agree to be bound by this Agreement and all applicable laws and regulations." },
+        { title: "2. Attorney Eligibility", body: "You represent and warrant that:", bullets: ["You are a licensed attorney in good standing in at least one U.S. jurisdiction", "Your bar license is current and has not been suspended or revoked", "You have the authority to represent clients in small claims matters", "All information provided during registration is accurate and complete"] },
+        { title: "3. Platform Services", body: "QuickVerdicts provides a virtual platform for small claims dispute resolution. As an attorney user, you may:", bullets: ["Create and manage case filings on behalf of clients", "Participate in virtual trials before online juror panels", "Submit evidence and documentation electronically", "Communicate with jurors through the platform's messaging system"] },
+        { title: "4. Professional Conduct", body: "You agree to:", bullets: ["Maintain the highest standards of professional ethics", "Comply with all applicable bar rules and regulations", "Treat all platform users with respect and professionalism", "Not engage in any fraudulent, misleading, or deceptive practices", "Protect client confidentiality and attorney-client privilege"] },
+        { title: "5. Fees and Payment", body: "Attorney fees and platform usage fees are as follows:", bullets: ["Platform filing fees are outlined in our Fee Schedule", "You are responsible for collecting your own attorney fees from clients", "The Platform does not mediate fee disputes between attorneys and clients"] },
+        { title: "6. Intellectual Property", body: "All content, trademarks, and materials on the Platform are owned by QuickVerdicts. You may not reproduce, distribute, or create derivative works without express written permission." },
+        { title: "7. Data Privacy and Security", body: "We take data security seriously. However, you acknowledge that:", bullets: ["No online platform can guarantee 100% security", "You are responsible for maintaining the confidentiality of your login credentials", "You must use reasonable security measures when accessing the platform"] },
+        { title: "8. Limitation of Liability", body: "TO THE MAXIMUM EXTENT PERMITTED BY LAW, QUICKVERDICTS SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES ARISING OUT OF OR RELATED TO YOUR USE OF THE PLATFORM." },
+        { title: "9. Termination", body: "We reserve the right to terminate or suspend your account at any time for violation of this Agreement, misconduct, or any other reason at our sole discretion." },
+        { title: "10. Governing Law", body: "This Agreement shall be governed by and construed in accordance with the laws of the State of Texas, without regard to its conflict of law provisions." },
+      ];
+
+      sections.forEach(({ title, body, bullets }) => {
+        addText(title, 12, true, [10, 35, 66], 4);
+        if (body) addText(body, 10, false, [0, 0, 0], bullets ? 4 : 10);
+        if (bullets) { bullets.forEach(addBullet); y += 10; }
+      });
+
+      // Footer
+      doc.setFillColor(240, 240, 240);
+      doc.rect(margin, y, maxW, 50, "F");
+      y += 14;
+      addText("END OF AGREEMENT", 11, true, [10, 35, 66]);
+      addText(`Accepted on: ${date}`, 10, false, [80, 80, 80]);
+      addText(`Attorney Signature: ${attorneyName}`, 10, false, [80, 80, 80]);
+
+      doc.save(`QuickVerdicts-Attorney-Agreement-${Date.now()}.pdf`);
+    });
 
     if (typeof window !== "undefined" && (window as any).gtag) {
-      (window as any).gtag("event", "agreement_downloaded", {
-        form_type: "attorney_signup",
-        step: 4,
-      });
+      (window as any).gtag("event", "agreement_downloaded", { form_type: "attorney_signup", step: 4 });
     }
   }, [formData.firstName, formData.lastName]);
 
