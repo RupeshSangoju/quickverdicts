@@ -211,7 +211,7 @@ export default function AdminDashboard() {
   const [pendingCases, setPendingCases] = useState<PendingCase[]>([]);
   const [deletedCases, setDeletedCases] = useState<any[]>([]);
   const [deletedCasesPage, setDeletedCasesPage] = useState(1);
-  const DELETED_CASES_PER_PAGE = 2;
+  const [deletedCasesPageSize, setDeletedCasesPageSize] = useState(3);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -3219,14 +3219,14 @@ function formatTime(timeString: string, scheduledDate: string) {
         </div>
         {/* Deleted Cases */}
         {deletedCases.length > 0 && (() => {
-          const totalPages = Math.ceil(deletedCases.length / DELETED_CASES_PER_PAGE);
+          const totalPages = Math.ceil(deletedCases.length / deletedCasesPageSize);
           const pageItems = deletedCases.slice(
-            (deletedCasesPage - 1) * DELETED_CASES_PER_PAGE,
-            deletedCasesPage * DELETED_CASES_PER_PAGE
+            (deletedCasesPage - 1) * deletedCasesPageSize,
+            deletedCasesPage * deletedCasesPageSize
           );
           return (
             <div className="bg-white rounded-xl shadow-sm p-6 border border-red-200">
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                 <div className="flex items-center">
                   <div className="p-2 bg-red-100 rounded-lg mr-3">
                     <Trash2 className="h-6 w-6 text-red-600" />
@@ -3236,11 +3236,20 @@ function formatTime(timeString: string, scheduledDate: string) {
                     {deletedCases.length} deleted
                   </span>
                 </div>
-                {totalPages > 1 && (
-                  <span className="text-sm text-gray-500 font-medium">
-                    Page {deletedCasesPage} of {totalPages}
-                  </span>
-                )}
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-gray-600 font-medium">Show per page:</span>
+                  <select
+                    className="border-2 border-gray-300 rounded-lg px-3 py-1.5 text-sm text-black bg-white font-medium focus:border-red-400 focus:outline-none cursor-pointer"
+                    value={deletedCasesPageSize}
+                    onChange={(e) => { setDeletedCasesPageSize(Number(e.target.value)); setDeletedCasesPage(1); }}
+                  >
+                    <option value={3}>3</option>
+                    <option value={6}>6</option>
+                    <option value={9}>9</option>
+                    <option value={12}>12</option>
+                  </select>
+                  <span className="text-sm text-gray-500">of {deletedCases.length} cases</span>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -3301,33 +3310,51 @@ function formatTime(timeString: string, scheduledDate: string) {
               </div>
 
               {totalPages > 1 && (
-                <div className="flex items-center justify-center gap-2 mt-5 pt-4 border-t border-red-100">
+                <div className="flex justify-center items-center mt-8 gap-2">
                   <button
-                    onClick={() => setDeletedCasesPage(p => Math.max(1, p - 1))}
+                    className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
                     disabled={deletedCasesPage === 1}
-                    className="p-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                    onClick={() => setDeletedCasesPage(p => p - 1)}
                   >
-                    <ChevronLeft className="h-4 w-4" />
+                    <ChevronLeft className="h-5 w-5" />
                   </button>
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(pg => (
-                    <button
-                      key={pg}
-                      onClick={() => setDeletedCasesPage(pg)}
-                      className={`w-8 h-8 rounded-lg text-sm font-bold transition ${
-                        pg === deletedCasesPage
-                          ? 'bg-red-600 text-white'
-                          : 'border border-gray-300 text-gray-600 hover:bg-gray-50'
-                      }`}
-                    >
-                      {pg}
-                    </button>
-                  ))}
+                  <div className="flex items-center gap-1">
+                    {(() => {
+                      const pages: number[] = [];
+                      if (totalPages <= 7) {
+                        for (let i = 1; i <= totalPages; i++) pages.push(i);
+                      } else if (deletedCasesPage <= 3) {
+                        pages.push(1, 2, 3, 4, -1, totalPages);
+                      } else if (deletedCasesPage >= totalPages - 2) {
+                        pages.push(1, -1, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+                      } else {
+                        pages.push(1, -1, deletedCasesPage - 1, deletedCasesPage, deletedCasesPage + 1, -2, totalPages);
+                      }
+                      return pages.map((pg, idx) =>
+                        pg < 0 ? (
+                          <span key={`e${idx}`} className="px-2 text-gray-500">...</span>
+                        ) : (
+                          <button
+                            key={pg}
+                            onClick={() => setDeletedCasesPage(pg)}
+                            className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
+                              pg === deletedCasesPage
+                                ? 'bg-red-600 text-white'
+                                : 'bg-gray-200 text-black hover:bg-gray-300'
+                            }`}
+                          >
+                            {pg}
+                          </button>
+                        )
+                      );
+                    })()}
+                  </div>
                   <button
-                    onClick={() => setDeletedCasesPage(p => Math.min(totalPages, p + 1))}
+                    className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
                     disabled={deletedCasesPage === totalPages}
-                    className="p-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                    onClick={() => setDeletedCasesPage(p => p + 1)}
                   >
-                    <ChevronRight className="h-4 w-4" />
+                    <ChevronRight className="h-5 w-5" />
                   </button>
                 </div>
               )}
