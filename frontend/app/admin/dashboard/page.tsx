@@ -3243,54 +3243,57 @@ function formatTime(timeString: string, scheduledDate: string) {
                 )}
               </div>
 
-              <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                 {pageItems.map((c) => (
-                  <div key={c.CaseId} className="border border-red-200 rounded-xl p-5 bg-red-50 opacity-80">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <span className="text-lg font-bold text-gray-700">{c.CaseTitle}</span>
-                        <span className="px-3 py-1 bg-red-600 text-white text-xs font-bold rounded-full flex items-center gap-1">
+                  <div key={c.CaseId} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
+                    {/* Card Header */}
+                    <div className="p-5 bg-gradient-to-r from-red-700 to-red-500 min-h-[80px] flex flex-col justify-between">
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="font-bold text-base text-white line-clamp-2 flex-1">{c.CaseTitle}</h3>
+                        <span className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold bg-white/20 text-white border border-white/30 flex-shrink-0">
                           <Trash2 className="h-3 w-3" />Case Deleted
                         </span>
-                        <span className="text-xs text-gray-500 font-medium">#{c.CaseId}</span>
                       </div>
+                      <p className="text-xs text-red-100 mt-1">Case #{c.CaseId} · {c.CaseType}</p>
                     </div>
-                    <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm text-gray-700">
+
+                    {/* Card Body */}
+                    <div className="p-5 flex-1 space-y-2 text-sm text-gray-700">
                       <div className="flex items-center gap-2">
-                        <UserIcon className="h-4 w-4 text-blue-400 flex-shrink-0" />
-                        <span><strong>Attorney:</strong> {c.AttorneyName}</span>
+                        <UserIcon className="h-4 w-4 text-[#16305B] flex-shrink-0" />
+                        <span className="truncate"><span className="font-medium">Attorney:</span> {c.AttorneyName}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4 text-purple-400 flex-shrink-0" />
-                        <span><strong>Law Firm:</strong> {c.LawFirmName || '—'}</span>
+                        <Building2 className="h-4 w-4 text-purple-500 flex-shrink-0" />
+                        <span className="truncate"><span className="font-medium">Law Firm:</span> {c.LawFirmName || '—'}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <Mail className="h-4 w-4 text-blue-400 flex-shrink-0" />
-                        <span><strong>Email:</strong> {c.AttorneyEmail}</span>
+                        <span className="truncate"><span className="font-medium">Email:</span> {c.AttorneyEmail}</span>
                       </div>
                       {c.AttorneyPhone && (
                         <div className="flex items-center gap-2">
-                          <Phone className="h-4 w-4 text-green-400 flex-shrink-0" />
-                          <span><strong>Phone:</strong> {c.AttorneyPhone}</span>
+                          <Phone className="h-4 w-4 text-green-500 flex-shrink-0" />
+                          <span><span className="font-medium">Phone:</span> {c.AttorneyPhone}</span>
                         </div>
                       )}
                       <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4 text-green-400 flex-shrink-0" />
-                        <span><strong>Location:</strong> {c.County}{c.State ? `, ${c.State}` : ''}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Briefcase className="h-4 w-4 text-orange-400 flex-shrink-0" />
-                        <span><strong>Case Type:</strong> {c.CaseType}</span>
+                        <MapPin className="h-4 w-4 text-green-500 flex-shrink-0" />
+                        <span><span className="font-medium">Location:</span> {c.County}{c.State ? `, ${c.State}` : ''}</span>
                       </div>
                       {c.ScheduledDate && (
                         <div className="flex items-center gap-2">
                           <Calendar className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                          <span><strong>Scheduled:</strong> {new Date(c.ScheduledDate).toLocaleDateString()}{c.ScheduledTime ? ` at ${c.ScheduledTime.split('.')[0].split(':').slice(0,2).join(':')}` : ''}</span>
+                          <span>
+                            <span className="font-medium">Scheduled:</span>{' '}
+                            {new Date(c.ScheduledDate).toLocaleDateString()}
+                            {c.ScheduledTime ? ` at ${c.ScheduledTime.split('.')[0].split(':').slice(0,2).join(':')}` : ''}
+                          </span>
                         </div>
                       )}
                       <div className="flex items-center gap-2">
                         <UserIcon className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                        <span><strong>Approved Jurors:</strong> {c.ApprovedJurors}</span>
+                        <span><span className="font-medium">Approved Jurors:</span> {c.ApprovedJurors}</span>
                       </div>
                     </div>
                   </div>
