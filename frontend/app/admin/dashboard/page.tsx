@@ -9,6 +9,7 @@ import {
   MapPin, Briefcase, Trash2, LogOut
 } from "lucide-react";
 import { useProtectedRoute } from "@/hooks/useProtectedRoute";
+import { useInactivityLogout } from "@/hooks/useInactivityLogout";
 import ConflictModal from "@/components/modals/ConflictModal";
 import { formatDateString, formatTime, formatDateTime, getDayOfWeek } from "@/lib/dateUtils";
 import { getToken, getUser, isAdmin, clearAuth } from "@/lib/apiClient";
@@ -206,6 +207,9 @@ export default function AdminDashboard() {
 
   const router = useRouter();
   const [isAuthChecked, setIsAuthChecked] = useState(false);
+
+  // Auto-logout after 20 minutes of inactivity (only once auth check passes)
+  useInactivityLogout("/admin/login", isAuthChecked);
   const [attorneys, setAttorneys] = useState<Attorney[]>([]);
   const [jurors, setJurors] = useState<Juror[]>([]);
   const [pendingCases, setPendingCases] = useState<PendingCase[]>([]);
@@ -620,49 +624,6 @@ export default function AdminDashboard() {
     return () => clearInterval(interval);
   }, [isAuthChecked, selectedDate]); // Added selectedDate dependency
 
-  // Inactivity logout timer - logout after 10 minutes of inactivity
-  useEffect(() => {
-    if (!isAuthChecked) return;
-
-    const INACTIVITY_TIMEOUT = 600000; // 10 minutes in milliseconds
-    let inactivityTimer: NodeJS.Timeout;
-
-    const resetInactivityTimer = () => {
-      // Clear existing timer
-      if (inactivityTimer) {
-        clearTimeout(inactivityTimer);
-      }
-
-      // Set new timer
-      inactivityTimer = setTimeout(() => {
-        console.log('⏱️ Inactivity timeout - logging out admin user');
-        toast.error('You have been logged out due to inactivity');
-        clearAuth();
-        router.push('/admin/login');
-      }, INACTIVITY_TIMEOUT);
-    };
-
-    // Activity events to track
-    const activityEvents = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
-
-    // Set initial timer
-    resetInactivityTimer();
-
-    // Add event listeners for user activity
-    activityEvents.forEach(event => {
-      window.addEventListener(event, resetInactivityTimer);
-    });
-
-    // Cleanup
-    return () => {
-      if (inactivityTimer) {
-        clearTimeout(inactivityTimer);
-      }
-      activityEvents.forEach(event => {
-        window.removeEventListener(event, resetInactivityTimer);
-      });
-    };
-  }, [isAuthChecked, router]);
 
   useEffect(() => {
     if (selectedDate && isAuthChecked) {

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import LogoutOverlay from "../../juror/components/LogoutOverlay";
 import NotificationPreview from "@/app/components/NotificationPreview";
 import { logout as logoutUser, getToken } from "@/lib/apiClient";
+import { useInactivityLogout } from "@/hooks/useInactivityLogout";
 import {
   User,
   Bell,
@@ -54,6 +55,9 @@ export default function AttorneySidebar({ selectedSection, onSectionChange }: At
   const [collapsed, setCollapsed] = useState(false);
   const [showLogout, setShowLogout] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+
+  // Auto-logout after 20 minutes of inactivity
+  useInactivityLogout("/login/attorney");
   const [rescheduleCount, setRescheduleCount] = useState(0);
   const [hoveredNotifications, setHoveredNotifications] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
