@@ -1568,13 +1568,13 @@ router.delete("/jurors/:jurorId", authMiddleware, requireAdmin, async (req, res)
     const pool = await poolPromise;
     const jurorResult = await pool.request()
       .input("jurorId", sql.Int, jurorId)
-      .query("SELECT Email, FirstName, LastName FROM dbo.Jurors WHERE JurorId = @jurorId");
+      .query("SELECT Email, Name FROM dbo.Jurors WHERE JurorId = @jurorId");
     const juror = jurorResult.recordset[0];
 
     await Juror.softDeleteJuror(jurorId);
 
     if (juror && juror.Email) {
-      const name = `${juror.FirstName || ""} ${juror.LastName || ""}`.trim() || "Juror";
+      const name = juror.Name || "Juror";
       await sendNotificationEmail(
         juror.Email,
         "Your QuickVerdicts Account Has Been Deleted",
