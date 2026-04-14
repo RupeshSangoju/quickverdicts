@@ -712,7 +712,7 @@ export function Step4Agreement({
           disabled={!canSubmit}
           className={`w-full font-semibold px-8 py-4 rounded-xl transition-all shadow-md focus:outline-none focus:ring-2 focus:ring-[#0A2342] focus:ring-offset-2 ${
             canSubmit
-              ? "bg-[#0A2342] text-white hover:bg-[#132c54] hover:shadow-lg transform hover:scale-[1.02]"
+              ? "bg-[#0A2342] text-white hover:bg-[#132c54] hover:shadow-lg transform hover:scale-[1.02] cursor-pointer"
               : "bg-gray-300 text-gray-500 cursor-not-allowed"
           }`}
           aria-label="Agree to terms and create account"

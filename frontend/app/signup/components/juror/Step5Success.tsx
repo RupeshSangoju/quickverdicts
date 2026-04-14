@@ -294,7 +294,7 @@ export function Step5Success({
             <div className="pt-4">
               <button
                 onClick={handleLoginRedirect}
-                className="w-full px-8 py-4 bg-[#0A2342] text-white rounded-xl hover:bg-[#132c54] font-semibold transition-all shadow-md hover:shadow-lg transform hover:scale-[1.02] flex items-center justify-center gap-3 focus:outline-none focus:ring-2 focus:ring-[#0A2342] focus:ring-offset-2"
+                className="w-full px-8 py-4 bg-[#0A2342] text-white rounded-xl hover:bg-[#132c54] font-semibold transition-all shadow-md hover:shadow-lg transform hover:scale-[1.02] flex items-center justify-center gap-3 focus:outline-none focus:ring-2 focus:ring-[#0A2342] focus:ring-offset-2 cursor-pointer"
                 aria-label="Proceed to juror login portal"
               >
                 <span>Proceed to Juror Login</span>

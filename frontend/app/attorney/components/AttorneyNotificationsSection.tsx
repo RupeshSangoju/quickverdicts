@@ -328,7 +328,7 @@ export default function AttorneyNotificationsSection({ onBack }: AttorneyNotific
             <button
               onClick={deleteSelectedNotifications}
               disabled={isDeleting}
-              className="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg flex items-center gap-2 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg flex items-center gap-2 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
               {isDeleting ? (
                 <>
@@ -346,7 +346,7 @@ export default function AttorneyNotificationsSection({ onBack }: AttorneyNotific
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="px-4 py-2.5 border-2 border-[#16305B] text-[#16305B] rounded-lg flex items-center gap-2 hover:bg-[#16305B] hover:text-white transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2.5 border-2 border-[#16305B] text-[#16305B] rounded-lg flex items-center gap-2 hover:bg-[#16305B] hover:text-white transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             title="Refresh notifications"
           >
             <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
@@ -357,8 +357,8 @@ export default function AttorneyNotificationsSection({ onBack }: AttorneyNotific
               onClick={() => setFilter("all")}
               className={`px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
                 filter === "all"
-                  ? "bg-[#16305B] text-white shadow-sm"
-                  : "bg-white text-gray-700 hover:bg-gray-50 border border-gray-300"
+                  ? "bg-[#16305B] text-white shadow-sm cursor-pointer"
+                  : "bg-white text-gray-700 hover:bg-gray-50 border border-gray-300 cursor-pointer"
               }`}
             >
               All
@@ -367,8 +367,8 @@ export default function AttorneyNotificationsSection({ onBack }: AttorneyNotific
               onClick={() => setFilter("unread")}
               className={`px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
                 filter === "unread"
-                  ? "bg-[#16305B] text-white shadow-sm"
-                  : "bg-white text-gray-700 hover:bg-gray-50 border border-gray-300"
+                  ? "bg-[#16305B] text-white shadow-sm cursor-pointer"
+                  : "bg-white text-gray-700 hover:bg-gray-50 border border-gray-300 cursor-pointer"
               }`}
             >
               Unread {unreadCount > 0 && `(${unreadCount})`}
@@ -377,7 +377,7 @@ export default function AttorneyNotificationsSection({ onBack }: AttorneyNotific
           {unreadCount > 0 && (
             <button
               onClick={markAllAsRead}
-              className="px-4 py-2.5 bg-white text-[#16305B] border-2 border-[#16305B] rounded-lg text-sm font-semibold hover:bg-[#16305B] hover:text-white transition-all"
+              className="px-4 py-2.5 bg-white text-[#16305B] border-2 border-[#16305B] rounded-lg text-sm font-semibold hover:bg-[#16305B] hover:text-white transition-all cursor-pointer"
             >
               Mark All Read
             </button>
@@ -485,7 +485,7 @@ export default function AttorneyNotificationsSection({ onBack }: AttorneyNotific
                         {!notification.IsRead && (
                           <button
                             onClick={() => markAsRead(notification.NotificationId)}
-                            className="text-xs text-[#16305B] hover:underline font-medium flex items-center gap-1"
+                            className="text-xs text-[#16305B] hover:underline font-medium flex items-center gap-1 cursor-pointer"
                           >
                             <CheckCircleIcon className="w-3 h-3" />
                             Mark as Read
@@ -493,7 +493,7 @@ export default function AttorneyNotificationsSection({ onBack }: AttorneyNotific
                         )}
                         <button
                           onClick={() => deleteNotification(notification.NotificationId)}
-                          className="text-xs text-red-600 hover:underline font-medium flex items-center gap-1"
+                          className="text-xs text-red-600 hover:underline font-medium flex items-center gap-1 cursor-pointer"
                         >
                           <Trash2Icon className="w-3 h-3" />
                           Delete

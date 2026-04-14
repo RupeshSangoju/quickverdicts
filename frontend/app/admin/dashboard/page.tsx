@@ -1414,7 +1414,7 @@ export default function AdminDashboard() {
           <p className="text-sm text-gray-600">Redirecting to login page...</p>
           <button 
             onClick={() => router.push('/admin/login')}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors cursor-pointer"
           >
             Go to Login
           </button>
@@ -1844,7 +1844,7 @@ function formatTime(timeString: string, scheduledDate: string) {
               <div className="relative">
                 <button
                   onClick={() => router.push('/admin/notifications')}
-                  className="relative p-3 rounded-full hover:bg-gray-100 transition-colors"
+                  className="relative p-3 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
                   title="View notifications"
                 >
                   <Bell className="h-6 w-6 text-gray-700" />
@@ -1859,9 +1859,9 @@ function formatTime(timeString: string, scheduledDate: string) {
                 <button
                   onClick={() => {
                     clearAuth();
-                    router.push('/');
+                    router.push('/admin/login');
                   }}
-                  className="relative p-3 rounded-full hover:bg-red-50 transition-colors"
+                  className="relative p-3 rounded-full hover:bg-red-50 transition-colors cursor-pointer"
                   title="Sign out"
                 >
                   <LogOut className="h-6 w-6 text-gray-700 hover:text-red-600" />
@@ -2489,7 +2489,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                   onChange={(e) => { setAttorneySearchQuery(e.target.value); setAttorneyPage(1); }}
                 />
                 <select
-                  className="border-2 border-gray-300 rounded-lg px-4 py-2 text-sm text-black bg-white font-medium focus:border-blue-500 focus:outline-none"
+                  className="border-2 border-gray-300 rounded-lg px-4 py-2 text-sm text-black bg-white font-medium focus:border-blue-500 focus:outline-none cursor-pointer"
                   value={attorneyFilter}
                   onChange={(e) => { setAttorneyFilter(e.target.value as any); setAttorneyPage(1); }}
                 >
@@ -2797,7 +2797,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                       <button
                         key={page}
                         onClick={() => setAttorneyPage(page)}
-                        className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
+                        className={`px-3 py-1.5 rounded-lg font-medium transition-colors cursor-pointer ${
                           attorneyPage === page
                             ? "bg-blue-600 text-white"
                             : "bg-gray-200 text-black hover:bg-gray-300"
@@ -2810,7 +2810,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                 })()}
               </div>
               <button
-                className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 disabled={attorneyPage >= attorneyTotalPages}
                 onClick={() => setAttorneyPage(attorneyPage + 1)}
               >
@@ -3156,7 +3156,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                       <button
                         key={page}
                         onClick={() => setJurorPage(page)}
-                        className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
+                        className={`px-3 py-1.5 rounded-lg font-medium transition-colors cursor-pointer ${
                           jurorPage === page
                             ? "bg-green-600 text-white"
                             : "bg-gray-200 text-black hover:bg-gray-300"
@@ -3169,7 +3169,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                 })()}
               </div>
               <button
-                className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 disabled={jurorPage >= jurorTotalPages}
                 onClick={() => setJurorPage(jurorPage + 1)}
               >
