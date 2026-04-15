@@ -48,6 +48,9 @@ interface TextInputProps {
   autoComplete?: string;
   className?: string;
   hasError?: boolean;
+  inputMode?: 'none' | 'text' | 'decimal' | 'numeric' | 'tel' | 'search' | 'email' | 'url';
+  pattern?: string;
+  maxLength?: number;
 }
 
 export function TextInput({
@@ -59,6 +62,9 @@ export function TextInput({
   autoComplete,
   className = '',
   hasError = false,
+  inputMode,
+  pattern,
+  maxLength,
 }: TextInputProps) {
   return (
     <input
@@ -68,6 +74,9 @@ export function TextInput({
       onChange={(e) => onChange(e.target.value)}
       disabled={disabled}
       autoComplete={autoComplete}
+      inputMode={inputMode}
+      pattern={pattern}
+      maxLength={maxLength}
       className={`
         w-full border rounded-md px-4 py-3 
         focus:ring-2 focus:ring-[#0A2342] outline-none 
