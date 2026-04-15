@@ -215,7 +215,8 @@ export default function AdminDashboard() {
   const [pendingCases, setPendingCases] = useState<PendingCase[]>([]);
   const [deletedCases, setDeletedCases] = useState<any[]>([]);
   const [deletedCasesPage, setDeletedCasesPage] = useState(1);
-  const [deletedCasesPageSize, setDeletedCasesPageSize] = useState(3);
+  const [deletedCasesPageSize, setDeletedCasesPageSize] = useState(10);
+  const [deletedCasesSearchQuery, setDeletedCasesSearchQuery] = useState("");
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -3180,172 +3181,201 @@ function formatTime(timeString: string, scheduledDate: string) {
         </div>
         {/* Deleted Cases */}
         {deletedCases.length > 0 && (() => {
-          const totalPages = Math.ceil(deletedCases.length / deletedCasesPageSize);
-          const pageItems = deletedCases.slice(
+          const q = deletedCasesSearchQuery.toLowerCase();
+          const filtered = q
+            ? deletedCases.filter(c =>
+                (c.CaseTitle || "").toLowerCase().includes(q) ||
+                (c.AttorneyName || "").toLowerCase().includes(q) ||
+                (c.AttorneyEmail || "").toLowerCase().includes(q) ||
+                (c.LawFirmName || "").toLowerCase().includes(q) ||
+                (c.County || "").toLowerCase().includes(q) ||
+                (c.State || "").toLowerCase().includes(q) ||
+                (c.CaseType || "").toLowerCase().includes(q)
+              )
+            : deletedCases;
+          const totalPages = Math.max(1, Math.ceil(filtered.length / deletedCasesPageSize));
+          const pageItems = filtered.slice(
             (deletedCasesPage - 1) * deletedCasesPageSize,
             deletedCasesPage * deletedCasesPageSize
           );
           return (
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-red-200">
-              {/* Header — title only */}
-              <div className="flex items-center mb-6">
-                <div className="p-2 bg-red-100 rounded-lg mr-3">
-                  <Trash2 className="h-6 w-6 text-red-600" />
-                </div>
-                <h3 className="text-2xl font-bold text-red-700">Deleted Cases</h3>
-                <span className="ml-4 px-4 py-1.5 bg-red-100 text-red-800 text-sm font-bold rounded-full">
-                  {deletedCases.length} deleted
-                </span>
-              </div>
-
-              {/* Cards grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                {pageItems.map((c) => (
-                  <div key={c.CaseId} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
-                    {/* Card Header */}
-                    <div className="p-5 bg-gradient-to-r from-red-700 to-red-500 min-h-[80px] flex flex-col justify-between">
-                      <div className="flex items-start justify-between gap-2">
-                        <h3 className="font-bold text-base text-white line-clamp-2 flex-1">{c.CaseTitle}</h3>
-                        <span className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold bg-white/20 text-white border border-white/30 flex-shrink-0">
-                          <Trash2 className="h-3 w-3" />Case Deleted
-                        </span>
-                      </div>
-                      <p className="text-xs text-red-100 mt-1">Case #{c.CaseId} · {c.CaseType}</p>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+              {/* Header */}
+              <div className="p-6 border-b border-gray-200">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-red-100 rounded-lg">
+                      <Trash2 className="h-6 w-6 text-red-600" />
                     </div>
-
-                    {/* Card Body — 2-column matrix */}
-                    <div className="p-5 flex-1">
-                      <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm text-gray-700">
-                        <div className="flex items-start gap-1.5 min-w-0">
-                          <UserIcon className="h-4 w-4 text-[#16305B] flex-shrink-0 mt-0.5" />
-                          <div className="min-w-0">
-                            <p className="text-xs text-gray-400 font-medium">Attorney</p>
-                            <p className="font-semibold truncate">{c.AttorneyName}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-start gap-1.5 min-w-0">
-                          <Building2 className="h-4 w-4 text-purple-500 flex-shrink-0 mt-0.5" />
-                          <div className="min-w-0">
-                            <p className="text-xs text-gray-400 font-medium">Law Firm</p>
-                            <p className="font-semibold truncate">{c.LawFirmName || '—'}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-start gap-1.5 min-w-0 col-span-2">
-                          <Mail className="h-4 w-4 text-blue-400 flex-shrink-0 mt-0.5" />
-                          <div className="min-w-0">
-                            <p className="text-xs text-gray-400 font-medium">Email</p>
-                            <p className="font-semibold truncate">{c.AttorneyEmail}</p>
-                          </div>
-                        </div>
-                        {c.AttorneyPhone && (
-                          <div className="flex items-start gap-1.5 min-w-0">
-                            <Phone className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
-                            <div className="min-w-0">
-                              <p className="text-xs text-gray-400 font-medium">Phone</p>
-                              <p className="font-semibold truncate">{c.AttorneyPhone}</p>
-                            </div>
-                          </div>
-                        )}
-                        <div className="flex items-start gap-1.5 min-w-0">
-                          <MapPin className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
-                          <div className="min-w-0">
-                            <p className="text-xs text-gray-400 font-medium">Location</p>
-                            <p className="font-semibold truncate">{c.County}{c.State ? `, ${c.State}` : ''}</p>
-                          </div>
-                        </div>
-                        {c.ScheduledDate && (
-                          <div className="flex items-start gap-1.5 min-w-0">
-                            <Calendar className="h-4 w-4 text-gray-400 flex-shrink-0 mt-0.5" />
-                            <div className="min-w-0">
-                              <p className="text-xs text-gray-400 font-medium">Scheduled</p>
-                              <p className="font-semibold">
-                                {new Date(c.ScheduledDate).toLocaleDateString()}
-                                {c.ScheduledTime ? ` · ${c.ScheduledTime.split('.')[0].split(':').slice(0,2).join(':')}` : ''}
-                              </p>
-                            </div>
-                          </div>
-                        )}
-                        <div className="flex items-start gap-1.5 min-w-0">
-                          <UserIcon className="h-4 w-4 text-gray-400 flex-shrink-0 mt-0.5" />
-                          <div className="min-w-0">
-                            <p className="text-xs text-gray-400 font-medium">Approved Jurors</p>
-                            <p className="font-semibold">{c.ApprovedJurors}</p>
-                          </div>
-                        </div>
-                      </div>
+                    <div>
+                      <h2 className="text-2xl font-bold" style={{ color: BLUE }}>Deleted Cases</h2>
+                      <p className="text-gray-600 text-sm">{deletedCases.length} cases total</p>
                     </div>
                   </div>
-                ))}
+                  <input
+                    type="text"
+                    placeholder="Search by title, attorney, email, location..."
+                    className="border-2 border-gray-300 rounded-lg px-4 py-2 text-sm text-black bg-white focus:border-red-400 focus:outline-none w-96"
+                    value={deletedCasesSearchQuery}
+                    onChange={(e) => { setDeletedCasesSearchQuery(e.target.value); setDeletedCasesPage(1); }}
+                  />
+                </div>
               </div>
 
-              {/* Bottom bar — Show per page (left) + Pagination (right) */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t border-red-100">
-                {/* Show per page */}
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-600 font-medium">Show per page:</span>
-                  <select
-                    className="border-2 border-gray-300 rounded-lg px-3 py-1.5 text-sm text-black bg-white font-medium focus:border-red-400 focus:outline-none cursor-pointer"
-                    value={deletedCasesPageSize}
-                    onChange={(e) => { setDeletedCasesPageSize(Number(e.target.value)); setDeletedCasesPage(1); }}
-                  >
-                    <option value={3}>3</option>
-                    <option value={6}>6</option>
-                    <option value={9}>9</option>
-                    <option value={12}>12</option>
-                  </select>
-                  <span className="text-sm text-gray-500">of {deletedCases.length} cases</span>
-                </div>
+              {/* Table */}
+              <div className="overflow-x-auto" style={{ maxHeight: '450px', overflowY: 'auto' }}>
+                <table className="w-full">
+                  <thead className="bg-gray-100 sticky top-0 z-20">
+                    <tr>
+                      <th
+                        className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider sticky left-0 z-30 bg-gray-100"
+                        style={{ minWidth: '260px', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.1)' }}
+                      >
+                        Case Info
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider" style={{ minWidth: '200px' }}>
+                        Attorney
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider" style={{ minWidth: '180px' }}>
+                        Law Firm
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                        Location
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                        Scheduled
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                        Jurors
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                        Status
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 bg-white">
+                    {pageItems.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="px-6 py-16 text-center">
+                          <Trash2 className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                          <p className="text-gray-500 font-medium text-lg">No deleted cases found</p>
+                        </td>
+                      </tr>
+                    ) : (
+                      pageItems.map((c) => (
+                        <tr key={c.CaseId} className="group hover:bg-red-50 transition-colors">
+                          <td className="px-6 py-4 sticky left-0 z-10 bg-white group-hover:bg-red-50" style={{ minWidth: '260px', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.1)' }}>
+                            <div className="font-bold text-gray-900 text-base">{c.CaseTitle}</div>
+                            <div className="text-sm text-gray-500">#{c.CaseId} · {c.CaseType}</div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="text-gray-900 font-medium">{c.AttorneyName}</div>
+                            <div className="text-sm text-gray-600">{c.AttorneyEmail}</div>
+                            {c.AttorneyPhone && <div className="text-xs text-gray-400">{c.AttorneyPhone}</div>}
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="text-gray-900 font-medium">{c.LawFirmName || '—'}</div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="text-gray-900 font-medium">{c.County}</div>
+                            <div className="text-sm text-gray-600">{c.State}</div>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-600">
+                            {c.ScheduledDate
+                              ? <>
+                                  <div>{new Date(c.ScheduledDate).toLocaleDateString()}</div>
+                                  {c.ScheduledTime && (
+                                    <div className="text-xs text-gray-400">
+                                      {c.ScheduledTime.split('.')[0].split(':').slice(0, 2).join(':')}
+                                    </div>
+                                  )}
+                                </>
+                              : <span className="text-gray-400">—</span>
+                            }
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800">
+                              {c.ApprovedJurors}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-red-100 text-red-800">
+                              <Trash2 className="h-3 w-3" />Deleted
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
 
-                {/* Pagination */}
-                {totalPages > 1 && (
+              {/* Footer — Show per page (left) + Pagination (right) */}
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-4 px-6 py-4 bg-gray-50 border-t border-gray-200">
+                <div className="flex items-center gap-4">
                   <div className="flex items-center gap-2">
-                    <button
-                      className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
-                      disabled={deletedCasesPage === 1}
-                      onClick={() => setDeletedCasesPage(p => p - 1)}
+                    <span className="text-sm text-gray-600 font-medium">Show per page:</span>
+                    <select
+                      className="border-2 border-gray-300 rounded-lg px-3 py-1.5 text-sm text-black bg-white font-medium focus:border-red-400 focus:outline-none cursor-pointer"
+                      value={deletedCasesPageSize}
+                      onChange={(e) => { setDeletedCasesPageSize(Number(e.target.value)); setDeletedCasesPage(1); }}
                     >
-                      <ChevronLeft className="h-5 w-5" />
-                    </button>
-                    <div className="flex items-center gap-1">
-                      {(() => {
-                        const pages: number[] = [];
-                        if (totalPages <= 7) {
-                          for (let i = 1; i <= totalPages; i++) pages.push(i);
-                        } else if (deletedCasesPage <= 3) {
-                          pages.push(1, 2, 3, 4, -1, totalPages);
-                        } else if (deletedCasesPage >= totalPages - 2) {
-                          pages.push(1, -1, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
-                        } else {
-                          pages.push(1, -1, deletedCasesPage - 1, deletedCasesPage, deletedCasesPage + 1, -2, totalPages);
-                        }
-                        return pages.map((pg, idx) =>
-                          pg < 0 ? (
-                            <span key={`e${idx}`} className="px-2 text-gray-500">...</span>
-                          ) : (
-                            <button
-                              key={pg}
-                              onClick={() => setDeletedCasesPage(pg)}
-                              className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
-                                pg === deletedCasesPage
-                                  ? 'bg-red-600 text-white'
-                                  : 'bg-gray-200 text-black hover:bg-gray-300'
-                              }`}
-                            >
-                              {pg}
-                            </button>
-                          )
-                        );
-                      })()}
-                    </div>
-                    <button
-                      className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
-                      disabled={deletedCasesPage === totalPages}
-                      onClick={() => setDeletedCasesPage(p => p + 1)}
-                    >
-                      <ChevronRight className="h-5 w-5" />
-                    </button>
+                      <option value={5}>5</option>
+                      <option value={10}>10</option>
+                      <option value={15}>15</option>
+                      <option value={20}>20</option>
+                      <option value={25}>25</option>
+                    </select>
                   </div>
-                )}
+                  <span className="text-sm text-gray-600">of {filtered.length} results</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                    disabled={deletedCasesPage === 1}
+                    onClick={() => setDeletedCasesPage(p => p - 1)}
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+                  <div className="flex items-center gap-1">
+                    {(() => {
+                      const pages: number[] = [];
+                      if (totalPages <= 7) {
+                        for (let i = 1; i <= totalPages; i++) pages.push(i);
+                      } else if (deletedCasesPage <= 3) {
+                        pages.push(1, 2, 3, 4, -1, totalPages);
+                      } else if (deletedCasesPage >= totalPages - 2) {
+                        pages.push(1, -1, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+                      } else {
+                        pages.push(1, -1, deletedCasesPage - 1, deletedCasesPage, deletedCasesPage + 1, -2, totalPages);
+                      }
+                      return pages.map((pg, idx) =>
+                        pg < 0 ? (
+                          <span key={`e${idx}`} className="px-2 text-gray-500">...</span>
+                        ) : (
+                          <button
+                            key={pg}
+                            onClick={() => setDeletedCasesPage(pg)}
+                            className={`px-3 py-1.5 rounded-lg font-medium transition-colors cursor-pointer ${
+                              pg === deletedCasesPage
+                                ? 'bg-red-600 text-white'
+                                : 'bg-gray-200 text-black hover:bg-gray-300'
+                            }`}
+                          >
+                            {pg}
+                          </button>
+                        )
+                      );
+                    })()}
+                  </div>
+                  <button
+                    className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                    disabled={deletedCasesPage === totalPages}
+                    onClick={() => setDeletedCasesPage(p => p + 1)}
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
+                </div>
               </div>
             </div>
           );
