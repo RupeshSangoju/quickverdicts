@@ -3080,7 +3080,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                           <button
                             onClick={() => handleDeleteJurorAccount(juror.JurorId, juror.Name)}
                             disabled={actionLoading === juror.JurorId}
-                            className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold text-white bg-gray-700 hover:bg-gray-900 hover:shadow-lg disabled:opacity-50 transition-all"
+                            className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold text-white bg-gray-700 hover:bg-gray-900 hover:shadow-lg disabled:opacity-50 transition-all cursor-pointer"
                           >
                             <Trash2 className="h-4 w-4 mr-1" />Delete
                           </button>
@@ -3699,14 +3699,14 @@ function formatTime(timeString: string, scheduledDate: string) {
               <button
                 onClick={() => setShowDeleteJurorModal(false)}
                 disabled={deletingJuror}
-                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium disabled:opacity-50"
+                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium disabled:opacity-50 cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmDeleteJuror}
                 disabled={deletingJuror}
-                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 font-medium disabled:opacity-50 inline-flex items-center"
+                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 font-medium disabled:opacity-50 inline-flex items-center cursor-pointer"
               >
                 {deletingJuror ? (
                   <>
