@@ -560,6 +560,7 @@ async function getAllAttorneys(options = {}) {
         lawFirm: "LawFirmName",
         status: "VerificationStatus",
         date: "CreatedAt",
+        caseId: "(SELECT COUNT(*) FROM dbo.Cases c WHERE c.AttorneyId = dbo.Attorneys.AttorneyId AND c.IsDeleted = 0)",
         default: "CreatedAt",
       };
 

@@ -261,7 +261,7 @@ export default function AdminDashboard() {
   const [loadingAttorneys, setLoadingAttorneys] = useState(false);
   const PAGE_SIZE = 10;
   const [attorneySearchQuery, setAttorneySearchQuery] = useState("");
-  const [attorneySortBy, setAttorneySortBy] = useState<"name" | "email" | "lawFirm" | "barNumber" | "status" | "date" | "default">("default");
+  const [attorneySortBy, setAttorneySortBy] = useState<"name" | "email" | "lawFirm" | "barNumber" | "status" | "date" | "caseId" | "default">("default");
   const [attorneySortOrder, setAttorneySortOrder] = useState<"asc" | "desc">("desc");
 
   // Juror pagination, sorting, and filtering states
@@ -270,7 +270,7 @@ export default function AdminDashboard() {
   const [jurorTotal, setJurorTotal] = useState(0);
   const [loadingJurors, setLoadingJurors] = useState(false);
   const [jurorSearchQuery, setJurorSearchQuery] = useState("");
-  const [jurorSortBy, setJurorSortBy] = useState<"name" | "email" | "county" | "state" | "status" | "jurorStatus" | "onboarding" | "date" | "default">("default");
+  const [jurorSortBy, setJurorSortBy] = useState<"name" | "email" | "county" | "state" | "status" | "jurorStatus" | "onboarding" | "date" | "caseId" | "default">("default");
   const [jurorSortOrder, setJurorSortOrder] = useState<"asc" | "desc">("desc");
   const [expandedJurorCases, setExpandedJurorCases] = useState<Set<number>>(new Set());
   const [expandedAttorneyCases, setExpandedAttorneyCases] = useState<Set<number>>(new Set());
@@ -1368,7 +1368,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleAttorneySortChange = (column: "name" | "email" | "lawFirm" | "barNumber" | "status" | "date" | "default") => {
+  const handleAttorneySortChange = (column: "name" | "email" | "lawFirm" | "barNumber" | "status" | "date" | "caseId" | "default") => {
     setAttorneyPage(1); // Reset to first page when sorting changes
     if (attorneySortBy === column) {
       // Cycle through: asc -> desc -> default
@@ -1386,7 +1386,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleJurorSortChange = (column: "name" | "email" | "county" | "state" | "status" | "jurorStatus" | "onboarding" | "date" | "default") => {
+  const handleJurorSortChange = (column: "name" | "email" | "county" | "state" | "status" | "jurorStatus" | "onboarding" | "date" | "caseId" | "default") => {
     setJurorPage(1); // Reset to first page when sorting changes
     if (jurorSortBy === column) {
       // Cycle through: asc -> desc -> default
@@ -2594,7 +2594,19 @@ function formatTime(timeString: string, scheduledDate: string) {
                     </div>
                   </th>
 
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Case No.</th>
+                  <th
+                    className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none"
+                    onClick={() => handleAttorneySortChange("caseId")}
+                  >
+                    <div className="flex items-center gap-2">
+                      Case No.
+                      {attorneySortBy === "caseId" ? (
+                        <span className="text-blue-600 font-bold">{attorneySortOrder === "asc" ? "↑" : "↓"}</span>
+                      ) : (
+                        <span className="text-gray-400">⇅</span>
+                      )}
+                    </div>
+                  </th>
                   <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
@@ -2938,7 +2950,19 @@ function formatTime(timeString: string, scheduledDate: string) {
                       )}
                     </div>
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Case No.</th>
+                  <th
+                    className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none"
+                    onClick={() => handleJurorSortChange("caseId")}
+                  >
+                    <div className="flex items-center gap-2">
+                      Case No.
+                      {jurorSortBy === "caseId" ? (
+                        <span className="text-green-600 font-bold">{jurorSortOrder === "asc" ? "↑" : "↓"}</span>
+                      ) : (
+                        <span className="text-gray-400">⇅</span>
+                      )}
+                    </div>
+                  </th>
                   <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
