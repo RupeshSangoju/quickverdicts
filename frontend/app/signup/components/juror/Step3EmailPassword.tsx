@@ -379,7 +379,7 @@ export function Step3EmailPassword({
                 className={`w-full font-semibold px-8 py-4 rounded-xl transition-all shadow-md focus:outline-none focus:ring-2 focus:ring-[#0A2342] focus:ring-offset-2 ${
                   loading || !isComplete
                     ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                    : "bg-[#0A2342] text-white hover:bg-[#132c54] hover:shadow-lg transform hover:scale-[1.02]"
+                    : "bg-[#0A2342] text-white hover:bg-[#132c54] hover:shadow-lg transform hover:scale-[1.02] cursor-pointer"
                 }`}
                 aria-label="Verify email with entered code"
               >
@@ -421,7 +421,7 @@ export function Step3EmailPassword({
                   type="button"
                   onClick={handleResendCode}
                   disabled={resendCooldown > 0 || !onResendOTP}
-                  className="text-[#0A2342] text-sm font-semibold hover:underline disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-[#0A2342] focus:ring-offset-2 rounded px-3 py-1.5 transition-all"
+                  className="text-[#0A2342] text-sm font-semibold hover:underline disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-[#0A2342] focus:ring-offset-2 rounded px-3 py-1.5 transition-all cursor-pointer"
                   aria-label="Resend verification code"
                 >
                   <Mail size={16} aria-hidden="true" />
@@ -659,7 +659,7 @@ export function Step3EmailPassword({
             disabled={!canSubmit}
             className={`w-full font-semibold px-8 py-4 rounded-xl transition-all shadow-md focus:outline-none focus:ring-2 focus:ring-[#0A2342] focus:ring-offset-2 ${
               canSubmit
-                ? "bg-[#0A2342] text-white hover:bg-[#132c54] hover:shadow-lg transform hover:scale-[1.02]"
+                ? "bg-[#0A2342] text-white hover:bg-[#132c54] hover:shadow-lg transform hover:scale-[1.02] cursor-pointer"
                 : "bg-gray-300 text-gray-500 cursor-not-allowed"
             }`}
             aria-label="Continue to email verification"

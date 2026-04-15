@@ -17,6 +17,7 @@ const {
   sendPasswordResetEmail,
   sendOTPEmail,
   sendEmailVerification,
+  sendNotificationEmail,
 } = require("../utils/email");
 
 /* ===========================================================
@@ -28,6 +29,17 @@ const OTP_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
 const OTP_MAX_ATTEMPTS = 5;
 const otpRateLimit = new Map();
 const OTP_RATE_LIMIT_WINDOW = 60 * 60 * 1000; // 1 hour
+
+// Escape user-supplied strings before embedding in HTML email bodies
+function sanitizeForEmail(text) {
+  if (!text) return "";
+  return String(text)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
 const OTP_RATE_LIMIT_MAX = 5;
 
 /* ===========================================================
@@ -241,6 +253,43 @@ async function attorneySignup(req, res) {
       { id: attorneyId, email: normalizedEmail },
       "attorney"
     );
+
+    // Send welcome email (fire-and-forget)
+    sendNotificationEmail(
+      normalizedEmail,
+      "Welcome to Quick Verdicts!",
+      `
+        <h2 style="color: #16305B; margin-top: 0;">Welcome to Quick Verdicts, ${sanitizeForEmail(firstName)}!</h2>
+        <p style="color: #666; line-height: 1.6;">
+          Thank you for registering as an attorney on Quick Verdicts. Your account has been successfully created.
+        </p>
+        <div style="background: #f0fdf4; border-left: 4px solid #16a34a; padding: 15px; margin: 20px 0; border-radius: 4px;">
+          <p style="color: #16a34a; margin: 0; font-weight: bold;">✓ Account Created Successfully</p>
+        </div>
+        <p style="color: #666; line-height: 1.6;">
+          Your account is currently under review. Our admin team will verify your credentials and activate your account shortly.
+          You will receive another email once your account is approved.
+        </p>
+        <h3 style="color: #16305B;">What happens next?</h3>
+        <ul style="color: #666; line-height: 1.8;">
+          <li>Our team reviews your bar number and credentials</li>
+          <li>You receive an approval notification email</li>
+          <li>You can then log in and start managing your cases</li>
+        </ul>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${process.env.FRONTEND_URL}/login/attorney" style="display: inline-block; background: #16305B; color: white; padding: 14px 30px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+            Go to Attorney Login
+          </a>
+        </div>
+        <p style="color: #666; line-height: 1.6;">
+          If you have any questions, please contact our support team.
+        </p>
+        <p style="color: #666; line-height: 1.6;">
+          Best regards,<br/>
+          The Quick Verdicts Team
+        </p>
+      `
+    ).catch((err) => console.warn("⚠️ Welcome email failed (attorney):", err.message));
 
     return res.status(201).json({
       success: true,
@@ -706,6 +755,43 @@ async function jurorSignup(req, res) {
 
     // ✅ GENERATE JWT
     const token = generateJWT({ id: jurorId, email: normalizedEmail }, "juror");
+
+    // Send welcome email (fire-and-forget)
+    sendNotificationEmail(
+      normalizedEmail,
+      "Welcome to Quick Verdicts!",
+      `
+        <h2 style="color: #16305B; margin-top: 0;">Welcome to Quick Verdicts, ${sanitizeForEmail(name)}!</h2>
+        <p style="color: #666; line-height: 1.6;">
+          Thank you for registering as a juror on Quick Verdicts. Your account has been successfully created.
+        </p>
+        <div style="background: #f0fdf4; border-left: 4px solid #16a34a; padding: 15px; margin: 20px 0; border-radius: 4px;">
+          <p style="color: #16a34a; margin: 0; font-weight: bold;">✓ Account Created Successfully</p>
+        </div>
+        <p style="color: #666; line-height: 1.6;">
+          Your account is currently under review. Our admin team will verify your eligibility and activate your account shortly.
+          You will receive another email once your account is approved.
+        </p>
+        <h3 style="color: #16305B;">What happens next?</h3>
+        <ul style="color: #666; line-height: 1.8;">
+          <li>Our team reviews your application and eligibility criteria</li>
+          <li>You receive an approval notification email</li>
+          <li>You can then log in and start participating in mock trials</li>
+        </ul>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${process.env.FRONTEND_URL}/login/juror" style="display: inline-block; background: #16305B; color: white; padding: 14px 30px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+            Go to Juror Login
+          </a>
+        </div>
+        <p style="color: #666; line-height: 1.6;">
+          If you have any questions, please contact our support team.
+        </p>
+        <p style="color: #666; line-height: 1.6;">
+          Best regards,<br/>
+          The Quick Verdicts Team
+        </p>
+      `
+    ).catch((err) => console.warn("⚠️ Welcome email failed (juror):", err.message));
 
     // ✅ SUCCESS RESPONSE
     return res.status(201).json({

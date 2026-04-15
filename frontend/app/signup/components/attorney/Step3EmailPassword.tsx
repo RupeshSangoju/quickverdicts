@@ -390,7 +390,7 @@ export function Step3EmailPassword({
               className={`w-full px-8 py-4 rounded-xl font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-[#0A2342] focus:ring-offset-2 ${
                 !canSubmit
                   ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                  : "bg-[#0A2342] text-white hover:bg-[#132c54] transform hover:scale-[1.02] shadow-md hover:shadow-lg"
+                  : "bg-[#0A2342] text-white hover:bg-[#132c54] transform hover:scale-[1.02] shadow-md hover:shadow-lg cursor-pointer"
               }`}
             >
               {loading ? "Verifying..." : "Verify Email"}
@@ -402,7 +402,7 @@ export function Step3EmailPassword({
                 type="button"
                 onClick={handleResendOTP}
                 disabled={resendCooldown > 0 || loading}
-                className="text-[#0A2342] text-sm font-semibold hover:underline disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+                className="text-[#0A2342] text-sm font-semibold hover:underline disabled:opacity-50 disabled:cursor-not-allowed transition-opacity cursor-pointer"
               >
                 {resendCooldown > 0
                   ? `Resend code in ${resendCooldown}s`
@@ -594,7 +594,7 @@ export function Step3EmailPassword({
             className={`w-full px-8 py-4 rounded-xl font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-[#0A2342] focus:ring-offset-2 ${
               !canSubmit
                 ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                : "bg-[#0A2342] text-white hover:bg-[#132c54] hover:shadow-lg transform hover:scale-[1.02] shadow-md"
+                : "bg-[#0A2342] text-white hover:bg-[#132c54] hover:shadow-lg transform hover:scale-[1.02] shadow-md cursor-pointer"
             }`}
           >
             {loading ? "Sending Code..." : "Continue to Verification"}

@@ -44,6 +44,7 @@ function validateQuestion(question) {
 
   const validTypes = [
     "Multiple Choice",
+    "Multiple Select",
     "Yes/No",
     "Text Response",
     "Numeric Response",
@@ -55,7 +56,7 @@ function validateQuestion(question) {
     };
   }
 
-  if (question.questionType === "Multiple Choice") {
+  if (question.questionType === "Multiple Choice" || question.questionType === "Multiple Select") {
     if (
       !question.options ||
       !Array.isArray(question.options) ||
@@ -63,7 +64,7 @@ function validateQuestion(question) {
     ) {
       return {
         isValid: false,
-        error: "Multiple choice questions must have at least 2 options",
+        error: "Multiple choice/select questions must have at least 2 options",
       };
     }
   }
@@ -154,7 +155,7 @@ async function saveJuryChargeQuestions(req, res) {
 
           // For multiple choice, convert options array to JSON string
           let optionsJson = null;
-          if (question.questionType === "Multiple Choice" && question.options) {
+          if ((question.questionType === "Multiple Choice" || question.questionType === "Multiple Select") && question.options) {
             optionsJson = JSON.stringify(question.options);
           }
 
@@ -266,7 +267,7 @@ async function addQuestion(req, res) {
 
     // Convert options to JSON if provided
     let optionsJson = null;
-    if (questionType === "Multiple Choice" && options) {
+    if ((questionType === "Multiple Choice" || questionType === "Multiple Select") && options) {
       optionsJson = JSON.stringify(options);
     }
 
@@ -415,7 +416,7 @@ async function updateJuryChargeQuestion(req, res) {
 
     // Convert options to JSON if provided
     let optionsJson = null;
-    if (questionType === "Multiple Choice" && options) {
+    if ((questionType === "Multiple Choice" || questionType === "Multiple Select") && options) {
       optionsJson = JSON.stringify(options);
     }
 

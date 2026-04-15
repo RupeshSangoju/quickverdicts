@@ -373,7 +373,7 @@ export function Step2AddressDetails({
         <div className="pt-6">
           <button
             type="submit"
-            className="w-full font-semibold px-8 py-4 rounded-xl shadow-md hover:shadow-lg bg-[#0A2342] text-white hover:bg-[#132c54] transition-all transform hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-[#0A2342] focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full font-semibold px-8 py-4 rounded-xl shadow-md hover:shadow-lg bg-[#0A2342] text-white hover:bg-[#132c54] transition-all transform hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-[#0A2342] focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             aria-label="Continue to email and password"
           >
             Continue to Email &amp; Password

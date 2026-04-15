@@ -676,6 +676,7 @@ async function getAllJurors(options = {}) {
         verificationStatus: "VerificationStatus",
         createdAt: "CreatedAt",
         lastLoginAt: "LastLoginAt",
+        caseId: "(SELECT MIN(ja.CaseId) FROM dbo.JurorApplications ja WHERE ja.JurorId = j.JurorId AND ja.Status = 'approved')",
         default: "CreatedAt",
       };
 

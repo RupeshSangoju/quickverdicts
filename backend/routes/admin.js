@@ -1568,13 +1568,13 @@ router.delete("/jurors/:jurorId", authMiddleware, requireAdmin, async (req, res)
     const pool = await poolPromise;
     const jurorResult = await pool.request()
       .input("jurorId", sql.Int, jurorId)
-      .query("SELECT Email, FirstName, LastName FROM dbo.Jurors WHERE JurorId = @jurorId");
+      .query("SELECT Email, Name FROM dbo.Jurors WHERE JurorId = @jurorId");
     const juror = jurorResult.recordset[0];
 
     await Juror.softDeleteJuror(jurorId);
 
     if (juror && juror.Email) {
-      const name = `${juror.FirstName || ""} ${juror.LastName || ""}`.trim() || "Juror";
+      const name = juror.Name || "Juror";
       await sendNotificationEmail(
         juror.Email,
         "Your QuickVerdicts Account Has Been Deleted",
@@ -2024,4 +2024,48 @@ router.post("/cases/:caseId/reschedule", authMiddleware, requireAdmin, async (re
 });
 
 // ============================================
+// ONE-TIME MIGRATION ROUTE
+// POST /api/admin/run-migration/006
+// Adds 'Multiple Select' to JuryChargeQuestions QuestionType constraint
+// ============================================
+
+router.post("/run-migration/006", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const pool = await poolPromise;
+
+    // Step 1: Find and drop the existing CHECK constraint on QuestionType
+    const findResult = await pool.request().query(`
+      SELECT cc.CONSTRAINT_NAME
+      FROM INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE AS ccu
+      INNER JOIN INFORMATION_SCHEMA.CHECK_CONSTRAINTS AS cc
+        ON cc.CONSTRAINT_NAME = ccu.CONSTRAINT_NAME
+      WHERE ccu.TABLE_NAME = 'JuryChargeQuestions'
+        AND ccu.COLUMN_NAME = 'QuestionType'
+    `);
+
+    let droppedConstraint = null;
+    if (findResult.recordset.length > 0) {
+      droppedConstraint = findResult.recordset[0].CONSTRAINT_NAME;
+      await pool.request().query(`ALTER TABLE dbo.JuryChargeQuestions DROP CONSTRAINT [${droppedConstraint}]`);
+    }
+
+    // Step 2: Add updated constraint that includes 'Multiple Select'
+    await pool.request().query(`
+      ALTER TABLE dbo.JuryChargeQuestions
+      ADD CONSTRAINT CK_JuryChargeQuestions_QuestionType
+      CHECK (QuestionType IN ('Multiple Choice', 'Multiple Select', 'Yes/No', 'Text Response', 'Numeric Response'))
+    `);
+
+    res.json({
+      success: true,
+      message: "Migration 006 applied successfully",
+      droppedConstraint: droppedConstraint || "none found",
+      newConstraint: "CK_JuryChargeQuestions_QuestionType",
+    });
+  } catch (error) {
+    console.error("Migration 006 error:", error);
+    res.status(500).json({ success: false, message: "Migration failed", error: error.message });
+  }
+});
+
 module.exports = router;

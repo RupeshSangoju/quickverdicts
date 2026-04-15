@@ -14,7 +14,7 @@ export default function AttorneyContact({ onBack }: { onBack: () => void }) {
             onClick={onBack} 
             className="flex items-center gap-2 text-[#16305B] hover:text-[#1e417a] transition-colors group mb-6"
           >
-            <ArrowLeft size={24} className="group-hover:-translate-x-1 transition-transform" />
+            <ArrowLeft size={24} className="group-hover:-translate-x-1 transition-transform cursor-pointer" />
             <span className="font-semibold">Back to Help</span>
           </button>
           <div>

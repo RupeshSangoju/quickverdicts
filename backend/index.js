@@ -469,6 +469,44 @@ async function startServer() {
     await pool.request().query("SELECT 1 as test");
     console.log("✅ Database connection established\n");
 
+    // ── Auto-migration: ensure QuestionType CHECK constraint includes 'Multiple Select' ──
+    try {
+      // Check current constraint definition
+      const constraintCheck = await pool.request().query(`
+        SELECT cc.CONSTRAINT_NAME, cc.CHECK_CLAUSE
+        FROM INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE AS ccu
+        INNER JOIN INFORMATION_SCHEMA.CHECK_CONSTRAINTS AS cc
+          ON cc.CONSTRAINT_NAME = ccu.CONSTRAINT_NAME
+        WHERE ccu.TABLE_NAME = 'JuryChargeQuestions'
+          AND ccu.COLUMN_NAME = 'QuestionType'
+      `);
+
+      const existing = constraintCheck.recordset[0];
+      const alreadyPatched =
+        existing && existing.CHECK_CLAUSE.includes("Multiple Select");
+
+      if (!alreadyPatched) {
+        console.log("⚙️  Applying migration: add 'Multiple Select' to QuestionType constraint...");
+        if (existing) {
+          await pool.request().query(
+            `ALTER TABLE dbo.JuryChargeQuestions DROP CONSTRAINT [${existing.CONSTRAINT_NAME}]`
+          );
+        }
+        await pool.request().query(`
+          ALTER TABLE dbo.JuryChargeQuestions
+          ADD CONSTRAINT CK_JuryChargeQuestions_QuestionType
+          CHECK (QuestionType IN ('Multiple Choice', 'Multiple Select', 'Yes/No', 'Text Response', 'Numeric Response'))
+        `);
+        console.log("✅ Migration applied: QuestionType constraint updated\n");
+      } else {
+        console.log("✅ QuestionType constraint already up-to-date\n");
+      }
+    } catch (migrationErr) {
+      // Non-fatal — log and continue booting
+      console.warn("⚠️  QuestionType constraint migration skipped:", migrationErr.message);
+    }
+    // ── End auto-migration ──
+
     const PORT = process.env.PORT || 4000;
     const HOST = process.env.HOST || "0.0.0.0";
 

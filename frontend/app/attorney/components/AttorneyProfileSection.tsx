@@ -280,7 +280,7 @@ export default function AttorneyProfileSection({ onBack }: AttorneyProfileSectio
           <div className="flex items-center gap-4">
             <button
               onClick={onBack}
-              className="flex items-center gap-2 text-[#16305B] hover:text-[#1e417a] transition-colors group"
+              className="flex items-center gap-2 text-[#16305B] hover:text-[#1e417a] transition-colors group cursor-pointer"
               aria-label="Go back to home"
             >
               <ArrowLeft size={24} className="group-hover:-translate-x-1 transition-transform" />

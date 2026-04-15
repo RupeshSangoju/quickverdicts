@@ -103,12 +103,12 @@ export default function AttorneyHelp({ onContact }: { onContact: () => void }) {
               className="flex items-center gap-2 text-[#16305B] hover:text-[#1e417a] transition-colors group"
               onClick={() => router.push('/attorney')}
             >
-              <ArrowLeft size={24} className="group-hover:-translate-x-1 transition-transform" />
+              <ArrowLeft size={24} className="group-hover:-translate-x-1 transition-transform cursor-pointer" />
               <span className="font-semibold">Back to Dashboard</span>
             </button>
             <button
               onClick={onContact}
-              className="bg-[#16305B] text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-[#1e417a] transition-all shadow-sm hover:shadow-md flex items-center gap-2"
+              className="bg-[#16305B] text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-[#1e417a] transition-all shadow-sm hover:shadow-md flex items-center gap-2 cursor-pointer"
             >
               <Mail size={18} />
               Contact Us

@@ -326,6 +326,18 @@ export default function WarRoomPage() {
     }
   }, [caseData, showRescheduleModal]);
 
+  // Disable background scroll when application modal is open
+  useEffect(() => {
+    if (showApplicationModal) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'auto';
+    }
+    return () => {
+      document.body.style.overflow = 'auto';
+    };
+  }, [showApplicationModal]);
+
   async function fetchWarRoomData() {
     const token = getToken();
     if (!token) {

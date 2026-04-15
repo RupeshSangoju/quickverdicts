@@ -428,6 +428,7 @@ export function Step2PersonalDetails({
                   });
                   clearFieldError("maritalStatus");
                 }}
+                className="cursor-pointer"
                 options={[
                   "Single",
                   "Married",
@@ -576,6 +577,7 @@ export function Step2PersonalDetails({
                     });
                     clearFieldError("yearsInCounty");
                   }}
+                  className="cursor-pointer"
                   options={[
                     "One",
                     "Two",
@@ -615,6 +617,7 @@ export function Step2PersonalDetails({
                     });
                     clearFieldError("ageRange");
                   }}
+                  className="cursor-pointer"
                   options={[
                     "18-24",
                     "25-29",
@@ -658,6 +661,7 @@ export function Step2PersonalDetails({
                     });
                     clearFieldError("gender");
                   }}
+                  className="cursor-pointer"
                   options={["Male", "Female", "Other", "Prefer not to say"]}
                   placeholder="Select gender"
                 />
@@ -690,6 +694,7 @@ export function Step2PersonalDetails({
                     });
                     clearFieldError("education");
                   }}
+                  className="cursor-pointer"
                   options={[
                     "High School",
                     "Associate's Degree",
@@ -716,7 +721,7 @@ export function Step2PersonalDetails({
           <div className="pt-6">
             <button
               type="submit"
-              className="w-full font-semibold px-8 py-4 rounded-xl transition-all shadow-md hover:shadow-lg bg-[#0A2342] text-white hover:bg-[#132c54] transform hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-[#0A2342] focus:ring-offset-2"
+              className="w-full font-semibold px-8 py-4 rounded-xl transition-all shadow-md hover:shadow-lg bg-[#0A2342] text-white hover:bg-[#132c54] transform hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-[#0A2342] focus:ring-offset-2 cursor-pointer"
             >
               Continue to Contact Information
             </button>
@@ -971,7 +976,7 @@ export function Step2PersonalDetails({
         <div className="pt-6">
           <button
             type="submit"
-            className="w-full font-semibold px-8 py-4 rounded-xl transition-all shadow-md hover:shadow-lg bg-[#0A2342] text-white hover:bg-[#132c54] transform hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-[#0A2342] focus:ring-offset-2"
+            className="w-full font-semibold px-8 py-4 rounded-xl transition-all shadow-md hover:shadow-lg bg-[#0A2342] text-white hover:bg-[#132c54] transform hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-[#0A2342] focus:ring-offset-2 cursor-pointer"
           >
             Continue to Email &amp; Password
           </button>

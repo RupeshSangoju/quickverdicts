@@ -116,7 +116,12 @@ function IntroductorySlider() {
         <div className="flex items-center justify-between mt-8">
           <button
             onClick={prevSlide}
-            className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+            disabled={currentSlide === 0}
+  className={`p-2 rounded-full transition-colors ${
+    currentSlide === 0
+      ? "bg-gray-100 opacity-50 cursor-not-allowed"
+      : "bg-gray-100 hover:bg-gray-200"
+  }`}
           >
             <ChevronLeft size={24} className="text-[#16305B]" />
           </button>
@@ -125,6 +130,7 @@ function IntroductorySlider() {
             {slides.map((_, index) => (
               <button
                 key={index}
+                disabled={currentSlide === slides.length - 1}
                 onClick={() => setCurrentSlide(index)}
                 className={`h-2 rounded-full transition-all ${
                   index === currentSlide ? "w-8 bg-[#16305B]" : "w-2 bg-gray-300"
@@ -135,6 +141,7 @@ function IntroductorySlider() {
 
           <button
             onClick={nextSlide}
+            disabled={currentSlide === slides.length - 1}
             className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
           >
             <ChevronRight size={24} className="text-[#16305B]" />

@@ -72,7 +72,7 @@ cases in:            </p>
 
       {/* State Dropdown */}
       <select
-        className="border border-gray-300 rounded-md px-4 py-2 text-gray-700"
+        className="border border-gray-300 rounded-md px-4 py-2 text-gray-700 cursor-pointer"
         value={selectedState}
         onChange={(e) => setSelectedState(e.target.value)}
       >
@@ -84,7 +84,7 @@ cases in:            </p>
       <select
         className="border border-gray-300 rounded-md px-4 py-2 text-gray-700 disabled:bg-gray-200 disabled:cursor-not-border border-gray-300 rounded-md px-4 py-2 text-gray-700 
              disabled:bg-gray-100 disabled:text-gray-400 
-             disabled:cursor-not-allowed disabled:opacity-70"
+             disabled:cursor-not-allowed disabled:opacity-70 cursor-pointer"
         disabled={!selectedState}
       >
         <option value="">County</option>

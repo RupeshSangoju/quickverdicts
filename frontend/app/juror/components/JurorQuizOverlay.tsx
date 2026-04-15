@@ -190,7 +190,7 @@ export default function JurorQuizOverlay({ open, onClose, onFinish, sidebarColla
                   <button
                     className={`px-8 py-3 rounded-xl font-semibold text-base transition-all ${
                       selected && !submitted
-                        ? 'bg-gradient-to-r from-[#0C2D57] to-[#1a4d8f] text-white hover:shadow-lg transform hover:scale-105' 
+                        ? 'bg-gradient-to-r from-[#0C2D57] to-[#1a4d8f] text-white hover:shadow-lg transform hover:scale-105 cursor-pointer' 
                         : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                     }`}
                     disabled={!selected || submitted}
@@ -221,7 +221,7 @@ export default function JurorQuizOverlay({ open, onClose, onFinish, sidebarColla
                   {q.explanation}
                 </p>
                 <button
-                  className="px-8 py-3 rounded-xl font-semibold text-base bg-gradient-to-r from-[#0C2D57] to-[#1a4d8f] text-white hover:shadow-lg transform hover:scale-105 transition-all"
+                  className="px-8 py-3 rounded-xl font-semibold text-base bg-gradient-to-r from-[#0C2D57] to-[#1a4d8f] text-white hover:shadow-lg transform hover:scale-105 transition-all cursor-pointer"
                   onClick={() => {
                     if (isLast) setStep('finished');
                     else {

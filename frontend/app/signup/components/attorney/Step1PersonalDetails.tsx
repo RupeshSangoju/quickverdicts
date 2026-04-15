@@ -40,9 +40,19 @@ function sanitizeText(value: string): string {
   return value.replace(/\s+/g, " ").trimStart();
 }
 
-function formatBarNumber(value: string): string {
-  return value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
-}
+const formatBarNumber = (value: string) => {
+  if (!value) return "";
+
+  // Remove all non-numeric characters
+  let cleaned = value.replace(/\D/g, "");
+
+  // Limit to 10 digits
+  if (cleaned.length > 10) {
+    cleaned = cleaned.slice(0, 10);
+  }
+
+  return cleaned;
+};
 
 /* ===========================================================
    MAIN COMPONENT
@@ -303,6 +313,9 @@ export function Step1PersonalDetails({
               onChange={handleBarNumberChange}
               hasError={!!validationErrors.stateBarNumber}
               autoComplete="off"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={10}
             />
             <p className="text-xs text-gray-500 mt-1">
               Enter your bar license number without spaces or special
@@ -327,7 +340,7 @@ export function Step1PersonalDetails({
         <div className="pt-6">
           <button
             type="submit"
-            className="w-full font-semibold px-8 py-4 rounded-xl transition-all shadow-md hover:shadow-lg bg-[#0A2342] text-white hover:bg-[#132c54] transform hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-[#0A2342] focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full font-semibold px-8 py-4 rounded-xl transition-all shadow-md hover:shadow-lg bg-[#0A2342] text-white hover:bg-[#132c54] transform hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-[#0A2342] focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             aria-label="Continue to address details"
           >
             Continue to Address Details

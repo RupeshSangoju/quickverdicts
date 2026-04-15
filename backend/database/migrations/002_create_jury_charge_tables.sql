@@ -26,7 +26,7 @@ CREATE TABLE dbo.JuryChargeQuestions (
 
   -- Question Content
   QuestionText NVARCHAR(1000) NOT NULL,
-  QuestionType NVARCHAR(50) NOT NULL CHECK (QuestionType IN ('Multiple Choice', 'Yes/No', 'Text Response', 'Numeric Response')),
+  QuestionType NVARCHAR(50) NOT NULL CHECK (QuestionType IN ('Multiple Choice', 'Multiple Select', 'Yes/No', 'Text Response', 'Numeric Response')),
   Options NVARCHAR(MAX) NULL, -- JSON array for Multiple Choice options
 
   -- Question Settings
