@@ -4,6 +4,7 @@
 
 const Juror = require("../models/Juror");
 const JurorApplication = require("../models/JurorApplication");
+const Notification = require("../models/Notification");
 const bcrypt = require("bcryptjs");
 
 /* ===========================================================
@@ -202,6 +203,20 @@ async function updateProfileHandler(req, res) {
 
     if (isProfileComplete && !updatedJuror.ProfileComplete) {
       await Juror.updateTaskCompletion(jurorId, "profile", true);
+    }
+
+    // Notify admin of profile update
+    try {
+      const updatedFields = Object.keys(updates).join(", ");
+      await Notification.createNotification({
+        userId: 1, // Admin user ID
+        userType: "admin",
+        type: "juror_profile_updated",
+        title: "Juror Profile Updated",
+        message: `Juror ${existingJuror.Name} updated their profile. Updated fields: ${updatedFields}`,
+      });
+    } catch (notifError) {
+      console.error("Failed to create admin notification:", notifError);
     }
 
     // Remove sensitive data
@@ -443,6 +458,19 @@ async function deleteAccountHandler(req, res) {
 
     // Deactivate account (soft delete)
     await Juror.deactivateJuror(jurorId);
+
+    // Notify admin of account deletion
+    try {
+      await Notification.createNotification({
+        userId: 1, // Admin user ID
+        userType: "admin",
+        type: "juror_account_deleted",
+        title: "Juror Account Deleted",
+        message: `Juror ${juror.Name} (${juror.Email}) deleted their account.`,
+      });
+    } catch (notifError) {
+      console.error("Failed to create admin notification:", notifError);
+    }
 
     res.json({
       success: true,

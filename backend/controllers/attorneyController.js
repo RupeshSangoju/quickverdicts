@@ -4,6 +4,7 @@
 
 const Attorney = require("../models/Attorney");
 const Case = require("../models/Case");
+const Notification = require("../models/Notification");
 const bcrypt = require("bcryptjs");
 
 /**
@@ -148,6 +149,20 @@ async function updateProfileHandler(req, res) {
 
     // Update profile
     await Attorney.updateProfile(attorneyId, updates);
+
+    // Notify admin of profile update
+    try {
+      const updatedFields = Object.keys(updates).join(", ");
+      await Notification.createNotification({
+        userId: 1, // Admin user ID
+        userType: "admin",
+        type: "attorney_profile_updated",
+        title: "Attorney Profile Updated",
+        message: `Attorney ${existingAttorney.FirstName} ${existingAttorney.LastName} updated their profile. Updated fields: ${updatedFields}`,
+      });
+    } catch (notifError) {
+      console.error("Failed to create admin notification:", notifError);
+    }
 
     // Fetch updated attorney data
     const updatedAttorney = await Attorney.findById(attorneyId);
@@ -397,6 +412,19 @@ async function deleteAccountHandler(req, res) {
 
     // Deactivate account (soft delete)
     await Attorney.deactivateAccount(attorneyId);
+
+    // Notify admin of account deletion
+    try {
+      await Notification.createNotification({
+        userId: 1, // Admin user ID
+        userType: "admin",
+        type: "attorney_account_deleted",
+        title: "Attorney Account Deleted",
+        message: `Attorney ${attorney.FirstName} ${attorney.LastName} (${attorney.Email}) deleted their account.`,
+      });
+    } catch (notifError) {
+      console.error("Failed to create admin notification:", notifError);
+    }
 
     res.json({
       success: true,
