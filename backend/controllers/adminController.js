@@ -552,7 +552,7 @@ async function verifyAttorney(req, res) {
 
     if (status === "declined") {
       // Deactivate the attorney account and persist declined status to DB
-      await Attorney.deactivateAttorney(attorneyId);
+      await Attorney.deactivateAccount(attorneyId);
       await Attorney.updateVerificationStatus(attorneyId, "declined");
 
       // Send decline email with reason - with error handling
