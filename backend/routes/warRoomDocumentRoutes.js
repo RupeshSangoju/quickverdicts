@@ -132,6 +132,11 @@ const ALLOWED_MIME_TYPES = [
   "text/x-kotlin",
   "text/markdown",
   "text/x-markdown",
+  // Subtitles & Captions
+  "application/x-subrip",
+  "text/x-subrip",
+  "text/vtt",
+  "text/x-ssa",
   "application/octet-stream",
 ];
 
@@ -211,6 +216,8 @@ const upload = multer({
         ".zip", ".rar", ".7z", ".tar", ".gz", ".bz2", ".xz",
         // Code & Data
         ".json", ".xml", ".yaml", ".yml", ".sql", ".html", ".htm", ".css", ".js", ".ts", ".jsx", ".tsx", ".py", ".java", ".cs", ".c", ".cpp", ".rb", ".php", ".go", ".rs", ".swift", ".kt", ".md", ".markdown",
+        // Subtitles & Captions
+        ".srt", ".vtt", ".sub", ".ass", ".ssa", ".sbv", ".stl", ".smi",
       ];
 
       if (allowedExtensions.includes(ext)) {

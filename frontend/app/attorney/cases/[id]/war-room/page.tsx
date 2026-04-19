@@ -1582,7 +1582,7 @@ export default function WarRoomPage() {
                       ref={fileInputRef}
                       type="file"
                       multiple
-                      accept=".jpg,.jpeg,.png,.gif,.webp,.svg,.bmp,.tiff,.tif,.ico,.psd,.mp4,.mpeg,.mov,.avi,.wmv,.webm,.flv,.3gp,.mkv,.m4v,.ts,.mts,.m2ts,.mxf,.asf,.ogv,.mp3,.wav,.aac,.m4a,.ogg,.flac,.aiff,.aif,.wma,.ape,.opus,.ra,.pdf,.doc,.docx,.odt,.xls,.xlsx,.ods,.ppt,.pptx,.odp,.txt,.csv,.rtf,.zip,.rar,.7z,.tar,.gz,.bz2,.xz,.json,.xml,.yaml,.yml,.sql,.html,.htm,.css,.js,.ts,.jsx,.tsx,.py,.java,.cs,.c,.cpp,.rb,.php,.go,.rs,.swift,.kt,.md,.markdown,image/*,video/*,audio/*,application/*,text/*"
+                      accept=".jpg,.jpeg,.png,.gif,.webp,.svg,.bmp,.tiff,.tif,.ico,.psd,.mp4,.mpeg,.mov,.avi,.wmv,.webm,.flv,.3gp,.mkv,.m4v,.ts,.mts,.m2ts,.mxf,.asf,.ogv,.mp3,.wav,.aac,.m4a,.ogg,.flac,.aiff,.aif,.wma,.ape,.opus,.ra,.pdf,.doc,.docx,.odt,.xls,.xlsx,.ods,.ppt,.pptx,.odp,.txt,.csv,.rtf,.zip,.rar,.7z,.tar,.gz,.bz2,.xz,.json,.xml,.yaml,.yml,.sql,.html,.htm,.css,.js,.ts,.jsx,.tsx,.py,.java,.cs,.c,.cpp,.rb,.php,.go,.rs,.swift,.kt,.md,.markdown,.srt,.vtt,.sub,.ass,.ssa,.sbv,.stl,.smi,image/*,video/*,audio/*,application/*,text/*"
                       onChange={(e) => {
                         if (e.target.files) {
                           const files = Array.from(e.target.files).map(file => ({
