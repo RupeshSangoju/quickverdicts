@@ -684,6 +684,50 @@ async function getDashboardStats(userId) {
 // EXPORTS
 // ============================================
 
+async function getAdminNotifications(adminId, unreadOnly = false) {
+  try {
+    return await executeQuery(async (pool) => {
+      let query = `
+        SELECT NotificationId, UserId, UserType, CaseId, Type, Title, Message, IsRead, CreatedAt
+        FROM dbo.Notifications
+        WHERE UserType = 'admin'
+        ${unreadOnly ? "AND IsRead = 0" : ""}
+        ORDER BY CreatedAt DESC
+      `;
+      const result = await pool.request().query(query);
+      return result.recordset;
+    });
+  } catch (error) {
+    console.error("❌ [Admin.getAdminNotifications] Error:", error.message);
+    throw error;
+  }
+}
+
+async function markNotificationRead(notificationId) {
+  try {
+    return await executeQuery(async (pool) => {
+      await pool.request()
+        .input("id", sql.Int, notificationId)
+        .query(`UPDATE dbo.Notifications SET IsRead = 1 WHERE NotificationId = @id`);
+    });
+  } catch (error) {
+    console.error("❌ [Admin.markNotificationRead] Error:", error.message);
+    throw error;
+  }
+}
+
+async function markAllNotificationsRead(adminId) {
+  try {
+    return await executeQuery(async (pool) => {
+      await pool.request()
+        .query(`UPDATE dbo.Notifications SET IsRead = 1 WHERE UserType = 'admin' AND IsRead = 0`);
+    });
+  } catch (error) {
+    console.error("❌ [Admin.markAllNotificationsRead] Error:", error.message);
+    throw error;
+  }
+}
+
 module.exports = {
   // Core queries
   findByEmail,
@@ -713,4 +757,9 @@ module.exports = {
 
   // Dashboard
   getDashboardStats,
+
+  // Notifications
+  getAdminNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
 };
