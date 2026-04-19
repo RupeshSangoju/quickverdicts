@@ -457,8 +457,8 @@ async function deleteAccountHandler(req, res) {
       }
     }
 
-    // Deactivate account (soft delete)
-    await Juror.deactivateJuror(jurorId);
+    // Soft delete account so it disappears from admin dashboard
+    await Juror.softDeleteJuror(jurorId);
 
     // Notify admin of account deletion
     try {

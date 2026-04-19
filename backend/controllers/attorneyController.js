@@ -411,8 +411,8 @@ async function deleteAccountHandler(req, res) {
       });
     }
 
-    // Deactivate account (soft delete)
-    await Attorney.deactivateAccount(attorneyId);
+    // Soft delete account so it disappears from admin dashboard
+    await Attorney.softDeleteAccount(attorneyId);
 
     // Notify admin of account deletion
     try {
