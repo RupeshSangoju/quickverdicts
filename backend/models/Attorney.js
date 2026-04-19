@@ -639,10 +639,27 @@ async function getAttorneyStats() {
 // EXPORTS
 // ============================================
 
+async function getPasswordHash(attorneyId) {
+  try {
+    const id = parseInt(attorneyId, 10);
+    if (isNaN(id) || id <= 0) throw new Error("Valid attorney ID required");
+    return await executeQuery(async (pool) => {
+      const result = await pool.request().input("id", sql.Int, id).query(
+        `SELECT PasswordHash FROM dbo.Attorneys WHERE AttorneyId = @id`
+      );
+      return result.recordset[0]?.PasswordHash || null;
+    });
+  } catch (error) {
+    console.error("❌ [Attorney.getPasswordHash] Error:", error.message);
+    throw error;
+  }
+}
+
 module.exports = {
   // Core queries
   findByEmail,
   findById,
+  getPasswordHash,
   createAttorney,
 
   // Updates

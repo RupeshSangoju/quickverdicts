@@ -29,6 +29,7 @@ export default function AttorneyProfileSection({ onBack }: AttorneyProfileSectio
   const [error, setError] = useState<string | null>(null);
   const [showEdit, setShowEdit] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
   const [editData, setEditData] = useState({ firstName: "", lastName: "", email: "", phoneNumber: "" });
   const [updating, setUpdating] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -167,6 +168,11 @@ export default function AttorneyProfileSection({ onBack }: AttorneyProfileSectio
   }
 
   async function handleDeleteAccount() {
+    if (!deletePassword) {
+      setErrorMessage("Please enter your password to confirm account deletion.");
+      return;
+    }
+
     setDeleting(true);
     setErrorMessage(null);
 
@@ -179,12 +185,13 @@ export default function AttorneyProfileSection({ onBack }: AttorneyProfileSectio
         return;
       }
 
-      const res = await fetch(`${API_BASE}/api/attorney/profile`, {
+      const res = await fetch(`${API_BASE}/api/attorney/account`, {
         method: "DELETE",
         headers: {
           "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json"
         },
+        body: JSON.stringify({ password: deletePassword, confirmDelete: true }),
       });
       const data = await res.json();
       if (data.success) {
@@ -193,7 +200,7 @@ export default function AttorneyProfileSection({ onBack }: AttorneyProfileSectio
         document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
         window.location.href = "/login";
       } else {
-        setErrorMessage(data.message || "Failed to delete account");
+        setErrorMessage(data.error || data.message || "Failed to delete account");
         setDeleting(false);
       }
     } catch (err) {
@@ -595,6 +602,7 @@ export default function AttorneyProfileSection({ onBack }: AttorneyProfileSectio
                     if (!deleting) {
                       setShowDelete(false);
                       setErrorMessage(null);
+                      setDeletePassword("");
                     }
                   }}
                   disabled={deleting}
@@ -622,6 +630,20 @@ export default function AttorneyProfileSection({ onBack }: AttorneyProfileSectio
                 <p className="text-[15px] text-gray-700">Are you absolutely sure you want to delete your account?</p>
               </div>
 
+              <div className="mb-6">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Enter your password to confirm:
+                </label>
+                <input
+                  type="password"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  placeholder="Enter your password"
+                  disabled={deleting}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 disabled:bg-gray-100"
+                />
+              </div>
+
               <div className="flex gap-3">
                 <button
                   className="flex-1 px-6 py-3 bg-[#B3261E] text-white rounded-lg font-semibold hover:bg-[#a11d17] focus:outline-none focus:ring-2 focus:ring-red-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm hover:shadow-md"
@@ -640,6 +662,7 @@ export default function AttorneyProfileSection({ onBack }: AttorneyProfileSectio
                   onClick={() => {
                     setShowDelete(false);
                     setErrorMessage(null);
+                    setDeletePassword("");
                   }}
                   disabled={deleting}
                 >

@@ -652,7 +652,7 @@ async function getDashboardStats(userId) {
           (SELECT COUNT(*) FROM dbo.Cases WHERE AdminApprovalStatus = 'approved' AND IsDeleted = 0) AS ApprovedCases,
           (SELECT COUNT(*) FROM dbo.TrialMeetings WHERE Status = 'active') AS ActiveTrials,
           (SELECT COUNT(*) FROM dbo.TrialMeetings WHERE Status = 'created') AS ScheduledTrials,
-          (SELECT COUNT(*) FROM dbo.Notifications WHERE IsRead = 0 AND UserType = 'admin' AND UserId = @userId) AS UnreadNotifications,
+          (SELECT COUNT(*) FROM dbo.Notifications WHERE IsRead = 0 AND UserType = 'admin') AS UnreadNotifications,
           (SELECT COUNT(*)
            FROM dbo.Cases c
            LEFT JOIN dbo.Attorneys a ON c.AttorneyId = a.AttorneyId
@@ -684,6 +684,50 @@ async function getDashboardStats(userId) {
 // EXPORTS
 // ============================================
 
+async function getAdminNotifications(adminId, unreadOnly = false) {
+  try {
+    return await executeQuery(async (pool) => {
+      let query = `
+        SELECT NotificationId, UserId, UserType, CaseId, Type, Title, Message, IsRead, CreatedAt
+        FROM dbo.Notifications
+        WHERE UserType = 'admin'
+        ${unreadOnly ? "AND IsRead = 0" : ""}
+        ORDER BY CreatedAt DESC
+      `;
+      const result = await pool.request().query(query);
+      return result.recordset;
+    });
+  } catch (error) {
+    console.error("❌ [Admin.getAdminNotifications] Error:", error.message);
+    throw error;
+  }
+}
+
+async function markNotificationRead(notificationId) {
+  try {
+    return await executeQuery(async (pool) => {
+      await pool.request()
+        .input("id", sql.Int, notificationId)
+        .query(`UPDATE dbo.Notifications SET IsRead = 1 WHERE NotificationId = @id`);
+    });
+  } catch (error) {
+    console.error("❌ [Admin.markNotificationRead] Error:", error.message);
+    throw error;
+  }
+}
+
+async function markAllNotificationsRead(adminId) {
+  try {
+    return await executeQuery(async (pool) => {
+      await pool.request()
+        .query(`UPDATE dbo.Notifications SET IsRead = 1 WHERE UserType = 'admin' AND IsRead = 0`);
+    });
+  } catch (error) {
+    console.error("❌ [Admin.markAllNotificationsRead] Error:", error.message);
+    throw error;
+  }
+}
+
 module.exports = {
   // Core queries
   findByEmail,
@@ -713,4 +757,9 @@ module.exports = {
 
   // Dashboard
   getDashboardStats,
+
+  // Notifications
+  getAdminNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
 };

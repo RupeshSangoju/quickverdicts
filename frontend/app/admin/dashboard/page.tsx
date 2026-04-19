@@ -1343,20 +1343,26 @@ export default function AdminDashboard() {
         body: JSON.stringify({ status: "declined", comments: declineReason || "No reason provided" }),
       });
       if (response.ok) {
+        // Optimistically update local state so buttons disappear immediately
         if (declineType === "attorney") {
-          // Refetch attorneys to update the list with server-side filtering
-          await fetchAttorneys();
-          toast.success("Attorney declined successfully.", {
-            duration: 3000,
-          });
+          setAttorneys((prev: any[]) => prev.map((a) =>
+            a.AttorneyId === declineId
+              ? { ...a, VerificationStatus: "declined", IsVerified: false }
+              : a
+          ));
+          fetchAttorneys();
+          toast.success("Attorney declined successfully.", { duration: 3000 });
         } else {
-          // Refetch jurors to update the list with server-side filtering
-          await fetchJurors();
-          toast.success("Juror declined successfully.", {
-            duration: 3000,
-          });
+          setJurors((prev: any[]) => prev.map((j) =>
+            j.JurorId === declineId
+              ? { ...j, VerificationStatus: "declined", IsVerified: false }
+              : j
+          ));
+          fetchJurors();
+          toast.success("Juror declined successfully.", { duration: 3000 });
         }
         setShowDeclineModal(false);
+        setDeclineId(null);
       }
     } catch (error) {
       console.error(`Error declining ${declineType}:`, error);

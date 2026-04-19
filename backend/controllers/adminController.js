@@ -551,8 +551,9 @@ async function verifyAttorney(req, res) {
     }
 
     if (status === "declined") {
-      // Deactivate the attorney account
-      await Attorney.deactivateAttorney(attorneyId);
+      // Deactivate the attorney account and persist declined status to DB
+      await Attorney.deactivateAccount(attorneyId);
+      await Attorney.updateVerificationStatus(attorneyId, "declined");
 
       // Send decline email with reason - with error handling
       try {
@@ -659,8 +660,9 @@ async function verifyJuror(req, res) {
     }
 
     if (status === "declined") {
-      // Deactivate the juror account
+      // Deactivate the juror account and persist declined status to DB
       await Juror.deactivateJuror(jurorId);
+      await Juror.updateVerificationStatus(jurorId, "declined");
 
       // Send decline email with reason - with error handling
       try {

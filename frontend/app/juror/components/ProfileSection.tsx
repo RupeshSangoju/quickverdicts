@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Eye, EyeOff, HelpCircle, X } from "lucide-react";
 import { SiVenmo, SiCashapp } from "react-icons/si";
 import { FaPaypal } from "react-icons/fa";
+import toast from "react-hot-toast";
 import { getToken } from "@/lib/apiClient";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL
@@ -29,6 +30,7 @@ export default function ProfileSection() {
   const [error, setError] = useState<string | null>(null);
   const [showEdit, setShowEdit] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
   const [editData, setEditData] = useState({ name: "", email: "", password: "", phone: "" });
   const [updating, setUpdating] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -273,34 +275,35 @@ export default function ProfileSection() {
   }
 
   async function handleDeleteAccount() {
+    if (!deletePassword) {
+      alert("Please enter your password to confirm account deletion.");
+      return;
+    }
+
     setDeleting(true);
     try {
-      // Get token from cookies
-      let token = null;
-      if (typeof document !== "undefined") {
-        const match = document.cookie.match(/(?:^|; )token=([^;]*)/);
-        token = match ? decodeURIComponent(match[1]) : null;
-      }
-      
-      // Simulate API call for demo
-      setTimeout(() => {
-        alert("Account deleted successfully");
-        // In real app: window.location.href = "/juror/login";
-        setShowDelete(false);
+      const token = getToken();
+      if (!token) {
+        alert("Authentication token not found. Please login again.");
         setDeleting(false);
-      }, 1500);
+        return;
+      }
 
-      const res = await fetch(`${API_BASE}/api/juror/profile`, {
+      const res = await fetch(`${API_BASE}/api/juror/account`, {
         method: "DELETE",
         headers: {
-          "Authorization": token ? `Bearer ${token}` : "",
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
         },
+        body: JSON.stringify({ password: deletePassword, confirmDelete: true }),
       });
       const data = await res.json();
       if (data.success) {
-        window.location.href = "/login/juror";
+        toast.success("Account deleted successfully.", { duration: 3000 });
+        setTimeout(() => { window.location.href = "/login/juror"; }, 2000);
       } else {
-        alert(data.message || "Failed to delete account");
+        alert(data.error || data.message || "Failed to delete account");
+        setDeleting(false);
       }
     } catch (err) {
       alert("Failed to delete account");
@@ -602,7 +605,12 @@ export default function ProfileSection() {
             {/* Subtle overlay */}
             <div
               className="absolute inset-0 bg-black/10"
-              onClick={() => !deleting && setShowDelete(false)}
+              onClick={() => {
+                if (!deleting) {
+                  setShowDelete(false);
+                  setDeletePassword("");
+                }
+              }}
             ></div>
             {/* Modal content styled to match provided image */}
             <div className="relative bg-white rounded-xl shadow-xl p-7 w-full max-w-lg" style={{ minWidth: 380, maxWidth: 440 }}>
@@ -610,7 +618,12 @@ export default function ProfileSection() {
                 <h2 className="text-xl font-semibold text-[#222]">Delete Account</h2>
                 <button
                   className="text-gray-500 text-xl hover:text-gray-700"
-                  onClick={() => !deleting && setShowDelete(false)}
+                  onClick={() => {
+                    if (!deleting) {
+                      setShowDelete(false);
+                      setDeletePassword("");
+                    }
+                  }}
                   disabled={deleting}
                   aria-label="Close"
                 >
@@ -618,6 +631,21 @@ export default function ProfileSection() {
                 </button>
               </div>
               <div className="mb-6 mt-1 text-[15px] text-gray-800">Are you sure you want to delete your account?</div>
+
+              <div className="mb-6">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Enter your password to confirm:
+                </label>
+                <input
+                  type="password"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  placeholder="Enter your password"
+                  disabled={deleting}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 disabled:bg-gray-100"
+                />
+              </div>
+
               <div className="flex gap-2 justify-end">
                 <button
                   className="px-6 py-2 bg-[#B3261E] text-white rounded shadow-sm font-medium text-[16px] hover:bg-[#a11d17] focus:outline-none focus:ring-2 focus:ring-red-400 border border-[#B3261E] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -628,7 +656,10 @@ export default function ProfileSection() {
                 </button>
                 <button
                   className="px-6 py-2 bg-white text-[#222] rounded shadow-sm font-medium text-[16px] border border-gray-300 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-colors"
-                  onClick={() => setShowDelete(false)}
+                  onClick={() => {
+                    setShowDelete(false);
+                    setDeletePassword("");
+                  }}
                   disabled={deleting}
                 >
                   Go Back

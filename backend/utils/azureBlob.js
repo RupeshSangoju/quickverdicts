@@ -60,32 +60,45 @@ const MAX_FILENAME_LENGTH = 255;
 
 const ALLOWED_MIME_TYPES = [
   // Images
-  "image/jpeg",
-  "image/jpg",
-  "image/png",
-  "image/gif",
-  "image/webp",
-  "image/svg+xml",
-  "image/bmp",
+  "image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp",
+  "image/svg+xml", "image/bmp", "image/tiff", "image/x-icon", "image/vnd.adobe.photoshop",
   // Videos
-  "video/mp4",
-  "video/mpeg",
-  "video/quicktime",
-  "video/x-msvideo",
-  "video/x-ms-wmv",
-  "video/webm",
-  "video/x-flv",
-  "video/3gpp",
+  "video/mp4", "video/mpeg", "video/quicktime", "video/x-msvideo", "video/x-ms-wmv",
+  "video/webm", "video/x-flv", "video/3gpp", "video/x-matroska", "video/matroska", "video/ogg",
+  "video/x-m4v", "video/x-ms-asf", "video/mxf", "video/vnd.ms-asf",
+  // Audio
+  "audio/mpeg", "audio/wav", "audio/x-wav", "audio/aac", "audio/mp4", "audio/x-m4a",
+  "audio/ogg", "audio/flac", "audio/x-flac", "audio/aiff", "audio/x-aiff",
+  "audio/x-pn-realaudio", "audio/vorbis", "audio/opus", "audio/x-ms-wma", "audio/ape",
   // Documents
   "application/pdf",
-  "application/msword",
+  "application/msword", "application/vnd.ms-word",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   "application/vnd.ms-excel",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "application/vnd.ms-powerpoint",
   "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-  "text/plain",
-  "text/csv",
+  "application/vnd.oasis.opendocument.text",
+  "application/vnd.oasis.opendocument.spreadsheet",
+  "application/vnd.oasis.opendocument.presentation",
+  "text/plain", "text/csv", "text/rtf", "application/rtf",
+  "text/xml", "application/xml",
+  "text/x-yaml", "application/x-yaml",
+  "application/json", "text/json",
+  "application/sql", "text/sql",
+  // Archives
+  "application/zip", "application/x-rar-compressed", "application/x-7z-compressed",
+  "application/x-tar", "application/gzip", "application/x-gzip", "application/x-bzip2",
+  // Code & markup
+  "text/html", "text/css", "text/javascript", "application/javascript",
+  "text/typescript", "text/jsx", "text/tsx",
+  "text/x-python", "text/x-java", "text/x-csharp", "text/x-c", "text/x-c++",
+  "text/x-ruby", "text/x-php", "text/x-go", "text/x-rust", "text/x-swift",
+  "text/x-kotlin", "text/markdown", "text/x-markdown",
+  // Subtitles & captions
+  "application/x-subrip", "text/x-subrip", "text/vtt", "text/x-ssa",
+  // Generic binary fallback (covers .srt, .mkv, and other files browsers label generically)
+  "application/octet-stream",
 ];
 
 const RETRY_CONFIG = {

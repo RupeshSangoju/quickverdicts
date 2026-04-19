@@ -134,7 +134,9 @@ async function markAsRead(req, res) {
       });
     }
 
-    if (notification.UserId !== userId) {
+    // Admin can mark any admin-type notification as read regardless of stored UserId
+    const userType = req.user.type;
+    if (userType !== "admin" && notification.UserId !== userId) {
       return res.status(403).json({
         success: false,
         message: "Not authorized to mark this notification as read",
@@ -228,7 +230,8 @@ async function deleteNotification(req, res) {
       });
     }
 
-    if (notification.UserId !== userId) {
+    const userTypeForDelete = req.user.type;
+    if (userTypeForDelete !== "admin" && notification.UserId !== userId) {
       return res.status(403).json({
         success: false,
         message: "Not authorized to delete this notification",
@@ -236,7 +239,7 @@ async function deleteNotification(req, res) {
     }
 
     // Delete notification
-    await Notification.deleteNotification(notificationId,userId);
+    await Notification.deleteNotification(notificationId, userId);
 
     res.json({
       success: true,

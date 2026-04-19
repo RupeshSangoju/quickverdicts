@@ -4,6 +4,8 @@
 
 const Attorney = require("../models/Attorney");
 const Case = require("../models/Case");
+const Notification = require("../models/Notification");
+const { sendNotificationEmail } = require("../utils/email");
 const bcrypt = require("bcryptjs");
 
 /**
@@ -148,6 +150,20 @@ async function updateProfileHandler(req, res) {
 
     // Update profile
     await Attorney.updateProfile(attorneyId, updates);
+
+    // Notify admin of profile update
+    try {
+      const updatedFields = Object.keys(updates).join(", ");
+      await Notification.createNotification({
+        userId: 1, // Admin user ID
+        userType: "admin",
+        type: "attorney_profile_updated",
+        title: "Attorney Profile Updated",
+        message: `Attorney ${existingAttorney.FirstName} ${existingAttorney.LastName} updated their profile. Updated fields: ${updatedFields}`,
+      });
+    } catch (notifError) {
+      console.error("Failed to create admin notification:", notifError);
+    }
 
     // Fetch updated attorney data
     const updatedAttorney = await Attorney.findById(attorneyId);
@@ -353,10 +369,8 @@ async function deleteAccountHandler(req, res) {
     }
 
     // Verify password
-    const isValidPassword = await bcrypt.compare(
-      password,
-      attorney.PasswordHash
-    );
+    const passwordHash = await Attorney.getPasswordHash(attorneyId);
+    const isValidPassword = passwordHash && await bcrypt.compare(password, passwordHash);
     if (!isValidPassword) {
       return res.status(400).json({
         success: false,
@@ -397,8 +411,48 @@ async function deleteAccountHandler(req, res) {
       });
     }
 
-    // Deactivate account (soft delete)
-    await Attorney.deactivateAccount(attorneyId);
+    // Soft delete account so it disappears from admin dashboard
+    await Attorney.softDeleteAccount(attorneyId);
+
+    // Notify admin of account deletion
+    try {
+      await Notification.createNotification({
+        userId: 1,
+        userType: "admin",
+        type: "attorney_account_deleted",
+        title: "Attorney Account Deleted",
+        message: `Attorney ${attorney.FirstName} ${attorney.LastName} (${attorney.Email}) deleted their account.`,
+      });
+    } catch (notifError) {
+      console.error("Failed to create admin notification:", notifError);
+    }
+
+    // Send confirmation email to the attorney
+    try {
+      const name = `${attorney.FirstName || ""} ${attorney.LastName || ""}`.trim() || "Attorney";
+      await sendNotificationEmail(
+        attorney.Email,
+        "Your Account Has Been Deleted",
+        `<h2 style="color:#16305B;margin-top:0;">Account Deletion Confirmation</h2>
+        <p style="color:#666;line-height:1.6;">Dear ${name},</p>
+        <p style="color:#666;line-height:1.6;">
+          This is a confirmation that your QuickVerdicts attorney account has been successfully deleted as per your request.
+        </p>
+        <div style="background:#fee;border-left:4px solid #dc2626;padding:15px;margin:20px 0;border-radius:4px;">
+          <p style="color:#991b1b;margin:0;font-size:14px;">
+            <strong>Your account has been deactivated and you will no longer be able to log in.</strong>
+          </p>
+        </div>
+        <p style="color:#666;line-height:1.6;">
+          If you did not request this deletion, please contact our support team immediately.
+        </p>
+        <p style="color:#666;line-height:1.6;">
+          Thank you for being part of Quick Verdicts.<br/>Quick Verdicts Team
+        </p>`
+      );
+    } catch (emailError) {
+      console.error("Failed to send account deletion confirmation email:", emailError);
+    }
 
     res.json({
       success: true,
