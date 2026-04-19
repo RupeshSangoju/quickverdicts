@@ -274,7 +274,7 @@ async function updateTimezoneOffset(jurorId, timezoneOffset) {
 async function updateVerificationStatus(jurorId, status) {
   try {
     const id = parseInt(jurorId, 10);
-    const validStatuses = ["pending", "verified", "rejected"];
+    const validStatuses = ["pending", "verified", "rejected", "declined"];
 
     if (isNaN(id) || id <= 0) throw new Error("Valid juror ID required");
     if (!validStatuses.includes(status)) {
