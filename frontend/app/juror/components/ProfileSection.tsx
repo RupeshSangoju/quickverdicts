@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Eye, EyeOff, HelpCircle, X } from "lucide-react";
 import { SiVenmo, SiCashapp } from "react-icons/si";
 import { FaPaypal } from "react-icons/fa";
+import toast from "react-hot-toast";
 import { getToken } from "@/lib/apiClient";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL
@@ -298,7 +299,8 @@ export default function ProfileSection() {
       });
       const data = await res.json();
       if (data.success) {
-        window.location.href = "/login/juror";
+        toast.success("Account deleted successfully.", { duration: 3000 });
+        setTimeout(() => { window.location.href = "/login/juror"; }, 2000);
       } else {
         alert(data.error || data.message || "Failed to delete account");
         setDeleting(false);

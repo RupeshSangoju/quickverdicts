@@ -5,6 +5,7 @@
 const Attorney = require("../models/Attorney");
 const Case = require("../models/Case");
 const Notification = require("../models/Notification");
+const { sendNotificationEmail } = require("../utils/email");
 const bcrypt = require("bcryptjs");
 
 /**
@@ -416,7 +417,7 @@ async function deleteAccountHandler(req, res) {
     // Notify admin of account deletion
     try {
       await Notification.createNotification({
-        userId: 1, // Admin user ID
+        userId: 1,
         userType: "admin",
         type: "attorney_account_deleted",
         title: "Attorney Account Deleted",
@@ -424,6 +425,33 @@ async function deleteAccountHandler(req, res) {
       });
     } catch (notifError) {
       console.error("Failed to create admin notification:", notifError);
+    }
+
+    // Send confirmation email to the attorney
+    try {
+      const name = `${attorney.FirstName || ""} ${attorney.LastName || ""}`.trim() || "Attorney";
+      await sendNotificationEmail(
+        attorney.Email,
+        "Your Account Has Been Deleted",
+        `<h2 style="color:#16305B;margin-top:0;">Account Deletion Confirmation</h2>
+        <p style="color:#666;line-height:1.6;">Dear ${name},</p>
+        <p style="color:#666;line-height:1.6;">
+          This is a confirmation that your QuickVerdicts attorney account has been successfully deleted as per your request.
+        </p>
+        <div style="background:#fee;border-left:4px solid #dc2626;padding:15px;margin:20px 0;border-radius:4px;">
+          <p style="color:#991b1b;margin:0;font-size:14px;">
+            <strong>Your account has been deactivated and you will no longer be able to log in.</strong>
+          </p>
+        </div>
+        <p style="color:#666;line-height:1.6;">
+          If you did not request this deletion, please contact our support team immediately.
+        </p>
+        <p style="color:#666;line-height:1.6;">
+          Thank you for being part of Quick Verdicts.<br/>Quick Verdicts Team
+        </p>`
+      );
+    } catch (emailError) {
+      console.error("Failed to send account deletion confirmation email:", emailError);
     }
 
     res.json({
