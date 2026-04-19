@@ -64,7 +64,7 @@ const ALLOWED_MIME_TYPES = [
   "image/svg+xml", "image/bmp", "image/tiff", "image/x-icon", "image/vnd.adobe.photoshop",
   // Videos
   "video/mp4", "video/mpeg", "video/quicktime", "video/x-msvideo", "video/x-ms-wmv",
-  "video/webm", "video/x-flv", "video/3gpp", "video/x-matroska", "video/ogg",
+  "video/webm", "video/x-flv", "video/3gpp", "video/x-matroska", "video/matroska", "video/ogg",
   "video/x-m4v", "video/x-ms-asf", "video/mxf", "video/vnd.ms-asf",
   // Audio
   "audio/mpeg", "audio/wav", "audio/x-wav", "audio/aac", "audio/mp4", "audio/x-m4a",

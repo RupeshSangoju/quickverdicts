@@ -49,6 +49,7 @@ const ALLOWED_MIME_TYPES = [
   "video/x-flv",
   "video/3gpp",
   "video/x-matroska",
+  "video/matroska",
   "video/ogg",
   "video/x-m4v",
   "video/x-ms-asf",
