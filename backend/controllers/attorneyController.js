@@ -353,10 +353,8 @@ async function deleteAccountHandler(req, res) {
     }
 
     // Verify password
-    const isValidPassword = await bcrypt.compare(
-      password,
-      attorney.PasswordHash
-    );
+    const passwordHash = await Attorney.getPasswordHash(attorneyId);
+    const isValidPassword = passwordHash && await bcrypt.compare(password, passwordHash);
     if (!isValidPassword) {
       return res.status(400).json({
         success: false,

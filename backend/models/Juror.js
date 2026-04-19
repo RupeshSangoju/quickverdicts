@@ -754,10 +754,27 @@ async function getJurorStatistics() {
 // EXPORTS
 // ============================================
 
+async function getPasswordHash(jurorId) {
+  try {
+    const id = parseInt(jurorId, 10);
+    if (isNaN(id) || id <= 0) throw new Error("Valid juror ID required");
+    return await executeQuery(async (pool) => {
+      const result = await pool.request().input("id", sql.Int, id).query(
+        `SELECT PasswordHash FROM dbo.Jurors WHERE JurorId = @id`
+      );
+      return result.recordset[0]?.PasswordHash || null;
+    });
+  } catch (error) {
+    console.error("❌ [Juror.getPasswordHash] Error:", error.message);
+    throw error;
+  }
+}
+
 module.exports = {
   // Core queries
   findByEmail,
   findById,
+  getPasswordHash,
   createJuror,
 
   // Updates

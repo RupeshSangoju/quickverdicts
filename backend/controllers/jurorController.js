@@ -404,7 +404,8 @@ async function deleteAccountHandler(req, res) {
     }
 
     // Verify password
-    const isValidPassword = await bcrypt.compare(password, juror.PasswordHash);
+    const passwordHash = await Juror.getPasswordHash(jurorId);
+    const isValidPassword = passwordHash && await bcrypt.compare(password, passwordHash);
     if (!isValidPassword) {
       return res.status(400).json({
         success: false,
