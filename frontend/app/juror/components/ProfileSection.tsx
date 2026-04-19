@@ -290,7 +290,7 @@ export default function ProfileSection() {
         setDeleting(false);
       }, 1500);
 
-      const res = await fetch(`${API_BASE}/api/juror/profile`, {
+      const res = await fetch(`${API_BASE}/api/juror/account`, {
         method: "DELETE",
         headers: {
           "Authorization": token ? `Bearer ${token}` : "",

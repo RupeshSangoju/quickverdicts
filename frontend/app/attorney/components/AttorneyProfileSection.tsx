@@ -179,7 +179,7 @@ export default function AttorneyProfileSection({ onBack }: AttorneyProfileSectio
         return;
       }
 
-      const res = await fetch(`${API_BASE}/api/attorney/profile`, {
+      const res = await fetch(`${API_BASE}/api/attorney/account`, {
         method: "DELETE",
         headers: {
           "Authorization": `Bearer ${token}`,
