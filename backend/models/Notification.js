@@ -158,8 +158,10 @@ async function getNotificationsForUser(userId, userType, options = {}) {
 
     const pool = await poolPromise;
 
-    // Build WHERE clause
-    let whereClause = `WHERE n.UserId = @userId AND n.UserType = @userType`;
+    // Build WHERE clause — admin sees all admin-type notifications regardless of UserId
+    let whereClause = userType === "admin"
+      ? `WHERE n.UserType = @userType`
+      : `WHERE n.UserId = @userId AND n.UserType = @userType`;
     if (unreadOnly) {
       whereClause += ` AND n.IsRead = 0`;
     }

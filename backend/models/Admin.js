@@ -652,7 +652,7 @@ async function getDashboardStats(userId) {
           (SELECT COUNT(*) FROM dbo.Cases WHERE AdminApprovalStatus = 'approved' AND IsDeleted = 0) AS ApprovedCases,
           (SELECT COUNT(*) FROM dbo.TrialMeetings WHERE Status = 'active') AS ActiveTrials,
           (SELECT COUNT(*) FROM dbo.TrialMeetings WHERE Status = 'created') AS ScheduledTrials,
-          (SELECT COUNT(*) FROM dbo.Notifications WHERE IsRead = 0 AND UserType = 'admin' AND UserId = @userId) AS UnreadNotifications,
+          (SELECT COUNT(*) FROM dbo.Notifications WHERE IsRead = 0 AND UserType = 'admin') AS UnreadNotifications,
           (SELECT COUNT(*)
            FROM dbo.Cases c
            LEFT JOIN dbo.Attorneys a ON c.AttorneyId = a.AttorneyId
