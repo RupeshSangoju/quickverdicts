@@ -281,17 +281,17 @@ export default function ProfileSection() {
 
     setDeleting(true);
     try {
-      // Get token from cookies
-      let token = null;
-      if (typeof document !== "undefined") {
-        const match = document.cookie.match(/(?:^|; )token=([^;]*)/);
-        token = match ? decodeURIComponent(match[1]) : null;
+      const token = getToken();
+      if (!token) {
+        alert("Authentication token not found. Please login again.");
+        setDeleting(false);
+        return;
       }
 
       const res = await fetch(`${API_BASE}/api/juror/account`, {
         method: "DELETE",
         headers: {
-          "Authorization": token ? `Bearer ${token}` : "",
+          "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json"
         },
         body: JSON.stringify({ password: deletePassword, confirmDelete: true }),
