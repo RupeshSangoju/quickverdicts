@@ -152,7 +152,9 @@ function IntroductorySlider() {
   );
 }
 
-export default function AttorneyHomeSection() {
+type Section = "home" | "profile" | "notifications" | "cases" | "calendar";
+
+export default function AttorneyHomeSection({ onSectionChange }: { onSectionChange?: (section: Section) => void } = {}) {
   const [user, setUser] = useState<AttorneyUser | null>(null);
   const [cases, setCases] = useState<Case[]>([]);
   const [loading, setLoading] = useState(true);
@@ -758,9 +760,12 @@ export default function AttorneyHomeSection() {
               </div>
 
               <div className="mt-6 text-center">
-                <p className="text-sm text-gray-600">
-                  Showing {recentCases.length} of {cases.length} cases
-                </p>
+                <button
+                  onClick={() => onSectionChange?.("cases")}
+                  className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#16305B] text-white text-sm font-semibold rounded-lg hover:bg-[#0A2342] transition-colors shadow-sm hover:shadow-md cursor-pointer"
+                >
+                  View All Cases
+                </button>
               </div>
             </>
           ) : (

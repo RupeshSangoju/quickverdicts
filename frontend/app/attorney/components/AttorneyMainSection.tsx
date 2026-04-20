@@ -34,7 +34,7 @@ export default function AttorneyMainSection({ selectedSection, onSectionChange }
       break;
     case "home":
     default:
-      content = <AttorneyHomeSection />;
+      content = <AttorneyHomeSection onSectionChange={onSectionChange} />;
   }
 
   return (

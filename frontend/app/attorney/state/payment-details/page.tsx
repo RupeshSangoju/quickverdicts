@@ -14,10 +14,27 @@ export default function PaymentDetailsPage() {
   const [paymentAmount, setPaymentAmount] = useState("");
   const [caseTier, setCaseTier] = useState("");
   const [requiredJurors, setRequiredJurors] = useState("");
+  const [cardNumber, setCardNumber] = useState("");
+  const [cardholderName, setCardholderName] = useState("");
+  const [expiryDate, setExpiryDate] = useState("");
+  const [cvv, setCvv] = useState("");
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const router = useRouter();
+
+  const isCardPayment = paymentMethod === "Credit Card" || paymentMethod === "Debit Card";
+
+  const formatCardNumber = (value: string) => {
+    const digits = value.replace(/\D/g, "").slice(0, 16);
+    return digits.replace(/(.{4})/g, "$1 ").trim();
+  };
+  const formatExpiry = (value: string) => {
+    const digits = value.replace(/\D/g, "").slice(0, 4);
+    if (digits.length >= 3) return digits.slice(0, 2) + "/" + digits.slice(2);
+    return digits;
+  };
+  const formatCvv = (value: string) => value.replace(/\D/g, "").slice(0, 4);
 
   // Fixed payment amounts based on tier (no per-juror calculation)
   const tierAmounts: Record<string, number> = {
@@ -61,6 +78,13 @@ export default function PaymentDetailsPage() {
     if (!paymentAmount || paymentAmount === "0") {
       errors.paymentAmount = "Payment amount calculation failed. Please go back and select tier and jurors.";
     }
+    if (isCardPayment) {
+      if (!cardholderName.trim()) errors.cardholderName = "Cardholder name is required";
+      const rawCard = cardNumber.replace(/\s/g, "");
+      if (!rawCard || rawCard.length < 16) errors.cardNumber = "Enter a valid 16-digit card number";
+      if (!expiryDate || expiryDate.length < 5) errors.expiryDate = "Enter a valid expiry date (MM/YY)";
+      if (!cvv || cvv.length < 3) errors.cvv = "Enter a valid CVV";
+    }
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -74,6 +98,10 @@ export default function PaymentDetailsPage() {
 
     localStorage.setItem("paymentMethod", paymentMethod);
     localStorage.setItem("paymentAmount", paymentAmount);
+    if (isCardPayment) {
+      localStorage.setItem("cardholderName", cardholderName);
+      localStorage.setItem("cardLastFour", cardNumber.replace(/\s/g, "").slice(-4));
+    }
     router.push("/attorney/state/review-details");
   };
 
@@ -123,6 +151,80 @@ export default function PaymentDetailsPage() {
                   <p className="text-red-500 text-sm mt-1">{validationErrors.paymentMethod}</p>
                 )}
               </div>
+
+              {isCardPayment && (
+                <>
+                  <div>
+                    <label className="block mb-1 text-[#16305B] font-medium">
+                      Cardholder Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="John Doe"
+                      value={cardholderName}
+                      onChange={e => setCardholderName(e.target.value)}
+                      className="w-full px-4 py-2 border border-[#bfc6d1] rounded-md bg-white text-[#16305B] focus:outline-[#16305B]"
+                    />
+                    {validationErrors.cardholderName && (
+                      <p className="text-red-500 text-sm mt-1">{validationErrors.cardholderName}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block mb-1 text-[#16305B] font-medium">
+                      Card Number <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="1234 5678 9012 3456"
+                      value={cardNumber}
+                      onChange={e => setCardNumber(formatCardNumber(e.target.value))}
+                      maxLength={19}
+                      className="w-full px-4 py-2 border border-[#bfc6d1] rounded-md bg-white text-[#16305B] focus:outline-[#16305B] tracking-widest"
+                    />
+                    {validationErrors.cardNumber && (
+                      <p className="text-red-500 text-sm mt-1">{validationErrors.cardNumber}</p>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block mb-1 text-[#16305B] font-medium">
+                        Expiry Date <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="MM/YY"
+                        value={expiryDate}
+                        onChange={e => setExpiryDate(formatExpiry(e.target.value))}
+                        maxLength={5}
+                        className="w-full px-4 py-2 border border-[#bfc6d1] rounded-md bg-white text-[#16305B] focus:outline-[#16305B]"
+                      />
+                      {validationErrors.expiryDate && (
+                        <p className="text-red-500 text-sm mt-1">{validationErrors.expiryDate}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block mb-1 text-[#16305B] font-medium">
+                        CVV <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="password"
+                        inputMode="numeric"
+                        placeholder="•••"
+                        value={cvv}
+                        onChange={e => setCvv(formatCvv(e.target.value))}
+                        maxLength={4}
+                        className="w-full px-4 py-2 border border-[#bfc6d1] rounded-md bg-white text-[#16305B] focus:outline-[#16305B]"
+                      />
+                      {validationErrors.cvv && (
+                        <p className="text-red-500 text-sm mt-1">{validationErrors.cvv}</p>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+
               <div>
                 <label className="block mb-1 text-[#16305B] font-medium">
                   Payment Amount <span className="text-red-500">*</span>

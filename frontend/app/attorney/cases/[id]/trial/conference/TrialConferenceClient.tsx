@@ -1056,7 +1056,7 @@ roomCall.remoteParticipants.forEach((p: any) => {
         isRequired: editFormData.IsRequired,
       };
 
-      if (editFormData.QuestionType === 'Multiple Choice') {
+      if (editFormData.QuestionType === 'Multiple Choice' || editFormData.QuestionType === 'Multiple Select') {
         payload.options = editFormData.Options.split('\n').map((o: string) => o.trim()).filter(Boolean);
       } else if (editFormData.QuestionType === 'Rating Scale') {
         payload.minValue = editFormData.MinValue;
@@ -1120,7 +1120,7 @@ roomCall.remoteParticipants.forEach((p: any) => {
         isRequired: newQuestionData.IsRequired,
       };
 
-      if (newQuestionData.QuestionType === 'Multiple Choice') {
+      if (newQuestionData.QuestionType === 'Multiple Choice' || newQuestionData.QuestionType === 'Multiple Select') {
         payload.options = newQuestionData.Options.split('\n').map((o: string) => o.trim()).filter(Boolean);
       }
 
@@ -1777,7 +1777,7 @@ roomCall.remoteParticipants.forEach((p: any) => {
                   </select>
                 </div>
 
-                {newQuestionData.QuestionType === "Multiple Choice" && (
+                {(newQuestionData.QuestionType === "Multiple Choice" || newQuestionData.QuestionType === "Multiple Select") && (
                   <div>
                     <label className="block text-xs mb-1" style={{ color: "#455A7C" }}>Options (one per line)</label>
                     <textarea
@@ -1859,7 +1859,7 @@ roomCall.remoteParticipants.forEach((p: any) => {
                         />
                       </div>
 
-                      {editFormData.QuestionType === "Multiple Choice" && (
+                      {(editFormData.QuestionType === "Multiple Choice" || editFormData.QuestionType === "Multiple Select") && (
                         <div>
                           <label className="block text-xs mb-1" style={{ color: "#455A7C" }}>Options (one per line)</label>
                           <textarea
@@ -1920,6 +1920,19 @@ roomCall.remoteParticipants.forEach((p: any) => {
                             {(Array.isArray(question.Options) ? question.Options : JSON.parse(question.Options || '[]')).map((opt: string, idx: number) => (
                               <div key={idx} className="flex items-center gap-2 text-sm" style={{ color: "#455A7C" }}>
                                 <div className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold" style={{ backgroundColor: "#16305B", color: "#ffffff" }}>
+                                  {String.fromCharCode(65 + idx)}
+                                </div>
+                                {opt}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {question.QuestionType === "Multiple Select" && question.Options && (
+                          <div className="mt-3 space-y-1 mb-3">
+                            {(Array.isArray(question.Options) ? question.Options : JSON.parse(question.Options || '[]')).map((opt: string, idx: number) => (
+                              <div key={idx} className="flex items-center gap-2 text-sm" style={{ color: "#455A7C" }}>
+                                <div className="w-5 h-5 rounded border-2 flex items-center justify-center text-xs" style={{ borderColor: "#16305B" }}>
                                   {String.fromCharCode(65 + idx)}
                                 </div>
                                 {opt}

@@ -91,7 +91,6 @@ export function Step3EmailPassword({
   onResendOTP,
 }: Step3EmailPasswordProps) {
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const otpInputsRef = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -606,7 +605,7 @@ export function Step3EmailPassword({
           >
             <div className="relative">
               <TextInput
-                type={showConfirmPassword ? "text" : "password"}
+                type="password"
                 placeholder="Re-enter your password"
                 value={formData.confirmPassword || ""}
                 onChange={(val) => {
@@ -615,25 +614,7 @@ export function Step3EmailPassword({
                 }}
                 hasError={!!validationErrors.confirmPassword}
                 autoComplete="new-password"
-                className="pr-10"
               />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#0A2342] focus:ring-offset-2 rounded transition-colors"
-                aria-label={
-                  showConfirmPassword
-                    ? "Hide confirm password"
-                    : "Show confirm password"
-                }
-                tabIndex={-1}
-              >
-                {showConfirmPassword ? (
-                  <EyeOff size={18} aria-hidden="true" />
-                ) : (
-                  <Eye size={18} aria-hidden="true" />
-                )}
-              </button>
             </div>
 
             {/* Password Match Check */}
