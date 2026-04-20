@@ -378,9 +378,12 @@ export default function AdminTrialMonitor() {
   const fetchCaseData = async () => {
     setDataLoading(true);
     try {
+      const token = getToken();
+      const authHeaders: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+
       const [witnessRes, questionsRes] = await Promise.all([
-        fetch(`${API_BASE}/api/case/cases/${caseId}/witnesses`),
-        fetch(`${API_BASE}/api/case/cases/${caseId}/jury-charge`)
+        fetch(`${API_BASE}/api/case/cases/${caseId}/witnesses`, { headers: authHeaders }),
+        fetch(`${API_BASE}/api/jury-charge/questions/${caseId}`, { headers: authHeaders })
       ]);
 
       if (witnessRes.ok) {
@@ -1592,9 +1595,22 @@ export default function AdminTrialMonitor() {
                           </span>
                           {question.QuestionType === "Multiple Choice" && question.Options && question.Options.length > 0 && (
                             <div className="mt-3 space-y-2">
-                              {question.Options.map((option, optIndex) => (
+                              {(Array.isArray(question.Options) ? question.Options : JSON.parse(question.Options || '[]')).map((option: string, optIndex: number) => (
                                 <div key={optIndex} className="flex items-center gap-2 text-gray-300 text-sm">
                                   <div className="w-6 h-6 rounded-full bg-gray-600 flex items-center justify-center text-white text-xs font-bold">
+                                    {String.fromCharCode(65 + optIndex)}
+                                  </div>
+                                  {option}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {question.QuestionType === "Multiple Select" && question.Options && question.Options.length > 0 && (
+                            <div className="mt-3 space-y-2">
+                              {(Array.isArray(question.Options) ? question.Options : JSON.parse(question.Options || '[]')).map((option: string, optIndex: number) => (
+                                <div key={optIndex} className="flex items-center gap-2 text-gray-300 text-sm">
+                                  <div className="w-6 h-6 rounded border-2 border-gray-400 bg-gray-600 flex items-center justify-center text-white text-xs font-bold">
                                     {String.fromCharCode(65 + optIndex)}
                                   </div>
                                   {option}

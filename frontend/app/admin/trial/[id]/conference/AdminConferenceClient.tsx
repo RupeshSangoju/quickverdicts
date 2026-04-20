@@ -2357,6 +2357,19 @@ async function renderFeaturedVideo() {
                           ))}
                         </div>
                       )}
+
+                      {question.QuestionType === "Multiple Select" && question.Options && (
+                        <div className="mt-3 space-y-1">
+                          {(Array.isArray(question.Options) ? question.Options : JSON.parse(question.Options || '[]')).map((opt: string, idx: number) => (
+                            <div key={idx} className="flex items-center gap-2 text-sm" style={{ color: "#455A7C" }}>
+                              <div className="w-5 h-5 rounded border-2 flex items-center justify-center text-xs font-bold" style={{ borderColor: "#16305B", color: "#16305B" }}>
+                                {String.fromCharCode(65 + idx)}
+                              </div>
+                              {opt}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

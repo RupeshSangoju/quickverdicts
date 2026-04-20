@@ -1614,6 +1614,36 @@ export default function JurorConferenceClient() {
                     </div>
                   )}
 
+                  {/* Multiple Select */}
+                  {question.QuestionType === "Multiple Select" && (
+                    <div className="space-y-2 ml-9">
+                      {(Array.isArray(question.Options) ? question.Options : []).map((option: string, optIdx: number) => {
+                        const selected = (juryChargeResponses[question.QuestionId] || "").split(",").map((s: string) => s.trim()).filter(Boolean);
+                        const isSelected = selected.includes(option);
+                        const toggle = () => {
+                          const next = isSelected ? selected.filter((s: string) => s !== option) : [...selected, option];
+                          setJuryChargeResponses(prev => ({ ...prev, [question.QuestionId]: next.join(", ") }));
+                        };
+                        return (
+                          <button
+                            key={optIdx}
+                            onClick={toggle}
+                            className={`w-full text-left py-2.5 px-4 rounded-lg border-2 text-sm transition-all flex items-center gap-2 ${
+                              isSelected
+                                ? "border-blue-500 bg-blue-50 text-blue-700 font-medium"
+                                : "border-gray-300 bg-white text-gray-700 hover:border-blue-300"
+                            }`}
+                          >
+                            <span className={`w-4 h-4 flex-shrink-0 rounded border-2 flex items-center justify-center ${isSelected ? "border-blue-500 bg-blue-500" : "border-gray-400"}`}>
+                              {isSelected && <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 12 12"><path d="M10 3L5 8.5 2 5.5" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                            </span>
+                            {option}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
                   {/* Text Response */}
                   {question.QuestionType === "Text Response" && (
                     <div className="ml-9">
