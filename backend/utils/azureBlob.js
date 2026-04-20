@@ -46,6 +46,26 @@ try {
   console.log(
     `✅ Azure Blob Storage initialized (Container: ${CONTAINER_NAME})`
   );
+
+  // Configure CORS so browsers can PUT files directly to Blob Storage.
+  // Runs once on startup; safe to re-apply (idempotent).
+  const frontendOrigin = process.env.FRONTEND_URL || "*";
+  blobServiceClient.setProperties({
+    cors: [
+      {
+        allowedOrigins: frontendOrigin,
+        allowedMethods: "GET,PUT,DELETE,HEAD,OPTIONS",
+        allowedHeaders: "*",
+        exposedHeaders: "*",
+        maxAgeInSeconds: 3600,
+      },
+    ],
+  }).then(() => {
+    console.log("✅ Azure Blob Storage CORS configured");
+  }).catch((err) => {
+    console.warn("⚠️ Could not set Blob Storage CORS (may require Storage Account Owner role):", err.message);
+  });
+
 } catch (error) {
   console.error("CRITICAL: Failed to initialize Azure Blob Storage:", error);
   throw new Error("Failed to initialize Azure Blob Storage");
