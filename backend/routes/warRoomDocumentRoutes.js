@@ -11,7 +11,7 @@ const path = require("path");
 const { poolPromise, sql } = require("../config/db");
 const { authMiddleware } = require("../middleware/authMiddleware");
 const { requireWarRoomAccess } = require("../middleware/warRoomMiddleware");
-const { uploadToBlob, getBlobClient } = require("../utils/azureBlob");
+const { uploadToBlob, getBlobClient, generateUploadSasUrl, blobExists } = require("../utils/azureBlob");
 const {
   BlobServiceClient,
   generateBlobSASQueryParameters,
@@ -656,6 +656,111 @@ router.post(
         error:
           process.env.NODE_ENV === "development" ? error.message : undefined,
       });
+    }
+  }
+);
+
+/**
+ * POST /cases/:caseId/war-room/documents/sas
+ * Generate a short-lived write SAS URL for direct browser → Azure Blob upload.
+ * The client uploads the file directly to Azure (bypassing this server),
+ * then calls /complete to save the metadata.
+ */
+router.post(
+  "/cases/:caseId/war-room/documents/sas",
+  uploadLimiter,
+  validateCaseId,
+  verifyDocumentAccess,
+  async (req, res) => {
+    try {
+      const { fileName, mimeType, size } = req.body;
+
+      if (!fileName || typeof fileName !== "string") {
+        return res.status(400).json({ success: false, message: "fileName is required" });
+      }
+
+      const sanitized = sanitizeFilename(fileName);
+      const { sasUrl, blobName, blobBaseUrl } = await generateUploadSasUrl(sanitized, 120);
+
+      res.json({ success: true, sasUrl, blobName, blobBaseUrl });
+    } catch (error) {
+      console.error("SAS generation error:", error);
+      res.status(500).json({ success: false, message: "Failed to generate upload URL" });
+    }
+  }
+);
+
+/**
+ * POST /cases/:caseId/war-room/documents/complete
+ * Called after the client has uploaded the file directly to Azure Blob.
+ * Saves metadata to the database.
+ */
+router.post(
+  "/cases/:caseId/war-room/documents/complete",
+  generalLimiter,
+  validateCaseId,
+  verifyDocumentAccess,
+  async (req, res) => {
+    try {
+      const caseId = req.validatedCaseId;
+      const userId = req.user.id;
+      const { blobName, blobBaseUrl, fileName, mimeType, size, description } = req.body;
+
+      if (!blobName || !blobBaseUrl || !fileName || !mimeType || !size) {
+        return res.status(400).json({ success: false, message: "Missing required fields" });
+      }
+
+      // Verify the blob actually landed in storage
+      const exists = await blobExists(blobBaseUrl);
+      if (!exists) {
+        return res.status(400).json({ success: false, message: "File not found in storage — upload may have failed" });
+      }
+
+      const sanitizedFilename = sanitizeFilename(fileName);
+      const type = detectFileType(sanitizedFilename, mimeType);
+      const fileSize = parseInt(size, 10);
+
+      const pool = await poolPromise;
+      const result = await pool
+        .request()
+        .input("caseId", sql.Int, caseId)
+        .input("type", sql.NVarChar(50), type)
+        .input("fileName", sql.NVarChar(255), sanitizedFilename)
+        .input("fileUrl", sql.NVarChar(sql.MAX), blobBaseUrl)
+        .input("description", sql.NVarChar(500), description || "")
+        .input("size", sql.BigInt, fileSize)
+        .input("mimeType", sql.NVarChar(100), mimeType)
+        .query(`
+          INSERT INTO WarRoomDocuments (CaseId, Type, FileName, FileUrl, Description, Size, MimeType, UploadedAt)
+          VALUES (@caseId, @type, @fileName, @fileUrl, @description, @size, @mimeType, GETUTCDATE());
+          SELECT SCOPE_IDENTITY() as DocumentId;
+        `);
+
+      const documentId = result.recordset[0].DocumentId;
+
+      await Event.createEvent({
+        caseId,
+        eventType: Event.EVENT_TYPES.CASE_UPDATED,
+        description: `Document uploaded: ${sanitizedFilename}`,
+        triggeredBy: userId,
+        userType: req.user.type,
+      });
+
+      res.json({
+        success: true,
+        message: "File uploaded successfully",
+        document: {
+          id: documentId,
+          fileName: sanitizedFilename,
+          fileUrl: blobBaseUrl,
+          type,
+          size: fileSize,
+          sizeFormatted: formatFileSize(fileSize),
+        },
+      });
+    } catch (error) {
+      console.error("Complete upload error:", error);
+      res.status(500).json({ success: false, message: "Failed to save document metadata" });
     }
   }
 );

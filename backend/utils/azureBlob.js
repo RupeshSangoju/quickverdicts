@@ -646,9 +646,38 @@ async function generateSasUrl(fileUrl, expiryMinutes = 60) {
   }
 }
 
-// ============================================
-// EXPORTS
-// ============================================
+/**
+ * Generate a short-lived write SAS URL so a browser can upload directly to Blob Storage.
+ * Returns { sasUrl, blobName, blobBaseUrl } – the client PUTs the file to sasUrl.
+ */
+async function generateUploadSasUrl(originalFileName, expiryMinutes = 120) {
+  const blobName = generateUniqueFilename(originalFileName);
+  const blobServiceClient = BlobServiceClient.fromConnectionString(AZURE_STORAGE_CONNECTION_STRING);
+  const blockBlobClient = blobServiceClient
+    .getContainerClient(CONTAINER_NAME)
+    .getBlockBlobClient(blobName);
+
+  const sasOptions = {
+    containerName: CONTAINER_NAME,
+    blobName,
+    permissions: BlobSASPermissions.parse("cw"), // create + write
+    startsOn: new Date(),
+    expiresOn: new Date(Date.now() + expiryMinutes * 60 * 1000),
+  };
+
+  const sasToken = generateBlobSASQueryParameters(
+    sasOptions,
+    blobServiceClient.credential
+  ).toString();
+
+  return {
+    sasUrl: `${blockBlobClient.url}?${sasToken}`,
+    blobName,
+    blobBaseUrl: blockBlobClient.url,
+  };
+}
+
+
 
 module.exports = {
   // Core operations
@@ -668,6 +697,7 @@ module.exports = {
 
   // SAS URL generation
   generateSasUrl,
+  generateUploadSasUrl,
 
   // Utilities
   sanitizeFilename,
