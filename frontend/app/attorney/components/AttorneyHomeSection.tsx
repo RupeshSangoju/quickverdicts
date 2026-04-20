@@ -152,7 +152,9 @@ function IntroductorySlider() {
   );
 }
 
-export default function AttorneyHomeSection({ onSectionChange }: { onSectionChange?: (section: string) => void } = {}) {
+type Section = "home" | "profile" | "notifications" | "cases" | "calendar";
+
+export default function AttorneyHomeSection({ onSectionChange }: { onSectionChange?: (section: Section) => void } = {}) {
   const [user, setUser] = useState<AttorneyUser | null>(null);
   const [cases, setCases] = useState<Case[]>([]);
   const [loading, setLoading] = useState(true);
