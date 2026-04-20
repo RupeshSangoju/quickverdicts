@@ -37,6 +37,18 @@ export default function AttorneyProfileSection({ onBack }: AttorneyProfileSectio
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // Card formatting helpers
+  const formatCardNumber = (value: string) => {
+    const digits = value.replace(/\D/g, "").slice(0, 16);
+    return digits.replace(/(.{4})/g, "$1 ").trim();
+  };
+  const formatExpiry = (value: string) => {
+    const digits = value.replace(/\D/g, "").slice(0, 4);
+    if (digits.length >= 3) return digits.slice(0, 2) + "/" + digits.slice(2);
+    return digits;
+  };
+  const formatCvv = (value: string) => value.replace(/\D/g, "").slice(0, 4);
+
   // Payment methods state
   const [showAddPayment, setShowAddPayment] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<string | null>(null);
@@ -779,9 +791,10 @@ export default function AttorneyProfileSection({ onBack }: AttorneyProfileSectio
                       <label className="block text-sm font-semibold text-gray-700 mb-2">Card Number *</label>
                       <input
                         type="text"
+                        inputMode="numeric"
                         placeholder="1234 5678 9012 3456"
                         value={paymentDetails.cardNumber}
-                        onChange={(e) => setPaymentDetails({ ...paymentDetails, cardNumber: e.target.value })}
+                        onChange={(e) => setPaymentDetails({ ...paymentDetails, cardNumber: formatCardNumber(e.target.value) })}
                         maxLength={19}
                         className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#16305B] transition"
                       />
@@ -791,9 +804,10 @@ export default function AttorneyProfileSection({ onBack }: AttorneyProfileSectio
                         <label className="block text-sm font-semibold text-gray-700 mb-2">Expiry Date *</label>
                         <input
                           type="text"
+                          inputMode="numeric"
                           placeholder="MM/YY"
                           value={paymentDetails.expiryDate}
-                          onChange={(e) => setPaymentDetails({ ...paymentDetails, expiryDate: e.target.value })}
+                          onChange={(e) => setPaymentDetails({ ...paymentDetails, expiryDate: formatExpiry(e.target.value) })}
                           maxLength={5}
                           className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#16305B] transition"
                         />
@@ -801,11 +815,12 @@ export default function AttorneyProfileSection({ onBack }: AttorneyProfileSectio
                       <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-2">CVV *</label>
                         <input
-                          type="text"
-                          placeholder="123"
+                          type="password"
+                          inputMode="numeric"
+                          placeholder="•••"
                           value={paymentDetails.cvv}
-                          onChange={(e) => setPaymentDetails({ ...paymentDetails, cvv: e.target.value })}
-                          maxLength={3}
+                          onChange={(e) => setPaymentDetails({ ...paymentDetails, cvv: formatCvv(e.target.value) })}
+                          maxLength={4}
                           className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#16305B] transition"
                         />
                       </div>
