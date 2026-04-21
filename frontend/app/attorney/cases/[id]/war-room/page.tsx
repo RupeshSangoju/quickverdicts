@@ -476,89 +476,93 @@ export default function WarRoomPage() {
         // Skip if already completed or cancelled
         if (fileData.status === 'completed') continue;
 
-        // Create abort controller
         const controller = new AbortController();
-
-        // Update file status to uploading and store controller
         setFilesToUpload(prev => prev.map(f =>
-          f.id === fileData.id
-            ? { ...f, status: 'uploading' as const, controller }
-            : f
+          f.id === fileData.id ? { ...f, status: 'uploading' as const, controller } : f
         ));
 
         try {
-          const formData = new FormData();
-          formData.append("file", fileData.file);
-          formData.append("description", fileData.description);
+          const headers = createAuthHeaders(token);
 
-          // Use XMLHttpRequest for progress tracking
-          await new Promise((resolve, reject) => {
+          // Step 1 — ask backend for a write SAS URL (small request, no timeout risk)
+          const sasRes = await fetch(
+            `${API_BASE}/api/war-room/cases/${caseId}/war-room/documents/sas`,
+            {
+              method: 'POST',
+              headers: { ...headers, 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                fileName: fileData.file.name,
+                mimeType: fileData.file.type || 'application/octet-stream',
+                size: fileData.file.size,
+              }),
+              signal: controller.signal,
+            }
+          );
+
+          if (!sasRes.ok) throw new Error(`SAS request failed: ${sasRes.status}`);
+          const { sasUrl, blobName, blobBaseUrl } = await sasRes.json();
+
+          // Step 2 — upload directly to Azure Blob Storage (bypasses App Service timeout)
+          await new Promise<void>((resolve, reject) => {
             const xhr = new XMLHttpRequest();
 
-            // Track upload progress
             xhr.upload.addEventListener('progress', (e) => {
               if (e.lengthComputable) {
-                const percentComplete = Math.round((e.loaded / e.total) * 100);
+                const pct = Math.round((e.loaded / e.total) * 100);
                 setFilesToUpload(prev => prev.map(f =>
-                  f.id === fileData.id
-                    ? { ...f, progress: percentComplete }
-                    : f
+                  f.id === fileData.id ? { ...f, progress: pct } : f
                 ));
               }
             });
 
-            // Handle completion
             xhr.addEventListener('load', () => {
+              // Azure returns 201 Created on successful block blob PUT
               if (xhr.status >= 200 && xhr.status < 300) {
-                try {
-                  const result = JSON.parse(xhr.responseText);
-                  // Remove completed file from upload list immediately
-                  setFilesToUpload(prev => prev.filter(f => f.id !== fileData.id));
-                  resolve(result);
-                } catch (e) {
-                  reject(new Error('Failed to parse response'));
-                }
+                resolve();
               } else {
-                reject(new Error(`Upload failed: ${xhr.statusText}`));
+                reject(new Error(`Azure upload failed: ${xhr.status}`));
               }
             });
 
-            // Handle errors
-            xhr.addEventListener('error', () => {
-              reject(new Error('Upload failed: Network error'));
-            });
+            xhr.addEventListener('error', () => reject(new Error('Network error during Azure upload')));
+            xhr.addEventListener('abort', () => reject(new Error('AbortError')));
+            controller.signal.addEventListener('abort', () => xhr.abort());
 
-            // Handle abort
-            xhr.addEventListener('abort', () => {
-              reject(new Error('AbortError'));
-            });
-
-            // Connect abort controller to xhr
-            controller.signal.addEventListener('abort', () => {
-              xhr.abort();
-            });
-
-            // Configure and send request
-            xhr.open('POST', `${API_BASE}/api/war-room/cases/${caseId}/war-room/documents`);
-            const headers = createAuthHeaders(token);
-            Object.entries(headers).forEach(([key, value]) => {
-              if (key !== 'Content-Type') { // Let browser set Content-Type for FormData
-                xhr.setRequestHeader(key, value as string);
-              }
-            });
-            xhr.send(formData);
+            xhr.open('PUT', sasUrl);
+            xhr.setRequestHeader('x-ms-blob-type', 'BlockBlob');
+            xhr.setRequestHeader('Content-Type', fileData.file.type || 'application/octet-stream');
+            xhr.send(fileData.file);
           });
+
+          // Step 3 — notify backend to save metadata in the DB
+          const completeRes = await fetch(
+            `${API_BASE}/api/war-room/cases/${caseId}/war-room/documents/complete`,
+            {
+              method: 'POST',
+              headers: { ...headers, 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                blobName,
+                blobBaseUrl,
+                fileName: fileData.file.name,
+                mimeType: fileData.file.type || 'application/octet-stream',
+                size: fileData.file.size,
+                description: fileData.description,
+              }),
+            }
+          );
+
+          if (!completeRes.ok) throw new Error(`Metadata save failed: ${completeRes.status}`);
+
+          // Remove completed file from the list
+          setFilesToUpload(prev => prev.filter(f => f.id !== fileData.id));
+
         } catch (error: any) {
-          // Check if it was aborted
-          if (error.name === 'AbortError') {
+          if (error.message === 'AbortError' || error.name === 'AbortError') {
             console.log('Upload cancelled for:', fileData.file.name);
-            // File will be removed by cancelUpload function
           } else {
             console.error("Error uploading document:", error);
             setFilesToUpload(prev => prev.map(f =>
-              f.id === fileData.id
-                ? { ...f, status: 'error' as const, controller: undefined }
-                : f
+              f.id === fileData.id ? { ...f, status: 'error' as const, controller: undefined } : f
             ));
           }
         }

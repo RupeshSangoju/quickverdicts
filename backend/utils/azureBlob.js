@@ -46,6 +46,26 @@ try {
   console.log(
     `✅ Azure Blob Storage initialized (Container: ${CONTAINER_NAME})`
   );
+
+  // Configure CORS so browsers can PUT files directly to Blob Storage.
+  // Runs once on startup; safe to re-apply (idempotent).
+  const frontendOrigin = process.env.FRONTEND_URL || "*";
+  blobServiceClient.setProperties({
+    cors: [
+      {
+        allowedOrigins: frontendOrigin,
+        allowedMethods: "GET,PUT,DELETE,HEAD,OPTIONS",
+        allowedHeaders: "*",
+        exposedHeaders: "*",
+        maxAgeInSeconds: 3600,
+      },
+    ],
+  }).then(() => {
+    console.log("✅ Azure Blob Storage CORS configured");
+  }).catch((err) => {
+    console.warn("⚠️ Could not set Blob Storage CORS (may require Storage Account Owner role):", err.message);
+  });
+
 } catch (error) {
   console.error("CRITICAL: Failed to initialize Azure Blob Storage:", error);
   throw new Error("Failed to initialize Azure Blob Storage");
@@ -646,9 +666,38 @@ async function generateSasUrl(fileUrl, expiryMinutes = 60) {
   }
 }
 
-// ============================================
-// EXPORTS
-// ============================================
+/**
+ * Generate a short-lived write SAS URL so a browser can upload directly to Blob Storage.
+ * Returns { sasUrl, blobName, blobBaseUrl } – the client PUTs the file to sasUrl.
+ */
+async function generateUploadSasUrl(originalFileName, expiryMinutes = 120) {
+  const blobName = generateUniqueFilename(originalFileName);
+  const blobServiceClient = BlobServiceClient.fromConnectionString(AZURE_STORAGE_CONNECTION_STRING);
+  const blockBlobClient = blobServiceClient
+    .getContainerClient(CONTAINER_NAME)
+    .getBlockBlobClient(blobName);
+
+  const sasOptions = {
+    containerName: CONTAINER_NAME,
+    blobName,
+    permissions: BlobSASPermissions.parse("cw"), // create + write
+    startsOn: new Date(),
+    expiresOn: new Date(Date.now() + expiryMinutes * 60 * 1000),
+  };
+
+  const sasToken = generateBlobSASQueryParameters(
+    sasOptions,
+    blobServiceClient.credential
+  ).toString();
+
+  return {
+    sasUrl: `${blockBlobClient.url}?${sasToken}`,
+    blobName,
+    blobBaseUrl: blockBlobClient.url,
+  };
+}
+
+
 
 module.exports = {
   // Core operations
@@ -668,6 +717,7 @@ module.exports = {
 
   // SAS URL generation
   generateSasUrl,
+  generateUploadSasUrl,
 
   // Utilities
   sanitizeFilename,
