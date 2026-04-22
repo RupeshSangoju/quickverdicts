@@ -14,6 +14,13 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL
   ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api$/, '')
   : "http://localhost:4000";
 
+function hasTrialDayEnded(scheduledDate: string): boolean {
+  if (!scheduledDate) return false;
+  const endOfDay = new Date(scheduledDate);
+  endOfDay.setHours(23, 59, 59, 999);
+  return new Date() > endOfDay;
+}
+
 type ApprovedCase = {
   ApplicationId: number;
   CaseId: number;
@@ -272,7 +279,7 @@ export default function AssignedCasesSection() {
                     </div>
 
                     {/* ✅ FIXED: Conditional access based on trial timing */}
-                    {(caseItem.AttorneyStatus === "view_details" || caseItem.AttorneyStatus === "join_trial" || isAccessible) ? (
+                    {(caseItem.AttorneyStatus === "view_details" || (caseItem.AttorneyStatus === "join_trial" && !hasTrialDayEnded(caseItem.ScheduledDate)) || isAccessible) ? (
                       <button
                         className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-[#0C2D57] text-white rounded-md hover:bg-[#0a2347] transition"
                         onClick={() => {

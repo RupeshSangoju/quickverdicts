@@ -132,7 +132,7 @@ function getTimeWarning(scheduledDate: string, scheduledTime: string) {
     const now = new Date();
     const diffInMs = trialDateTime.getTime() - now.getTime();
     const diffInMinutes = Math.floor(diffInMs / 60000);
-    
+
     if (diffInMinutes > 0 && diffInMinutes < 60) {
       return `Starts in ${diffInMinutes} min`;
     } else if (diffInMinutes < 0) {
@@ -142,6 +142,13 @@ function getTimeWarning(scheduledDate: string, scheduledTime: string) {
   } catch {
     return null;
   }
+}
+
+function hasTrialDayEnded(scheduledDate: string): boolean {
+  if (!scheduledDate) return false;
+  const endOfDay = new Date(scheduledDate);
+  endOfDay.setHours(23, 59, 59, 999);
+  return new Date() > endOfDay;
 }
 
 interface AttorneyCasesSectionProps {
@@ -347,6 +354,7 @@ export default function AttorneyCasesSection({ onBack }: AttorneyCasesSectionPro
     if (c.AdminApprovalStatus === "approved") {
       // Ready for trial
       if (c.AttorneyStatus === "join_trial") {
+        if (hasTrialDayEnded(c.ScheduledDate)) return null;
         return (
           <button
             onClick={(e) => handleJoinTrial(e, c.Id)}

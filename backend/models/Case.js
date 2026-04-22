@@ -1194,7 +1194,7 @@ async function checkSlotAvailability(scheduledDate, scheduledTime, excludeCaseId
         WHERE ScheduledDate = @scheduledDate
           AND ScheduledTime = @scheduledTime
           AND IsDeleted = 0
-          AND AdminApprovalStatus IN ('pending', 'approved')
+          AND AdminApprovalStatus = 'approved'
       `;
 
       if (excludeCaseId) {

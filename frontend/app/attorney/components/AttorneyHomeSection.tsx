@@ -53,6 +53,13 @@ type PaymentStats = {
 
 // Use getToken from apiClient (imported above)
 
+function hasTrialDayEnded(scheduledDate: string): boolean {
+  if (!scheduledDate) return false;
+  const endOfDay = new Date(scheduledDate);
+  endOfDay.setHours(23, 59, 59, 999);
+  return new Date() > endOfDay;
+}
+
 function getCaseName(plaintiffGroups: string, defendantGroups: string) {
   try {
     const plaintiffs = JSON.parse(plaintiffGroups);
@@ -739,7 +746,7 @@ export default function AttorneyHomeSection({ onSectionChange }: { onSectionChan
                         )}
 
                         {/* Join Trial Button */}
-                        {c.AttorneyStatus === 'join_trial' && (
+                        {c.AttorneyStatus === 'join_trial' && !hasTrialDayEnded(c.ScheduledDate) && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();

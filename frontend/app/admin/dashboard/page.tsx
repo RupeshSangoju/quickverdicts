@@ -1795,6 +1795,13 @@ export default function AdminDashboard() {
   };
 }
 
+function hasTrialDayEnded(scheduledDate: string): boolean {
+  if (!scheduledDate) return false;
+  const endOfDay = new Date(scheduledDate);
+  endOfDay.setHours(23, 59, 59, 999);
+  return new Date() > endOfDay;
+}
+
 function getSystemTimezoneInfo() {
   const offset = new Date().getTimezoneOffset();
   const offsetHours = offset / 60;
@@ -3447,7 +3454,7 @@ function formatTime(timeString: string, scheduledDate: string) {
               </div>
 
               {/* Join Trial Button - Admin Exclusive */}
-              {(selectedCase.AttorneyStatus === 'join_trial' || selectedCase.AttorneyStatus === 'view_details') && (
+              {(selectedCase.AttorneyStatus === 'join_trial' || selectedCase.AttorneyStatus === 'view_details') && !hasTrialDayEnded(selectedCase.ScheduledDate) && (
                 <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl p-6 shadow-lg">
                   <div className="flex items-center justify-between">
                     <div>
