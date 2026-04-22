@@ -151,7 +151,7 @@ Browse available cases in your area and choose the ones that fit your schedule. 
                 </div>
                 <div className="flex items-start">
                   <div>
-                    <h3 className="font-bold text-gray-900 mb-1">Render a Verdict</h3>
+                    <h3 className="font-bold text-gray-900 mb-1">Debate the Final Verdict</h3>
                     <p className="text-gray-600">Answer a series of questions, share your decision, and submit your feedback.</p>
                   </div>
                 </div>

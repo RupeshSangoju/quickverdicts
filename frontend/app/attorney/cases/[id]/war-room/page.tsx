@@ -1512,7 +1512,7 @@ export default function WarRoomPage() {
                   <DocumentTextIcon className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-semibold text-white">Videos and Documents</h2>
+                  <h2 className="text-xl font-semibold text-white">Demonstratives for Jury View</h2>
                   <p className="text-sm text-white/80 mt-0.5">Case files and evidence</p>
                 </div>
               </div>

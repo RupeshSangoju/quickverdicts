@@ -39,11 +39,11 @@ export default function AttorneyContact({ onBack }: { onBack: () => void }) {
                   <div className="space-y-3">
                     <div className="flex justify-between items-center pb-2 border-b border-gray-100">
                       <span className="font-medium text-gray-700">Monday - Friday</span>
-                      <span className="text-gray-600">8:00 AM - 5:00 PM</span>
+                      <span className="text-gray-600">8:00 AM - 5:00 PM CST</span>
                     </div>
                     <div className="flex justify-between items-center pb-2 border-b border-gray-100">
                       <span className="font-medium text-gray-700">Saturday</span>
-                      <span className="text-gray-600">8:00 AM - 2:00 PM</span>
+                      <span className="text-gray-600">8:00 AM - 2:00 PM CST</span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="font-medium text-gray-700">Sunday</span>
@@ -69,7 +69,7 @@ export default function AttorneyContact({ onBack }: { onBack: () => void }) {
                     href="tel:+11234567890"
                     className="text-2xl font-semibold text-[#16305B] hover:text-[#1e417a] transition-colors"
                   >
-                    (123) 456-7890
+                    [I don’t have a VOIP at this time]
                   </a>
                 </div>
               </div>
@@ -87,10 +87,10 @@ export default function AttorneyContact({ onBack }: { onBack: () => void }) {
                     Get a response within 24 hours
                   </p>
                   <a
-                    href="mailto:support@quickverdict.com"
+                    href="mailto:QVTrial@quickverdicts.com"
                     className="text-lg font-semibold text-[#16305B] hover:text-[#1e417a] transition-colors underline"
                   >
-                    support@quickverdict.com
+                    QVTrial@quickverdicts.com
                   </a>
                 </div>
               </div>
@@ -105,9 +105,7 @@ export default function AttorneyContact({ onBack }: { onBack: () => void }) {
                 <div className="flex-1">
                   <h3 className="text-xl font-bold text-[#16305B] mb-2">Office Location</h3>
                   <p className="text-gray-600">
-                    123 Legal District<br />
-                    Suite 456<br />
-                    City, State 12345<br />
+                    Dallas, Texas<br />
                     United States
                   </p>
                 </div>
@@ -131,24 +129,9 @@ export default function AttorneyContact({ onBack }: { onBack: () => void }) {
               <div className="p-6 bg-gradient-to-br from-blue-50 to-white">
                 <h3 className="text-xl font-bold text-[#16305B] mb-2">Need Immediate Assistance?</h3>
                 <p className="text-gray-600 mb-4">
-                  Our dedicated support team is ready to help you with any questions or concerns.
+                  We are standing by to assist you with any questions or concerns.
                 </p>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <a
-                    href="tel:+11234567890"
-                    className="flex-1 bg-[#16305B] text-white px-6 py-3 rounded-lg font-semibold hover:bg-[#1e417a] transition-all shadow-sm hover:shadow-md text-center flex items-center justify-center gap-2"
-                  >
-                    <Phone size={18} />
-                    Call Now
-                  </a>
-                  <a
-                    href="mailto:support@quickverdict.com"
-                    className="flex-1 bg-white text-[#16305B] border-2 border-[#16305B] px-6 py-3 rounded-lg font-semibold hover:bg-[#16305B] hover:text-white transition-all text-center flex items-center justify-center gap-2"
-                  >
-                    <Mail size={18} />
-                    Email Us
-                  </a>
-                </div>
+
               </div>
             </div>
 

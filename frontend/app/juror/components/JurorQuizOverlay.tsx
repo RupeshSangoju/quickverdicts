@@ -44,7 +44,7 @@ const quizQuestions = [
     explanation: "Stay available and check back for new opportunities."
   },
   {
-    question: "What should you do after finishing a Quick Verdict case?",
+    question: "What should you do after finishing a Quick Verdicts case?",
     options: [
       "Close the tab and leave",
       "Wait for your results to be posted online",
@@ -61,7 +61,7 @@ const quizQuestions = [
     explanation: "You should always notify the team if you cannot attend."
   },
   {
-    question: "What does the randomly selected Juror do in a Quick Verdict session?",
+    question: "What does the randomly selected Presiding Juror do in a Quick Verdict session?",
     options: [
       "Decides the outcome of the case",
       "Ask the attorneys questions on behalf of the jury panel",

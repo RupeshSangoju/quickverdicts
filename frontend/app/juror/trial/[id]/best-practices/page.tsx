@@ -52,7 +52,7 @@ export default function JurorBestPracticesPage() {
 
         <button
           onClick={handleJoinTrial}
-          className="w-full py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700"
+          className="w-full py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 cursor-pointer"
         >
           Join Trial Now
         </button>

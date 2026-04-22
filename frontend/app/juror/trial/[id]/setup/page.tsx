@@ -47,7 +47,7 @@ export default function JurorTrialSetupPage() {
 
         <button
           onClick={handleContinue}
-          className="w-full py-3 bg-[#0C2D57] text-white rounded-lg font-semibold hover:bg-blue-900"
+          className="w-full py-3 bg-[#0C2D57] text-white rounded-lg font-semibold hover:bg-blue-900 cursor-pointer"
         >
           Continue to Best Practices
         </button>

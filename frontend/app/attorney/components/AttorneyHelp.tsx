@@ -139,7 +139,7 @@ export default function AttorneyHelp({ onContact }: { onContact: () => void }) {
           <div className="flex items-center gap-3 mb-6">
             <Video className="text-[#16305B]" size={28} />
             <div>
-              <h2 className="text-2xl font-bold text-[#16305B]">Tutorial Videos</h2>
+              <h2 className="text-2xl font-bold text-[#16305B]">Tutorials</h2>
               <p className="text-sm text-gray-600">Step-by-step guides to help you get started</p>
             </div>
           </div>
@@ -196,9 +196,7 @@ export default function AttorneyHelp({ onContact }: { onContact: () => void }) {
                       <h3 className="font-semibold text-[#16305B] mb-1 line-clamp-2 min-h-[48px]">
                         {v.title}
                       </h3>
-                      <button className="text-sm text-blue-600 hover:underline font-medium">
-                        Watch Now →
-                      </button>
+
                     </div>
                   </div>
                 ))

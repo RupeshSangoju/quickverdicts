@@ -888,7 +888,7 @@ async function jurorLogin(req, res) {
     if (!juror.IsActive) {
       return res.status(403).json({
         success: false,
-        error: "Your account has been deactivated. Please contact support.",
+        error: "Your account has been deactivated. Please contact support at QVTrial@quickverdicts.com",
         code: "ACCOUNT_DEACTIVATED",
       });
     }

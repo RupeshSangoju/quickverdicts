@@ -825,8 +825,8 @@ router.post(
             userType: 'juror',
             caseId: caseId,
             type: Notification.NOTIFICATION_TYPES.WAR_ROOM_READY,
-            title: 'War Room Submitted - Trial Preparation',
-            message: `The attorney has submitted the war room for "${caseData.CaseTitle}". Your trial is scheduled for ${trialDate} at ${trialTime}. The war room is now accessible — please join the trial now.`
+            title: 'QV Courtroom Now Open',
+            message: `The QV Courtroom is open for "${caseData.CaseTitle}". Your trial is scheduled for ${trialDate} at ${trialTime}. Please join the trial now. Related to your case "${caseData.CaseTitle}" ("${caseData.caseId}").`
           });
 
           // Send email
