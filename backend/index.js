@@ -370,6 +370,18 @@ app.get("/api/test-db", async (req, res) => {
 });
 
 // ============================================
+// URL NORMALIZATION
+// ============================================
+// If NEXT_PUBLIC_API_URL is configured without /api suffix, requests arrive
+// at /auth/... instead of /api/auth/... — rewrite transparently so both work.
+app.use((req, res, next) => {
+  if (!req.path.startsWith("/api") && req.path !== "/") {
+    req.url = "/api" + req.url;
+  }
+  next();
+});
+
+// ============================================
 // REGISTER API ROUTES
 // ============================================
 console.log("📍 Registering API routes...\n");
