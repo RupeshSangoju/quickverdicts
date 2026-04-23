@@ -370,6 +370,17 @@ app.get("/api/test-db", async (req, res) => {
 });
 
 // ============================================
+// URL NORMALIZATION
+// ============================================
+// If NEXT_PUBLIC_API_URL is configured without /api suffix, requests arrive
+// at /auth/... instead of /api/auth/... — rewrite transparently so both work.
+app.use((req, res, next) => {
+  if (!req.path.startsWith("/api") && req.path !== "/") {
+    req.url = "/api" + req.url;
+  }
+  next();
+});
+// ============================================
 // REGISTER API ROUTES
 // ============================================
 console.log("📍 Registering API routes...\n");
@@ -419,10 +430,11 @@ app.get("/", (req, res) => {
 // ============================================
 // 404 HANDLER
 // ============================================
-app.use("/api", (req, res) => {
+app.use((req, res) => {
   return res.status(404).json({
     success: false,
-    error: "API endpoint not found",
+    error: `API endpoint not found: ${req.method} ${req.originalUrl}`,
+    message: "The requested endpoint does not exist. Make sure NEXT_PUBLIC_API_URL ends with /api",
     path: req.originalUrl,
     method: req.method,
     timestamp: new Date().toISOString(),

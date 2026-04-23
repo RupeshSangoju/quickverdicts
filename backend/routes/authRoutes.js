@@ -31,6 +31,7 @@ const {
   requestPasswordReset,
   verifyPasswordResetOTP,
   resetPasswordWithOTP,
+  verifyResetToken,
 
   // Token Verification
   verifyToken,
@@ -411,6 +412,12 @@ router.post(
   validateUserType,
   asyncHandler(resetPasswordWithOTP)
 );
+
+/**
+ * POST /api/auth/verify-reset-token
+ * Legacy token-based reset link verification (deprecated - OTP flow is current)
+ */
+router.post("/verify-reset-token", generalAuthLimiter, asyncHandler(verifyResetToken));
 
 /* ===========================================================
    TOKEN & EMAIL VERIFICATION
