@@ -138,6 +138,9 @@ export default function JurorWarRoomPage() {
   const [viewingDoc, setViewingDoc] = useState<Document | null>(null);
   const [csvData, setCsvData] = useState<string[][]>([]);
   const [csvLoading, setCsvLoading] = useState(false);
+  const [textContent, setTextContent] = useState<string>('');
+  const [textLoading, setTextLoading] = useState(false);
+  const [videoError, setVideoError] = useState(false);
   const [juryChargeReleased, setJuryChargeReleased] = useState(false);
   const [juryChargeLoading, setJuryChargeLoading] = useState(true);
   const [jurorId, setJurorId] = useState<number | null>(null);
@@ -315,8 +318,11 @@ export default function JurorWarRoomPage() {
 
   const handleViewDocument = async (doc: Document) => {
     setCsvData([]);
+    setTextContent('');
+    setVideoError(false);
     setViewingDoc(doc);
     const ext = getFileExtension(doc.FileName);
+
     if (ext === 'csv') {
       setCsvLoading(true);
       try {
@@ -335,6 +341,21 @@ export default function JurorWarRoomPage() {
       } finally {
         setCsvLoading(false);
       }
+    } else if (ext === 'txt') {
+      setTextLoading(true);
+      try {
+        const token = getToken();
+        const res = await fetch(
+          `${API_BASE}/api/case/cases/${doc.CaseId}/documents/${doc.Id}/raw`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        const text = await res.text();
+        setTextContent(text);
+      } catch {
+        setTextContent('');
+      } finally {
+        setTextLoading(false);
+      }
     }
   };
 
@@ -344,9 +365,10 @@ export default function JurorWarRoomPage() {
     const ext = getFileExtension(viewingDoc.FileName);
     const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(ext);
     const isPdf = ext === 'pdf';
-    const isVideo = ['mp4', 'webm', 'mov', 'avi', 'wmv'].includes(ext);
+    const isVideo = ['mp4', 'webm', 'mov', 'avi', 'wmv', 'mkv', 'm4v', 'ogv', '3gp', 'flv'].includes(ext);
     const isOffice = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext);
     const isCsv = ext === 'csv';
+    const isText = ext === 'txt';
     const officeViewerUrl = isOffice
       ? `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(viewingDoc.FileUrl)}`
       : null;
@@ -373,10 +395,6 @@ export default function JurorWarRoomPage() {
                 src={viewingDoc.FileUrl}
                 alt={viewingDoc.FileName}
                 className="max-w-full h-auto mx-auto"
-                onError={(e) => {
-                  e.currentTarget.src = '';
-                  e.currentTarget.alt = 'Failed to load image';
-                }}
               />
             ) : isPdf ? (
               <iframe
@@ -385,14 +403,35 @@ export default function JurorWarRoomPage() {
                 title={viewingDoc.FileName}
               />
             ) : isVideo ? (
-              <video
-                src={viewingDoc.FileUrl}
-                controls
-                controlsList="nodownload nofullscreen"
-                disablePictureInPicture
-                onContextMenu={(e) => e.preventDefault()}
-                className="w-full max-h-[70vh]"
-              />
+              videoError ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
+                  <p className="text-gray-700 font-medium">
+                    Your browser cannot play this video format (.{ext}).
+                  </p>
+                  <p className="text-gray-500 text-sm">
+                    Try opening the file directly in a media player like VLC.
+                  </p>
+                  <a
+                    href={viewingDoc.FileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 px-4 py-2 bg-[#16305B] text-white rounded hover:bg-[#0A2342] transition text-sm"
+                  >
+                    Open file
+                  </a>
+                </div>
+              ) : (
+                <video
+                  key={viewingDoc.FileUrl}
+                  src={viewingDoc.FileUrl}
+                  controls
+                  controlsList="nodownload nofullscreen"
+                  disablePictureInPicture
+                  onContextMenu={(e) => e.preventDefault()}
+                  onError={() => setVideoError(true)}
+                  className="w-full max-h-[70vh]"
+                />
+              )
             ) : isOffice ? (
               <iframe
                 src={officeViewerUrl!}
@@ -434,9 +473,31 @@ export default function JurorWarRoomPage() {
                   <p className="text-gray-500 text-sm">Could not load CSV content.</p>
                 </div>
               )
+            ) : isText ? (
+              textLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="w-8 h-8 border-4 border-[#C6CDD9] border-t-[#16305B] rounded-full animate-spin"></div>
+                </div>
+              ) : textContent ? (
+                <pre className="text-sm text-[#0A2342] whitespace-pre-wrap break-words font-mono bg-[#FAF9F6] p-4 rounded border border-[#C6CDD9]/50 max-h-[65vh] overflow-auto">
+                  {textContent}
+                </pre>
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-gray-500 text-sm">Could not load text content.</p>
+                </div>
+              )
             ) : (
               <div className="text-center py-12">
-                <p className="text-gray-600">Preview not available for this file type (.{ext})</p>
+                <p className="text-gray-600 mb-3">Preview not available for this file type (.{ext}).</p>
+                <a
+                  href={viewingDoc.FileUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2 bg-[#16305B] text-white rounded hover:bg-[#0A2342] transition text-sm"
+                >
+                  Open file
+                </a>
               </div>
             )}
           </div>
