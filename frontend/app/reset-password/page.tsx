@@ -72,11 +72,11 @@ function ResetPasswordForm() {
 
         if (data.success && data.data?.email) {
           setEmail(data.data.email);
-        } else if (data.message) {
-          setError(data.message);
+        } else {
+          setError(data.message || data.data?.message || "This reset link is no longer valid. Please use the forgot password page.");
         }
       } catch (err: any) {
-        setError(err.message || "Failed to verify reset token.");
+        setError("This password reset link is no longer valid. Please use the forgot password page to request a new verification code.");
       } finally {
         setVerifyingToken(false);
       }

@@ -1543,6 +1543,19 @@ async function resetPasswordWithOTP(req, res) {
    =========================================================== */
 
 /**
+ * Verify password reset token (legacy token-based flow)
+ * This endpoint exists for backward compatibility with reset-password page.
+ * The current implementation uses OTP-based reset via /forgot-password.
+ */
+async function verifyResetToken(req, res) {
+  return res.status(410).json({
+    success: false,
+    error: "Password reset links are no longer supported. Please use the forgot password page to reset your password with a verification code.",
+    code: "RESET_LINK_DEPRECATED",
+  });
+}
+
+/**
  * Verify JWT token
  */
 async function verifyToken(req, res) {
@@ -1953,6 +1966,7 @@ module.exports = {
   requestPasswordReset,
   verifyPasswordResetOTP,
   resetPasswordWithOTP,
+  verifyResetToken,
 
   // Verification
   verifyToken,

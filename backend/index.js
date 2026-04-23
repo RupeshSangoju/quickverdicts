@@ -419,10 +419,11 @@ app.get("/", (req, res) => {
 // ============================================
 // 404 HANDLER
 // ============================================
-app.use("/api", (req, res) => {
+app.use((req, res) => {
   return res.status(404).json({
     success: false,
-    error: "API endpoint not found",
+    error: `API endpoint not found: ${req.method} ${req.originalUrl}`,
+    message: "The requested endpoint does not exist. Make sure NEXT_PUBLIC_API_URL ends with /api",
     path: req.originalUrl,
     method: req.method,
     timestamp: new Date().toISOString(),
