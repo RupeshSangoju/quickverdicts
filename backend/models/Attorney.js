@@ -300,6 +300,36 @@ async function checkStateBarNumberExists(
   }
 }
 
+async function checkPhoneNumberExists(phoneNumber, excludeId = null) {
+  try {
+    if (!phoneNumber) return false;
+
+    return await executeQuery(async (pool) => {
+      const request = pool
+        .request()
+        .input("phoneNumber", sql.NVarChar, phoneNumber.trim());
+
+      let query = `
+        SELECT COUNT(*) AS count
+        FROM dbo.Attorneys
+        WHERE PhoneNumber = @phoneNumber
+          AND IsDeleted = 0
+      `;
+
+      if (excludeId) {
+        query += " AND AttorneyId != @excludeId";
+        request.input("excludeId", sql.Int, excludeId);
+      }
+
+      const result = await request.query(query);
+      return result.recordset[0].count > 0;
+    });
+  } catch (error) {
+    console.error("❌ [Attorney.checkPhoneNumberExists] Error:", error.message);
+    throw error;
+  }
+}
+
 async function checkEmailExists(email, excludeId = null) {
   try {
     if (!email) return false;
@@ -673,6 +703,7 @@ module.exports = {
   // Validation
   checkStateBarNumberExists,
   checkEmailExists,
+  checkPhoneNumberExists,
 
   // Account management
   deactivateAccount,

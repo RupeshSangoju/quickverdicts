@@ -318,6 +318,27 @@ function AttorneySignupInner() {
           actions.setValidationErrors(validation.errors);
           return;
         }
+
+        // Check phone number uniqueness before proceeding
+        if (formData.phoneNumber) {
+          try {
+            actions.setLoading(true);
+            const phoneCheck = await post("/api/auth/attorney/check-phone", {
+              phoneNumber: formData.phoneNumber,
+            });
+            if (phoneCheck.success && !phoneCheck.available) {
+              actions.setValidationErrors({
+                phoneNumber: "This phone number is already registered to another account",
+              });
+              return;
+            }
+          } catch {
+            // If check fails, allow proceeding — backend will enforce at signup
+          } finally {
+            actions.setLoading(false);
+          }
+        }
+
         actions.setStep(2);
         window.scrollTo({ top: 0, behavior: "smooth" });
         return;

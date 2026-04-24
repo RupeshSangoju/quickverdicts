@@ -256,6 +256,24 @@ router.post(
    =========================================================== */
 
 /**
+ * POST /api/auth/attorney/check-phone
+ * Check if a phone number is already registered (used during signup Step 1)
+ */
+router.post(
+  "/attorney/check-phone",
+  generalAuthLimiter,
+  asyncHandler(async (req, res) => {
+    const Attorney = require("../models/Attorney");
+    const { phoneNumber } = req.body;
+    if (!phoneNumber || typeof phoneNumber !== "string") {
+      return res.status(400).json({ success: false, error: "Phone number is required" });
+    }
+    const exists = await Attorney.checkPhoneNumberExists(phoneNumber.trim());
+    return res.json({ success: true, available: !exists });
+  })
+);
+
+/**
  * POST /api/auth/attorney/signup
  * Attorney registration
  */

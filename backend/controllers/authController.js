@@ -226,6 +226,18 @@ async function attorneySignup(req, res) {
       });
     }
 
+    // Check if phone number already exists
+    if (phoneNumber) {
+      const phoneExists = await Attorney.checkPhoneNumberExists(phoneNumber);
+      if (phoneExists) {
+        return res.status(409).json({
+          success: false,
+          error: "This phone number is already registered to another account",
+          code: "PHONE_EXISTS",
+        });
+      }
+    }
+
     // Hash password
     const saltRounds = 10;
     const passwordHash = await bcrypt.hash(password, saltRounds);
