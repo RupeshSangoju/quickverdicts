@@ -18,13 +18,13 @@ const Footer: FC = () => {
           {/* Bottom Links */}
           <div className="flex flex-wrap gap-6 mt-8 text-sm">
             <span>Quick Verdicts © {new Date().getFullYear()}</span>
-            <Link href="#" className="hover:underline">
+            <Link href="/" className="hover:underline">
               Privacy
             </Link>
-            <Link href="#" className="hover:underline">
+            <Link href="/" className="hover:underline">
               Terms of Use
             </Link>
-            <Link href="#" className="hover:underline">
+            <Link href="/" className="hover:underline">
               Consumer Notice
             </Link>
           </div>

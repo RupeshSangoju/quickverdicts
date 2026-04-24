@@ -160,17 +160,17 @@ cases in:            </p>
               Secure Connections
             </h3>
             <p className="text-gray-600 mb-4">
-              We built our platform with a Teams-based conference call center accessible only after login.
+              We built our platform with a Microsoft Teams-based conference call center accessible only after login.
 
             </p>
             <ul className="space-y-3 text-gray-700">
               <li className="flex items-start">
                 <span className="mr-2">•</span>
-                <span>Multi-factor identification is used to ensure identification of participants.</span>
+                <span>Multi-factor identification is used to ensure identity of participants.</span>
               </li>
               <li className="flex items-start">
                 <span className="mr-2">•</span>
-                <span>Jurors appear live and deliberate face-to-face.</span>
+                <span>Jurors appear online live and deliberate face-to-face or virtually.</span>
               </li>
               <li className="flex items-start">
                 <span className="mr-2">•</span>
@@ -242,7 +242,7 @@ cases in:            </p>
           <div className="space-y-8">
             <div>
               <h3 className="font-bold text-gray-900 mb-2">What is Quick Verdicts?</h3>
-              <p className="text-gray-600 mb-6">Quick Verdicts is a low-cost virtual courtroom platform where attorneys schedule and prepare a case for a timed presentation to local mock jurors who deliberate the issues and submit a final mock verdict.
+              <p className="text-gray-600 mb-6">Quick Verdicts is a low-cost virtual courtroom platform where attorneys schedule and prepare a case for a timed presentation to local mock jurors, who then deliberate the issues and submit a final mock verdict.
               </p>
               <hr className="border-black" />
             </div>
@@ -250,7 +250,7 @@ cases in:            </p>
             <div>
               <h3 className="font-bold text-gray-900 mb-2">How does it work for attorneys?</h3>
               <p className="text-gray-600 mb-6">
-                Attorneys login to access the QV Courtroom and present a case either live or by video.  Jurors login separately and appear in the QV Courtroom where they receive basic juror instructions, listen to the case presentation, then privately deliberate the answers to the jury charge.    
+                Attorneys login to access the QV Courtroom and present a case either live or by video.  Jurors log in separately and appear in the QV Courtroom, where they receive basic juror instructions, listen to the case presentation, then privately deliberate the answers to the jury charge.    
               </p>
               <hr className="border-black" />
             </div>

@@ -157,9 +157,11 @@ export default function AttorneyContact({ onBack }: { onBack: () => void }) {
           <p className="text-blue-100 mb-6">
             Schedule a consultation with our team to discuss your specific needs
           </p>
-          <button className="bg-white text-[#16305B] px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-all shadow-md hover:shadow-lg">
-            Schedule Consultation
-          </button>
+          <a href="mailto:QVTrial@quickverdicts.com?subject=Consultation Request&body=Hi, I would like to schedule a consultation.">
+            <button className="bg-white text-[#16305B] px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-all shadow-md hover:shadow-lg cursor-pointer">
+              Schedule Consultation
+            </button>
+          </a>
         </div>
       </div>
     </div>

@@ -15,7 +15,7 @@ const quizQuestions = [
     options: [
       "Camera enabled for the full duration of the trial and deliberations",
       "Each juror appears full face on the camera at all times",
-      "Only desktop or laptop computers will work with the platform (no mobile devices). ",
+      "Only desktop or laptop computers will work with the platform (no mobile devices) ",
       "All of the above"
     ],
     answer: "All of the above",
@@ -61,7 +61,7 @@ const quizQuestions = [
     explanation: "You should always notify the team if you cannot attend."
   },
   {
-    question: "What does the randomly selected Presiding Juror do in a Quick Verdict session?",
+    question: "What does the randomly selected Presiding Juror do in a QV Trial?",
     options: [
       "Decides the outcome of the case",
       "Ask the attorneys questions on behalf of the jury panel",
@@ -113,7 +113,7 @@ export default function JurorQuizOverlay({ open, onClose, onFinish, sidebarColla
               </svg>
             </div>
             <div>
-              <h2 className="text-lg font-bold text-white">Presiding Juror Qualification Quiz</h2>
+              <h2 className="text-lg font-bold text-white">Juror Qualification Quiz</h2>
               <p className="text-xs text-blue-100">Required to access job board</p>
             </div>
           </div>

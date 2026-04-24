@@ -24,7 +24,7 @@ const Navbar: FC = () => {
 
         {/* Nav Links */}
         <div className="flex items-center gap-8 text-[#0A2342] text-base font-medium">
-          <Link href="#">
+          <Link href="/">
             About QV
           </Link>
           <Link href="/contact" className="text-[#0A2342] hover:text-[#1a3666]">

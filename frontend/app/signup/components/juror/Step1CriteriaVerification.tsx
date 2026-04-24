@@ -192,12 +192,12 @@ const QUESTIONS = [
   {
     name: "work1" as const,
     label:
-      "Do you or your spouse, parents, or children work for a law firm, an insurance company or a claims adjusting company?",
+      "Do you or your spouse, parents, or children work for a law firm, an insurance company a claims adjusting company, or a litigation funding company?",
   },
   {
     name: "work2" as const,
     label:
-      "Have you, your spouse, parents or children worked for a law firm, an insurance company or a claims adjusting company within the past year?",
+      "Have you, your spouse, parents or children worked for a law firm, an insurance company , a claims adjusting company, or a litigation funding company?",
   },
 ] as const;
 

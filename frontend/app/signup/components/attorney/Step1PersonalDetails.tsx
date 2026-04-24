@@ -315,7 +315,7 @@ export function Step1PersonalDetails({
               autoComplete="off"
               inputMode="numeric"
               pattern="[0-9]*"
-              maxLength={10}
+              maxLength={9}
             />
             <p className="text-xs text-gray-500 mt-1">
               Enter your bar license number without spaces or special

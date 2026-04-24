@@ -696,7 +696,7 @@ export function Step4Agreement({
               <div className="pl-8 space-y-2 text-gray-700">
                 <p>
                   For questions or support, please contact us at{" "}
-                  <strong>QVTrail@quickverdicts.com</strong>.
+                  <strong>QVTrial@quickverdicts.com</strong>.
                 </p>
               </div>
             </section>
