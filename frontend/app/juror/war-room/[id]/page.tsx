@@ -149,6 +149,10 @@ export default function JurorWarRoomPage() {
   const [textContent, setTextContent] = useState<string>('');
   const [textLoading, setTextLoading] = useState(false);
   const [videoError, setVideoError] = useState(false);
+  const [officeContent, setOfficeContent] = useState<string>('');
+  const [officeLoading, setOfficeLoading] = useState(false);
+  const [xlsxData, setXlsxData] = useState<(string | number)[][] | null>(null);
+  const [xlsxLoading, setXlsxLoading] = useState(false);
   const [juryChargeReleased, setJuryChargeReleased] = useState(false);
   const [juryChargeLoading, setJuryChargeLoading] = useState(true);
   const [jurorId, setJurorId] = useState<number | null>(null);
@@ -327,17 +331,18 @@ export default function JurorWarRoomPage() {
   const handleViewDocument = async (doc: Document) => {
     setCsvData([]);
     setTextContent('');
+    setOfficeContent('');
+    setXlsxData(null);
     setVideoError(false);
     setViewingDoc(doc);
     const ext = getFileExtension(doc.FileName);
+    const rawUrl = `${API_BASE}/api/case/cases/${doc.CaseId}/documents/${doc.Id}/raw`;
+
     if (ext === 'csv') {
       setCsvLoading(true);
       try {
         const token = getToken();
-        const res = await fetch(
-          `${API_BASE}/api/case/cases/${doc.CaseId}/documents/${doc.Id}/raw`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+        const res = await fetch(rawUrl, { headers: { Authorization: `Bearer ${token}` } });
         const text = await res.text();
         const rows = text.trim().split('\n').map(row =>
           row.split(',').map(cell => cell.replace(/^"|"$/g, '').trim())
@@ -352,16 +357,90 @@ export default function JurorWarRoomPage() {
       setTextLoading(true);
       try {
         const token = getToken();
-        const res = await fetch(
-          `${API_BASE}/api/case/cases/${doc.CaseId}/documents/${doc.Id}/raw`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+        const res = await fetch(rawUrl, { headers: { Authorization: `Bearer ${token}` } });
         const text = await res.text();
         setTextContent(text);
       } catch {
         setTextContent('');
       } finally {
         setTextLoading(false);
+      }
+    } else if (ext === 'docx') {
+      setOfficeLoading(true);
+      try {
+        const token = getToken();
+        const res = await fetch(rawUrl, { headers: { Authorization: `Bearer ${token}` } });
+        const arrayBuffer = await res.arrayBuffer();
+        const JSZip = (await import('jszip')).default;
+        const zip = await JSZip.loadAsync(arrayBuffer);
+        const docXml = await zip.files['word/document.xml'].async('string');
+        const paragraphs: string[] = [];
+        const paraRegex = /<w:p[ >][\s\S]*?<\/w:p>/g;
+        let para: RegExpExecArray | null;
+        while ((para = paraRegex.exec(docXml)) !== null) {
+          const texts: string[] = [];
+          const tRegex = /<w:t[^>]*>([^<]*)<\/w:t>/g;
+          let t: RegExpExecArray | null;
+          while ((t = tRegex.exec(para[0])) !== null) {
+            if (t[1]) texts.push(t[1]);
+          }
+          if (texts.length > 0) paragraphs.push(texts.join(''));
+        }
+        setOfficeContent(paragraphs.join('\n'));
+      } catch {
+        setOfficeContent('');
+      } finally {
+        setOfficeLoading(false);
+      }
+    } else if (ext === 'pptx') {
+      setOfficeLoading(true);
+      try {
+        const token = getToken();
+        const res = await fetch(rawUrl, { headers: { Authorization: `Bearer ${token}` } });
+        const arrayBuffer = await res.arrayBuffer();
+        const JSZip = (await import('jszip')).default;
+        const zip = await JSZip.loadAsync(arrayBuffer);
+        const slideFiles = Object.keys(zip.files)
+          .filter(f => /^ppt\/slides\/slide\d+\.xml$/.test(f))
+          .sort((a, b) => {
+            const na = parseInt(a.match(/\d+/)?.[0] || '0');
+            const nb = parseInt(b.match(/\d+/)?.[0] || '0');
+            return na - nb;
+          });
+        const slides: string[] = [];
+        for (const slideFile of slideFiles) {
+          const xml = await zip.files[slideFile].async('string');
+          const texts: string[] = [];
+          const tRegex = /<a:t[^>]*>([^<]*)<\/a:t>/g;
+          let t: RegExpExecArray | null;
+          while ((t = tRegex.exec(xml)) !== null) {
+            const v = t[1].trim();
+            if (v) texts.push(v);
+          }
+          if (texts.length > 0) slides.push(texts.join(' '));
+        }
+        setOfficeContent(slides.map((s, i) => `--- Slide ${i + 1} ---\n${s}`).join('\n\n'));
+      } catch {
+        setOfficeContent('');
+      } finally {
+        setOfficeLoading(false);
+      }
+    } else if (ext === 'xlsx' || ext === 'xls') {
+      setXlsxLoading(true);
+      try {
+        const token = getToken();
+        const res = await fetch(rawUrl, { headers: { Authorization: `Bearer ${token}` } });
+        const arrayBuffer = await res.arrayBuffer();
+        const XLSX = await import('xlsx');
+        const workbook = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const data = XLSX.utils.sheet_to_json<(string | number)[]>(sheet, { header: 1 });
+        setXlsxData(data as (string | number)[][]);
+      } catch {
+        setXlsxData([]);
+      } finally {
+        setXlsxLoading(false);
       }
     }
   };
@@ -373,12 +452,18 @@ export default function JurorWarRoomPage() {
     const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(ext);
     const isPdf = ext === 'pdf';
     const isVideo = ['mp4', 'webm', 'mov', 'avi', 'wmv', 'mkv', 'm4v', 'ogv', '3gp', 'flv'].includes(ext);
-    const isOffice = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext);
+    const isDocx = ext === 'docx';
+    const isPptx = ext === 'pptx';
+    const isXlsxFile = ext === 'xlsx' || ext === 'xls';
+    const isOldOffice = ext === 'doc' || ext === 'ppt';
     const isCsv = ext === 'csv';
     const isText = ext === 'txt';
-    const officeViewerUrl = isOffice
-      ? `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(viewingDoc.FileUrl)}`
-      : null;
+
+    const spinner = (
+      <div className="flex items-center justify-center py-12">
+        <div className="w-8 h-8 border-4 border-[#C6CDD9] border-t-[#16305B] rounded-full animate-spin"></div>
+      </div>
+    );
 
     return (
       <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4">
@@ -438,18 +523,64 @@ export default function JurorWarRoomPage() {
                   className="w-full max-h-[70vh]"
                 />
               )
-            ) : isOffice ? (
-              <iframe
-                src={officeViewerUrl!}
-                className="w-full h-[70vh] border-0"
-                title={viewingDoc.FileName}
-              />
-            ) : isCsv ? (
-              csvLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="w-8 h-8 border-4 border-[#C6CDD9] border-t-[#16305B] rounded-full animate-spin"></div>
+            ) : isDocx ? (
+              officeLoading ? spinner : officeContent ? (
+                <pre className="text-sm text-[#0A2342] whitespace-pre-wrap break-words font-mono bg-[#FAF9F6] p-4 rounded border border-[#C6CDD9]/50 max-h-[65vh] overflow-auto">
+                  {officeContent}
+                </pre>
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-gray-500 text-sm">Could not extract content from this document.</p>
                 </div>
-              ) : csvData.length > 0 ? (
+              )
+            ) : isPptx ? (
+              officeLoading ? spinner : officeContent ? (
+                <pre className="text-sm text-[#0A2342] whitespace-pre-wrap break-words font-mono bg-[#FAF9F6] p-4 rounded border border-[#C6CDD9]/50 max-h-[65vh] overflow-auto">
+                  {officeContent}
+                </pre>
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-gray-500 text-sm">No text content found in this presentation.</p>
+                </div>
+              )
+            ) : isXlsxFile ? (
+              xlsxLoading ? spinner : xlsxData && xlsxData.length > 0 ? (
+                <div className="overflow-auto max-h-[65vh]">
+                  <table className="min-w-full text-sm border-collapse">
+                    <thead className="sticky top-0 bg-[#16305B] text-white">
+                      <tr>
+                        {(xlsxData[0] as (string | number)[]).map((header, i) => (
+                          <th key={i} className="px-3 py-2 text-left font-semibold border border-[#0A2342] whitespace-nowrap">
+                            {String(header)}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {xlsxData.slice(1).map((row, ri) => (
+                        <tr key={ri} className={ri % 2 === 0 ? 'bg-white' : 'bg-[#FAF9F6]'}>
+                          {(row as (string | number)[]).map((cell, ci) => (
+                            <td key={ci} className="px-3 py-2 border border-[#C6CDD9]/50 text-[#0A2342]">
+                              {String(cell ?? '')}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-gray-500 text-sm">Could not load spreadsheet content.</p>
+                </div>
+              )
+            ) : isOldOffice ? (
+              <div className="text-center py-12">
+                <p className="text-gray-600 mb-2">Preview not supported for .{ext} format.</p>
+                <p className="text-gray-500 text-sm">Please ask the attorney to re-upload the file as .docx, .pptx, or .xlsx.</p>
+              </div>
+            ) : isCsv ? (
+              csvLoading ? spinner : csvData.length > 0 ? (
                 <div className="overflow-auto max-h-[65vh]">
                   <table className="min-w-full text-sm border-collapse">
                     <thead className="sticky top-0 bg-[#16305B] text-white">
@@ -480,11 +611,7 @@ export default function JurorWarRoomPage() {
                 </div>
               )
             ) : isText ? (
-              textLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="w-8 h-8 border-4 border-[#C6CDD9] border-t-[#16305B] rounded-full animate-spin"></div>
-                </div>
-              ) : textContent ? (
+              textLoading ? spinner : textContent ? (
                 <pre className="text-sm text-[#0A2342] whitespace-pre-wrap break-words font-mono bg-[#FAF9F6] p-4 rounded border border-[#C6CDD9]/50 max-h-[65vh] overflow-auto">
                   {textContent}
                 </pre>
