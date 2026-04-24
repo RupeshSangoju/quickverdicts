@@ -10,6 +10,14 @@ import { useRouter } from "next/navigation";
 import { getToken } from "@/lib/apiClient";
 import { formatDateString } from "@/lib/dateUtils";
 
+function isCaseDayOver(scheduledDate: string): boolean {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const caseDay = new Date(scheduledDate);
+  const caseDayStart = new Date(caseDay.getFullYear(), caseDay.getMonth(), caseDay.getDate());
+  return today > caseDayStart;
+}
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL
   ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api$/, '')
   : "http://localhost:4000";
@@ -271,8 +279,19 @@ export default function AssignedCasesSection() {
                       </div>
                     </div>
 
-                    {/* ✅ FIXED: Conditional access based on trial timing */}
+                    {/* Conditional access based on trial timing and case day */}
                     {(caseItem.AttorneyStatus === "view_details" || caseItem.AttorneyStatus === "join_trial" || isAccessible) ? (
+                      caseItem.AttorneyStatus === "join_trial" && isCaseDayOver(caseItem.ScheduledDate) ? (
+                        <div className="space-y-2">
+                          <button
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 text-gray-500 rounded-md cursor-not-allowed"
+                            disabled
+                          >
+                            <Lock className="w-4 h-4" />
+                            <span>Trial Day Ended</span>
+                          </button>
+                        </div>
+                      ) : (
                       <button
                         className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-[#0C2D57] text-white rounded-md hover:bg-[#0a2347] transition"
                         onClick={() => {
@@ -286,6 +305,7 @@ export default function AssignedCasesSection() {
                         <span>{caseItem.AttorneyStatus === "join_trial" ? "Join Trial" : caseItem.AttorneyStatus === "view_details" ? "View Details" : "Access War Room"}</span>
                         <ArrowRightIcon className="w-4 h-4" />
                       </button>
+                      )
                     ) : (
                       <div className="space-y-2">
                         <button

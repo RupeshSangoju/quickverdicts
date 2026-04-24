@@ -126,6 +126,14 @@ function formatTime(timeString: string, scheduledDate: string) {
   // }
 }
 
+function isCaseDayOver(scheduledDate: string): boolean {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const caseDay = new Date(scheduledDate);
+  const caseDayStart = new Date(caseDay.getFullYear(), caseDay.getMonth(), caseDay.getDate());
+  return today > caseDayStart;
+}
+
 function getTimeWarning(scheduledDate: string, scheduledTime: string) {
   try {
     const trialDateTime = new Date(`${scheduledDate}T${scheduledTime}`);
@@ -347,6 +355,17 @@ export default function AttorneyCasesSection({ onBack }: AttorneyCasesSectionPro
     if (c.AdminApprovalStatus === "approved") {
       // Ready for trial
       if (c.AttorneyStatus === "join_trial") {
+        if (isCaseDayOver(c.ScheduledDate)) {
+          return (
+            <button
+              disabled
+              className="w-full px-4 py-2.5 bg-gray-100 text-gray-500 rounded-lg flex items-center justify-center gap-2 text-sm font-semibold cursor-not-allowed border border-gray-300"
+            >
+              <Clock className="h-4 w-4" />
+              Trial Day Ended
+            </button>
+          );
+        }
         return (
           <button
             onClick={(e) => handleJoinTrial(e, c.Id)}

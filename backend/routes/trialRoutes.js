@@ -423,6 +423,21 @@ router.post(
         });
       }
 
+      // Block joining after the case day has ended
+      if (caseData.ScheduledDate) {
+        const scheduledDay = new Date(caseData.ScheduledDate);
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const caseDayStart = new Date(scheduledDay.getFullYear(), scheduledDay.getMonth(), scheduledDay.getDate());
+        if (todayStart > caseDayStart) {
+          if (rejectJoin) { rejectJoin(new Error("Case day ended")); setTimeout(() => participantJoinInFlight.delete(joinKey), 10000); }
+          return res.status(403).json({
+            success: false,
+            message: "The case day has ended. Joining is no longer available.",
+          });
+        }
+      }
+
       console.log(`📋 Case ${caseId} status: ${caseData.AttorneyStatus}, AdminApproval: ${caseData.AdminApprovalStatus}`);
 
       // ✅ FIX: Check if trial can be joined (15 minutes before scheduled time)
@@ -837,18 +852,20 @@ router.post(
         .request()
         .input("caseId", sql.Int, caseId)
         .input("jurorId", sql.Int, jurorId).query(`
-          SELECT 
-            ja.Status, 
-            tm.RoomId, 
-            tm.ChatThreadId, 
-            tm.ChatServiceUserId, 
-            tm.MeetingId, 
-            j.Name
+          SELECT
+            ja.Status,
+            tm.RoomId,
+            tm.ChatThreadId,
+            tm.ChatServiceUserId,
+            tm.MeetingId,
+            j.Name,
+            c.ScheduledDate
           FROM dbo.JurorApplications ja
           JOIN dbo.TrialMeetings tm ON ja.CaseId = tm.CaseId
           JOIN dbo.Jurors j ON ja.JurorId = j.JurorId
-          WHERE ja.CaseId = @caseId 
-            AND ja.JurorId = @jurorId 
+          JOIN dbo.Cases c ON ja.CaseId = c.CaseId
+          WHERE ja.CaseId = @caseId
+            AND ja.JurorId = @jurorId
             AND ja.Status = 'approved'
         `);
 
@@ -860,6 +877,21 @@ router.post(
       }
 
       const data = verification.recordset[0];
+
+      // Block joining after the case day has ended
+      if (data.ScheduledDate) {
+        const scheduledDay = new Date(data.ScheduledDate);
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const caseDayStart = new Date(scheduledDay.getFullYear(), scheduledDay.getMonth(), scheduledDay.getDate());
+        if (todayStart > caseDayStart) {
+          return res.status(403).json({
+            success: false,
+            message: "The case day has ended. Joining is no longer available.",
+          });
+        }
+      }
+
       let activeRoomId = data.RoomId;
       const chatThreadId = data.ChatThreadId;
       const chatServiceUserId = data.ChatServiceUserId;
@@ -1136,6 +1168,21 @@ router.post(
       }
 
       const trial = result.recordset[0];
+
+      // Block joining after the case day has ended
+      if (trial.ScheduledDate) {
+        const scheduledDay = new Date(trial.ScheduledDate);
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const caseDayStart = new Date(scheduledDay.getFullYear(), scheduledDay.getMonth(), scheduledDay.getDate());
+        if (todayStart > caseDayStart) {
+          rejectInflight(new Error("Case day ended"));
+          return res.status(403).json({
+            success: false,
+            message: "The case day has ended. Joining is no longer available.",
+          });
+        }
+      }
 
       console.log("Admin join - trial record:", {
         CaseId: trial.CaseId,

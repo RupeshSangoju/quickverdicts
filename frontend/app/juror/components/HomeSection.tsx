@@ -21,6 +21,14 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL
   ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api$/, '')
   : "http://localhost:4000";
 
+function isCaseDayOver(scheduledDate: string): boolean {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const caseDay = new Date(scheduledDate);
+  const caseDayStart = new Date(caseDay.getFullYear(), caseDay.getMonth(), caseDay.getDate());
+  return today > caseDayStart;
+}
+
 function getCaseName(plaintiffGroups: string, defendantGroups: string) {
   try {
     const plaintiffs = JSON.parse(plaintiffGroups);
@@ -703,35 +711,44 @@ export default function HomeSection({ sidebarCollapsed }: { sidebarCollapsed: bo
                     icon: '🎥'
                   };
 
-                  // Combine ScheduledDate and ScheduledTime for accurate timing
-                  const trialDateTime = new Date(`${app.ScheduledDate}T${app.ScheduledTime || '00:00:00'}`);
-                  const now = new Date();
-                  const hoursUntilTrial = (trialDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
-                  const isTrialSoon = hoursUntilTrial <= 24 && hoursUntilTrial >= -2;
+                  if (isCaseDayOver(app.ScheduledDate)) {
+                    actionButtons = (
+                      <div className="w-full px-3 py-2 bg-gray-100 text-gray-500 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 cursor-not-allowed">
+                        <Lock className="w-3.5 h-3.5" />
+                        Trial Day Ended
+                      </div>
+                    );
+                  } else {
+                    // Combine ScheduledDate and ScheduledTime for accurate timing
+                    const trialDateTime = new Date(`${app.ScheduledDate}T${app.ScheduledTime || '00:00:00'}`);
+                    const now = new Date();
+                    const hoursUntilTrial = (trialDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+                    const isTrialSoon = hoursUntilTrial <= 24 && hoursUntilTrial >= -2;
 
-                  actionButtons = (
-                    <div className="space-y-1.5">
-                      <button
-                        className={`w-full px-3 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 ${
-                          isTrialSoon
-                            ? 'bg-green-600 text-white hover:bg-green-700 animate-pulse'
-                            : 'bg-green-600 text-white hover:bg-green-700'
-                        }`}
-                        onClick={() => window.open(`/juror/trial/${app.CaseId}/setup`, '_blank')}
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                        </svg>
-                        {isTrialSoon ? 'Join Now' : 'Join Trial'}
-                      </button>
-                      <button
-                        className="w-full px-3 py-1.5 bg-slate-100 text-[#0C2D57] rounded-lg text-xs font-medium hover:bg-slate-200 transition-colors"
-                        onClick={() => router.push(`/juror/war-room/${app.CaseId}`)}
-                      >
-                        Case Information
-                      </button>
-                    </div>
-                  );
+                    actionButtons = (
+                      <div className="space-y-1.5">
+                        <button
+                          className={`w-full px-3 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 ${
+                            isTrialSoon
+                              ? 'bg-green-600 text-white hover:bg-green-700 animate-pulse'
+                              : 'bg-green-600 text-white hover:bg-green-700'
+                          }`}
+                          onClick={() => window.open(`/juror/trial/${app.CaseId}/setup`, '_blank')}
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                          </svg>
+                          {isTrialSoon ? 'Join Now' : 'Join Trial'}
+                        </button>
+                        <button
+                          className="w-full px-3 py-1.5 bg-slate-100 text-[#0C2D57] rounded-lg text-xs font-medium hover:bg-slate-200 transition-colors"
+                          onClick={() => router.push(`/juror/war-room/${app.CaseId}`)}
+                        >
+                          Case Information
+                        </button>
+                      </div>
+                    );
+                  }
                 } else {
                   // War room state (default for approved) - only clickable 1 hour before trial
                   // Combine ScheduledDate and ScheduledTime for accurate timing
@@ -896,36 +913,44 @@ export default function HomeSection({ sidebarCollapsed }: { sidebarCollapsed: bo
                       icon: '🎥'
                     };
 
-                    // Check if trial is happening soon
-                    // Combine ScheduledDate and ScheduledTime for accurate timing
-                    const trialDateTime = new Date(`${app.ScheduledDate}T${app.ScheduledTime || '00:00:00'}`);
-                    const now = new Date();
-                    const hoursUntilTrial = (trialDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
-                    const isTrialSoon = hoursUntilTrial <= 24 && hoursUntilTrial >= -2;
-                    
-                    actionButtons = (
-                      <div className="space-y-1.5">
-                        <button
-                          className={`w-full px-3 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 ${
-                            isTrialSoon
-                              ? 'bg-green-600 text-white hover:bg-green-700 animate-pulse'
-                              : 'bg-green-600 text-white hover:bg-green-700'
-                          }`}
-                          onClick={() => window.open(`/juror/trial/${app.CaseId}/setup`, '_blank')}
-                        >
-                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                          </svg>
-                          {isTrialSoon ? 'Join Now' : 'Join Trial'}
-                        </button>
-                        <button
-                          className="w-full px-3 py-1.5 bg-gray-100 text-[#0C2D57] rounded-lg text-xs font-medium hover:bg-gray-200 transition-colors"
-                          onClick={() => router.push(`/juror/war-room/${app.CaseId}`)}
-                        >
-                          War Room
-                        </button>
-                      </div>
-                    );
+                    if (isCaseDayOver(app.ScheduledDate)) {
+                      actionButtons = (
+                        <div className="w-full px-3 py-2 bg-gray-100 text-gray-500 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 cursor-not-allowed">
+                          <Lock className="w-3.5 h-3.5" />
+                          Trial Day Ended
+                        </div>
+                      );
+                    } else {
+                      // Check if trial is happening soon
+                      const trialDateTime = new Date(`${app.ScheduledDate}T${app.ScheduledTime || '00:00:00'}`);
+                      const now = new Date();
+                      const hoursUntilTrial = (trialDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+                      const isTrialSoon = hoursUntilTrial <= 24 && hoursUntilTrial >= -2;
+
+                      actionButtons = (
+                        <div className="space-y-1.5">
+                          <button
+                            className={`w-full px-3 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 ${
+                              isTrialSoon
+                                ? 'bg-green-600 text-white hover:bg-green-700 animate-pulse'
+                                : 'bg-green-600 text-white hover:bg-green-700'
+                            }`}
+                            onClick={() => window.open(`/juror/trial/${app.CaseId}/setup`, '_blank')}
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                            {isTrialSoon ? 'Join Now' : 'Join Trial'}
+                          </button>
+                          <button
+                            className="w-full px-3 py-1.5 bg-gray-100 text-[#0C2D57] rounded-lg text-xs font-medium hover:bg-gray-200 transition-colors"
+                            onClick={() => router.push(`/juror/war-room/${app.CaseId}`)}
+                          >
+                            War Room
+                          </button>
+                        </div>
+                      );
+                    }
                   } else {
                     // War room state (default for approved)
                     statusBadge = {
