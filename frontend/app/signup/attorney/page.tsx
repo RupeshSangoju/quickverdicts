@@ -350,7 +350,7 @@ function AttorneySignupInner() {
             });
             if (phoneCheck.success && !phoneCheck.available) {
               actions.setValidationErrors({
-                phoneNumber: "This phone number is already registered to another account",
+                phoneNumber: "This phone number is already registered by another account",
               });
               return;
             }

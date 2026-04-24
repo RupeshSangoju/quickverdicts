@@ -232,7 +232,7 @@ async function attorneySignup(req, res) {
       if (phoneExists) {
         return res.status(409).json({
           success: false,
-          error: "This phone number is already registered to another account",
+          error: "This phone number is already registered by another account",
           code: "PHONE_EXISTS",
         });
       }
