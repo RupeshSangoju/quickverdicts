@@ -390,15 +390,21 @@ export default function JurorWarRoomPage() {
 
           <div className="flex-1 overflow-auto p-4">
             {isImage ? (
-              <img
-                src={viewingDoc.FileUrl}
-                alt={viewingDoc.FileName}
-                className="max-w-full h-auto mx-auto"
-
-              />
+              <div
+                className="flex justify-center"
+                onContextMenu={(e) => e.preventDefault()}
+              >
+                <img
+                  src={viewingDoc.FileUrl}
+                  alt={viewingDoc.FileName}
+                  className="max-w-full h-auto mx-auto select-none"
+                  draggable={false}
+                  onContextMenu={(e) => e.preventDefault()}
+                />
+              </div>
             ) : isPdf ? (
               <iframe
-                src={viewingDoc.FileUrl}
+                src={`${viewingDoc.FileUrl}#toolbar=0&navpanes=0&scrollbar=1`}
                 className="w-full h-[70vh] border-0"
                 title={viewingDoc.FileName}
               />
@@ -409,16 +415,8 @@ export default function JurorWarRoomPage() {
                     Your browser cannot play this video format (.{ext}).
                   </p>
                   <p className="text-gray-500 text-sm">
-                    Try opening the file directly in a media player like VLC.
+                    Please contact support if you need to view this file.
                   </p>
-                  <a
-                    href={viewingDoc.FileUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-2 px-4 py-2 bg-[#16305B] text-white rounded hover:bg-[#0A2342] transition text-sm"
-                  >
-                    Open file
-                  </a>
                 </div>
               ) : (
                 <video
@@ -489,15 +487,8 @@ export default function JurorWarRoomPage() {
               )
             ) : (
               <div className="text-center py-12">
-                <p className="text-gray-600 mb-3">Preview not available for this file type (.{ext}).</p>
-                <a
-                  href={viewingDoc.FileUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-4 py-2 bg-[#16305B] text-white rounded hover:bg-[#0A2342] transition text-sm"
-                >
-                  Open file
-                </a>
+                <p className="text-gray-600 mb-2">Preview not available for this file type (.{ext}).</p>
+                <p className="text-gray-500 text-sm">This document is view-only. Download is not permitted.</p>
               </div>
             )}
           </div>
