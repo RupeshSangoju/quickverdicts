@@ -130,71 +130,6 @@ function getFileExtension(filename: string): string {
   return filename.split('.').pop()?.toLowerCase() || '';
 }
 
-function ole2ReadU32(b: Uint8Array, o: number): number {
-  return ((b[o] | (b[o+1]<<8) | (b[o+2]<<16) | (b[o+3]<<24)) >>> 0);
-}
-
-function ole2ReadChain(b: Uint8Array, sectorSize: number, fat: number[], start: number, maxBytes: number): Uint8Array {
-  const parts: Uint8Array[] = [];
-  let s = start, rem = maxBytes;
-  while (s < 0xFFFFFFFB && rem > 0) {
-    const off = 512 + s * sectorSize;
-    const n = Math.min(sectorSize, rem, b.length - off);
-    if (n <= 0) break;
-    parts.push(b.slice(off, off + n));
-    rem -= n;
-    s = s < fat.length ? fat[s] : 0xFFFFFFFE;
-  }
-  const out = new Uint8Array(parts.reduce((a, c) => a + c.length, 0));
-  let p = 0; for (const c of parts) { out.set(c, p); p += c.length; }
-  return out;
-}
-
-function ole2GetStream(buffer: ArrayBuffer, streamName: string): Uint8Array | null {
-  const b = new Uint8Array(buffer);
-  // OLE2 magic: D0 CF 11 E0 A1 B1 1A E1
-  if (b[0] !== 0xD0 || b[1] !== 0xCF || b[2] !== 0x11 || b[3] !== 0xE0) return null;
-
-  const sectorShift = b[0x1E] | (b[0x1F] << 8);
-  const sectorSize  = 1 << sectorShift;          // usually 512
-  const numFat      = ole2ReadU32(b, 0x2C);
-  const firstDir    = ole2ReadU32(b, 0x30);
-
-  // Collect FAT sector numbers from DIFAT (header holds up to 109)
-  const fatSectors: number[] = [];
-  for (let i = 0; i < 109 && fatSectors.length < numFat; i++) {
-    const sec = ole2ReadU32(b, 0x4C + i * 4);
-    if (sec >= 0xFFFFFFFC) break;
-    fatSectors.push(sec);
-  }
-
-  // Build FAT array
-  const fat: number[] = [];
-  for (const fs of fatSectors) {
-    const off = 512 + fs * sectorSize;
-    for (let i = 0; i < sectorSize; i += 4) fat.push(ole2ReadU32(b, off + i));
-  }
-
-  // Read all directory sectors
-  const dirBytes = ole2ReadChain(b, sectorSize, fat, firstDir, 0x7FFFFFFF);
-
-  // Each directory entry is 128 bytes
-  for (let i = 0; i + 128 <= dirBytes.length; i += 128) {
-    const nameLen = (dirBytes[i + 0x40] | (dirBytes[i + 0x41] << 8));
-    if (nameLen < 2) continue;
-    const charCount = (nameLen - 2) >> 1; // exclude null terminator
-    let name = '';
-    for (let j = 0; j < charCount; j++)
-      name += String.fromCharCode(dirBytes[i + j*2] | (dirBytes[i + j*2+1] << 8));
-    if (name !== streamName) continue;
-
-    const startSector = ole2ReadU32(dirBytes, i + 0x74);
-    const size        = ole2ReadU32(dirBytes, i + 0x78);
-    return ole2ReadChain(b, sectorSize, fat, startSector, size);
-  }
-  return null;
-}
-
 export default function JurorWarRoomPage() {
   useProtectedRoute({ requiredUserType: 'juror' });
 
@@ -215,7 +150,7 @@ export default function JurorWarRoomPage() {
   const [textContent, setTextContent] = useState<string>('');
   const [textLoading, setTextLoading] = useState(false);
   const [videoError, setVideoError] = useState(false);
-  const [officeContent, setOfficeContent] = useState<string>('');
+  const [officeViewerUrl, setOfficeViewerUrl] = useState<string>('');
   const [officeLoading, setOfficeLoading] = useState(false);
   const [xlsxData, setXlsxData] = useState<(string | number)[][] | null>(null);
   const [xlsxLoading, setXlsxLoading] = useState(false);
@@ -397,7 +332,7 @@ export default function JurorWarRoomPage() {
   const handleViewDocument = async (doc: Document) => {
     setCsvData([]);
     setTextContent('');
-    setOfficeContent('');
+    setOfficeViewerUrl('');
     setXlsxData(null);
     setVideoError(false);
     setViewingDoc(doc);
@@ -431,134 +366,24 @@ export default function JurorWarRoomPage() {
       } finally {
         setTextLoading(false);
       }
-    } else if (ext === 'docx') {
+    } else if (['doc', 'docx', 'ppt', 'pptx'].includes(ext)) {
       setOfficeLoading(true);
       try {
         const token = getToken();
-        const res = await fetch(rawUrl, { headers: { Authorization: `Bearer ${token}` } });
-        const arrayBuffer = await res.arrayBuffer();
-        const JSZip = (await import('jszip')).default;
-        const zip = await JSZip.loadAsync(arrayBuffer);
-        const docXml = await zip.files['word/document.xml'].async('string');
-        const paragraphs: string[] = [];
-        const paraRegex = /<w:p[ >][\s\S]*?<\/w:p>/g;
-        let para: RegExpExecArray | null;
-        while ((para = paraRegex.exec(docXml)) !== null) {
-          const texts: string[] = [];
-          const tRegex = /<w:t[^>]*>([^<]*)<\/w:t>/g;
-          let t: RegExpExecArray | null;
-          while ((t = tRegex.exec(para[0])) !== null) {
-            if (t[1]) texts.push(t[1]);
-          }
-          if (texts.length > 0) paragraphs.push(texts.join(''));
+        const res = await fetch(
+          `${API_BASE}/api/case/cases/${doc.CaseId}/documents/${doc.Id}/view-url`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        const data = await res.json();
+        if (data.success && data.url) {
+          setOfficeViewerUrl(
+            `https://docs.google.com/viewer?url=${encodeURIComponent(data.url)}&embedded=true`
+          );
+        } else {
+          setOfficeViewerUrl('');
         }
-        setOfficeContent(paragraphs.join('\n'));
       } catch {
-        setOfficeContent('');
-      } finally {
-        setOfficeLoading(false);
-      }
-    } else if (ext === 'pptx') {
-      setOfficeLoading(true);
-      try {
-        const token = getToken();
-        const res = await fetch(rawUrl, { headers: { Authorization: `Bearer ${token}` } });
-        const arrayBuffer = await res.arrayBuffer();
-        const JSZip = (await import('jszip')).default;
-        const zip = await JSZip.loadAsync(arrayBuffer);
-        const slideFiles = Object.keys(zip.files)
-          .filter(f => /^ppt\/slides\/slide\d+\.xml$/.test(f))
-          .sort((a, b) => {
-            const na = parseInt(a.match(/\d+/)?.[0] || '0');
-            const nb = parseInt(b.match(/\d+/)?.[0] || '0');
-            return na - nb;
-          });
-        const slides: string[] = [];
-        for (const slideFile of slideFiles) {
-          const xml = await zip.files[slideFile].async('string');
-          const texts: string[] = [];
-          const tRegex = /<a:t[^>]*>([^<]*)<\/a:t>/g;
-          let t: RegExpExecArray | null;
-          while ((t = tRegex.exec(xml)) !== null) {
-            const v = t[1].trim();
-            if (v) texts.push(v);
-          }
-          if (texts.length > 0) slides.push(texts.join(' '));
-        }
-        setOfficeContent(slides.map((s, i) => `--- Slide ${i + 1} ---\n${s}`).join('\n\n'));
-      } catch {
-        setOfficeContent('');
-      } finally {
-        setOfficeLoading(false);
-      }
-    } else if (ext === 'doc') {
-      setOfficeLoading(true);
-      try {
-        const token = getToken();
-        const res = await fetch(rawUrl, { headers: { Authorization: `Bearer ${token}` } });
-        const arrayBuffer = await res.arrayBuffer();
-        // Extract only the WordDocument stream from the OLE2 container
-        const stream = ole2GetStream(arrayBuffer, 'WordDocument') ?? new Uint8Array(arrayBuffer);
-        const texts: string[] = [];
-        let i = 0;
-        while (i < stream.length - 1) {
-          if (stream[i] >= 32 && stream[i] <= 126 && stream[i + 1] === 0) {
-            let seg = '';
-            while (i < stream.length - 1 && stream[i] >= 32 && stream[i] <= 126 && stream[i + 1] === 0) {
-              seg += String.fromCharCode(stream[i]);
-              i += 2;
-            }
-            while (i < stream.length - 1 && (stream[i] === 13 || stream[i] === 10 || stream[i] === 11 || stream[i] === 7) && stream[i + 1] === 0) {
-              seg += '\n';
-              i += 2;
-            }
-            const trimmed = seg.trim();
-            if (trimmed.length >= 4 && /[a-zA-Z]{2,}/.test(trimmed)) texts.push(trimmed);
-          } else {
-            i++;
-          }
-        }
-        setOfficeContent(texts.join('\n'));
-      } catch {
-        setOfficeContent('');
-      } finally {
-        setOfficeLoading(false);
-      }
-    } else if (ext === 'ppt') {
-      setOfficeLoading(true);
-      try {
-        const token = getToken();
-        const res = await fetch(rawUrl, { headers: { Authorization: `Bearer ${token}` } });
-        const arrayBuffer = await res.arrayBuffer();
-        // Extract the PowerPoint Document stream from the OLE2 container
-        const stream = ole2GetStream(arrayBuffer, 'PowerPoint Document') ?? new Uint8Array(arrayBuffer);
-        const texts: string[] = [];
-        // Walk PPT records: recType @ bytes[i+2..3], recLen @ bytes[i+4..7]
-        let i = 0;
-        while (i + 8 <= stream.length) {
-          const recType = (stream[i + 3] << 8) | stream[i + 2];
-          const recLen  = ole2ReadU32(stream, i + 4);
-          if (recLen > stream.length - i - 8) { i++; continue; }
-          if (recType === 0x0FA8 && recLen > 0) {
-            // TextBytesAtom — ASCII
-            const text = String.fromCharCode(...Array.from(stream.slice(i + 8, i + 8 + recLen))).trim();
-            if (text.length > 0 && /[a-zA-Z]{2,}/.test(text)) texts.push(text);
-          } else if (recType === 0x0FA0 && recLen > 0) {
-            // TextCharsAtom — UTF-16LE
-            let text = '';
-            const sl = stream.slice(i + 8, i + 8 + recLen);
-            for (let j = 0; j + 1 < sl.length; j += 2) {
-              const code = sl[j] | (sl[j + 1] << 8);
-              if (code >= 32) text += String.fromCharCode(code);
-            }
-            text = text.trim();
-            if (text.length > 0 && /[a-zA-Z]{2,}/.test(text)) texts.push(text);
-          }
-          i += 8 + recLen;
-        }
-        setOfficeContent(texts.join('\n'));
-      } catch {
-        setOfficeContent('');
+        setOfficeViewerUrl('');
       } finally {
         setOfficeLoading(false);
       }
@@ -589,10 +414,8 @@ export default function JurorWarRoomPage() {
     const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(ext);
     const isPdf = ext === 'pdf';
     const isVideo = ['mp4', 'webm', 'mov', 'avi', 'wmv', 'mkv', 'm4v', 'ogv', '3gp', 'flv'].includes(ext);
-    const isDocx = ext === 'docx';
-    const isPptx = ext === 'pptx';
+    const isOfficeDoc = ['doc', 'docx', 'ppt', 'pptx'].includes(ext);
     const isXlsxFile = ext === 'xlsx' || ext === 'xls';
-    const isOldOffice = ext === 'doc' || ext === 'ppt';
     const isCsv = ext === 'csv';
     const isText = ext === 'txt';
 
@@ -660,24 +483,16 @@ export default function JurorWarRoomPage() {
                   className="w-full max-h-[70vh]"
                 />
               )
-            ) : isDocx ? (
-              officeLoading ? spinner : officeContent ? (
-                <pre className="text-sm text-[#0A2342] whitespace-pre-wrap break-words font-mono bg-[#FAF9F6] p-4 rounded border border-[#C6CDD9]/50 max-h-[65vh] overflow-auto">
-                  {officeContent}
-                </pre>
+            ) : isOfficeDoc ? (
+              officeLoading ? spinner : officeViewerUrl ? (
+                <iframe
+                  src={officeViewerUrl}
+                  className="w-full h-[70vh] border-0"
+                  title={viewingDoc.FileName}
+                />
               ) : (
                 <div className="text-center py-12">
-                  <p className="text-gray-500 text-sm">Could not extract content from this document.</p>
-                </div>
-              )
-            ) : isPptx ? (
-              officeLoading ? spinner : officeContent ? (
-                <pre className="text-sm text-[#0A2342] whitespace-pre-wrap break-words font-mono bg-[#FAF9F6] p-4 rounded border border-[#C6CDD9]/50 max-h-[65vh] overflow-auto">
-                  {officeContent}
-                </pre>
-              ) : (
-                <div className="text-center py-12">
-                  <p className="text-gray-500 text-sm">No text content found in this presentation.</p>
+                  <p className="text-gray-500 text-sm">Could not load document preview.</p>
                 </div>
               )
             ) : isXlsxFile ? (
@@ -709,16 +524,6 @@ export default function JurorWarRoomPage() {
               ) : (
                 <div className="text-center py-12">
                   <p className="text-gray-500 text-sm">Could not load spreadsheet content.</p>
-                </div>
-              )
-            ) : isOldOffice ? (
-              officeLoading ? spinner : officeContent ? (
-                <pre className="text-sm text-[#0A2342] whitespace-pre-wrap break-words font-mono bg-[#FAF9F6] p-4 rounded border border-[#C6CDD9]/50 max-h-[65vh] overflow-auto">
-                  {officeContent}
-                </pre>
-              ) : (
-                <div className="text-center py-12">
-                  <p className="text-gray-500 text-sm">Could not extract content from this file.</p>
                 </div>
               )
             ) : isCsv ? (
