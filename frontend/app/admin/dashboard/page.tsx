@@ -15,6 +15,13 @@ import { formatDateString, formatTime, formatDateTime, getDayOfWeek } from "@/li
 import { getToken, getUser, isAdmin, clearAuth } from "@/lib/apiClient";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
+function isCaseDayOver(scheduledDate: string): boolean {
+  if (!scheduledDate) return false;
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  return todayStr > scheduledDate.slice(0, 10);
+}
+
 const BLUE = "#0A2342";
 const BG = "#FAF9F6";
 const LIGHT_BLUE = "#e6ecf5";
@@ -2332,13 +2339,20 @@ function formatTime(timeString: string, scheduledDate: string) {
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => window.open(`/admin/trial/${trial.CaseId}/conference`, '_blank')}
-                      className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all flex items-center justify-center gap-2"
-                    >
-                      <Video className="h-5 w-5" />
-                      Join Trial
-                    </button>
+                    {isCaseDayOver(trial.ScheduledDate) ? (
+                      <div className="w-full bg-gray-200 text-gray-500 font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2 cursor-not-allowed">
+                        <Video className="h-5 w-5" />
+                        Trial Day Ended
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => window.open(`/admin/trial/${trial.CaseId}/conference`, '_blank')}
+                        className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all flex items-center justify-center gap-2"
+                      >
+                        <Video className="h-5 w-5" />
+                        Join Trial
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -3459,15 +3473,22 @@ function formatTime(timeString: string, scheduledDate: string) {
                         Join the trial session as an administrator to monitor the proceedings
                       </p>
                     </div>
-                    <button
-                      onClick={() => {
-                        window.open(`/admin/trial/${selectedCase.CaseId}/conference`, '_blank');
-                      }}
-                      className="flex items-center gap-3 px-8 py-4 bg-white text-indigo-600 rounded-xl hover:bg-indigo-50 font-bold text-lg shadow-xl hover:scale-105 transition-all"
-                    >
-                      <Video className="h-6 w-6" />
-                      Join Trial
-                    </button>
+                    {isCaseDayOver(selectedCase.ScheduledDate) ? (
+                      <div className="flex items-center gap-3 px-8 py-4 bg-white/30 text-white rounded-xl font-bold text-lg cursor-not-allowed opacity-60">
+                        <Video className="h-6 w-6" />
+                        Trial Day Ended
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          window.open(`/admin/trial/${selectedCase.CaseId}/conference`, '_blank');
+                        }}
+                        className="flex items-center gap-3 px-8 py-4 bg-white text-indigo-600 rounded-xl hover:bg-indigo-50 font-bold text-lg shadow-xl hover:scale-105 transition-all"
+                      >
+                        <Video className="h-6 w-6" />
+                        Join Trial
+                      </button>
+                    )}
                   </div>
                 </div>
               )}

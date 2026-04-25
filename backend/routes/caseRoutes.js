@@ -513,6 +513,44 @@ router.get(
 );
 
 /**
+ * GET /api/case/cases/:caseId/documents/:docId/view-url
+ * Generate a fresh SAS URL for a war room document so the client can
+ * embed it directly (e.g. Google Docs Viewer) without going through the proxy.
+ */
+router.get(
+  "/cases/:caseId/documents/:docId/view-url",
+  caseOperationsLimiter,
+  authMiddleware,
+  validateCaseId,
+  loadCase,
+  verifyCaseAccess,
+  async (req, res) => {
+    try {
+      const caseId = req.validatedCaseId;
+      const docId = parseInt(req.params.docId, 10);
+      if (isNaN(docId) || docId <= 0) {
+        return res.status(400).json({ success: false, message: "Invalid document ID" });
+      }
+      const pool = await poolPromise;
+      const result = await pool
+        .request()
+        .input("caseId", sql.Int, caseId)
+        .input("docId", sql.Int, docId)
+        .query(`SELECT FileUrl, FileName FROM WarRoomDocuments WHERE Id = @docId AND CaseId = @caseId`);
+      if (!result.recordset.length) {
+        return res.status(404).json({ success: false, message: "Document not found" });
+      }
+      const { FileUrl, FileName } = result.recordset[0];
+      const sasUrl = await generateSasUrl(FileUrl);
+      res.json({ success: true, url: sasUrl, fileName: FileName });
+    } catch (error) {
+      console.error("View URL error:", error);
+      res.status(500).json({ success: false, message: "Failed to generate view URL" });
+    }
+  }
+);
+
+/**
  * GET /api/case/cases/:caseId/documents/:docId/raw
  * Proxy a single war room document's content through the server.
  * Used for file types (e.g. CSV) that Azure Blob Storage blocks via CORS.

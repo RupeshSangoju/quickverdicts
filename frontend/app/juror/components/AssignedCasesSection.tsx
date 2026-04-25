@@ -4,11 +4,18 @@ import {
   QuestionMarkCircleIcon,
   ArrowRightIcon,
 } from "@heroicons/react/24/outline";
-import { Lock } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Lock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { getToken } from "@/lib/apiClient";
 import { formatDateString } from "@/lib/dateUtils";
+
+function isCaseDayOver(scheduledDate: string): boolean {
+  if (!scheduledDate) return false;
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  return todayStr > scheduledDate.slice(0, 10);
+}
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL
   ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api$/, '')
@@ -271,39 +278,25 @@ export default function AssignedCasesSection() {
                       </div>
                     </div>
 
-                    {/* ✅ FIXED: Conditional access based on trial timing */}
-                    {(caseItem.AttorneyStatus === "view_details" || caseItem.AttorneyStatus === "join_trial" || isAccessible) ? (
+                    {/* Conditional access based on trial timing and case day */}
+                    <div className="space-y-2">
                       <button
                         className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-[#0C2D57] text-white rounded-md hover:bg-[#0a2347] transition"
-                        onClick={() => {
-                          if (caseItem.AttorneyStatus === "join_trial") {
-                            window.open(`/juror/trial/${caseItem.CaseId}/setup`, '_blank');
-                          } else {
-                            router.push(`/juror/war-room/${caseItem.CaseId}`);
-                          }
-                        }}
+                        onClick={() => router.push(`/juror/war-room/${caseItem.CaseId}`)}
                       >
-                        <span>{caseItem.AttorneyStatus === "join_trial" ? "Join Trial" : caseItem.AttorneyStatus === "view_details" ? "View Details" : "Access War Room"}</span>
+                        <span>Case Information</span>
                         <ArrowRightIcon className="w-4 h-4" />
                       </button>
-                    ) : (
-                      <div className="space-y-2">
+                      {caseItem.AttorneyStatus === "join_trial" && !isCaseDayOver(caseItem.ScheduledDate) && (
                         <button
-                          className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 text-gray-500 rounded-md cursor-not-allowed"
-                          disabled
+                          className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition"
+                          onClick={() => window.open(`/juror/trial/${caseItem.CaseId}/setup`, '_blank')}
                         >
-                          <Lock className="w-4 h-4" />
-                          <span>War Room Locked</span>
+                          <span>Join Trial</span>
+                          <ArrowRightIcon className="w-4 h-4" />
                         </button>
-                        <p className="text-xs text-center text-gray-600">
-                          {hoursUntilTrial > 24
-                            ? `Available ${Math.floor(hoursUntilTrial / 24)} day${Math.floor(hoursUntilTrial / 24) > 1 ? 's' : ''} before trial`
-                            : hoursUntilTrial > 1
-                            ? `Available in ${Math.ceil(hoursUntilTrial)} hour${Math.ceil(hoursUntilTrial) > 1 ? 's' : ''}`
-                            : 'Available soon'}
-                        </p>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 );
               })}

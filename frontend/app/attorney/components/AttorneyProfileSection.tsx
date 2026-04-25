@@ -42,12 +42,31 @@ export default function AttorneyProfileSection({ onBack }: AttorneyProfileSectio
     const digits = value.replace(/\D/g, "").slice(0, 16);
     return digits.replace(/(.{4})/g, "$1 ").trim();
   };
-  const formatExpiry = (value: string) => {
-    const digits = value.replace(/\D/g, "").slice(0, 4);
-    if (digits.length >= 3) return digits.slice(0, 2) + "/" + digits.slice(2);
-    return digits;
-  };
-  const formatCvv = (value: string) => value.replace(/\D/g, "").slice(0, 4);
+const formatExpiry = (value: string) => {
+  let digits = value.replace(/\D/g, "").slice(0, 4);
+
+  // validate month when at least 2 digits
+  if (digits.length >= 2) {
+    let month = parseInt(digits.slice(0, 2));
+
+    if (month < 1 || month > 12) {
+      return paymentDetails.expiryDate; // Keep previous valid value
+    }
+
+    digits = month.toString().padStart(2, "0") + digits.slice(2);
+    console.log("After month formatting:", digits);
+  }
+
+  // format MM/YY - pad year too
+  if (digits.length >= 3) {
+    const month = digits.slice(0, 2);
+    const year = digits.slice(2).padStart(2, "0"); // Add this line
+    return `${month}/${year}`;
+  }
+
+  return digits;
+};
+  const formatCvv = (value: string) => value.replace(/\D/g, "").slice(0, 3);
 
   // Payment methods state
   const [showAddPayment, setShowAddPayment] = useState(false);
@@ -820,7 +839,7 @@ export default function AttorneyProfileSection({ onBack }: AttorneyProfileSectio
                           placeholder="•••"
                           value={paymentDetails.cvv}
                           onChange={(e) => setPaymentDetails({ ...paymentDetails, cvv: formatCvv(e.target.value) })}
-                          maxLength={4}
+                          maxLength={3}
                           className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#16305B] transition"
                         />
                       </div>

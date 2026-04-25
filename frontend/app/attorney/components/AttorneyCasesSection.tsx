@@ -126,6 +126,13 @@ function formatTime(timeString: string, scheduledDate: string) {
   // }
 }
 
+function isCaseDayOver(scheduledDate: string): boolean {
+  if (!scheduledDate) return false;
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  return todayStr > scheduledDate.slice(0, 10);
+}
+
 function getTimeWarning(scheduledDate: string, scheduledTime: string) {
   try {
     const trialDateTime = new Date(`${scheduledDate}T${scheduledTime}`);
@@ -136,7 +143,7 @@ function getTimeWarning(scheduledDate: string, scheduledTime: string) {
     if (diffInMinutes > 0 && diffInMinutes < 60) {
       return `Starts in ${diffInMinutes} min`;
     } else if (diffInMinutes < 0) {
-      return "In Progress";
+ //     return "In Progress";
     }
     return null;
   } catch {
@@ -294,8 +301,8 @@ export default function AttorneyCasesSection({ onBack }: AttorneyCasesSectionPro
     }
     if (c.AttorneyStatus === "join_trial") {
       return {
-        label: "Ready for Trial",
-        color: "bg-green-100 text-green-700 border-green-300",
+    //    label: "Ready for Trial",
+   //     color: "bg-green-100 text-green-700 border-green-300",
         icon: <ChevronRight className="w-3 h-3" />
       };
     }
@@ -347,6 +354,17 @@ export default function AttorneyCasesSection({ onBack }: AttorneyCasesSectionPro
     if (c.AdminApprovalStatus === "approved") {
       // Ready for trial
       if (c.AttorneyStatus === "join_trial") {
+        if (isCaseDayOver(c.ScheduledDate)) {
+          return (
+            <button
+              disabled
+              className="w-full px-4 py-2.5 bg-gray-100 text-gray-500 rounded-lg flex items-center justify-center gap-2 text-sm font-semibold cursor-not-allowed border border-gray-300"
+            >
+              <Clock className="h-4 w-4" />
+              Trial Day Ended
+            </button>
+          );
+        }
         return (
           <button
             onClick={(e) => handleJoinTrial(e, c.Id)}

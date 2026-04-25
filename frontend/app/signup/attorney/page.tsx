@@ -302,6 +302,28 @@ function AttorneySignupInner() {
   }, [formData.state, showToast]);
 
   /* ===========================================================
+     RESEND OTP
+     =========================================================== */
+
+  const handleResendOTP = useCallback(async () => {
+    try {
+      actions.setLoading(true);
+      const response = await post("/api/auth/attorney/send-otp", {
+        email: formData.email,
+      });
+      if (response.success) {
+        showToast("Verification code resent to your email!", "success");
+      } else {
+        showToast(response.message || "Failed to resend code", "error");
+      }
+    } catch (error: any) {
+      showToast(error.message || "Failed to resend code", "error");
+    } finally {
+      actions.setLoading(false);
+    }
+  }, [formData.email, actions, showToast]);
+
+  /* ===========================================================
      STEP NAVIGATION
      =========================================================== */
 
@@ -318,6 +340,27 @@ function AttorneySignupInner() {
           actions.setValidationErrors(validation.errors);
           return;
         }
+
+        // Check phone number uniqueness before proceeding
+        if (formData.phoneNumber) {
+          try {
+            actions.setLoading(true);
+            const phoneCheck = await post("/api/auth/attorney/check-phone", {
+              phoneNumber: formData.phoneNumber,
+            });
+            if (phoneCheck.success && !phoneCheck.data?.available) {
+              actions.setValidationErrors({
+                phoneNumber: "This phone number is already registered by another account",
+              });
+              return;
+            }
+          } catch {
+            // If check fails, allow proceeding — backend will enforce at signup
+          } finally {
+            actions.setLoading(false);
+          }
+        }
+
         actions.setStep(2);
         window.scrollTo({ top: 0, behavior: "smooth" });
         return;
@@ -555,6 +598,7 @@ function AttorneySignupInner() {
           authSubStep={state.authSubStep}
           onClearError={actions.clearFieldError}
           loading={state.loading}
+          onResendOTP={handleResendOTP}
         />
       )}
 
