@@ -523,7 +523,7 @@ export default function AttorneyHomeSection({ onSectionChange }: { onSectionChan
       const diffInMs = trialDateTime.getTime() - now.getTime();
       const diffInMinutes = Math.floor(diffInMs / 60000);
       if (diffInMinutes > 0 && diffInMinutes < 60) {
-        return `Starts in ${diffInMinutes} min`;
+   //     return `Starts in ${diffInMinutes} min`;
       } else if (diffInMinutes < 0) {
       //  return "In Progress";
       }

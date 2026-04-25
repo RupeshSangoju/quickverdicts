@@ -141,7 +141,7 @@ function getTimeWarning(scheduledDate: string, scheduledTime: string) {
     const diffInMinutes = Math.floor(diffInMs / 60000);
     
     if (diffInMinutes > 0 && diffInMinutes < 60) {
-      return `Starts in ${diffInMinutes} min`;
+   //   return `Starts in ${diffInMinutes} min`;
     } else if (diffInMinutes < 0) {
  //     return "In Progress";
     }
