@@ -336,6 +336,8 @@ export default function AdminDashboard() {
   // Unblock confirmation modal states
   const [showUnblockModal, setShowUnblockModal] = useState(false);
   const [unblockDate, setUnblockDate] = useState<string>("");
+  const [unblockReason, setUnblockReason] = useState<string>("");
+  const [unblockSlotIds, setUnblockSlotIds] = useState<number[]>([]);
   const [unblocking, setUnblocking] = useState(false);
 
   // Case delete modal states
@@ -368,17 +370,18 @@ export default function AdminDashboard() {
       const response = await fetchWithAuth(`${API_BASE}/api/admin-calendar/blocked?startDate=${new Date().toISOString().split('T')[0]}&endDate=${new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}`);
       if (response.ok) {
         const data = await response.json();
-        // Group by date to show blocked dates (not individual time slots)
-        const blockedByDate = data.blockedSlots.reduce((acc: any, slot: any) => {
-          // Extract date string directly without timezone conversion
+        // Group by date+reason so separate blocks on the same day with different reasons stay separate
+        const blockedByDateReason = data.blockedSlots.reduce((acc: any, slot: any) => {
           const date = slot.BlockedDate.substring(0, 10);
-          if (!acc[date]) {
-            acc[date] = { date, reason: slot.Reason, slots: [] };
+          const reason = slot.Reason || '';
+          const key = `${date}__${reason}`;
+          if (!acc[key]) {
+            acc[key] = { date, reason, slots: [] };
           }
-          acc[date].slots.push(slot);
+          acc[key].slots.push(slot);
           return acc;
         }, {});
-        setBlockedDates(Object.values(blockedByDate));
+        setBlockedDates(Object.values(blockedByDateReason));
       }
     } catch (error) {
       console.error("Error fetching blocked dates:", error);
@@ -494,39 +497,34 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleUnblockDate = async (date: string) => {
-    setUnblockDate(date);
+  const handleUnblockDate = (group: { date: string; reason: string; slots: any[] }) => {
+    setUnblockDate(group.date);
+    setUnblockReason(group.reason);
+    setUnblockSlotIds(group.slots.map((s: any) => s.CalendarId));
     setShowUnblockModal(true);
   };
 
   const confirmUnblock = async () => {
     setUnblocking(true);
     try {
-      // Get all blocked slots for this date
-      const response = await fetchWithAuth(`${API_BASE}/api/admin-calendar/blocked?startDate=${unblockDate}&endDate=${unblockDate}`);
-      if (response.ok) {
-        const data = await response.json();
-        const slotsToUnblock = data.blockedSlots || [];
+      // Unblock only the slots belonging to this specific date+reason group
+      await Promise.all(
+        unblockSlotIds.map((id) =>
+          fetchWithAuth(`${API_BASE}/api/admin-calendar/unblock/${id}`, { method: 'DELETE' })
+        )
+      );
 
-        // Unblock all slots for this date
-        const unblockPromises = slotsToUnblock.map((slot: any) =>
-          fetchWithAuth(`${API_BASE}/api/admin-calendar/unblock/${slot.CalendarId}`, {
-            method: 'DELETE'
-          })
-        );
+      toast.success(`Unblocked ${unblockSlotIds.length} slot(s) for ${unblockDate}${unblockReason ? ` (${unblockReason})` : ''}`);
 
-        await Promise.all(unblockPromises);
-
-        toast.success(`Date ${unblockDate} unblocked successfully!`);
-
-        setShowUnblockModal(false);
-        setUnblockDate("");
-        fetchBlockedDates();
-        fetchCasesForDate(selectedDate);
-      }
+      setShowUnblockModal(false);
+      setUnblockDate("");
+      setUnblockReason("");
+      setUnblockSlotIds([]);
+      fetchBlockedDates();
+      fetchCasesForDate(selectedDate);
     } catch (error) {
       console.error("Error unblocking date:", error);
-      toast.error("Failed to unblock date. Please try again.");
+      toast.error("Failed to unblock. Please try again.");
     } finally {
       setUnblocking(false);
     }
@@ -4071,7 +4069,8 @@ function formatTime(timeString: string, scheduledDate: string) {
               <h3 className="text-xl font-semibold text-gray-900">Unblock Date</h3>
             </div>
             <p className="text-gray-600 mb-4">
-              Are you sure you want to unblock <span className="font-semibold">{unblockDate}</span>?
+              Are you sure you want to unblock <span className="font-semibold">{unblockDate}</span>
+              {unblockReason ? <> — <span className="italic">"{unblockReason}"</span></> : ''}?
             </p>
             <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
               <p className="text-sm text-green-800 font-medium">
@@ -4383,9 +4382,9 @@ function formatTime(timeString: string, scheduledDate: string) {
                           const isPast = dateObj < today;
 
                           // Check if this date has any blocked slots
-                          const blockedForDate = blockedDates.find((b: any) => b.date === dateStr);
-                          const hasBlockedSlots = !!blockedForDate;
-                          const blockedSlotsCount = blockedForDate?.slots?.length || 0;
+                          const blockedGroupsForDate = blockedDates.filter((b: any) => b.date === dateStr);
+                          const hasBlockedSlots = blockedGroupsForDate.length > 0;
+                          const blockedSlotsCount = blockedGroupsForDate.reduce((n: number, g: any) => n + (g.slots?.length || 0), 0);
 
                           days.push(
                             <button
@@ -4561,7 +4560,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                 ) : (
                   <div className="space-y-3">
                     {blockedDates.map((blocked: any) => (
-                      <div key={blocked.date} className="bg-white border border-red-200 rounded-lg p-4 flex items-center justify-between">
+                      <div key={`${blocked.date}__${blocked.reason}`} className="bg-white border border-red-200 rounded-lg p-4 flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <div className="p-2 bg-red-100 rounded-lg">
                             <Calendar className="h-5 w-5 text-red-600" />
@@ -4604,7 +4603,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                           </div>
                         </div>
                         <button
-                          onClick={() => handleUnblockDate(blocked.date)}
+                          onClick={() => handleUnblockDate(blocked)}
                           className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium text-sm"
                         >
                           Unblock
