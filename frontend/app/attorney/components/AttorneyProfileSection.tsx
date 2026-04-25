@@ -49,15 +49,19 @@ const formatExpiry = (value: string) => {
   if (digits.length >= 2) {
     let month = parseInt(digits.slice(0, 2));
 
-    if (month < 1) month = 1;
-    if (month > 12) month = 12;
+    if (month < 1 || month > 12) {
+      return paymentDetails.expiryDate; // Keep previous valid value
+    }
 
     digits = month.toString().padStart(2, "0") + digits.slice(2);
+    console.log("After month formatting:", digits);
   }
 
-  // format MM/YY
+  // format MM/YY - pad year too
   if (digits.length >= 3) {
-    return digits.slice(0, 2) + "/" + digits.slice(2);
+    const month = digits.slice(0, 2);
+    const year = digits.slice(2).padStart(2, "0"); // Add this line
+    return `${month}/${year}`;
   }
 
   return digits;

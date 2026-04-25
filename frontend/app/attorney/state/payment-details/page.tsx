@@ -38,9 +38,9 @@ export default function PaymentDetailsPage() {
 
   // Fixed payment amounts based on tier (no per-juror calculation)
   const tierAmounts: Record<string, number> = {
-    "Tier 1": 300,
-    "Tier 2": 400,
-    "Tier 3": 500
+    "Tier 1": 3500,
+    "Tier 2": 4500,
+    "Tier 3": 5500
   };
 
   // Get payment amount based on tier only
