@@ -247,6 +247,9 @@ export default function AdminDashboard() {
   const [loadingCases, setLoadingCases] = useState(false);
   const [showCaseModal, setShowCaseModal] = useState(false);
   const [selectedCase, setSelectedCase] = useState<CaseDetail | null>(null);
+  const [venueEditMode, setVenueEditMode] = useState(false);
+  const [venueForm, setVenueForm] = useState({ state: '', county: '' });
+  const [savingVenue, setSavingVenue] = useState(false);
 
   const [readyTrials, setReadyTrials] = useState<CaseDetail[]>([]);
   const [loadingReadyTrials, setLoadingReadyTrials] = useState(false);
@@ -3434,7 +3437,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                 <h2 className="text-2xl font-bold text-gray-900">{selectedCase.CaseTitle}</h2>
                 <p className="text-sm text-gray-600">Case #{selectedCase.CaseId} • {formatDateTime(selectedCase.ScheduledDate, selectedCase.ScheduledTime)}</p>
               </div>
-              <button onClick={() => { setShowCaseModal(false); setSelectedCase(null); }} className="text-gray-400 hover:text-gray-600">
+              <button onClick={() => { setShowCaseModal(false); setSelectedCase(null); setVenueEditMode(false); }} className="text-gray-400 hover:text-gray-600">
                 <XCircle className="h-8 w-8" />
               </button>
             </div>
@@ -3450,7 +3453,81 @@ function formatTime(timeString: string, scheduledDate: string) {
                     <div><span className="font-medium text-gray-700">Phone:</span><p className="text-gray-900">{selectedCase.AttorneyPhone}</p></div>
                   )}
                   <div><span className="font-medium text-gray-700">Case Type:</span><p className="text-gray-900">{selectedCase.CaseType}</p></div>
-                  <div><span className="font-medium text-gray-700">Location:</span><p className="text-gray-900">{selectedCase.County}, {selectedCase.State}</p></div>
+                  <div className="col-span-2">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-medium text-gray-700">Location (State / County)</span>
+                      {!venueEditMode && (
+                        <button
+                          onClick={() => { setVenueForm({ state: selectedCase.State || '', county: selectedCase.County || '' }); setVenueEditMode(true); }}
+                          className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 font-medium"
+                        >
+                          Edit Venue
+                        </button>
+                      )}
+                    </div>
+                    {venueEditMode ? (
+                      <div className="flex flex-col gap-2 mt-1">
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="State"
+                            value={venueForm.state}
+                            onChange={(e) => setVenueForm(f => ({ ...f, state: e.target.value }))}
+                            className="flex-1 border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          />
+                          <input
+                            type="text"
+                            placeholder="County"
+                            value={venueForm.county}
+                            onChange={(e) => setVenueForm(f => ({ ...f, county: e.target.value }))}
+                            className="flex-1 border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            disabled={savingVenue}
+                            onClick={async () => {
+                              if (!venueForm.state.trim() || !venueForm.county.trim()) {
+                                toast.error('State and county cannot be empty');
+                                return;
+                              }
+                              setSavingVenue(true);
+                              try {
+                                const res = await fetchWithAuth(`${API_BASE}/api/case/cases/${selectedCase.CaseId}/venue`, {
+                                  method: 'PATCH',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ state: venueForm.state.trim(), county: venueForm.county.trim() }),
+                                });
+                                const data = await res.json();
+                                if (data.success) {
+                                  setSelectedCase(c => c ? { ...c, State: venueForm.state.trim(), County: venueForm.county.trim() } : c);
+                                  setVenueEditMode(false);
+                                  toast.success('Venue updated successfully');
+                                } else {
+                                  toast.error(data.message || 'Failed to update venue');
+                                }
+                              } catch {
+                                toast.error('Failed to update venue');
+                              } finally {
+                                setSavingVenue(false);
+                              }
+                            }}
+                            className="px-3 py-1 bg-blue-600 text-white rounded text-xs font-medium hover:bg-blue-700 disabled:opacity-50"
+                          >
+                            {savingVenue ? 'Saving…' : 'Save'}
+                          </button>
+                          <button
+                            onClick={() => setVenueEditMode(false)}
+                            className="px-3 py-1 bg-gray-100 text-gray-700 rounded text-xs font-medium hover:bg-gray-200"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-gray-900">{selectedCase.County}, {selectedCase.State}</p>
+                    )}
+                  </div>
                   <div><span className="font-medium text-gray-700">Approved Jurors:</span><p className="text-gray-900">{selectedCase.approvedJurorCount}</p></div>
                   {selectedCase.IsRecording && (
                     <div><span className="font-medium text-gray-700">Recording:</span><p className="text-red-600 font-bold">● REC</p></div>

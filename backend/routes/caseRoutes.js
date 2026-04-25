@@ -9,6 +9,7 @@ const rateLimit = require("express-rate-limit");
 const {
   authMiddleware,
   requireAttorney,
+  requireAdmin,
 } = require("../middleware/authMiddleware");
 const {
   createCase,
@@ -354,6 +355,49 @@ router.put(
         success: false,
         message: "Failed to update case",
       });
+    }
+  }
+);
+
+/**
+ * PATCH /api/case/cases/:caseId/venue
+ * Update case venue (State/County) — Admin only
+ */
+router.patch(
+  "/cases/:caseId/venue",
+  caseOperationsLimiter,
+  authMiddleware,
+  requireAdmin,
+  validateCaseId,
+  async (req, res) => {
+    try {
+      const caseId = req.validatedCaseId;
+      const { state, county } = req.body;
+
+      if (!state?.trim() || !county?.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: "State and county are required",
+        });
+      }
+
+      const { poolPromise } = require("../db");
+      const sql = require("mssql");
+      const pool = await poolPromise;
+      await pool.request()
+        .input("caseId", sql.Int, caseId)
+        .input("state", sql.NVarChar, state.trim())
+        .input("county", sql.NVarChar, county.trim())
+        .query(`
+          UPDATE dbo.Cases
+          SET State = @state, County = @county, UpdatedAt = GETUTCDATE()
+          WHERE CaseId = @caseId AND IsDeleted = 0
+        `);
+
+      res.json({ success: true, message: "Venue updated successfully" });
+    } catch (error) {
+      console.error("Update venue error:", error);
+      res.status(500).json({ success: false, message: "Failed to update venue" });
     }
   }
 );
