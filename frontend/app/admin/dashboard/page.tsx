@@ -4539,7 +4539,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                     )}
                   </button>
                   <p className="text-sm text-gray-600">
-                    ⚠️ This will {blockWholeDay ? 'block all time slots' : `block ${selectedTimeSlots.length} selected time slot(s)`} for {blockDateForm.date && new Date(blockDateForm.date).toLocaleDateString()}.
+                    ⚠️ This will {blockWholeDay ? 'block all time slots' : `block ${selectedTimeSlots.length} selected time slot(s)`} for {blockDateForm.date && (() => { const [y, m, d] = blockDateForm.date.split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }); })()}.
                   </p>
                 </div>
               </div>
