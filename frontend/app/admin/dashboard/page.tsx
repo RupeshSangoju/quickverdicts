@@ -25,9 +25,39 @@ function isCaseDayOver(scheduledDate: string): boolean {
 const BLUE = "#0A2342";
 const BG = "#FAF9F6";
 const LIGHT_BLUE = "#e6ecf5";
-const API_BASE = process.env.NEXT_PUBLIC_API_URL 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL
   ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api$/, '')
   : "http://localhost:4000";
+
+const CENSUS_API_BASE = "https://api.census.gov/data/2020/dec/pl";
+
+const US_STATES = [
+  { label: "Alabama", value: "01" }, { label: "Alaska", value: "02" },
+  { label: "Arizona", value: "04" }, { label: "Arkansas", value: "05" },
+  { label: "California", value: "06" }, { label: "Colorado", value: "08" },
+  { label: "Connecticut", value: "09" }, { label: "Delaware", value: "10" },
+  { label: "Florida", value: "12" }, { label: "Georgia", value: "13" },
+  { label: "Hawaii", value: "15" }, { label: "Idaho", value: "16" },
+  { label: "Illinois", value: "17" }, { label: "Indiana", value: "18" },
+  { label: "Iowa", value: "19" }, { label: "Kansas", value: "20" },
+  { label: "Kentucky", value: "21" }, { label: "Louisiana", value: "22" },
+  { label: "Maine", value: "23" }, { label: "Maryland", value: "24" },
+  { label: "Massachusetts", value: "25" }, { label: "Michigan", value: "26" },
+  { label: "Minnesota", value: "27" }, { label: "Mississippi", value: "28" },
+  { label: "Missouri", value: "29" }, { label: "Montana", value: "30" },
+  { label: "Nebraska", value: "31" }, { label: "Nevada", value: "32" },
+  { label: "New Hampshire", value: "33" }, { label: "New Jersey", value: "34" },
+  { label: "New Mexico", value: "35" }, { label: "New York", value: "36" },
+  { label: "North Carolina", value: "37" }, { label: "North Dakota", value: "38" },
+  { label: "Ohio", value: "39" }, { label: "Oklahoma", value: "40" },
+  { label: "Oregon", value: "41" }, { label: "Pennsylvania", value: "42" },
+  { label: "Rhode Island", value: "44" }, { label: "South Carolina", value: "45" },
+  { label: "South Dakota", value: "46" }, { label: "Tennessee", value: "47" },
+  { label: "Texas", value: "48" }, { label: "Utah", value: "49" },
+  { label: "Vermont", value: "50" }, { label: "Virginia", value: "51" },
+  { label: "Washington", value: "53" }, { label: "West Virginia", value: "54" },
+  { label: "Wisconsin", value: "55" }, { label: "Wyoming", value: "56" },
+];
 
 // Auth helper function with better error handling
 const getAuthHeaders = () => {
@@ -250,6 +280,8 @@ export default function AdminDashboard() {
   const [venueEditMode, setVenueEditMode] = useState(false);
   const [venueForm, setVenueForm] = useState({ state: '', county: '' });
   const [savingVenue, setSavingVenue] = useState(false);
+  const [venueCounties, setVenueCounties] = useState<string[]>([]);
+  const [venueCountiesLoading, setVenueCountiesLoading] = useState(false);
 
   const [readyTrials, setReadyTrials] = useState<CaseDetail[]>([]);
   const [loadingReadyTrials, setLoadingReadyTrials] = useState(false);
@@ -534,6 +566,29 @@ export default function AdminDashboard() {
   };
 
   // Disable background scrolling when case modal is open
+  // Fetch counties from Census API when venue state selection changes
+  useEffect(() => {
+    if (!venueEditMode || !venueForm.state) {
+      setVenueCounties([]);
+      return;
+    }
+    const stateEntry = US_STATES.find(s => s.label === venueForm.state);
+    if (!stateEntry) { setVenueCounties([]); return; }
+    setVenueCountiesLoading(true);
+    setVenueCounties([]);
+    fetch(`${CENSUS_API_BASE}?get=NAME&for=county:*&in=state:${stateEntry.value}`)
+      .then(r => r.json())
+      .then((data: string[][]) => {
+        if (!Array.isArray(data) || data.length < 2) return;
+        const list = data.slice(1)
+          .map(r => r[0].replace(` County, ${stateEntry.label}`, '').replace(` Parish, ${stateEntry.label}`, '').replace(`, ${stateEntry.label}`, '').trim())
+          .sort((a, b) => a.localeCompare(b));
+        setVenueCounties(list);
+      })
+      .catch(() => setVenueCounties([]))
+      .finally(() => setVenueCountiesLoading(false));
+  }, [venueForm.state, venueEditMode]);
+
   useEffect(() => {
     if (showCaseModal) {
       // Save current overflow value
@@ -3458,7 +3513,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                       <span className="font-medium text-gray-700">Location (State / County)</span>
                       {!venueEditMode && (
                         <button
-                          onClick={() => { setVenueForm({ state: selectedCase.State || '', county: selectedCase.County || '' }); setVenueEditMode(true); }}
+                          onClick={() => { setVenueCounties([]); setVenueForm({ state: selectedCase.State || '', county: selectedCase.County || '' }); setVenueEditMode(true); }}
                           className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 font-medium"
                         >
                           Edit Venue
@@ -3468,20 +3523,29 @@ function formatTime(timeString: string, scheduledDate: string) {
                     {venueEditMode ? (
                       <div className="flex flex-col gap-2 mt-1">
                         <div className="flex gap-2">
-                          <input
-                            type="text"
-                            placeholder="State"
+                          <select
                             value={venueForm.state}
-                            onChange={(e) => setVenueForm(f => ({ ...f, state: e.target.value }))}
-                            className="flex-1 border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                          />
-                          <input
-                            type="text"
-                            placeholder="County"
+                            onChange={(e) => setVenueForm(f => ({ ...f, state: e.target.value, county: '' }))}
+                            className="flex-1 border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                          >
+                            <option value="">Select State</option>
+                            {US_STATES.map(s => (
+                              <option key={s.value} value={s.label}>{s.label}</option>
+                            ))}
+                          </select>
+                          <select
                             value={venueForm.county}
                             onChange={(e) => setVenueForm(f => ({ ...f, county: e.target.value }))}
-                            className="flex-1 border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                          />
+                            disabled={!venueForm.state || venueCountiesLoading}
+                            className="flex-1 border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white disabled:bg-gray-100 disabled:text-gray-400"
+                          >
+                            <option value="">
+                              {venueCountiesLoading ? 'Loading…' : !venueForm.state ? 'Select state first' : 'Select County'}
+                            </option>
+                            {venueCounties.map(c => (
+                              <option key={c} value={c}>{c}</option>
+                            ))}
+                          </select>
                         </div>
                         <div className="flex gap-2">
                           <button
