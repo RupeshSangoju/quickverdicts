@@ -568,15 +568,7 @@ export default function AttorneyHomeSection({ onSectionChange }: { onSectionChan
           Welcome back{user ? `, ${user.firstName}!` : "!"}
         </h1>
         <div className="flex items-center gap-4">
-          <button
-            onClick={handleManualRefresh}
-            disabled={checkingVerification}
-            className="flex items-center gap-2 text-[#16305B] hover:text-[#1e417a] transition-colors disabled:opacity-50"
-            title="Refresh verification status"
-          >
-            <RefreshCw size={18} className={checkingVerification ? 'animate-spin' : ''} />
-            <span className="text-sm font-medium">Refresh</span>
-          </button>
+
           <button 
             className="text-[#16305B] hover:text-[#1e417a] transition-colors font-semibold cursor-pointer" 
             onClick={() => setShowHelp(true)}

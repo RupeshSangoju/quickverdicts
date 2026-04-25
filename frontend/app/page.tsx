@@ -19,10 +19,10 @@ export default function QuickVerdictsLanding() {
           </Link>
           <nav className="flex items-center space-x-6">
             <Link href="/for-attorneys" className="text-gray-700 hover:text-gray-900">
-              Attorney
+              Attorney Info
             </Link>
             <Link href="/for-juror" className="text-gray-700 hover:text-gray-900">
-              Juror
+              Juror Info
             </Link>
             <Link href="/signup" className="bg-blue-900 text-white px-6 py-2 rounded hover:bg-blue-800">
               Sign up
@@ -160,25 +160,33 @@ cases in:            </p>
               Secure Connections
             </h3>
             <p className="text-gray-600 mb-4">
-              We built our platform with a Teams-based conference call center accessible only after login.
+              We built our platform on Azure with an embedded Microsoft Teams-based conference call center accessible only after login.
 
             </p>
             <ul className="space-y-3 text-gray-700">
               <li className="flex items-start">
                 <span className="mr-2">•</span>
-                <span>Multi-factor identification is used to ensure identification of participants.</span>
+                <span>Multi-factor identification is used for attorneys and jurors.</span>
               </li>
               <li className="flex items-start">
                 <span className="mr-2">•</span>
-                <span>Jurors appear live and deliberate face-to-face.</span>
+                <span>Jurors appear live following login.</span>
               </li>
               <li className="flex items-start">
                 <span className="mr-2">•</span>
-                <span>Demonstrative aids uploaded for jurors’ consideration are deleted following the trial</span>
+                <span>Demonstrative aids used for jurors’ consideration are deleted following the QV Trial.</span>
               </li>
               <li className="flex items-start">
                 <span className="mr-2">•</span>
-                <span>Trial presentations are considered privileged under state and federal law</span>
+                <span>Trial presentations are considered privileged under state and federal law.</span>
+              </li>
+              <li className="flex items-start">
+                <span className="mr-2">•</span>
+                <span>Jurors are initially screened for qualifications based on residency, employment and knowledge of parties.</span>
+              </li>
+              <li className="flex items-start">
+                <span className="mr-2">•</span>
+                <span>Attorneys create additional screening questions and select jurors from applicants.</span>
               </li>
               <li className="flex items-start">
                 <span className="mr-2">•</span>
@@ -215,11 +223,12 @@ cases in:            </p>
               <div>
                 <h3 className="font-bold text-gray-900 mb-3">I Want to Be a Juror</h3>
                 <ul className="space-y-2 text-gray-700 ml-4">
+                  <li>• Get paid for your time</li>
+                  <li>• After-hours times available</li>
                   <li>• Choose cases from the Job Board</li>
                   <li>• Complete a simple vetting process</li>
                   <li>• Deliberate with your fellow jurors remotely</li>
                   <li>• Your opinion helps the attorneys</li>
-                  <li>• Get paid for your time</li>
                 </ul>
               </div>
             </div>
@@ -250,7 +259,7 @@ cases in:            </p>
             <div>
               <h3 className="font-bold text-gray-900 mb-2">How does it work for attorneys?</h3>
               <p className="text-gray-600 mb-6">
-                Attorneys login to access the QV Courtroom and present a case either live or by video.  Jurors login separately and appear in the QV Courtroom where they receive basic juror instructions, listen to the case presentation, then privately deliberate the answers to the jury charge.    
+                Attorneys login to create a case.  QV provides a War Room for attorneys to upload demonstratives and create jury questions in the easy-to-use Jury Charge Builder.Attorneys can present a case either live or by pre-recorded video.  Each case will have 5-8 local mock jurors who appear at the scheduled time to review the presentation, deliberate, and submit their Final Verdict.  A short de-briefing period is provided.Please click on Attorney Info above for more information. 
               </p>
               <hr className="border-black" />
             </div>
@@ -258,7 +267,7 @@ cases in:            </p>
             <div>
               <h3 className="font-bold text-gray-900 mb-2">What types of cases work best?</h3>
               <p className="text-gray-600 mb-6">
-                Cases work best where all sides of the presentation can be made within the allotted time.  Cases include vehicle accidents involving personal injury, property damage and contract disputes.  Disputes may turn on credibility issues, liability facts, and damages assessment.  
+                Cases work best where all sides of the presentation can be made within the allotted time.  Cases include vehicle accidents involving personal injury, other personal injury (slip & falls), property damage and contract disputes. Disputes may turn on credibility of the witnesses, liability facts, and damages assessment.  
               </p>
               <hr className="border-black" />
             </div>
