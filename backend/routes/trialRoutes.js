@@ -425,11 +425,9 @@ router.post(
 
       // Block joining after the case day has ended
       if (caseData.ScheduledDate) {
-        const scheduledDay = new Date(caseData.ScheduledDate);
-        const todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0);
-        const caseDayStart = new Date(scheduledDay.getFullYear(), scheduledDay.getMonth(), scheduledDay.getDate());
-        if (todayStart > caseDayStart) {
+        const scheduledDateStr = String(caseData.ScheduledDate).slice(0, 10);
+        const todayStr = new Date().toISOString().slice(0, 10);
+        if (todayStr > scheduledDateStr) {
           if (rejectJoin) { rejectJoin(new Error("Case day ended")); setTimeout(() => participantJoinInFlight.delete(joinKey), 10000); }
           return res.status(403).json({
             success: false,
@@ -880,11 +878,9 @@ router.post(
 
       // Block joining after the case day has ended
       if (data.ScheduledDate) {
-        const scheduledDay = new Date(data.ScheduledDate);
-        const todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0);
-        const caseDayStart = new Date(scheduledDay.getFullYear(), scheduledDay.getMonth(), scheduledDay.getDate());
-        if (todayStart > caseDayStart) {
+        const scheduledDateStr = String(data.ScheduledDate).slice(0, 10);
+        const todayStr = new Date().toISOString().slice(0, 10);
+        if (todayStr > scheduledDateStr) {
           return res.status(403).json({
             success: false,
             message: "The case day has ended. Joining is no longer available.",
@@ -1171,11 +1167,9 @@ router.post(
 
       // Block joining after the case day has ended
       if (trial.ScheduledDate) {
-        const scheduledDay = new Date(trial.ScheduledDate);
-        const todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0);
-        const caseDayStart = new Date(scheduledDay.getFullYear(), scheduledDay.getMonth(), scheduledDay.getDate());
-        if (todayStart > caseDayStart) {
+        const scheduledDateStr = String(trial.ScheduledDate).slice(0, 10);
+        const todayStr = new Date().toISOString().slice(0, 10);
+        if (todayStr > scheduledDateStr) {
           rejectInflight(new Error("Case day ended"));
           return res.status(403).json({
             success: false,
