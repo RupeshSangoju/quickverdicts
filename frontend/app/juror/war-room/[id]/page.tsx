@@ -752,13 +752,15 @@ export default function JurorWarRoomPage() {
                     <p className="font-medium text-[#0A2342]">{doc.FileName}</p>
                     <p className="text-sm text-[#455A7C] italic">{doc.Description}</p>
                   </div>
-                  <button
-                    onClick={() => handleViewDocument(doc)}
-                    className="flex items-center gap-2 px-4 py-2 bg-[#16305B] text-white rounded hover:bg-[#0A2342] transition"
-                  >
-                    <EyeIcon className="w-5 h-5" />
-                    <span>View</span>
-                  </button>
+                  {!isCaseDayOver(caseData.ScheduledDate) && (
+                    <button
+                      onClick={() => handleViewDocument(doc)}
+                      className="flex items-center gap-2 px-4 py-2 bg-[#16305B] text-white rounded hover:bg-[#0A2342] transition"
+                    >
+                      <EyeIcon className="w-5 h-5" />
+                      <span>View</span>
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
