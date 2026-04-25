@@ -316,6 +316,7 @@ export default function AdminDashboard() {
   const [jurorSortOrder, setJurorSortOrder] = useState<"asc" | "desc">("desc");
   const [expandedJurorCases, setExpandedJurorCases] = useState<Set<number>>(new Set());
   const [expandedAttorneyCases, setExpandedAttorneyCases] = useState<Set<number>>(new Set());
+  const [caseIdOverlay, setCaseIdOverlay] = useState<{ ids: string[]; label: string } | null>(null);
 
   const [showCaseRejectModal, setShowCaseRejectModal] = useState(false);
   const [rejectCaseId, setRejectCaseId] = useState<number | null>(null);
@@ -2749,34 +2750,25 @@ function formatTime(timeString: string, scheduledDate: string) {
                       <td className="px-6 py-4">
                         {attorney.CaseIds ? (() => {
                           const ids = attorney.CaseIds!.split(', ');
-                          const isExpanded = expandedAttorneyCases.has(attorney.AttorneyId);
-                          const extra = ids.length - 1;
-                          return (
-                            <div className="flex flex-wrap gap-1 items-center">
+                          if (ids.length === 1) {
+                            return (
                               <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-800">
                                 #{ids[0]}
                               </span>
-                              {extra > 0 && !isExpanded && (
-                                <button
-                                  onClick={() => setExpandedAttorneyCases(prev => new Set(prev).add(attorney.AttorneyId))}
-                                  className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer"
-                                >
-                                  +{extra} more
-                                </button>
-                              )}
-                              {isExpanded && ids.slice(1).map((id) => (
-                                <span key={id} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-800">
-                                  #{id}
-                                </span>
-                              ))}
-                              {isExpanded && (
-                                <button
-                                  onClick={() => setExpandedAttorneyCases(prev => { const s = new Set(prev); s.delete(attorney.AttorneyId); return s; })}
-                                  className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer"
-                                >
-                                  ✕
-                                </button>
-                              )}
+                            );
+                          }
+                          return (
+                            <div className="flex items-center gap-1.5">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-800">
+                                {ids.length} Cases
+                              </span>
+                              <button
+                                onClick={() => setCaseIdOverlay({ ids, label: `${attorney.FirstName} ${attorney.LastName}` })}
+                                className="inline-flex items-center justify-center w-6 h-6 rounded bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-700 transition-colors cursor-pointer"
+                                title="View all case IDs"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                              </button>
                             </div>
                           );
                         })() : (
@@ -3120,34 +3112,25 @@ function formatTime(timeString: string, scheduledDate: string) {
                       <td className="px-6 py-4">
                         {juror.ApprovedCaseIds ? (() => {
                           const ids = juror.ApprovedCaseIds!.split(', ');
-                          const isExpanded = expandedJurorCases.has(juror.JurorId);
-                          const extra = ids.length - 1;
-                          return (
-                            <div className="flex flex-wrap gap-1 items-center">
+                          if (ids.length === 1) {
+                            return (
                               <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-800">
                                 #{ids[0]}
                               </span>
-                              {extra > 0 && !isExpanded && (
-                                <button
-                                  onClick={() => setExpandedJurorCases(prev => new Set(prev).add(juror.JurorId))}
-                                  className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer"
-                                >
-                                  +{extra} more
-                                </button>
-                              )}
-                              {isExpanded && ids.slice(1).map((id) => (
-                                <span key={id} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-800">
-                                  #{id}
-                                </span>
-                              ))}
-                              {isExpanded && (
-                                <button
-                                  onClick={() => setExpandedJurorCases(prev => { const s = new Set(prev); s.delete(juror.JurorId); return s; })}
-                                  className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer"
-                                >
-                                  ✕
-                                </button>
-                              )}
+                            );
+                          }
+                          return (
+                            <div className="flex items-center gap-1.5">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-800">
+                                {ids.length} Cases
+                              </span>
+                              <button
+                                onClick={() => setCaseIdOverlay({ ids, label: `${juror.FirstName} ${juror.LastName}` })}
+                                className="inline-flex items-center justify-center w-6 h-6 rounded bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-700 transition-colors cursor-pointer"
+                                title="View all case IDs"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                              </button>
                             </div>
                           );
                         })() : (
@@ -4786,6 +4769,43 @@ function formatTime(timeString: string, scheduledDate: string) {
         blockedSlot={blockedSlot}
         onSubmit={handleSubmitAlternateSlots}
       />
+
+      {/* Case ID Overlay */}
+      {caseIdOverlay && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          onClick={() => setCaseIdOverlay(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <div>
+                <h3 className="text-base font-bold text-[#0A2342]">Case IDs</h3>
+                <p className="text-xs text-gray-500 mt-0.5">{caseIdOverlay.label}</p>
+              </div>
+              <button
+                onClick={() => setCaseIdOverlay(null)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 text-xs font-semibold transition-colors cursor-pointer"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 21 3 21 3 15"/><polyline points="15 3 21 3 21 9"/><line x1="3" y1="21" x2="10" y2="14"/><line x1="21" y1="3" x2="14" y2="10"/></svg>
+                Minimise
+              </button>
+            </div>
+            <ul className="px-6 py-4 space-y-2 max-h-72 overflow-y-auto">
+              {caseIdOverlay.ids.map((id, i) => (
+                <li key={id + i} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
+                  <span className="text-xs font-semibold text-gray-400 w-5 text-right">{i + 1}.</span>
+                  <span className="inline-flex items-center px-3 py-1 rounded-lg text-sm font-bold bg-blue-100 text-blue-800">
+                    #{id.trim()}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
