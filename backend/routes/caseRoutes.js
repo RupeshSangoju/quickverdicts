@@ -202,7 +202,19 @@ const verifyCaseAccess = async (req, res, next) => {
         });
       }
 
-      // Application is approved - allow full access
+      // Application is approved — block access if case day has already passed
+      if (caseData.ScheduledDate) {
+        const now = new Date();
+        const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+        const caseDateStr = String(caseData.ScheduledDate).slice(0, 10);
+        if (todayStr > caseDateStr) {
+          return res.status(403).json({
+            success: false,
+            message: "War room access has ended. The case day has passed.",
+            code: "CASE_DAY_ENDED",
+          });
+        }
+      }
       req.jurorApplication = application;
       return next();
     }

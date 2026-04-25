@@ -50,11 +50,10 @@ type TeamMember = {
 
 
 function isCaseDayOver(scheduledDate: string): boolean {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const caseDay = new Date(scheduledDate);
-  const caseDayStart = new Date(caseDay.getFullYear(), caseDay.getMonth(), caseDay.getDate());
-  return today > caseDayStart;
+  if (!scheduledDate) return false;
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  return todayStr > scheduledDate.slice(0, 10);
 }
 
 function getCaseName(plaintiffGroups: string, defendantGroups: string) {
@@ -129,6 +128,71 @@ function formatTime(timeString: string, scheduledDate: string) {
 
 function getFileExtension(filename: string): string {
   return filename.split('.').pop()?.toLowerCase() || '';
+}
+
+function ole2ReadU32(b: Uint8Array, o: number): number {
+  return ((b[o] | (b[o+1]<<8) | (b[o+2]<<16) | (b[o+3]<<24)) >>> 0);
+}
+
+function ole2ReadChain(b: Uint8Array, sectorSize: number, fat: number[], start: number, maxBytes: number): Uint8Array {
+  const parts: Uint8Array[] = [];
+  let s = start, rem = maxBytes;
+  while (s < 0xFFFFFFFB && rem > 0) {
+    const off = 512 + s * sectorSize;
+    const n = Math.min(sectorSize, rem, b.length - off);
+    if (n <= 0) break;
+    parts.push(b.slice(off, off + n));
+    rem -= n;
+    s = s < fat.length ? fat[s] : 0xFFFFFFFE;
+  }
+  const out = new Uint8Array(parts.reduce((a, c) => a + c.length, 0));
+  let p = 0; for (const c of parts) { out.set(c, p); p += c.length; }
+  return out;
+}
+
+function ole2GetStream(buffer: ArrayBuffer, streamName: string): Uint8Array | null {
+  const b = new Uint8Array(buffer);
+  // OLE2 magic: D0 CF 11 E0 A1 B1 1A E1
+  if (b[0] !== 0xD0 || b[1] !== 0xCF || b[2] !== 0x11 || b[3] !== 0xE0) return null;
+
+  const sectorShift = b[0x1E] | (b[0x1F] << 8);
+  const sectorSize  = 1 << sectorShift;          // usually 512
+  const numFat      = ole2ReadU32(b, 0x2C);
+  const firstDir    = ole2ReadU32(b, 0x30);
+
+  // Collect FAT sector numbers from DIFAT (header holds up to 109)
+  const fatSectors: number[] = [];
+  for (let i = 0; i < 109 && fatSectors.length < numFat; i++) {
+    const sec = ole2ReadU32(b, 0x4C + i * 4);
+    if (sec >= 0xFFFFFFFC) break;
+    fatSectors.push(sec);
+  }
+
+  // Build FAT array
+  const fat: number[] = [];
+  for (const fs of fatSectors) {
+    const off = 512 + fs * sectorSize;
+    for (let i = 0; i < sectorSize; i += 4) fat.push(ole2ReadU32(b, off + i));
+  }
+
+  // Read all directory sectors
+  const dirBytes = ole2ReadChain(b, sectorSize, fat, firstDir, 0x7FFFFFFF);
+
+  // Each directory entry is 128 bytes
+  for (let i = 0; i + 128 <= dirBytes.length; i += 128) {
+    const nameLen = (dirBytes[i + 0x40] | (dirBytes[i + 0x41] << 8));
+    if (nameLen < 2) continue;
+    const charCount = (nameLen - 2) >> 1; // exclude null terminator
+    let name = '';
+    for (let j = 0; j < charCount; j++)
+      name += String.fromCharCode(dirBytes[i + j*2] | (dirBytes[i + j*2+1] << 8));
+    if (name !== streamName) continue;
+
+    const startSector = ole2ReadU32(dirBytes, i + 0x74);
+    const size        = ole2ReadU32(dirBytes, i + 0x78);
+    return ole2ReadChain(b, sectorSize, fat, startSector, size);
+  }
+  return null;
 }
 
 export default function JurorWarRoomPage() {
@@ -433,19 +497,18 @@ export default function JurorWarRoomPage() {
         const token = getToken();
         const res = await fetch(rawUrl, { headers: { Authorization: `Bearer ${token}` } });
         const arrayBuffer = await res.arrayBuffer();
-        const bytes = new Uint8Array(arrayBuffer);
-        // Word stores text as UTF-16LE: printable ASCII byte followed by 0x00
+        // Extract only the WordDocument stream from the OLE2 container
+        const stream = ole2GetStream(arrayBuffer, 'WordDocument') ?? new Uint8Array(arrayBuffer);
         const texts: string[] = [];
         let i = 0;
-        while (i < bytes.length - 1) {
-          if (bytes[i] >= 32 && bytes[i] <= 126 && bytes[i + 1] === 0) {
+        while (i < stream.length - 1) {
+          if (stream[i] >= 32 && stream[i] <= 126 && stream[i + 1] === 0) {
             let seg = '';
-            while (i < bytes.length - 1 && bytes[i] >= 32 && bytes[i] <= 126 && bytes[i + 1] === 0) {
-              seg += String.fromCharCode(bytes[i]);
+            while (i < stream.length - 1 && stream[i] >= 32 && stream[i] <= 126 && stream[i + 1] === 0) {
+              seg += String.fromCharCode(stream[i]);
               i += 2;
             }
-            // absorb UTF-16LE line-break characters (CR, LF, vertical tab)
-            while (i < bytes.length - 1 && (bytes[i] === 13 || bytes[i] === 10 || bytes[i] === 11 || bytes[i] === 7) && bytes[i + 1] === 0) {
+            while (i < stream.length - 1 && (stream[i] === 13 || stream[i] === 10 || stream[i] === 11 || stream[i] === 7) && stream[i + 1] === 0) {
               seg += '\n';
               i += 2;
             }
@@ -467,40 +530,31 @@ export default function JurorWarRoomPage() {
         const token = getToken();
         const res = await fetch(rawUrl, { headers: { Authorization: `Bearer ${token}` } });
         const arrayBuffer = await res.arrayBuffer();
-        const bytes = new Uint8Array(arrayBuffer);
+        // Extract the PowerPoint Document stream from the OLE2 container
+        const stream = ole2GetStream(arrayBuffer, 'PowerPoint Document') ?? new Uint8Array(arrayBuffer);
         const texts: string[] = [];
-        // Scan for UTF-16LE text (TextCharsAtom stores text this way)
+        // Walk PPT records: recType @ bytes[i+2..3], recLen @ bytes[i+4..7]
         let i = 0;
-        while (i < bytes.length - 1) {
-          if (bytes[i] >= 32 && bytes[i] <= 126 && bytes[i + 1] === 0) {
-            let seg = '';
-            while (i < bytes.length - 1 && bytes[i] >= 32 && bytes[i] <= 126 && bytes[i + 1] === 0) {
-              seg += String.fromCharCode(bytes[i]);
-              i += 2;
+        while (i + 8 <= stream.length) {
+          const recType = (stream[i + 3] << 8) | stream[i + 2];
+          const recLen  = ole2ReadU32(stream, i + 4);
+          if (recLen > stream.length - i - 8) { i++; continue; }
+          if (recType === 0x0FA8 && recLen > 0) {
+            // TextBytesAtom — ASCII
+            const text = String.fromCharCode(...Array.from(stream.slice(i + 8, i + 8 + recLen))).trim();
+            if (text.length > 0 && /[a-zA-Z]{2,}/.test(text)) texts.push(text);
+          } else if (recType === 0x0FA0 && recLen > 0) {
+            // TextCharsAtom — UTF-16LE
+            let text = '';
+            const sl = stream.slice(i + 8, i + 8 + recLen);
+            for (let j = 0; j + 1 < sl.length; j += 2) {
+              const code = sl[j] | (sl[j + 1] << 8);
+              if (code >= 32) text += String.fromCharCode(code);
             }
-            while (i < bytes.length - 1 && (bytes[i] === 13 || bytes[i] === 10) && bytes[i + 1] === 0) {
-              seg += '\n';
-              i += 2;
-            }
-            const trimmed = seg.trim();
-            if (trimmed.length >= 4 && /[a-zA-Z]{2,}/.test(trimmed)) texts.push(trimmed);
-          } else {
-            i++;
+            text = text.trim();
+            if (text.length > 0 && /[a-zA-Z]{2,}/.test(text)) texts.push(text);
           }
-        }
-        // Also scan for ASCII runs (TextBytesAtom stores text as plain ASCII)
-        if (texts.length === 0) {
-          let seg = '';
-          for (let j = 0; j < bytes.length; j++) {
-            const b = bytes[j];
-            if (b >= 32 && b <= 126) {
-              seg += String.fromCharCode(b);
-            } else {
-              const trimmed = seg.trim();
-              if (trimmed.length >= 4 && /[a-zA-Z]{2,}/.test(trimmed)) texts.push(trimmed);
-              seg = '';
-            }
-          }
+          i += 8 + recLen;
         }
         setOfficeContent(texts.join('\n'));
       } catch {
