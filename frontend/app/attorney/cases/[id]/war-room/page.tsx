@@ -271,6 +271,7 @@ export default function WarRoomPage() {
   const [showAddTeam, setShowAddTeam] = useState(false);
   const [newMembers, setNewMembers] = useState<TeamMember[]>([{ Name: "", Role: "", Email: "" }]);
   const [isAddingTeam, setIsAddingTeam] = useState(false);
+  const [teamEmailErrors, setTeamEmailErrors] = useState<string[]>([]);
 
   // Document upload state
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -1438,10 +1439,16 @@ export default function WarRoomPage() {
                             const updated = [...newMembers];
                             updated[idx].Email = e.target.value;
                             setNewMembers(updated);
+                            const errs = [...teamEmailErrors];
+                            errs[idx] = "";
+                            setTeamEmailErrors(errs);
                           }}
                           disabled={isAddingTeam}
-                          className="w-full px-3 py-2 border border-[#C6CDD9] rounded-lg focus:ring-2 focus:ring-[#16305B]/20 focus:border-[#16305B] bg-white text-[#0A2342] placeholder:text-gray-500 text-sm disabled:opacity-50"
+                          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#16305B]/20 focus:border-[#16305B] bg-white text-[#0A2342] placeholder:text-gray-500 text-sm disabled:opacity-50 ${teamEmailErrors[idx] ? "border-red-500" : "border-[#C6CDD9]"}`}
                         />
+                        {teamEmailErrors[idx] && (
+                          <p className="text-red-500 text-xs mt-0.5">{teamEmailErrors[idx]}</p>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -1457,6 +1464,12 @@ export default function WarRoomPage() {
                   </button>
                   <button
                     onClick={async () => {
+                      const errors = newMembers.map(m => {
+                        if (m.Email && !m.Email.includes("@")) return "Email must contain @";
+                        return "";
+                      });
+                      setTeamEmailErrors(errors);
+                      if (errors.some(e => e)) return;
                       const validMembers = newMembers.filter(m => m.Name && m.Role && m.Email);
                       if (validMembers.length > 0) {
                         await addTeamMembers(caseId, validMembers);
@@ -1481,6 +1494,7 @@ export default function WarRoomPage() {
                     onClick={() => {
                       setShowAddTeam(false);
                       setNewMembers([{ Name: "", Role: "", Email: "" }]);
+                      setTeamEmailErrors([]);
                     }}
                     disabled={isAddingTeam}
                     className="px-3 py-1.5 bg-[#FAF9F6] text-[#455A7C] rounded-lg font-semibold text-sm hover:bg-[#f0ede6] transition-all disabled:opacity-50"

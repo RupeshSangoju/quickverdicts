@@ -25,9 +25,39 @@ function isCaseDayOver(scheduledDate: string): boolean {
 const BLUE = "#0A2342";
 const BG = "#FAF9F6";
 const LIGHT_BLUE = "#e6ecf5";
-const API_BASE = process.env.NEXT_PUBLIC_API_URL 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL
   ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api$/, '')
   : "http://localhost:4000";
+
+const CENSUS_API_BASE = "https://api.census.gov/data/2020/dec/pl";
+
+const US_STATES = [
+  { label: "Alabama", value: "01" }, { label: "Alaska", value: "02" },
+  { label: "Arizona", value: "04" }, { label: "Arkansas", value: "05" },
+  { label: "California", value: "06" }, { label: "Colorado", value: "08" },
+  { label: "Connecticut", value: "09" }, { label: "Delaware", value: "10" },
+  { label: "Florida", value: "12" }, { label: "Georgia", value: "13" },
+  { label: "Hawaii", value: "15" }, { label: "Idaho", value: "16" },
+  { label: "Illinois", value: "17" }, { label: "Indiana", value: "18" },
+  { label: "Iowa", value: "19" }, { label: "Kansas", value: "20" },
+  { label: "Kentucky", value: "21" }, { label: "Louisiana", value: "22" },
+  { label: "Maine", value: "23" }, { label: "Maryland", value: "24" },
+  { label: "Massachusetts", value: "25" }, { label: "Michigan", value: "26" },
+  { label: "Minnesota", value: "27" }, { label: "Mississippi", value: "28" },
+  { label: "Missouri", value: "29" }, { label: "Montana", value: "30" },
+  { label: "Nebraska", value: "31" }, { label: "Nevada", value: "32" },
+  { label: "New Hampshire", value: "33" }, { label: "New Jersey", value: "34" },
+  { label: "New Mexico", value: "35" }, { label: "New York", value: "36" },
+  { label: "North Carolina", value: "37" }, { label: "North Dakota", value: "38" },
+  { label: "Ohio", value: "39" }, { label: "Oklahoma", value: "40" },
+  { label: "Oregon", value: "41" }, { label: "Pennsylvania", value: "42" },
+  { label: "Rhode Island", value: "44" }, { label: "South Carolina", value: "45" },
+  { label: "South Dakota", value: "46" }, { label: "Tennessee", value: "47" },
+  { label: "Texas", value: "48" }, { label: "Utah", value: "49" },
+  { label: "Vermont", value: "50" }, { label: "Virginia", value: "51" },
+  { label: "Washington", value: "53" }, { label: "West Virginia", value: "54" },
+  { label: "Wisconsin", value: "55" }, { label: "Wyoming", value: "56" },
+];
 
 // Auth helper function with better error handling
 const getAuthHeaders = () => {
@@ -247,6 +277,11 @@ export default function AdminDashboard() {
   const [loadingCases, setLoadingCases] = useState(false);
   const [showCaseModal, setShowCaseModal] = useState(false);
   const [selectedCase, setSelectedCase] = useState<CaseDetail | null>(null);
+  const [venueEditMode, setVenueEditMode] = useState(false);
+  const [venueForm, setVenueForm] = useState({ state: '', county: '' });
+  const [savingVenue, setSavingVenue] = useState(false);
+  const [venueCounties, setVenueCounties] = useState<string[]>([]);
+  const [venueCountiesLoading, setVenueCountiesLoading] = useState(false);
 
   const [readyTrials, setReadyTrials] = useState<CaseDetail[]>([]);
   const [loadingReadyTrials, setLoadingReadyTrials] = useState(false);
@@ -281,6 +316,12 @@ export default function AdminDashboard() {
   const [jurorSortOrder, setJurorSortOrder] = useState<"asc" | "desc">("desc");
   const [expandedJurorCases, setExpandedJurorCases] = useState<Set<number>>(new Set());
   const [expandedAttorneyCases, setExpandedAttorneyCases] = useState<Set<number>>(new Set());
+  const [caseIdOverlay, setCaseIdOverlay] = useState<{ ids: string[]; label: string } | null>(null);
+
+  useEffect(() => {
+    document.body.style.overflow = caseIdOverlay ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [caseIdOverlay]);
 
   const [showCaseRejectModal, setShowCaseRejectModal] = useState(false);
   const [rejectCaseId, setRejectCaseId] = useState<number | null>(null);
@@ -336,6 +377,8 @@ export default function AdminDashboard() {
   // Unblock confirmation modal states
   const [showUnblockModal, setShowUnblockModal] = useState(false);
   const [unblockDate, setUnblockDate] = useState<string>("");
+  const [unblockReason, setUnblockReason] = useState<string>("");
+  const [unblockSlotIds, setUnblockSlotIds] = useState<number[]>([]);
   const [unblocking, setUnblocking] = useState(false);
 
   // Case delete modal states
@@ -368,17 +411,18 @@ export default function AdminDashboard() {
       const response = await fetchWithAuth(`${API_BASE}/api/admin-calendar/blocked?startDate=${new Date().toISOString().split('T')[0]}&endDate=${new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}`);
       if (response.ok) {
         const data = await response.json();
-        // Group by date to show blocked dates (not individual time slots)
-        const blockedByDate = data.blockedSlots.reduce((acc: any, slot: any) => {
-          // Extract date string directly without timezone conversion
+        // Group by date+reason so separate blocks on the same day with different reasons stay separate
+        const blockedByDateReason = data.blockedSlots.reduce((acc: any, slot: any) => {
           const date = slot.BlockedDate.substring(0, 10);
-          if (!acc[date]) {
-            acc[date] = { date, reason: slot.Reason, slots: [] };
+          const reason = slot.Reason || '';
+          const key = `${date}__${reason}`;
+          if (!acc[key]) {
+            acc[key] = { date, reason, slots: [] };
           }
-          acc[date].slots.push(slot);
+          acc[key].slots.push(slot);
           return acc;
         }, {});
-        setBlockedDates(Object.values(blockedByDate));
+        setBlockedDates(Object.values(blockedByDateReason));
       }
     } catch (error) {
       console.error("Error fetching blocked dates:", error);
@@ -494,45 +538,63 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleUnblockDate = async (date: string) => {
-    setUnblockDate(date);
+  const handleUnblockDate = (group: { date: string; reason: string; slots: any[] }) => {
+    setUnblockDate(group.date);
+    setUnblockReason(group.reason);
+    setUnblockSlotIds(group.slots.map((s: any) => s.CalendarId));
     setShowUnblockModal(true);
   };
 
   const confirmUnblock = async () => {
     setUnblocking(true);
     try {
-      // Get all blocked slots for this date
-      const response = await fetchWithAuth(`${API_BASE}/api/admin-calendar/blocked?startDate=${unblockDate}&endDate=${unblockDate}`);
-      if (response.ok) {
-        const data = await response.json();
-        const slotsToUnblock = data.blockedSlots || [];
+      // Unblock only the slots belonging to this specific date+reason group
+      await Promise.all(
+        unblockSlotIds.map((id) =>
+          fetchWithAuth(`${API_BASE}/api/admin-calendar/unblock/${id}`, { method: 'DELETE' })
+        )
+      );
 
-        // Unblock all slots for this date
-        const unblockPromises = slotsToUnblock.map((slot: any) =>
-          fetchWithAuth(`${API_BASE}/api/admin-calendar/unblock/${slot.CalendarId}`, {
-            method: 'DELETE'
-          })
-        );
+      toast.success(`Unblocked ${unblockSlotIds.length} slot(s) for ${unblockDate}${unblockReason ? ` (${unblockReason})` : ''}`);
 
-        await Promise.all(unblockPromises);
-
-        toast.success(`Date ${unblockDate} unblocked successfully!`);
-
-        setShowUnblockModal(false);
-        setUnblockDate("");
-        fetchBlockedDates();
-        fetchCasesForDate(selectedDate);
-      }
+      setShowUnblockModal(false);
+      setUnblockDate("");
+      setUnblockReason("");
+      setUnblockSlotIds([]);
+      fetchBlockedDates();
+      fetchCasesForDate(selectedDate);
     } catch (error) {
       console.error("Error unblocking date:", error);
-      toast.error("Failed to unblock date. Please try again.");
+      toast.error("Failed to unblock. Please try again.");
     } finally {
       setUnblocking(false);
     }
   };
 
   // Disable background scrolling when case modal is open
+  // Fetch counties from Census API when venue state selection changes
+  useEffect(() => {
+    if (!venueEditMode || !venueForm.state) {
+      setVenueCounties([]);
+      return;
+    }
+    const stateEntry = US_STATES.find(s => s.label === venueForm.state);
+    if (!stateEntry) { setVenueCounties([]); return; }
+    setVenueCountiesLoading(true);
+    setVenueCounties([]);
+    fetch(`${CENSUS_API_BASE}?get=NAME&for=county:*&in=state:${stateEntry.value}`)
+      .then(r => r.json())
+      .then((data: string[][]) => {
+        if (!Array.isArray(data) || data.length < 2) return;
+        const list = data.slice(1)
+          .map(r => r[0].replace(` County, ${stateEntry.label}`, '').replace(` Parish, ${stateEntry.label}`, '').replace(`, ${stateEntry.label}`, '').trim())
+          .sort((a, b) => a.localeCompare(b));
+        setVenueCounties(list);
+      })
+      .catch(() => setVenueCounties([]))
+      .finally(() => setVenueCountiesLoading(false));
+  }, [venueForm.state, venueEditMode]);
+
   useEffect(() => {
     if (showCaseModal) {
       // Save current overflow value
@@ -2693,34 +2755,25 @@ function formatTime(timeString: string, scheduledDate: string) {
                       <td className="px-6 py-4">
                         {attorney.CaseIds ? (() => {
                           const ids = attorney.CaseIds!.split(', ');
-                          const isExpanded = expandedAttorneyCases.has(attorney.AttorneyId);
-                          const extra = ids.length - 1;
-                          return (
-                            <div className="flex flex-wrap gap-1 items-center">
+                          if (ids.length === 1) {
+                            return (
                               <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-800">
                                 #{ids[0]}
                               </span>
-                              {extra > 0 && !isExpanded && (
-                                <button
-                                  onClick={() => setExpandedAttorneyCases(prev => new Set(prev).add(attorney.AttorneyId))}
-                                  className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer"
-                                >
-                                  +{extra} more
-                                </button>
-                              )}
-                              {isExpanded && ids.slice(1).map((id) => (
-                                <span key={id} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-800">
-                                  #{id}
-                                </span>
-                              ))}
-                              {isExpanded && (
-                                <button
-                                  onClick={() => setExpandedAttorneyCases(prev => { const s = new Set(prev); s.delete(attorney.AttorneyId); return s; })}
-                                  className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer"
-                                >
-                                  ✕
-                                </button>
-                              )}
+                            );
+                          }
+                          return (
+                            <div className="flex items-center gap-1.5">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-800">
+                                {ids.length} Cases
+                              </span>
+                              <button
+                                onClick={() => setCaseIdOverlay({ ids, label: `${attorney.FirstName} ${attorney.LastName}` })}
+                                className="inline-flex items-center justify-center w-6 h-6 rounded bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-700 transition-colors cursor-pointer"
+                                title="View all case IDs"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                              </button>
                             </div>
                           );
                         })() : (
@@ -3064,34 +3117,25 @@ function formatTime(timeString: string, scheduledDate: string) {
                       <td className="px-6 py-4">
                         {juror.ApprovedCaseIds ? (() => {
                           const ids = juror.ApprovedCaseIds!.split(', ');
-                          const isExpanded = expandedJurorCases.has(juror.JurorId);
-                          const extra = ids.length - 1;
-                          return (
-                            <div className="flex flex-wrap gap-1 items-center">
+                          if (ids.length === 1) {
+                            return (
                               <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-800">
                                 #{ids[0]}
                               </span>
-                              {extra > 0 && !isExpanded && (
-                                <button
-                                  onClick={() => setExpandedJurorCases(prev => new Set(prev).add(juror.JurorId))}
-                                  className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer"
-                                >
-                                  +{extra} more
-                                </button>
-                              )}
-                              {isExpanded && ids.slice(1).map((id) => (
-                                <span key={id} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-800">
-                                  #{id}
-                                </span>
-                              ))}
-                              {isExpanded && (
-                                <button
-                                  onClick={() => setExpandedJurorCases(prev => { const s = new Set(prev); s.delete(juror.JurorId); return s; })}
-                                  className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer"
-                                >
-                                  ✕
-                                </button>
-                              )}
+                            );
+                          }
+                          return (
+                            <div className="flex items-center gap-1.5">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-800">
+                                {ids.length} Cases
+                              </span>
+                              <button
+                                onClick={() => setCaseIdOverlay({ ids, label: juror.Name })}
+                                className="inline-flex items-center justify-center w-6 h-6 rounded bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-700 transition-colors cursor-pointer"
+                                title="View all case IDs"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                              </button>
                             </div>
                           );
                         })() : (
@@ -3436,7 +3480,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                 <h2 className="text-2xl font-bold text-gray-900">{selectedCase.CaseTitle}</h2>
                 <p className="text-sm text-gray-600">Case #{selectedCase.CaseId} • {formatDateTime(selectedCase.ScheduledDate, selectedCase.ScheduledTime)}</p>
               </div>
-              <button onClick={() => { setShowCaseModal(false); setSelectedCase(null); }} className="text-gray-400 hover:text-gray-600">
+              <button onClick={() => { setShowCaseModal(false); setSelectedCase(null); setVenueEditMode(false); }} className="text-gray-400 hover:text-gray-600">
                 <XCircle className="h-8 w-8" />
               </button>
             </div>
@@ -3452,7 +3496,90 @@ function formatTime(timeString: string, scheduledDate: string) {
                     <div><span className="font-medium text-gray-700">Phone:</span><p className="text-gray-900">{selectedCase.AttorneyPhone}</p></div>
                   )}
                   <div><span className="font-medium text-gray-700">Case Type:</span><p className="text-gray-900">{selectedCase.CaseType}</p></div>
-                  <div><span className="font-medium text-gray-700">Location:</span><p className="text-gray-900">{selectedCase.County}, {selectedCase.State}</p></div>
+                  <div className="col-span-2">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-medium text-gray-700">Location (State / County)</span>
+                      {!venueEditMode && (
+                        <button
+                          onClick={() => { setVenueCounties([]); setVenueForm({ state: selectedCase.State || '', county: selectedCase.County || '' }); setVenueEditMode(true); }}
+                          className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 font-medium"
+                        >
+                          Edit Venue
+                        </button>
+                      )}
+                    </div>
+                    {venueEditMode ? (
+                      <div className="flex flex-col gap-2 mt-1">
+                        <div className="flex gap-2">
+                          <select
+                            value={venueForm.state}
+                            onChange={(e) => setVenueForm(f => ({ ...f, state: e.target.value, county: '' }))}
+                            className="flex-1 border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                          >
+                            <option value="">Select State</option>
+                            {US_STATES.map(s => (
+                              <option key={s.value} value={s.label}>{s.label}</option>
+                            ))}
+                          </select>
+                          <select
+                            value={venueForm.county}
+                            onChange={(e) => setVenueForm(f => ({ ...f, county: e.target.value }))}
+                            disabled={!venueForm.state || venueCountiesLoading}
+                            className="flex-1 border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white disabled:bg-gray-100 disabled:text-gray-400"
+                          >
+                            <option value="">
+                              {venueCountiesLoading ? 'Loading…' : !venueForm.state ? 'Select state first' : 'Select County'}
+                            </option>
+                            {venueCounties.map(c => (
+                              <option key={c} value={c}>{c}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            disabled={savingVenue}
+                            onClick={async () => {
+                              if (!venueForm.state.trim() || !venueForm.county.trim()) {
+                                toast.error('State and county cannot be empty');
+                                return;
+                              }
+                              setSavingVenue(true);
+                              try {
+                                const res = await fetchWithAuth(`${API_BASE}/api/case/cases/${selectedCase.CaseId}/venue`, {
+                                  method: 'PATCH',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ state: venueForm.state.trim(), county: venueForm.county.trim() }),
+                                });
+                                const data = await res.json();
+                                if (data.success) {
+                                  setSelectedCase(c => c ? { ...c, State: venueForm.state.trim(), County: venueForm.county.trim() } : c);
+                                  setVenueEditMode(false);
+                                  toast.success('Venue updated successfully');
+                                } else {
+                                  toast.error(data.message || 'Failed to update venue');
+                                }
+                              } catch {
+                                toast.error('Failed to update venue');
+                              } finally {
+                                setSavingVenue(false);
+                              }
+                            }}
+                            className="px-3 py-1 bg-blue-600 text-white rounded text-xs font-medium hover:bg-blue-700 disabled:opacity-50"
+                          >
+                            {savingVenue ? 'Saving…' : 'Save'}
+                          </button>
+                          <button
+                            onClick={() => setVenueEditMode(false)}
+                            className="px-3 py-1 bg-gray-100 text-gray-700 rounded text-xs font-medium hover:bg-gray-200"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-gray-900">{selectedCase.County}, {selectedCase.State}</p>
+                    )}
+                  </div>
                   <div><span className="font-medium text-gray-700">Approved Jurors:</span><p className="text-gray-900">{selectedCase.approvedJurorCount}</p></div>
                   {selectedCase.IsRecording && (
                     <div><span className="font-medium text-gray-700">Recording:</span><p className="text-red-600 font-bold">● REC</p></div>
@@ -4071,7 +4198,8 @@ function formatTime(timeString: string, scheduledDate: string) {
               <h3 className="text-xl font-semibold text-gray-900">Unblock Date</h3>
             </div>
             <p className="text-gray-600 mb-4">
-              Are you sure you want to unblock <span className="font-semibold">{unblockDate}</span>?
+              Are you sure you want to unblock <span className="font-semibold">{unblockDate}</span>
+              {unblockReason ? <> — <span className="italic">"{unblockReason}"</span></> : ''}?
             </p>
             <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
               <p className="text-sm text-green-800 font-medium">
@@ -4383,9 +4511,9 @@ function formatTime(timeString: string, scheduledDate: string) {
                           const isPast = dateObj < today;
 
                           // Check if this date has any blocked slots
-                          const blockedForDate = blockedDates.find((b: any) => b.date === dateStr);
-                          const hasBlockedSlots = !!blockedForDate;
-                          const blockedSlotsCount = blockedForDate?.slots?.length || 0;
+                          const blockedGroupsForDate = blockedDates.filter((b: any) => b.date === dateStr);
+                          const hasBlockedSlots = blockedGroupsForDate.length > 0;
+                          const blockedSlotsCount = blockedGroupsForDate.reduce((n: number, g: any) => n + (g.slots?.length || 0), 0);
 
                           days.push(
                             <button
@@ -4540,7 +4668,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                     )}
                   </button>
                   <p className="text-sm text-gray-600">
-                    ⚠️ This will {blockWholeDay ? 'block all time slots' : `block ${selectedTimeSlots.length} selected time slot(s)`} for {blockDateForm.date && new Date(blockDateForm.date).toLocaleDateString()}.
+                    ⚠️ This will {blockWholeDay ? 'block all time slots' : `block ${selectedTimeSlots.length} selected time slot(s)`} for {blockDateForm.date && (() => { const [y, m, d] = blockDateForm.date.split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }); })()}.
                   </p>
                 </div>
               </div>
@@ -4561,7 +4689,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                 ) : (
                   <div className="space-y-3">
                     {blockedDates.map((blocked: any) => (
-                      <div key={blocked.date} className="bg-white border border-red-200 rounded-lg p-4 flex items-center justify-between">
+                      <div key={`${blocked.date}__${blocked.reason}`} className="bg-white border border-red-200 rounded-lg p-4 flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <div className="p-2 bg-red-100 rounded-lg">
                             <Calendar className="h-5 w-5 text-red-600" />
@@ -4604,7 +4732,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                           </div>
                         </div>
                         <button
-                          onClick={() => handleUnblockDate(blocked.date)}
+                          onClick={() => handleUnblockDate(blocked)}
                           className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium text-sm"
                         >
                           Unblock
@@ -4646,6 +4774,43 @@ function formatTime(timeString: string, scheduledDate: string) {
         blockedSlot={blockedSlot}
         onSubmit={handleSubmitAlternateSlots}
       />
+
+      {/* Case ID Overlay */}
+      {caseIdOverlay && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          onClick={() => setCaseIdOverlay(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <div>
+                <h3 className="text-base font-bold text-[#0A2342]">Case IDs</h3>
+                <p className="text-xs text-gray-500 mt-0.5">{caseIdOverlay.label}</p>
+              </div>
+              <button
+                onClick={() => setCaseIdOverlay(null)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 text-xs font-semibold transition-colors cursor-pointer"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 21 3 21 3 15"/><polyline points="15 3 21 3 21 9"/><line x1="3" y1="21" x2="10" y2="14"/><line x1="21" y1="3" x2="14" y2="10"/></svg>
+                Minimise
+              </button>
+            </div>
+            <ul className="px-6 py-4 space-y-2 max-h-72 overflow-y-auto">
+              {caseIdOverlay.ids.map((id, i) => (
+                <li key={id + i} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
+                  <span className="text-xs font-semibold text-gray-400 w-5 text-right">{i + 1}.</span>
+                  <span className="inline-flex items-center px-3 py-1 rounded-lg text-sm font-bold bg-blue-100 text-blue-800">
+                    #{id.trim()}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

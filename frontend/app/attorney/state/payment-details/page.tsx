@@ -31,10 +31,18 @@ export default function PaymentDetailsPage() {
   };
   const formatExpiry = (value: string) => {
     const digits = value.replace(/\D/g, "").slice(0, 4);
-    if (digits.length >= 3) return digits.slice(0, 2) + "/" + digits.slice(2);
-    return digits;
+    if (digits.length === 0) return "";
+    // Clamp month: first two digits must be 01–12
+    let month = digits.slice(0, 2);
+    if (month.length === 2) {
+      const m = parseInt(month, 10);
+      if (m === 0) month = "01";
+      else if (m > 12) month = "12";
+    }
+    const rest = digits.slice(2);
+    return rest.length > 0 ? month + "/" + rest : month;
   };
-  const formatCvv = (value: string) => value.replace(/\D/g, "").slice(0, 4);
+  const formatCvv = (value: string) => value.replace(/\D/g, "").slice(0, 3);
 
   // Fixed payment amounts based on tier (no per-juror calculation)
   const tierAmounts: Record<string, number> = {
@@ -80,10 +88,16 @@ export default function PaymentDetailsPage() {
     }
     if (isCardPayment) {
       if (!cardholderName.trim()) errors.cardholderName = "Cardholder name is required";
+      else if (!/^[a-zA-Z\s]+$/.test(cardholderName.trim())) errors.cardholderName = "Cardholder name must contain only letters and spaces";
       const rawCard = cardNumber.replace(/\s/g, "");
       if (!rawCard || rawCard.length < 16) errors.cardNumber = "Enter a valid 16-digit card number";
-      if (!expiryDate || expiryDate.length < 5) errors.expiryDate = "Enter a valid expiry date (MM/YY)";
-      if (!cvv || cvv.length < 3) errors.cvv = "Enter a valid CVV";
+      if (!expiryDate || expiryDate.length < 5) {
+        errors.expiryDate = "Enter a valid expiry date (MM/YY)";
+      } else {
+        const month = parseInt(expiryDate.slice(0, 2), 10);
+        if (month < 1 || month > 12) errors.expiryDate = "Month must be between 01 and 12";
+      }
+      if (!cvv || cvv.length !== 3) errors.cvv = "CVV must be exactly 3 digits";
     }
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
@@ -162,7 +176,7 @@ export default function PaymentDetailsPage() {
                       type="text"
                       placeholder="John Doe"
                       value={cardholderName}
-                      onChange={e => setCardholderName(e.target.value)}
+                      onChange={e => setCardholderName(e.target.value.replace(/[^a-zA-Z\s]/g, ''))}
                       className="w-full px-4 py-2 border border-[#bfc6d1] rounded-md bg-white text-[#16305B] focus:outline-[#16305B]"
                     />
                     {validationErrors.cardholderName && (

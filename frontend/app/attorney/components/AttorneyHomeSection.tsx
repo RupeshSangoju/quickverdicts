@@ -441,7 +441,7 @@ export default function AttorneyHomeSection({ onSectionChange }: { onSectionChan
   }
 
   if (showHelp) {
-    return <AttorneyHelp onContact={() => { setShowHelp(false); setShowContact(true); }} />;
+    return <AttorneyHelp onContact={() => { setShowHelp(false); setShowContact(true); }} onBack={() => setShowHelp(false)} />;
   }
 
   const isVerified = user?.isVerified || false;
@@ -523,7 +523,7 @@ export default function AttorneyHomeSection({ onSectionChange }: { onSectionChan
       const diffInMs = trialDateTime.getTime() - now.getTime();
       const diffInMinutes = Math.floor(diffInMs / 60000);
       if (diffInMinutes > 0 && diffInMinutes < 60) {
-        return `Starts in ${diffInMinutes} min`;
+   //     return `Starts in ${diffInMinutes} min`;
       } else if (diffInMinutes < 0) {
       //  return "In Progress";
       }

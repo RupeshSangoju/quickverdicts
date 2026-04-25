@@ -58,7 +58,7 @@ const faqs = [
   },
 ];
 
-export default function AttorneyHelp({ onContact }: { onContact: () => void }) {
+export default function AttorneyHelp({ onContact, onBack }: { onContact: () => void; onBack?: () => void }) {
   const [faqOpen, setFaqOpen] = useState<number | null>(0);
   const [search, setSearch] = useState("");
   const [videoStart, setVideoStart] = useState(0);
@@ -101,7 +101,7 @@ export default function AttorneyHelp({ onContact }: { onContact: () => void }) {
           <div className="flex items-center justify-between mb-6">
             <button
               className="flex items-center gap-2 text-[#16305B] hover:text-[#1e417a] transition-colors group"
-              onClick={() => router.push('/attorney')}
+              onClick={() => onBack ? onBack() : router.push('/attorney')}
             >
               <ArrowLeft size={24} className="group-hover:-translate-x-1 transition-transform cursor-pointer" />
               <span className="font-semibold">Back to Dashboard</span>
