@@ -5,6 +5,7 @@ import {
   ArrowRightIcon,
 } from "@heroicons/react/24/outline";
 import { useEffect, useState } from "react";
+import { Lock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { getToken } from "@/lib/apiClient";
 import { formatDateString } from "@/lib/dateUtils";

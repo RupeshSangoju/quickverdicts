@@ -348,7 +348,7 @@ function AttorneySignupInner() {
             const phoneCheck = await post("/api/auth/attorney/check-phone", {
               phoneNumber: formData.phoneNumber,
             });
-            if (phoneCheck.success && !phoneCheck.available) {
+            if (phoneCheck.success && !phoneCheck.data?.available) {
               actions.setValidationErrors({
                 phoneNumber: "This phone number is already registered by another account",
               });
