@@ -144,7 +144,7 @@ function getTimeWarning(scheduledDate: string, scheduledTime: string) {
     if (diffInMinutes > 0 && diffInMinutes < 60) {
       return `Starts in ${diffInMinutes} min`;
     } else if (diffInMinutes < 0) {
-      return "In Progress";
+ //     return "In Progress";
     }
     return null;
   } catch {
@@ -302,7 +302,7 @@ export default function AttorneyCasesSection({ onBack }: AttorneyCasesSectionPro
     }
     if (c.AttorneyStatus === "join_trial") {
       return {
-        label: "Ready for Trial",
+    //    label: "Ready for Trial",
         color: "bg-green-100 text-green-700 border-green-300",
         icon: <ChevronRight className="w-3 h-3" />
       };

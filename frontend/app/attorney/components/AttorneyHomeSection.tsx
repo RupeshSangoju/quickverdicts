@@ -542,7 +542,7 @@ export default function AttorneyHomeSection({ onSectionChange }: { onSectionChan
       return { label: "Rejected", color: "bg-red-100 text-red-700 border-red-300" };
     }
     if (c.AttorneyStatus === "join_trial") {
-      return { label: "Ready for Trial", color: "bg-green-100 text-green-700 border-green-300" };
+ //     return { label: "Ready for Trial", color: "bg-green-100 text-green-700 border-green-300" };
     }
     if (c.AttorneyStatus === "view_details") {
       return { label: "Completed", color: "bg-purple-100 text-purple-700 border-purple-300" };
