@@ -22,11 +22,10 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL
   : "http://localhost:4000";
 
 function isCaseDayOver(scheduledDate: string): boolean {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const caseDay = new Date(scheduledDate);
-  const caseDayStart = new Date(caseDay.getFullYear(), caseDay.getMonth(), caseDay.getDate());
-  return today > caseDayStart;
+  if (!scheduledDate) return false;
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  return todayStr > scheduledDate.slice(0, 10);
 }
 
 function getCaseName(plaintiffGroups: string, defendantGroups: string) {
