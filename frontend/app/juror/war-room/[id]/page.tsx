@@ -425,6 +425,91 @@ export default function JurorWarRoomPage() {
       } finally {
         setOfficeLoading(false);
       }
+    } else if (ext === 'doc') {
+      setOfficeLoading(true);
+      try {
+        const token = getToken();
+        const res = await fetch(rawUrl, { headers: { Authorization: `Bearer ${token}` } });
+        const arrayBuffer = await res.arrayBuffer();
+        const XLSX = await import('xlsx');
+        const CFB = (XLSX as any).CFB;
+        const cfb = CFB.read(new Uint8Array(arrayBuffer), { type: 'array' });
+        const entry = CFB.find(cfb, 'WordDocument');
+        if (entry && entry.content) {
+          const bytes: Uint8Array = entry.content instanceof Uint8Array ? entry.content : new Uint8Array(entry.content);
+          const texts: string[] = [];
+          let i = 0;
+          while (i < bytes.length - 1) {
+            if (bytes[i] >= 32 && bytes[i] <= 126 && bytes[i + 1] === 0) {
+              let seg = '';
+              while (i < bytes.length - 1 && bytes[i] >= 32 && bytes[i] <= 126 && bytes[i + 1] === 0) {
+                seg += String.fromCharCode(bytes[i]);
+                i += 2;
+              }
+              while (i < bytes.length - 1 && (bytes[i] === 13 || bytes[i] === 10 || bytes[i] === 7) && bytes[i + 1] === 0) {
+                seg += '\n';
+                i += 2;
+              }
+              const trimmed = seg.trim();
+              if (trimmed.length >= 2 && /[a-zA-Z]/.test(trimmed)) texts.push(trimmed);
+            } else {
+              i++;
+            }
+          }
+          setOfficeContent(texts.join('\n'));
+        } else {
+          setOfficeContent('');
+        }
+      } catch {
+        setOfficeContent('');
+      } finally {
+        setOfficeLoading(false);
+      }
+    } else if (ext === 'ppt') {
+      setOfficeLoading(true);
+      try {
+        const token = getToken();
+        const res = await fetch(rawUrl, { headers: { Authorization: `Bearer ${token}` } });
+        const arrayBuffer = await res.arrayBuffer();
+        const XLSX = await import('xlsx');
+        const CFB = (XLSX as any).CFB;
+        const cfb = CFB.read(new Uint8Array(arrayBuffer), { type: 'array' });
+        const entry = CFB.find(cfb, 'PowerPoint Document');
+        if (entry && entry.content) {
+          const bytes: Uint8Array = entry.content instanceof Uint8Array ? entry.content : new Uint8Array(entry.content);
+          const texts: string[] = [];
+          let i = 0;
+          while (i <= bytes.length - 8) {
+            const recType = (bytes[i + 3] << 8) | bytes[i + 2];
+            const recLen = (bytes[i + 7] << 24) | (bytes[i + 6] << 16) | (bytes[i + 5] << 8) | bytes[i + 4];
+            if (recLen < 0 || recLen > bytes.length - i - 8) { i++; continue; }
+            if (recType === 0x0FA8 && recLen > 0) {
+              // TextBytesAtom — ASCII
+              const slice = bytes.slice(i + 8, i + 8 + recLen);
+              const text = Array.from(slice).map(b => String.fromCharCode(b)).join('').trim();
+              if (text.length > 0 && /[a-zA-Z]/.test(text)) texts.push(text);
+            } else if (recType === 0x0FA0 && recLen > 0) {
+              // TextCharsAtom — UTF-16LE
+              const slice = bytes.slice(i + 8, i + 8 + recLen);
+              let text = '';
+              for (let j = 0; j + 1 < slice.length; j += 2) {
+                const code = slice[j] | (slice[j + 1] << 8);
+                if (code >= 32 && code < 0xFFFF) text += String.fromCharCode(code);
+              }
+              text = text.trim();
+              if (text.length > 0 && /[a-zA-Z]/.test(text)) texts.push(text);
+            }
+            i += 8 + recLen;
+          }
+          setOfficeContent(texts.join('\n'));
+        } else {
+          setOfficeContent('');
+        }
+      } catch {
+        setOfficeContent('');
+      } finally {
+        setOfficeLoading(false);
+      }
     } else if (ext === 'xlsx' || ext === 'xls') {
       setXlsxLoading(true);
       try {
@@ -575,10 +660,15 @@ export default function JurorWarRoomPage() {
                 </div>
               )
             ) : isOldOffice ? (
-              <div className="text-center py-12">
-                <p className="text-gray-600 mb-2">Preview not supported for .{ext} format.</p>
-                <p className="text-gray-500 text-sm">Please ask the attorney to re-upload the file as .docx, .pptx, or .xlsx.</p>
-              </div>
+              officeLoading ? spinner : officeContent ? (
+                <pre className="text-sm text-[#0A2342] whitespace-pre-wrap break-words font-mono bg-[#FAF9F6] p-4 rounded border border-[#C6CDD9]/50 max-h-[65vh] overflow-auto">
+                  {officeContent}
+                </pre>
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-gray-500 text-sm">Could not extract content from this file.</p>
+                </div>
+              )
             ) : isCsv ? (
               csvLoading ? spinner : csvData.length > 0 ? (
                 <div className="overflow-auto max-h-[65vh]">
