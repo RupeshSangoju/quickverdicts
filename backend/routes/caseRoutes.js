@@ -24,6 +24,7 @@ const { poolPromise, sql } = require("../config/db");
 const Case = require("../models/Case");
 const JurorApplication = require("../models/JurorApplication");
 const CaseDocument = require("../models/CaseDocument");
+const Notification = require("../models/Notification");
 const { generateSasUrl } = require("../utils/azureBlob");
 
 // ============================================
@@ -381,18 +382,56 @@ router.patch(
         });
       }
 
-      const { poolPromise } = require("../db");
-      const sql = require("mssql");
+      const newState = state.trim();
+      const newCounty = county.trim();
+
+      // Update venue in DB
       const pool = await poolPromise;
       await pool.request()
         .input("caseId", sql.Int, caseId)
-        .input("state", sql.NVarChar, state.trim())
-        .input("county", sql.NVarChar, county.trim())
+        .input("state", sql.NVarChar, newState)
+        .input("county", sql.NVarChar, newCounty)
         .query(`
           UPDATE dbo.Cases
           SET State = @state, County = @county, UpdatedAt = GETUTCDATE()
           WHERE CaseId = @caseId AND IsDeleted = 0
         `);
+
+      // Send notifications to attorney and approved jurors
+      try {
+        const caseData = await Case.findById(caseId);
+        const approvedJurors = await JurorApplication.getApprovedJurorsForCase(caseId);
+        const venueStr = `${newCounty}, ${newState}`;
+        const notifications = [];
+
+        if (caseData?.AttorneyId) {
+          notifications.push({
+            userId: caseData.AttorneyId,
+            userType: "attorney",
+            caseId,
+            type: "case_venue_changed",
+            title: "Case Venue Updated",
+            message: `The venue for your case "${caseData.CaseTitle}" has been changed to ${venueStr} by the administrator.`,
+          });
+        }
+
+        (approvedJurors || []).forEach((juror) => {
+          notifications.push({
+            userId: juror.JurorId,
+            userType: "juror",
+            caseId,
+            type: "case_venue_changed",
+            title: "Case Venue Updated",
+            message: `The venue for case "${caseData?.CaseTitle || `#${caseId}`}" has been changed to ${venueStr}.`,
+          });
+        });
+
+        if (notifications.length > 0) {
+          await Notification.createBulkNotifications(notifications);
+        }
+      } catch (notifErr) {
+        console.error("Venue notification error (non-fatal):", notifErr);
+      }
 
       res.json({ success: true, message: "Venue updated successfully" });
     } catch (error) {
