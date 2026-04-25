@@ -425,35 +425,29 @@ export default function JurorWarRoomPage() {
         const token = getToken();
         const res = await fetch(rawUrl, { headers: { Authorization: `Bearer ${token}` } });
         const arrayBuffer = await res.arrayBuffer();
-        const XLSX = await import('xlsx');
-        const CFB = (XLSX as any).CFB;
-        const cfb = CFB.read(new Uint8Array(arrayBuffer), { type: 'array' });
-        const entry = CFB.find(cfb, 'WordDocument');
-        if (entry && entry.content) {
-          const bytes: Uint8Array = entry.content instanceof Uint8Array ? entry.content : new Uint8Array(entry.content);
-          const texts: string[] = [];
-          let i = 0;
-          while (i < bytes.length - 1) {
-            if (bytes[i] >= 32 && bytes[i] <= 126 && bytes[i + 1] === 0) {
-              let seg = '';
-              while (i < bytes.length - 1 && bytes[i] >= 32 && bytes[i] <= 126 && bytes[i + 1] === 0) {
-                seg += String.fromCharCode(bytes[i]);
-                i += 2;
-              }
-              while (i < bytes.length - 1 && (bytes[i] === 13 || bytes[i] === 10 || bytes[i] === 7) && bytes[i + 1] === 0) {
-                seg += '\n';
-                i += 2;
-              }
-              const trimmed = seg.trim();
-              if (trimmed.length >= 2 && /[a-zA-Z]/.test(trimmed)) texts.push(trimmed);
-            } else {
-              i++;
+        const bytes = new Uint8Array(arrayBuffer);
+        // Word stores text as UTF-16LE: printable ASCII byte followed by 0x00
+        const texts: string[] = [];
+        let i = 0;
+        while (i < bytes.length - 1) {
+          if (bytes[i] >= 32 && bytes[i] <= 126 && bytes[i + 1] === 0) {
+            let seg = '';
+            while (i < bytes.length - 1 && bytes[i] >= 32 && bytes[i] <= 126 && bytes[i + 1] === 0) {
+              seg += String.fromCharCode(bytes[i]);
+              i += 2;
             }
+            // absorb UTF-16LE line-break characters (CR, LF, vertical tab)
+            while (i < bytes.length - 1 && (bytes[i] === 13 || bytes[i] === 10 || bytes[i] === 11 || bytes[i] === 7) && bytes[i + 1] === 0) {
+              seg += '\n';
+              i += 2;
+            }
+            const trimmed = seg.trim();
+            if (trimmed.length >= 4 && /[a-zA-Z]{2,}/.test(trimmed)) texts.push(trimmed);
+          } else {
+            i++;
           }
-          setOfficeContent(texts.join('\n'));
-        } else {
-          setOfficeContent('');
         }
+        setOfficeContent(texts.join('\n'));
       } catch {
         setOfficeContent('');
       } finally {
@@ -465,40 +459,42 @@ export default function JurorWarRoomPage() {
         const token = getToken();
         const res = await fetch(rawUrl, { headers: { Authorization: `Bearer ${token}` } });
         const arrayBuffer = await res.arrayBuffer();
-        const XLSX = await import('xlsx');
-        const CFB = (XLSX as any).CFB;
-        const cfb = CFB.read(new Uint8Array(arrayBuffer), { type: 'array' });
-        const entry = CFB.find(cfb, 'PowerPoint Document');
-        if (entry && entry.content) {
-          const bytes: Uint8Array = entry.content instanceof Uint8Array ? entry.content : new Uint8Array(entry.content);
-          const texts: string[] = [];
-          let i = 0;
-          while (i <= bytes.length - 8) {
-            const recType = (bytes[i + 3] << 8) | bytes[i + 2];
-            const recLen = (bytes[i + 7] << 24) | (bytes[i + 6] << 16) | (bytes[i + 5] << 8) | bytes[i + 4];
-            if (recLen < 0 || recLen > bytes.length - i - 8) { i++; continue; }
-            if (recType === 0x0FA8 && recLen > 0) {
-              // TextBytesAtom — ASCII
-              const slice = bytes.slice(i + 8, i + 8 + recLen);
-              const text = Array.from(slice).map(b => String.fromCharCode(b)).join('').trim();
-              if (text.length > 0 && /[a-zA-Z]/.test(text)) texts.push(text);
-            } else if (recType === 0x0FA0 && recLen > 0) {
-              // TextCharsAtom — UTF-16LE
-              const slice = bytes.slice(i + 8, i + 8 + recLen);
-              let text = '';
-              for (let j = 0; j + 1 < slice.length; j += 2) {
-                const code = slice[j] | (slice[j + 1] << 8);
-                if (code >= 32 && code < 0xFFFF) text += String.fromCharCode(code);
-              }
-              text = text.trim();
-              if (text.length > 0 && /[a-zA-Z]/.test(text)) texts.push(text);
+        const bytes = new Uint8Array(arrayBuffer);
+        const texts: string[] = [];
+        // Scan for UTF-16LE text (TextCharsAtom stores text this way)
+        let i = 0;
+        while (i < bytes.length - 1) {
+          if (bytes[i] >= 32 && bytes[i] <= 126 && bytes[i + 1] === 0) {
+            let seg = '';
+            while (i < bytes.length - 1 && bytes[i] >= 32 && bytes[i] <= 126 && bytes[i + 1] === 0) {
+              seg += String.fromCharCode(bytes[i]);
+              i += 2;
             }
-            i += 8 + recLen;
+            while (i < bytes.length - 1 && (bytes[i] === 13 || bytes[i] === 10) && bytes[i + 1] === 0) {
+              seg += '\n';
+              i += 2;
+            }
+            const trimmed = seg.trim();
+            if (trimmed.length >= 4 && /[a-zA-Z]{2,}/.test(trimmed)) texts.push(trimmed);
+          } else {
+            i++;
           }
-          setOfficeContent(texts.join('\n'));
-        } else {
-          setOfficeContent('');
         }
+        // Also scan for ASCII runs (TextBytesAtom stores text as plain ASCII)
+        if (texts.length === 0) {
+          let seg = '';
+          for (let j = 0; j < bytes.length; j++) {
+            const b = bytes[j];
+            if (b >= 32 && b <= 126) {
+              seg += String.fromCharCode(b);
+            } else {
+              const trimmed = seg.trim();
+              if (trimmed.length >= 4 && /[a-zA-Z]{2,}/.test(trimmed)) texts.push(trimmed);
+              seg = '';
+            }
+          }
+        }
+        setOfficeContent(texts.join('\n'));
       } catch {
         setOfficeContent('');
       } finally {
