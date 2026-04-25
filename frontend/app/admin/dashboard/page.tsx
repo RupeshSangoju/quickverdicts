@@ -318,6 +318,11 @@ export default function AdminDashboard() {
   const [expandedAttorneyCases, setExpandedAttorneyCases] = useState<Set<number>>(new Set());
   const [caseIdOverlay, setCaseIdOverlay] = useState<{ ids: string[]; label: string } | null>(null);
 
+  useEffect(() => {
+    document.body.style.overflow = caseIdOverlay ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [caseIdOverlay]);
+
   const [showCaseRejectModal, setShowCaseRejectModal] = useState(false);
   const [rejectCaseId, setRejectCaseId] = useState<number | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
@@ -3125,7 +3130,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                                 {ids.length} Cases
                               </span>
                               <button
-                                onClick={() => setCaseIdOverlay({ ids, label: `${juror.FirstName} ${juror.LastName}` })}
+                                onClick={() => setCaseIdOverlay({ ids, label: juror.Name })}
                                 className="inline-flex items-center justify-center w-6 h-6 rounded bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-700 transition-colors cursor-pointer"
                                 title="View all case IDs"
                               >
