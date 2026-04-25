@@ -485,11 +485,16 @@ export default function JurorWarRoomPage() {
               )
             ) : isOfficeDoc ? (
               officeLoading ? spinner : officeViewerUrl ? (
-                <iframe
-                  src={officeViewerUrl}
-                  className="w-full h-[70vh] border-0"
-                  title={viewingDoc.FileName}
-                />
+                <div className="relative w-full h-[70vh]">
+                  <iframe
+                    src={officeViewerUrl}
+                    className="w-full h-full border-0"
+                    title={viewingDoc.FileName}
+                    sandbox="allow-scripts allow-same-origin allow-forms"
+                  />
+                  {/* Overlay blocks the Google Docs Viewer toolbar (pop-out / open-in-new-tab buttons) */}
+                  <div className="absolute top-0 left-0 right-0 h-11 z-10" />
+                </div>
               ) : (
                 <div className="text-center py-12">
                   <p className="text-gray-500 text-sm">Could not load document preview.</p>
