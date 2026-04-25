@@ -441,7 +441,7 @@ export default function AttorneyHomeSection({ onSectionChange }: { onSectionChan
   }
 
   if (showHelp) {
-    return <AttorneyHelp onContact={() => { setShowHelp(false); setShowContact(true); }} />;
+    return <AttorneyHelp onContact={() => { setShowHelp(false); setShowContact(true); }} onBack={() => setShowHelp(false)} />;
   }
 
   const isVerified = user?.isVerified || false;
