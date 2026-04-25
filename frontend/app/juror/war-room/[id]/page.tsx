@@ -805,30 +805,6 @@ export default function JurorWarRoomPage() {
 
 
 
-  if (isCaseDayOver(caseData.ScheduledDate)) {
-    return (
-      <main className="min-h-screen bg-[#FAF9F6] flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto px-4">
-          <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-          </div>
-          <h2 className="text-2xl font-bold text-[#16305B] mb-2">War Room Access Ended</h2>
-          <p className="text-[#455A7C] mb-6">
-            The case day has ended. War room access is no longer available for this case.
-          </p>
-          <button
-            onClick={() => router.push("/juror")}
-            className="bg-[#16305B] text-white px-6 py-2 rounded font-semibold hover:bg-[#0A2342] transition"
-          >
-            Back to Dashboard
-          </button>
-        </div>
-      </main>
-    );
-  }
-
   const caseName = getCaseName(caseData.PlaintiffGroups, caseData.DefendantGroups);
   const trialDate = formatDateString(caseData.ScheduledDate, {
     weekday: "long",
