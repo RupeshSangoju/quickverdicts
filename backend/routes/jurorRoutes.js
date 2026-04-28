@@ -622,7 +622,7 @@ router.post(
           caseId: parseInt(caseId),
           type: "application_received",
           title: "New Juror Application",
-          message: `A juror has applied to your case "${caseData.CaseTitle}"`,
+          message: `A juror has applied to your case "${caseData.CaseTitle}". Please approve or disapprove of juror applications timely so jurors can plan accordingly.`,
         });
       }
     } catch (error) {

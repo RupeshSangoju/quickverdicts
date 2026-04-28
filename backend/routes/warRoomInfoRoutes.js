@@ -916,7 +916,7 @@ router.post(
           caseId: caseId,
           type: Notification.NOTIFICATION_TYPES.WAR_ROOM_READY,
           title: 'War Room Submitted Successfully',
-          message: `Your war room for "${caseData.CaseTitle}" has been submitted successfully. Trial scheduled for ${trialDate} at ${trialTime}.`
+          message: `Your war room for "${caseData.CaseTitle}" has been submitted successfully. Trial scheduled for ${trialDate} at ${trialTime}. Please “Join Trial” 10 minutes after the start time to allow for the mock jurors to gather and watch an instructional video.`
         });
 
         const attorneyEmailContent = `
