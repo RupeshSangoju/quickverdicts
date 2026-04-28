@@ -91,7 +91,7 @@ export function Step3EmailPassword({
   onResendOTP,
 }: Step3EmailPasswordProps) {
   const [showPassword, setShowPassword] = useState(false);
-  const [resendCooldown, setResendCooldown] = useState(30);
+  const [resendCooldown, setResendCooldown] = useState(0);
   const otpInputsRef = useRef<(HTMLInputElement | null)[]>([]);
 
   /* ===========================================================
@@ -116,6 +116,13 @@ export function Step3EmailPassword({
 
     return () => clearInterval(interval);
   }, [resendCooldown]);
+
+  // Start 30s cooldown when OTP sub-step first appears
+  useEffect(() => {
+    if (authSubStep === 2) {
+      setResendCooldown(30);
+    }
+  }, [authSubStep]);
 
   /* ===========================================================
      OTP HANDLERS
