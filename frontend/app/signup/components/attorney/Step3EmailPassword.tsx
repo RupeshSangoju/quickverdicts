@@ -168,7 +168,7 @@ export function Step3EmailPassword({
 }: Step3EmailPasswordProps) {
   // State
   const [showPassword, setShowPassword] = useState(false);
-  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resendCooldown, setResendCooldown] = useState(30);
 
   // Refs
   const otpInputsRef = useRef<(HTMLInputElement | null)[]>([]);
@@ -270,7 +270,7 @@ export function Step3EmailPassword({
       onUpdate({ otp: "" });
       onClearError("otp");
       onResendOTP();
-      setResendCooldown(60);
+      setResendCooldown(30);
 
       // Track resend
       if (typeof window !== "undefined" && (window as any).gtag) {
