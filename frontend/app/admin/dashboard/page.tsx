@@ -151,6 +151,7 @@ type Juror = {
   VerificationStatus?: string;
   CriteriaResponses?: { question: string; answer: string }[];
   ApprovedCaseIds?: string | null;
+  PaymentMethod?: string | null;
 };
 
 type Notification = {
@@ -935,6 +936,7 @@ export default function AdminDashboard() {
         VerificationStatus: j.VerificationStatus,
         CriteriaResponses: j.CriteriaResponses ?? j.criteriaResponses ?? [],
         ApprovedCaseIds: j.ApprovedCaseIds ?? null,
+        PaymentMethod: j.PaymentMethod ?? j.paymentMethod ?? null,
       })));
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
@@ -3036,13 +3038,16 @@ function formatTime(timeString: string, scheduledDate: string) {
                       )}
                     </div>
                   </th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                    Payment Method
+                  </th>
                   <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 bg-white">
                 {loadingJurors ? (
                   <tr>
-                    <td colSpan={8} className="px-6 py-16 text-center">
+                    <td colSpan={9} className="px-6 py-16 text-center">
                       <div className="flex flex-col items-center justify-center">
                         <div className="animate-spin h-12 w-12 border-4 border-green-500 border-t-transparent rounded-full mb-4"></div>
                         <p className="text-gray-500 font-medium text-lg">Loading jurors...</p>
@@ -3051,7 +3056,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                   </tr>
                 ) : jurors.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-6 py-16 text-center">
+                    <td colSpan={9} className="px-6 py-16 text-center">
                       <Users className="h-16 w-16 text-gray-300 mx-auto mb-4" />
                       <p className="text-gray-500 font-medium text-lg">No jurors found</p>
                     </td>
@@ -3140,6 +3145,13 @@ function formatTime(timeString: string, scheduledDate: string) {
                           );
                         })() : (
                           <span className="text-gray-400 text-xs">—</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        {juror.PaymentMethod ? (
+                          <span className="text-sm text-gray-900 font-medium">{juror.PaymentMethod}</span>
+                        ) : (
+                          <span className="text-xs text-gray-400 italic">No payment method</span>
                         )}
                       </td>
                       <td className="px-6 py-4">
