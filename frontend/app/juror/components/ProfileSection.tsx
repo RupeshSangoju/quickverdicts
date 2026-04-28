@@ -44,56 +44,28 @@ export default function ProfileSection() {
   // Payment methods state
   const [showAddPayment, setShowAddPayment] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<string | null>(null);
-  const [paymentMethodType, setPaymentMethodType] = useState<"venmo" | "paypal" | "zelle" | "card">("venmo");
+  const [paymentMethodType, setPaymentMethodType] = useState<"venmo" | "zelle" | "check">("venmo");
   const [paymentDetails, setPaymentDetails] = useState({
     venmoHandle: "",
-    paypalEmail: "",
     zelleEmail: "",
-    cardNumber: "",
-    cardholderName: "",
-    expiryDate: "",
-    cvv: "",
+    checkAddress: "",
   });
-
-  // Card formatting helpers
-  const formatCardNumber = (value: string) => {
-    const digits = value.replace(/\D/g, "").slice(0, 16);
-    return digits.replace(/(.{4})/g, "$1 ").trim();
-  };
-
-  const formatExpiry = (value: string) => {
-    let digits = value.replace(/\D/g, "").slice(0, 4);
-    if (digits.length >= 2) {
-      const month = parseInt(digits.slice(0, 2));
-      if (month < 1 || month > 12) return paymentDetails.expiryDate;
-      digits = month.toString().padStart(2, "0") + digits.slice(2);
-    }
-    if (digits.length >= 3) {
-      return `${digits.slice(0, 2)}/${digits.slice(2).padStart(2, "0")}`;
-    }
-    return digits;
-  };
-
-  const formatCvv = (value: string) => value.replace(/\D/g, "").slice(0, 3);
 
   function handleAddPaymentMethod() {
     let methodAdded = "";
     if (paymentMethodType === "venmo" && paymentDetails.venmoHandle.trim()) {
       methodAdded = `Venmo (@${paymentDetails.venmoHandle})`;
-    } else if (paymentMethodType === "paypal" && paymentDetails.paypalEmail.trim()) {
-      methodAdded = `PayPal (${paymentDetails.paypalEmail})`;
     } else if (paymentMethodType === "zelle" && paymentDetails.zelleEmail.trim()) {
       methodAdded = `Zelle (${paymentDetails.zelleEmail})`;
-    } else if (paymentMethodType === "card" && paymentDetails.cardNumber.trim() && paymentDetails.cardholderName.trim()) {
-      const lastFour = paymentDetails.cardNumber.replace(/\s/g, "").slice(-4);
-      methodAdded = `Card ending in ${lastFour}`;
+    } else if (paymentMethodType === "check" && paymentDetails.checkAddress.trim()) {
+      methodAdded = `Personal Check — ${paymentDetails.checkAddress}`;
     }
     if (!methodAdded) return;
     setPaymentMethod(methodAdded);
     setShowAddPayment(false);
     setSuccessMessage(`Payment method added: ${methodAdded}`);
     setTimeout(() => setSuccessMessage(""), 5000);
-    setPaymentDetails({ venmoHandle: "", paypalEmail: "", zelleEmail: "", cardNumber: "", cardholderName: "", expiryDate: "", cvv: "" });
+    setPaymentDetails({ venmoHandle: "", zelleEmail: "", checkAddress: "" });
   }
 
   function handleRemovePaymentMethod() {
@@ -783,12 +755,11 @@ export default function ProfileSection() {
               {/* Payment Type Selection */}
               <div className="mb-6">
                 <label className="block text-sm font-semibold text-gray-700 mb-3">Select Payment Type</label>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                   {[
                     { value: "venmo", label: "Venmo" },
-                    { value: "paypal", label: "PayPal" },
                     { value: "zelle", label: "Zelle" },
-                    { value: "card", label: "Credit Card" },
+                    { value: "check", label: "Personal Check" },
                   ].map((type) => (
                     <button
                       key={type.value}
@@ -820,19 +791,6 @@ export default function ProfileSection() {
                   </div>
                 )}
 
-                {paymentMethodType === "paypal" && (
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">PayPal Email *</label>
-                    <input
-                      type="email"
-                      placeholder="your.email@example.com"
-                      value={paymentDetails.paypalEmail}
-                      onChange={(e) => setPaymentDetails({ ...paymentDetails, paypalEmail: e.target.value })}
-                      className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-black focus:outline-none focus:ring-2 focus:ring-[#0C2D57] transition"
-                    />
-                  </div>
-                )}
-
                 {paymentMethodType === "zelle" && (
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Zelle Email *</label>
@@ -846,57 +804,18 @@ export default function ProfileSection() {
                   </div>
                 )}
 
-                {paymentMethodType === "card" && (
-                  <>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Cardholder Name *</label>
-                      <input
-                        type="text"
-                        placeholder="John Doe"
-                        value={paymentDetails.cardholderName}
-                        onChange={(e) => setPaymentDetails({ ...paymentDetails, cardholderName: e.target.value.replace(/[^a-zA-Z\s]/g, "") })}
-                        className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-black focus:outline-none focus:ring-2 focus:ring-[#0C2D57] transition"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Card Number *</label>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        placeholder="1234 5678 9012 3456"
-                        value={paymentDetails.cardNumber}
-                        onChange={(e) => setPaymentDetails({ ...paymentDetails, cardNumber: formatCardNumber(e.target.value) })}
-                        maxLength={19}
-                        className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-black focus:outline-none focus:ring-2 focus:ring-[#0C2D57] transition"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Expiry Date *</label>
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          placeholder="MM/YY"
-                          value={paymentDetails.expiryDate}
-                          onChange={(e) => setPaymentDetails({ ...paymentDetails, expiryDate: formatExpiry(e.target.value) })}
-                          maxLength={5}
-                          className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-black focus:outline-none focus:ring-2 focus:ring-[#0C2D57] transition"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">CVV *</label>
-                        <input
-                          type="password"
-                          inputMode="numeric"
-                          placeholder="•••"
-                          value={paymentDetails.cvv}
-                          onChange={(e) => setPaymentDetails({ ...paymentDetails, cvv: formatCvv(e.target.value) })}
-                          maxLength={3}
-                          className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-black focus:outline-none focus:ring-2 focus:ring-[#0C2D57] transition"
-                        />
-                      </div>
-                    </div>
-                  </>
+                {paymentMethodType === "check" && (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Mailing Address *</label>
+                    <textarea
+                      placeholder="Enter full mailing address for check delivery"
+                      value={paymentDetails.checkAddress}
+                      onChange={(e) => setPaymentDetails({ ...paymentDetails, checkAddress: e.target.value })}
+                      rows={3}
+                      className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-black focus:outline-none focus:ring-2 focus:ring-[#0C2D57] transition resize-none"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">A physical check will be mailed to this address.</p>
+                  </div>
                 )}
               </div>
 
