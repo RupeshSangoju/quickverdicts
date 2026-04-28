@@ -122,12 +122,12 @@ export function useProtectedRoute(
           requiredUserType === "admin"
             ? "/admin/login"
             : `/login/${requiredUserType}`;
-        router.replace(loginPath);
+        window.location.href = loginPath;
       }
     };
     window.addEventListener("storage", handleStorage);
     return () => window.removeEventListener("storage", handleStorage);
-  }, [requiredUserType, router]);
+  }, [requiredUserType]);
 
   useEffect(() => {
     // Only check once per mount
