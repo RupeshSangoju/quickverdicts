@@ -31,6 +31,7 @@ export default function JurorTrialSetupPage() {
               <li>• Ensure you're in a quiet, private location</li>
               <li>• Ensure your camera and microphone are working</li>
               <li>• Have a stable internet connection</li>
+              <li>•	Use a desktop or laptop, not a mobile device</li>
             </ul>
           </div>
 

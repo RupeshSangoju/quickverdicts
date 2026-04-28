@@ -220,7 +220,7 @@ Browse available cases in your area and choose the ones that fit your schedule. 
             Sign up today and start your first case
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/signup/attorney" className="bg-blue-900 text-white px-12 py-3 rounded hover:bg-blue-800 font-medium">
+            <Link href="/signup/juror" className="bg-blue-900 text-white px-12 py-3 rounded hover:bg-blue-800 font-medium">
               Sign up as Juror
             </Link>
             <Link href="/login" className="bg-white text-blue-900 border-2 border-blue-900 px-12 py-3 rounded hover:bg-blue-50 font-medium">

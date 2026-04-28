@@ -1720,7 +1720,7 @@ roomCall.remoteParticipants.forEach((p: any) => {
           <div className="p-5" style={{ backgroundColor: "#16305B", borderBottom: "1px solid #C6CDD9" }}>
             <div className="flex items-center justify-between mb-3">
               <div>
-                <h3 className="text-lg font-bold text-white">Jury Charge Questions</h3>
+                <h3 className="text-lg font-bold text-white">Jury Questions</h3>
                 <p className="text-sm text-white opacity-80">{juryChargeQuestions.length} questions</p>
               </div>
               <button onClick={toggleJuryChargePanel} className="text-white hover:text-gray-300">
