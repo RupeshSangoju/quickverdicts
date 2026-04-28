@@ -140,10 +140,10 @@ export function Step4Agreement({
     const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
     const isAtBottom = distanceFromBottom <= SCROLL_THRESHOLD;
 
-    if (isAtBottom !== hasScrolledToBottom) {
-      onScrolledToBottom(isAtBottom);
+    if (isAtBottom && !hasScrolledToBottom) {
+      onScrolledToBottom(true);
 
-      if (isAtBottom && typeof window !== "undefined" && (window as any).gtag) {
+      if (typeof window !== "undefined" && (window as any).gtag) {
         (window as any).gtag("event", "agreement_read_complete", {
           form_type: "juror_signup",
           step: 4,

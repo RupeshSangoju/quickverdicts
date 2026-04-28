@@ -109,6 +109,26 @@ export function useProtectedRoute(
     onAuthChecked,
   } = options;
 
+  // Cross-tab logout: if another tab logs in as a different user type,
+  // the storage event fires here and we immediately redirect to login.
+  useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key !== "token" && e.key !== "user") return;
+      const authed = isAuthenticated();
+      const user = getUser();
+      if (!authed || !user || user.type !== requiredUserType) {
+        clearAuth();
+        const loginPath =
+          requiredUserType === "admin"
+            ? "/admin/login"
+            : `/login/${requiredUserType}`;
+        window.location.href = loginPath;
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, [requiredUserType]);
+
   useEffect(() => {
     // Only check once per mount
     if (hasChecked.current) return;

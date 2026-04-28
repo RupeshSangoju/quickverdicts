@@ -270,7 +270,7 @@ export function Step3EmailPassword({
       onUpdate({ otp: "" });
       onClearError("otp");
       onResendOTP();
-      setResendCooldown(60);
+      setResendCooldown(30);
 
       // Track resend
       if (typeof window !== "undefined" && (window as any).gtag) {
@@ -295,6 +295,13 @@ export function Step3EmailPassword({
       return () => clearTimeout(timer);
     }
   }, [resendCooldown]);
+
+  // Start 30s cooldown when OTP sub-step first appears
+  useEffect(() => {
+    if (authSubStep === 2) {
+      setResendCooldown(30);
+    }
+  }, [authSubStep]);
 
   // Auto-focus first OTP input
   useEffect(() => {

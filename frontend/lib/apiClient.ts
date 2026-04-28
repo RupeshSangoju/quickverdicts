@@ -461,9 +461,15 @@ export function getUserType(): "attorney" | "juror" | "admin" | null {
 }
 
 /**
- * Login user (store token and user data)
+ * Login user (store token and user data).
+ * Clears other user-type profile keys so a single browser session
+ * cannot hold two different account types simultaneously.
  */
 export function login(token: string, user: AuthUser): void {
+  if (typeof window !== "undefined") {
+    if (user.type !== "attorney") localStorage.removeItem("attorneyUser");
+    if (user.type !== "juror") localStorage.removeItem("jurorUser");
+  }
   setToken(token);
   setUser(user);
 }

@@ -228,7 +228,7 @@ export default function CaseDetailsPage() {
               {/* State - Searchable Dropdown */}
               <div ref={stateDropdownRef}>
                 <label className="block mb-1 text-[#16305B] font-medium">
-                  State <span className="text-red-500">*</span>
+                  State Venue <span className="text-red-500">*</span>
                 </label>
   {/* Disclaimer always visible */}
   <p className="text-s text-red-600">
@@ -295,7 +295,7 @@ export default function CaseDetailsPage() {
               {/* County - Searchable Dropdown */}
               <div ref={countyDropdownRef}>
                 <label className="block mb-1 text-[#16305B] font-medium">
-                  County <span className="text-red-500">*</span>
+                  County Venue <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <input

@@ -1465,7 +1465,7 @@ export default function WarRoomPage() {
                   <button
                     onClick={async () => {
                       const errors = newMembers.map(m => {
-                        if (m.Email && !m.Email.includes("@")) return "Email must contain @";
+                        if (m.Email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(m.Email)) return "Enter a valid email address";
                         return "";
                       });
                       setTeamEmailErrors(errors);

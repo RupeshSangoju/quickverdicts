@@ -2,6 +2,67 @@
 
 import Image from "next/image";
 import { ArrowLeft, Clock, Phone, Mail, MapPin, MessageCircle } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+
+const SUPPORT_EMAIL = "QVTrial@quickverdicts.com";
+const CONSULT_SUBJECT = "Schedule a Consultation";
+const CONSULT_BODY = "Hello,\n\nI would like to schedule a consultation with the QuickVerdicts team.\n\nPlease let me know your availability.\n\nThank you.";
+
+function ScheduleButton() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const openOutlook = () => {
+    window.location.href = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(CONSULT_SUBJECT)}&body=${encodeURIComponent(CONSULT_BODY)}`;
+    setOpen(false);
+  };
+
+  const openGmail = () => {
+    window.open(
+      `https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(SUPPORT_EMAIL)}&su=${encodeURIComponent(CONSULT_SUBJECT)}&body=${encodeURIComponent(CONSULT_BODY)}`,
+      "_blank"
+    );
+    setOpen(false);
+  };
+
+  return (
+    <div ref={ref} className="relative inline-block">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="bg-white text-[#16305B] px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-all shadow-md hover:shadow-lg"
+      >
+        Schedule Consultation
+      </button>
+      {open && (
+        <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden w-56 z-50">
+          <p className="text-xs font-semibold text-gray-500 uppercase px-4 pt-3 pb-1">Open email with</p>
+          <button
+            onClick={openOutlook}
+            className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-blue-50 transition-colors text-left"
+          >
+            <span className="text-xl">📧</span>
+            <span className="text-sm font-medium text-gray-800">Outlook / Mail App</span>
+          </button>
+          <button
+            onClick={openGmail}
+            className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-red-50 transition-colors text-left border-t border-gray-100"
+          >
+            <span className="text-xl">📮</span>
+            <span className="text-sm font-medium text-gray-800">Gmail (Chrome)</span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function AttorneyContact({ onBack }: { onBack: () => void }) {
   return (
@@ -157,11 +218,7 @@ export default function AttorneyContact({ onBack }: { onBack: () => void }) {
           <p className="text-blue-100 mb-6">
             Schedule a consultation with our team to discuss your specific needs
           </p>
-          <a href="mailto:QVTrial@quickverdicts.com?subject=Consultation Request&body=Hi, I would like to schedule a consultation.">
-            <button className="bg-white text-[#16305B] px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-all shadow-md hover:shadow-lg cursor-pointer">
-              Schedule Consultation
-            </button>
-          </a>
+          <ScheduleButton />
         </div>
       </div>
     </div>
