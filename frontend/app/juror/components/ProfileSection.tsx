@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Eye, EyeOff, HelpCircle, X, Landmark, FileText } from "lucide-react";
+import { Eye, EyeOff, HelpCircle, X, Landmark, FileText, AlertCircle } from "lucide-react";
 import { SiVenmo } from "react-icons/si";
 import toast from "react-hot-toast";
 import { getToken } from "@/lib/apiClient";
@@ -487,9 +487,10 @@ export default function ProfileSection() {
             <div className="bg-white rounded shadow p-8 w-full" style={{ minHeight: 120, maxWidth: 420, color: "black" }}>
               <h2 className="font-semibold text-lg mb-4" style={{ color: "black" }}>Manage Account</h2>
               <button
-                className="w-full border border-gray-400 rounded py-2 hover:bg-gray-100 transition-colors text-[15px] font-medium text-black"
+                className="w-full border-2 border-red-300 text-red-600 rounded-lg py-3 hover:bg-red-50 transition-colors text-[15px] font-semibold flex items-center justify-center gap-2 group cursor-pointer"
                 onClick={() => setShowDelete(true)}
               >
+                <AlertCircle className="w-5 h-5 group-hover:scale-110 transition-transform" />
                 Delete Account
               </button>
             </div>
@@ -656,7 +657,7 @@ export default function ProfileSection() {
                 <button
                   className="px-6 py-2 bg-[#B3261E] text-white rounded shadow-sm font-medium text-[16px] hover:bg-[#a11d17] focus:outline-none focus:ring-2 focus:ring-red-400 border border-[#B3261E] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   onClick={handleDeleteAccount}
-                  disabled={deleting}
+                  disabled={deleting || !deletePassword}
                 >
                   {deleting ? "Deleting..." : "Delete"}
                 </button>
