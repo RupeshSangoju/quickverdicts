@@ -63,9 +63,8 @@ export default function QuickVerdictsLanding() {
               Real-time.  Remote.  Reasonably Priced.
             </h2>
             <p className="text-[18px] leading-[1.6] font-medium text-gray-600 max-w-3xl mx-auto mb-10">
-Quick Verdicts is the latest in legal tech for mock jury trials.  QV connects attorneys with 
-local, screened mock jurors for case presentation, deliberation and a final mock verdict.  
-Jurors get paid.  Mock trials are for a set time period.  Costs are low.  <br></br>
+Quick Verdicts is legal tech for mock jury trials.  QV offers a platform for easy preparation for attorneys, juror screening, and a virtual jury trial with 6-8 jurors.  Jurors are vetted and if chosen, get paid.  Flexible hours are offered for the convenience of jurors.  Mock trials are scheduled for 2.5 hours, 3.5 hours or 4.5 hours. 
+ <br></br>
 Currently serving 
 cases in:            </p>
     <div className="flex flex-col md:flex-row gap-4 justify-center items-center mb-10">
