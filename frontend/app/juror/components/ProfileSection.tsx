@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Eye, EyeOff, HelpCircle, X, CheckCircle } from "lucide-react";
+import { Eye, EyeOff, HelpCircle, X } from "lucide-react";
 import { SiVenmo, SiCashapp } from "react-icons/si";
 import { FaPaypal } from "react-icons/fa";
 import toast from "react-hot-toast";
@@ -22,6 +22,7 @@ type Juror = {
   verificationStatus?: string;
   onboardingCompleted?: boolean;
   phone?: string;
+  paymentMethod?: string;
 };
 
 export default function ProfileSection() {
@@ -41,38 +42,6 @@ export default function ProfileSection() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
-  // Payment methods state
-  const [showAddPayment, setShowAddPayment] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<string | null>(null);
-  const [paymentMethodType, setPaymentMethodType] = useState<"venmo" | "zelle" | "check">("venmo");
-  const [paymentDetails, setPaymentDetails] = useState({
-    venmoHandle: "",
-    zelleEmail: "",
-    checkAddress: "",
-  });
-
-  function handleAddPaymentMethod() {
-    let methodAdded = "";
-    if (paymentMethodType === "venmo" && paymentDetails.venmoHandle.trim()) {
-      methodAdded = `Venmo (@${paymentDetails.venmoHandle})`;
-    } else if (paymentMethodType === "zelle" && paymentDetails.zelleEmail.trim()) {
-      methodAdded = `Zelle (${paymentDetails.zelleEmail})`;
-    } else if (paymentMethodType === "check" && paymentDetails.checkAddress.trim()) {
-      methodAdded = `Personal Check — ${paymentDetails.checkAddress}`;
-    }
-    if (!methodAdded) return;
-    setPaymentMethod(methodAdded);
-    setShowAddPayment(false);
-    setSuccessMessage(`Payment method added: ${methodAdded}`);
-    setTimeout(() => setSuccessMessage(""), 5000);
-    setPaymentDetails({ venmoHandle: "", zelleEmail: "", checkAddress: "" });
-  }
-
-  function handleRemovePaymentMethod() {
-    setPaymentMethod(null);
-    setSuccessMessage("Payment method removed successfully");
-    setTimeout(() => setSuccessMessage(""), 5000);
-  }
 
   useEffect(() => {
     const fetchJuror = async () => {
@@ -117,7 +86,8 @@ export default function ProfileSection() {
             phone: jurorData.phoneNumber || jurorData.PhoneNumber || "",
             verified: jurorData.isVerified || jurorData.IsVerified || false,
             verificationStatus: jurorData.verificationStatus || jurorData.VerificationStatus || "pending",
-            onboardingCompleted: jurorData.onboardingCompleted || jurorData.OnboardingCompleted || false
+            onboardingCompleted: jurorData.onboardingCompleted || jurorData.OnboardingCompleted || false,
+            paymentMethod: jurorData.paymentMethod || jurorData.PaymentMethod || null
           });
         } else {
           setError("Failed to fetch juror details");
@@ -521,42 +491,20 @@ export default function ProfileSection() {
               </button>
             </div>
 
-            {/* Payment Methods */}
+            {/* Payment Method (from signup) */}
             <div className="bg-white rounded shadow p-8 w-full" style={{ maxWidth: 420, color: "black" }}>
-              <h2 className="font-semibold text-lg mb-4" style={{ color: "black" }}>Payment Methods</h2>
-              <div className="space-y-4">
-                {paymentMethod ? (
-                  <>
-                    <div className="p-4 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle className="h-5 w-5 text-green-600" />
-                        <span className="text-sm text-green-800 font-medium">{paymentMethod}</span>
-                      </div>
-                      <button
-                        onClick={handleRemovePaymentMethod}
-                        className="text-red-600 hover:text-red-700 text-sm font-semibold underline"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                    <p className="text-xs text-gray-500">This payment method will be used for receiving payouts.</p>
-                  </>
-                ) : (
-                  <>
-                    <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
-                      <p className="text-sm text-gray-600">
-                        No payment method added. Add one to receive payouts for your cases.
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => setShowAddPayment(true)}
-                      className="w-full border-2 border-[#0C2D57] text-[#0C2D57] rounded-lg py-3 hover:bg-blue-50 transition-colors text-[15px] font-semibold cursor-pointer"
-                    >
-                      Add Payment Method
-                    </button>
-                  </>
-                )}
-              </div>
+              <h2 className="font-semibold text-lg mb-4" style={{ color: "black" }}>Payment Method</h2>
+              {juror?.paymentMethod ? (
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-xs text-gray-500 mb-1">Preferred payout method</p>
+                  <p className="text-[15px] font-semibold text-[#0C2D57] capitalize">{juror.paymentMethod}</p>
+                </div>
+              ) : (
+                <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                  <p className="text-sm text-gray-500">No payment method on file.</p>
+                </div>
+              )}
+              <p className="text-xs text-gray-400 mt-3">Payment method is set during signup. Contact support to change it.</p>
             </div>
           </div>
 
@@ -734,103 +682,6 @@ export default function ProfileSection() {
                   disabled={deleting}
                 >
                   Go Back
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Add Payment Method Modal */}
-        {showAddPayment && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-auto">
-            <div className="absolute inset-0 bg-black/20" onClick={() => setShowAddPayment(false)} />
-            <div className="relative bg-white rounded-xl shadow-2xl p-8 w-full max-w-lg border-4" style={{ borderColor: "#0C2D57" }}>
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold" style={{ color: "#0C2D57" }}>Add Payment Method</h2>
-                <button onClick={() => setShowAddPayment(false)} className="text-gray-400 hover:text-gray-600">
-                  <X size={24} />
-                </button>
-              </div>
-
-              {/* Payment Type Selection */}
-              <div className="mb-6">
-                <label className="block text-sm font-semibold text-gray-700 mb-3">Select Payment Type</label>
-                <div className="grid grid-cols-3 gap-3">
-                  {[
-                    { value: "venmo", label: "Venmo" },
-                    { value: "zelle", label: "Zelle" },
-                    { value: "check", label: "Personal Check" },
-                  ].map((type) => (
-                    <button
-                      key={type.value}
-                      onClick={() => setPaymentMethodType(type.value as any)}
-                      className={`p-3 rounded-lg border-2 font-semibold text-sm transition-all ${
-                        paymentMethodType === type.value
-                          ? "border-[#0C2D57] bg-blue-50 text-[#0C2D57]"
-                          : "border-gray-300 hover:border-gray-400 text-gray-700"
-                      }`}
-                    >
-                      {type.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Payment Details Form */}
-              <div className="space-y-4">
-                {paymentMethodType === "venmo" && (
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Venmo Handle *</label>
-                    <input
-                      type="text"
-                      placeholder="@username"
-                      value={paymentDetails.venmoHandle}
-                      onChange={(e) => setPaymentDetails({ ...paymentDetails, venmoHandle: e.target.value })}
-                      className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-black focus:outline-none focus:ring-2 focus:ring-[#0C2D57] transition"
-                    />
-                  </div>
-                )}
-
-                {paymentMethodType === "zelle" && (
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Zelle Email *</label>
-                    <input
-                      type="email"
-                      placeholder="your.email@example.com"
-                      value={paymentDetails.zelleEmail}
-                      onChange={(e) => setPaymentDetails({ ...paymentDetails, zelleEmail: e.target.value })}
-                      className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-black focus:outline-none focus:ring-2 focus:ring-[#0C2D57] transition"
-                    />
-                  </div>
-                )}
-
-                {paymentMethodType === "check" && (
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Mailing Address *</label>
-                    <textarea
-                      placeholder="Enter full mailing address for check delivery"
-                      value={paymentDetails.checkAddress}
-                      onChange={(e) => setPaymentDetails({ ...paymentDetails, checkAddress: e.target.value })}
-                      rows={3}
-                      className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-black focus:outline-none focus:ring-2 focus:ring-[#0C2D57] transition resize-none"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">A physical check will be mailed to this address.</p>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex gap-3 mt-6 pt-4 border-t">
-                <button
-                  onClick={handleAddPaymentMethod}
-                  className="flex-1 px-6 py-3 bg-[#0C2D57] text-white rounded-lg hover:bg-[#0a2342] font-semibold transition-colors"
-                >
-                  Add Payment Method
-                </button>
-                <button
-                  onClick={() => setShowAddPayment(false)}
-                  className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 font-semibold transition-colors"
-                >
-                  Cancel
                 </button>
               </div>
             </div>
