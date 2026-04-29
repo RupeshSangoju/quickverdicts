@@ -223,10 +223,10 @@ cases in:            </p>
                 <h3 className="font-bold text-gray-900 mb-3">I Want to Be a Juror</h3>
                 <ul className="space-y-2 text-gray-700 ml-4">
                   <li>• Get paid for your time</li>
-                  <li>• After-hours times available</li>
-                  <li>• Choose cases from the Job Board</li>
-                  <li>• Complete a simple vetting process</li>
-                  <li>• Deliberate with your fellow jurors remotely</li>
+                  <li>• After-hours slots available</li>
+                  <li>• Apply for cases on Job Board</li>
+                  <li>• Complete a vetting process</li>
+                  <li>• If chosen, Join Trial & deliberate remotely</li>
                   <li>• Your opinion helps the attorneys</li>
                 </ul>
               </div>
@@ -258,7 +258,7 @@ cases in:            </p>
             <div>
               <h3 className="font-bold text-gray-900 mb-2">How does it work for attorneys?</h3>
               <p className="text-gray-600 mb-6">
-                Attorneys login to create a case.  QV provides a War Room for attorneys to upload demonstratives and create jury questions in the easy-to-use Jury Charge Builder.Attorneys can present a case either live or by pre-recorded video.  Each case will have 5-8 local mock jurors who appear at the scheduled time to review the presentation, deliberate, and submit their Final Verdict.  A short de-briefing period is provided.Please click on Attorney Info above for more information. 
+                Attorneys login to create a case.  QV provides a War Room for attorneys to upload demonstratives and create jury questions in the easy-to-use Jury Charge Builder. Attorneys can present a case either live or by pre-recorded video.  Each case will have 5-8 local mock jurors who appear at the scheduled time to review the presentation, deliberate, and submit their Final Verdict. A short de-briefing period is provided. Please click on Attorney Info above for more information. 
               </p>
               <hr className="border-black" />
             </div>
@@ -274,7 +274,7 @@ cases in:            </p>
             <div>
               <h3 className="font-bold text-gray-900 mb-2">What does a juror do on Quick Verdicts?</h3>
               <p className="text-gray-600">
-                Jurors sign up and can access a Job Board for cases in their county of residence.  Jurors are paid by the case immediately following the case presentation.  Jurors may be asked to decide what caused an accident or an incident and how much money should be awarded to a plaintiff.  
+                Jurors sign up and can access a Job Board for cases in their county of residence. If selected, jurors are paid by the case immediately following the case presentation. Jurors are paid by the case immediately following the case presentation.  Jurors may be asked to decide what caused an accident or an incident and how much money should be awarded to a plaintiff.  
               </p>
             </div>
           </div>

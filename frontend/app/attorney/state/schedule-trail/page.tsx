@@ -606,7 +606,7 @@ export default function ScheduleTrialPage() {
             <p className={`text-base ${scheduled ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>
               {scheduled
                 ? "Please confirm scheduling request.See your Notifications for scheduling confirmation.Once scheduling is confirmed, access War Room through your dashboard."
-                : "Choose your preferred date and time for this trial."}
+                : "Choose your preferred date and time for this trial. If you prefer an after-hours trial, Quick Verdicts offers Tuesdays and Thursdays until 8:30 pm and Saturdays from 9:00 a.m. until 2:00 p.m."}
             </p>
           </div>
 
