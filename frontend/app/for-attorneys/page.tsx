@@ -293,7 +293,14 @@ period with the jurors.
             <div className="flex space-x-6 text-sm text-gray-300">
               <Link href="/" className="hover:text-white">Quick Verdicts<sup className="text-[12px]">™</sup></Link>
               <Link href="/" className="hover:text-white">Privacy</Link>
-              <Link href="/" className="hover:text-white">Terms of Use</Link>
+                <a
+    href="https://quickverdictsvideo.blob.core.windows.net/videos/QV%20Terms%20and%20Conditions.pdf"
+    target="_blank"
+    rel="noopener noreferrer"
+    className="hover:underline"
+  >
+    Terms of Use
+  </a>
             </div>
             <div className="flex items-center space-x-4 mt-4 md:mt-0">
               <span className="text-sm text-gray-300">Follow Us</span>

@@ -920,36 +920,6 @@ export function Step2PersonalDetails({
                 }
               />
               <PaymentMethodButton
-                label="PayPal"
-                selected={formData.paymentMethod === "paypal"}
-                onClick={() => {
-                  onUpdate({ paymentMethod: "paypal" });
-                  onClearError("paymentMethod");
-                }}
-                icon={
-                  <CreditCard
-                    size={20}
-                    className="text-[#0A2342]"
-                    aria-hidden="true"
-                  />
-                }
-              />
-              <PaymentMethodButton
-                label="Cash App"
-                selected={formData.paymentMethod === "cashapp"}
-                onClick={() => {
-                  onUpdate({ paymentMethod: "cashapp" });
-                  onClearError("paymentMethod");
-                }}
-                icon={
-                  <CreditCard
-                    size={20}
-                    className="text-[#0A2342]"
-                    aria-hidden="true"
-                  />
-                }
-              />
-              <PaymentMethodButton
                 label="Zelle"
                 selected={formData.paymentMethod === "zelle"}
                 onClick={() => {
@@ -964,6 +934,22 @@ export function Step2PersonalDetails({
                   />
                 }
               />
+              <PaymentMethodButton
+                label="Personal Check"
+                selected={formData.paymentMethod === "cashapp"}
+                onClick={() => {
+                  onUpdate({ paymentMethod: "cashapp" });
+                  onClearError("paymentMethod");
+                }}
+                icon={
+                  <CreditCard
+                    size={20}
+                    className="text-[#0A2342]"
+                    aria-hidden="true"
+                  />
+                }
+              />
+
             </div>
             <p className="text-xs text-gray-600 mt-3">
               💡 Jury service compensation will be sent to your selected payment

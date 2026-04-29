@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Eye, EyeOff, HelpCircle, X, CheckCircle } from "lucide-react";
+import { Eye, EyeOff, HelpCircle, X, CheckCircle, AlertCircle } from "lucide-react";
 import { SiVenmo, SiCashapp } from "react-icons/si";
 import { FaPaypal } from "react-icons/fa";
 import toast from "react-hot-toast";
@@ -686,9 +686,9 @@ export default function ProfileSection() {
             {/* Modal content styled to match provided image */}
             <div className="relative bg-white rounded-xl shadow-xl p-7 w-full max-w-lg" style={{ minWidth: 380, maxWidth: 440 }}>
               <div className="flex items-center justify-between mb-2">
-                <h2 className="text-xl font-semibold text-[#222]">Delete Account</h2>
+                <h2 className="text-xl font-semibold text-[#222]"><AlertCircle className="w-5 h-5 group-hover:scale-110 transition-transform" />Delete Account</h2>
                 <button
-                  className="text-gray-500 text-xl hover:text-gray-700"
+                  className="w-full border-2 border-red-300 text-red-600 rounded-lg py-3 hover:bg-red-50 transition-colors text-[15px] font-semibold flex items-center justify-center gap-2 group cursor-pointer"
                   onClick={() => {
                     if (!deleting) {
                       setShowDelete(false);
