@@ -239,7 +239,7 @@ period with the jurors.
               /* YouTube iframe */
               <iframe
                 className="w-full h-full"
-                src={`https://quickverdictsvideo.blob.core.windows.net/videos/How it Works for Attorneys.mp4`}
+                src={`https://sway.cloud.microsoft/s/a4IsVExPsi6KOpj5/embed`}
                 title="YouTube video player"
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
