@@ -892,11 +892,12 @@ export function Step2PersonalDetails({
             Payment Method
           </h2>
           <FormField
-            label="Select Your Preferred Payment Method"
+            label="Select Your Preferred Payment Method."
             required
             validationErrors={validationErrors}
             fieldName="paymentMethod"
           >
+            <h1>This information is required after you have been selected for a case.</h1>
             <div
               className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-3"
               role="radiogroup"
