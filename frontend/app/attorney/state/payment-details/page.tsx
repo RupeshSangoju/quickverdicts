@@ -46,6 +46,7 @@ export default function PaymentDetailsPage() {
 
   // Fixed payment amounts based on tier (no per-juror calculation)
   const tierAmounts: Record<string, number> = {
+    "Early Adopter": 2000,
     "Tier 1": 3500,
     "Tier 2": 4500,
     "Tier 3": 5500
