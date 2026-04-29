@@ -444,6 +444,13 @@ async function attorneyLogin(req, res) {
       "attorney"
     );
 
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
     return res.json({
       success: true,
       message: "Login successful",
@@ -955,6 +962,13 @@ async function jurorLogin(req, res) {
       "juror"
     );
 
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
     return res.json({
       success: true,
       message: "Login successful",
@@ -1257,6 +1271,13 @@ async function adminLogin(req, res) {
       { id: admin.AdminId, email: admin.Email },
       "admin"
     );
+
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
 
     return res.json({
       success: true,

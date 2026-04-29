@@ -34,6 +34,7 @@ const http = require("http");
 const express = require("express");
 const helmet = require("helmet");
 const cors = require("cors");
+const cookieParser = require("cookie-parser");
 const rateLimit = require("express-rate-limit");
 
 // ============================================
@@ -249,6 +250,11 @@ app.use(
     maxAge: 86400, // 24 hours - cache preflight requests
   })
 );
+
+// ============================================
+// COOKIE PARSER
+// ============================================
+app.use(cookieParser());
 
 // ============================================
 // BODY PARSERS
