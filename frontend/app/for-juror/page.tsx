@@ -217,7 +217,7 @@ Browse available cases in your area and choose the ones that fit your schedule. 
             Ready to Get Started?
           </h2>
           <p className="text-gray-600 mb-8">
-            Sign up today and start your first case
+            Sign up today or email QVTrial@quickverdicts.com with your name,  state and county and we will notify you when a case in your locale is posted.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/signup/juror" className="bg-blue-900 text-white px-12 py-3 rounded hover:bg-blue-800 font-medium">

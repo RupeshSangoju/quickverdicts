@@ -579,12 +579,10 @@ export function Step2PersonalDetails({
                   }}
                   className="cursor-pointer"
                   options={[
-                    "One",
-                    "Two",
-                    "Three",
-                    "Four",
-                    "Five",
-                    "Six or more",
+                    "1 - 10",
+                    "11 - 20",
+                    "21 - 30",
+                    "30+"
                   ]}
                   placeholder="Select years"
                 />
