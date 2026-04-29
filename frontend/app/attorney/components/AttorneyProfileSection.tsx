@@ -641,7 +641,7 @@ const formatExpiry = (value: string) => {
                 <button
                   className="flex-1 px-6 py-3 bg-[#B3261E] text-white rounded-lg font-semibold hover:bg-[#a11d17] focus:outline-none focus:ring-2 focus:ring-red-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm hover:shadow-md"
                   onClick={handleDeleteAccount}
-                  disabled={deleting}
+                  disabled={deleting || !deletePassword}
                 >
                   {deleting ? (
                     <span className="flex items-center justify-center gap-2">
