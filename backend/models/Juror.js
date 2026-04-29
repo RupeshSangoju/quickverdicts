@@ -692,6 +692,7 @@ async function getAllJurors(options = {}) {
           j.JurorId, j.Name, j.Email, j.County, j.State, j.PhoneNumber,
           j.VerificationStatus, j.IsVerified, j.IsActive,
           j.OnboardingCompleted, j.IntroVideoCompleted, j.JurorQuizCompleted, j.ProfileComplete,
+          j.PaymentMethod,
           j.CreatedAt, j.LastLoginAt, j.UpdatedAt,
           (
             SELECT STRING_AGG(CAST(ja.CaseId AS NVARCHAR(20)), ', ')
