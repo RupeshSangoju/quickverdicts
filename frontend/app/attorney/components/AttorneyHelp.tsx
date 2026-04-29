@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { ChevronDown, ChevronLeft, ChevronRight, Search, Play, ArrowLeft, Mail, Video, HelpCircle } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Search, Play, ArrowLeft, Mail, Video, HelpCircle,CircleArrowLeft, CircleArrowRight } from "lucide-react";
 
 const tutorialVideos: { src?: string; iframe?: string; title: string; length?: string; category?: string }[] = [
   {
@@ -205,28 +205,28 @@ export default function AttorneyHelp({ onContact, onBack }: { onContact: () => v
 
             {/* Navigation Buttons */}
             {filteredVideos.length > 3 && (
-              <div className="flex justify-center gap-3 mt-8">
+              <div className="flex justify-end gap-3 mt-8">
                 <button
-                  className={`p-3 rounded-full border-2 transition-all ${
+                  className={`p-3 transition-all ${
                     canSlideLeft 
-                      ? 'border-[#16305B] text-[#16305B] hover:bg-[#16305B] hover:text-white shadow-sm' 
+                      ? 'border-[#16305B] text-[#16305B] hover:bg-[#16305B] hover:text-white shadow-sm cursor-pointer' 
                       : 'border-gray-300 text-gray-300 cursor-not-allowed'
                   }`}
                   onClick={handleLeft}
                   disabled={!canSlideLeft}
                 >
-                  <ChevronLeft size={20} />
+                  < CircleArrowLeft size={30} />
                 </button>
                 <button
-                  className={`p-3 rounded-full border-2 transition-all ${
+                  className={`p-3  transition-all  ${
                     canSlideRight 
-                      ? 'border-[#16305B] text-[#16305B] hover:bg-[#16305B] hover:text-white shadow-sm' 
+                      ? 'border-[#16305B] text-[#16305B] hover:bg-[#16305B] hover:text-white shadow-sm cursor-pointer' 
                       : 'border-gray-300 text-gray-300 cursor-not-allowed'
                   }`}
                   onClick={handleRight}
                   disabled={!canSlideRight}
                 >
-                  <ChevronRight size={20} />
+                  <CircleArrowRight size={30} />
                 </button>
               </div>
             )}
@@ -296,10 +296,10 @@ export default function AttorneyHelp({ onContact, onBack }: { onContact: () => v
           <p className="text-gray-600 mb-6">Our support team is here to assist you</p>
           <button
             onClick={onContact}
-            className="bg-[#16305B] text-white px-8 py-3 rounded-lg font-semibold hover:bg-[#1e417a] transition-all shadow-sm hover:shadow-md inline-flex items-center gap-2"
+            className="bg-[#16305B] text-white px-8 py-3 rounded-lg font-semibold hover:bg-[#1e417a] transition-all shadow-sm hover:shadow-md inline-flex items-center gap-2 cursor-pointer"
           >
-            <Mail size={20} />
-            Contact Support
+
+            Get Support
           </button>
         </div>
       </div>

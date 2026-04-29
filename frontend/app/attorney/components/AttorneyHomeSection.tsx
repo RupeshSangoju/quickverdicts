@@ -7,7 +7,9 @@ import { ChevronLeft, ChevronRight, AlertCircle, Calendar, Briefcase, RefreshCw,
 import { format, parseISO, isToday } from "date-fns";
 import { getToken, logout } from "@/lib/apiClient";
 import { formatDateString } from "@/lib/dateUtils";
-
+import {
+  QuestionMarkCircleIcon,
+} from "@heroicons/react/24/outline";
 const AttorneyHelp = dynamic(() => import("./AttorneyHelp"), { ssr: false });
 const AttorneyContact = dynamic(() => import("./AttorneyContact"), { ssr: false });
 
@@ -566,15 +568,14 @@ export default function AttorneyHomeSection({ onSectionChange }: { onSectionChan
         <h1 className="text-2xl font-bold text-[#16305B]">
           Welcome back{user ? `, ${user.firstName}!` : "!"}
         </h1>
-        <div className="flex items-center gap-4">
 
-          <button 
-            className="text-[#16305B] hover:text-[#1e417a] transition-colors font-semibold cursor-pointer" 
-            onClick={() => setShowHelp(true)}
-          >
-            Tutorials & FAQs
-          </button>
-        </div>
+                  <div className="flex items-center gap-3 text-sm text-gray-700">
+                    <button className="flex items-center gap-2 px-3 py-1 rounded hover:bg-white/60 cursor-pointer"
+                    onClick={() => setShowHelp(true)}>
+                      <QuestionMarkCircleIcon className="w-5 h-5 text-gray-600" />
+                      <span>Help</span>
+                    </button>
+                  </div>
       </div>
 
       {!isVerified && (
