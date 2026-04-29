@@ -422,11 +422,10 @@ export default function AttorneyHomeSection({ onSectionChange }: { onSectionChan
   };
 
   const getRecentCases = () => {
-    // Only show approved cases, not pending ones
-    const approvedCases = cases.filter(c => c.AdminApprovalStatus === "approved");
-    const pendingCases = cases.filter(c => c.AdminApprovalStatus === "pending");
-    console.log('🏠 Home Section - Approved cases:', approvedCases.length, '| Pending cases:', pendingCases.length);
-    return approvedCases.slice(0, 6);
+    return cases
+      .slice()
+      .sort((a, b) => b.Id - a.Id)
+      .slice(0, 6);
   };
 
   if (loading) {
@@ -731,7 +730,9 @@ export default function AttorneyHomeSection({ onSectionChange }: { onSectionChan
                       <div className="p-4">
                         <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
                           <Calendar className="w-4 h-4" />
-                          {formatDateString(c.ScheduledDate, { month: 'short', day: 'numeric', year: 'numeric' })} • {formatTime(c.ScheduledTime || '', c.ScheduledDate)}
+                          {c.ScheduledDate
+                            ? `${formatDateString(c.ScheduledDate, { month: 'short', day: 'numeric', year: 'numeric' })} • ${formatTime(c.ScheduledTime || '', c.ScheduledDate)}`
+                            : "Date pending approval"}
                         </div>
 
                         {timeWarning && (
