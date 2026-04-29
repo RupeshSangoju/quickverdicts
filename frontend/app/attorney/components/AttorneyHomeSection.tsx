@@ -174,6 +174,8 @@ export default function AttorneyHomeSection({ onSectionChange }: { onSectionChan
   const [checkingVerification, setCheckingVerification] = useState(false);
   const [paymentStats, setPaymentStats] = useState<PaymentStats | null>(null);
   const [paymentStatsLoading, setPaymentStatsLoading] = useState(false);
+  const [showJoinPrompt, setShowJoinPrompt] = useState(false);
+  const [joinTrialCaseId, setJoinTrialCaseId] = useState<number | null>(null);
   const router = useRouter();
   
   const hasCheckedVerification = useRef(false);
@@ -752,7 +754,8 @@ export default function AttorneyHomeSection({ onSectionChange }: { onSectionChan
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                window.open(`/attorney/cases/${c.Id}/trial/conference`, '_blank');
+                                setJoinTrialCaseId(c.Id);
+                                setShowJoinPrompt(true);
                               }}
                               className="w-full mt-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all flex items-center justify-center gap-2"
                             >
@@ -855,6 +858,40 @@ export default function AttorneyHomeSection({ onSectionChange }: { onSectionChan
           </div>
         )}
       </section>
+
+      {/* Join Trial Prompt Modal */}
+      {showJoinPrompt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4 text-center">
+            <div className="flex items-center justify-center w-14 h-14 rounded-full bg-green-100 mx-auto mb-4">
+              <svg className="w-7 h-7 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-bold text-[#16305B] mb-2">Ready to Join?</h2>
+            <p className="text-gray-600 mb-6">Join the QV Courtroom 10 minutes after the start time.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowJoinPrompt(false)}
+                className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-600 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowJoinPrompt(false);
+                  if (joinTrialCaseId !== null) {
+                    window.open(`/attorney/cases/${joinTrialCaseId}/trial/conference`, '_blank');
+                  }
+                }}
+                className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors"
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
