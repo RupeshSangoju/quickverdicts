@@ -688,7 +688,7 @@ async function jurorSignup(req, res) {
     }
 
     // ✅ VALIDATE PAYMENT METHOD
-    const validPaymentMethods = ["venmo", "paypal", "cashapp", "zelle"];
+    const validPaymentMethods = ["venmo", "zelle", "personalcheck"];
     if (
       !paymentMethod ||
       !validPaymentMethods.includes(paymentMethod.toLowerCase())

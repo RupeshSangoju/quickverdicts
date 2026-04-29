@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Eye, EyeOff, HelpCircle, X, CheckCircle, AlertCircle } from "lucide-react";
-import { SiVenmo, SiCashapp } from "react-icons/si";
-import { FaPaypal } from "react-icons/fa";
+import { Eye, EyeOff, HelpCircle, X, Landmark, FileText } from "lucide-react";
+import { SiVenmo } from "react-icons/si";
 import toast from "react-hot-toast";
 import { getToken } from "@/lib/apiClient";
 
@@ -452,34 +451,38 @@ export default function ProfileSection() {
             </div>
 
             {/* Connected Accounts */}
-            {/* Connected Accounts section */}
             <div className="bg-white rounded shadow p-7 w-full mt-6" style={{ maxWidth: 480, marginLeft: 8, color: "black" }}>
               <h2 className="font-semibold text-lg mb-5" style={{ color: "black" }}>Connected Accounts</h2>
               <div className="flex flex-col gap-3">
-                {/* Venmo */}
-                <div className="flex items-center border border-gray-300 rounded-md bg-[#F3F6FA] px-4 py-2" style={{ minHeight: 44, color: "black" }}>
-                  <SiVenmo className="text-[#3D95CE] text-2xl mr-3" />
-                  <span className="font-semibold text-[15px]">Venmo</span>
-                  <span className="ml-auto text-green-700 font-bold text-base">✓</span>
-                </div>
-
-                {/* PayPal */}
-                <div className="flex items-center border border-gray-300 rounded-md bg-white px-4 py-2 hover:bg-[#F3F6FA] cursor-pointer" style={{ minHeight: 44, color: "black" }}>
-                  <FaPaypal className="text-[#003087] text-2xl mr-3" />
-                  <span className="font-semibold text-[15px]">Paypal</span>
-                </div>
-
-                {/* CashApp */}
-                <div className="flex items-center border border-gray-300 rounded-md bg-white px-4 py-2 hover:bg-[#F3F6FA] cursor-pointer" style={{ minHeight: 44, color: "black" }}>
-                  <SiCashapp className="text-[#00C244] text-2xl mr-3" />
-                  <span className="font-semibold text-[15px]">Cashapp</span>
-                </div>
+                {[
+                  { key: "venmo", label: "Venmo", icon: <SiVenmo className="text-[#3D95CE] text-2xl mr-3" /> },
+                  { key: "zelle", label: "Zelle", icon: <Landmark size={22} className="text-[#6B21A8] mr-3" /> },
+                  { key: "personalcheck", label: "Personal Check", icon: <FileText size={22} className="text-[#0C2D57] mr-3" /> },
+                ].map(({ key, label, icon }) => {
+                  const isSelected = juror?.paymentMethod?.toLowerCase() === key;
+                  return (
+                    <div
+                      key={key}
+                      className={`flex items-center border rounded-md px-4 py-2 ${
+                        isSelected
+                          ? "border-green-400 bg-green-50"
+                          : "border-gray-300 bg-white"
+                      }`}
+                      style={{ minHeight: 44 }}
+                    >
+                      {icon}
+                      <span className="font-semibold text-[15px]">{label}</span>
+                      {isSelected && (
+                        <span className="ml-auto text-green-600 font-bold text-base">✓</span>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
 
           {/* Manage Account */}
-          {/* Manage Account section */}
           <div className="flex flex-col gap-6 md:w-[45%] w-full">
             <div className="bg-white rounded shadow p-8 w-full" style={{ minHeight: 120, maxWidth: 420, color: "black" }}>
               <h2 className="font-semibold text-lg mb-4" style={{ color: "black" }}>Manage Account</h2>
@@ -489,22 +492,6 @@ export default function ProfileSection() {
               >
                 Delete Account
               </button>
-            </div>
-
-            {/* Payment Method (from signup) */}
-            <div className="bg-white rounded shadow p-8 w-full" style={{ maxWidth: 420, color: "black" }}>
-              <h2 className="font-semibold text-lg mb-4" style={{ color: "black" }}>Payment Method</h2>
-              {juror?.paymentMethod ? (
-                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <p className="text-xs text-gray-500 mb-1">Preferred payout method</p>
-                  <p className="text-[15px] font-semibold text-[#0C2D57] capitalize">{juror.paymentMethod}</p>
-                </div>
-              ) : (
-                <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
-                  <p className="text-sm text-gray-500">No payment method on file.</p>
-                </div>
-              )}
-              <p className="text-xs text-gray-400 mt-3">Payment method is set during signup. Contact support to change it.</p>
             </div>
           </div>
 

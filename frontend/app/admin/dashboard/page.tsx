@@ -3149,9 +3149,11 @@ function formatTime(timeString: string, scheduledDate: string) {
                       </td>
                       <td className="px-6 py-4">
                         {juror.PaymentMethod ? (
-                          <span className="text-sm text-gray-900 font-medium">{juror.PaymentMethod}</span>
+                          <span className="inline-flex items-center px-2 py-1 rounded text-xs font-semibold bg-blue-50 text-blue-800 capitalize">
+                            {juror.PaymentMethod === "personalcheck" ? "Personal Check" : juror.PaymentMethod}
+                          </span>
                         ) : (
-                          <span className="text-xs text-gray-400 italic">No payment method</span>
+                          <span className="text-xs text-gray-400 italic">—</span>
                         )}
                       </td>
                       <td className="px-6 py-4">
