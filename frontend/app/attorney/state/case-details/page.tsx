@@ -373,6 +373,7 @@ export default function CaseDetailsPage() {
                   className="w-full px-4 py-2 border border-[#bfc6d1] rounded-md bg-white text-[#16305B] focus:outline-[#16305B]"
                 >
                   <option value="">Select Trial Case Tier</option>
+                  <option value="Early Adopter">Early Adopter – 2.5 hours, $2,000</option>
                   <option value="Tier 1">Tier 1 - 2.5 hours, $3,500</option>
                   <option value="Tier 2">Tier 2 - 3.5 hours, $4,500</option>
                   <option value="Tier 3">Tier 3 - 4.5 hours, $5,500</option>
