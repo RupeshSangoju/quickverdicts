@@ -1019,6 +1019,7 @@ export default function AdminDashboard() {
           VerificationStatus: j.VerificationStatus,
           CriteriaResponses: j.CriteriaResponses ?? j.criteriaResponses ?? [],
           ApprovedCaseIds: j.ApprovedCaseIds ?? null,
+          PaymentMethod: j.PaymentMethod ?? j.paymentMethod ?? null,
         })));
         setJurorTotal(data.total || 0);
         setJurorTotalPages(data.totalPages || 1);
