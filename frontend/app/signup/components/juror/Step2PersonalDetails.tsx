@@ -900,7 +900,7 @@ export function Step2PersonalDetails({
             fieldName="paymentMethod"
           >
             <div
-              className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3"
+              className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-3"
               role="radiogroup"
               aria-label="Payment method selection"
             >
@@ -936,9 +936,9 @@ export function Step2PersonalDetails({
               />
               <PaymentMethodButton
                 label="Personal Check"
-                selected={formData.paymentMethod === "cashapp"}
+                selected={formData.paymentMethod === "personalcheck"}
                 onClick={() => {
-                  onUpdate({ paymentMethod: "cashapp" });
+                  onUpdate({ paymentMethod: "personalcheck" });
                   onClearError("paymentMethod");
                 }}
                 icon={
@@ -949,7 +949,6 @@ export function Step2PersonalDetails({
                   />
                 }
               />
-
             </div>
             <p className="text-xs text-gray-600 mt-3">
               💡 Jury service compensation will be sent to your selected payment
