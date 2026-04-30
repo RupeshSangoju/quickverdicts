@@ -758,7 +758,7 @@ export default function AttorneyHomeSection({ onSectionChange }: { onSectionChan
                                 setJoinTrialCaseId(c.Id);
                                 setShowJoinPrompt(true);
                               }}
-                              className="w-full mt-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all flex items-center justify-center gap-2"
+                              className="w-full mt-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all flex items-center justify-center gap-2 cursor-pointer"
                             >
                               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
@@ -874,7 +874,7 @@ export default function AttorneyHomeSection({ onSectionChange }: { onSectionChan
             <div className="flex gap-3">
               <button
                 onClick={() => setShowJoinPrompt(false)}
-                className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-600 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
+                className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-600 rounded-lg font-semibold hover:bg-gray-50 transition-colors cursor-pointer"
               >
                 Cancel
               </button>
@@ -885,7 +885,7 @@ export default function AttorneyHomeSection({ onSectionChange }: { onSectionChan
                     window.open(`/attorney/cases/${joinTrialCaseId}/trial/conference`, '_blank');
                   }
                 }}
-                className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors"
+                className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors cursor-pointer"
               >
                 Continue
               </button>

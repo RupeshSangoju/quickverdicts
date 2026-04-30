@@ -4330,14 +4330,14 @@ function formatTime(timeString: string, scheduledDate: string) {
                   setApproveCaseId(null);
                   setApprovalComments("");
                 }}
-                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium"
+                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmApproveCase}
                 disabled={caseActionLoading !== null}
-                className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 font-medium disabled:opacity-50 inline-flex items-center"
+                className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 font-medium disabled:opacity-50 inline-flex items-center cursor-pointer"
               >
                 {caseActionLoading ? (
                   <>

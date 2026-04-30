@@ -1350,7 +1350,7 @@ if (isCaseDayOver(app.ScheduledDate)) {
                       <button
                         onClick={() => router.push(`/juror/apply/${caseItem.CaseId}`)}
                         disabled={!assignmentsCompleted}
-                        className="w-full mt-3 py-2.5 bg-[#0C2D57] text-white rounded-md font-semibold text-sm hover:bg-[#0a2347] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full mt-3 py-2.5 bg-[#0C2D57] text-white rounded-md font-semibold text-sm hover:bg-[#0a2347] transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                       >
                         Apply
                       </button>

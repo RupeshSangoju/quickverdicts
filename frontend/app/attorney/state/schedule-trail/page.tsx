@@ -905,7 +905,7 @@ export default function ScheduleTrialPage() {
                           
                           <button
                             type="button"
-                            className="w-full bg-[#16305B] text-white font-semibold py-3 px-6 rounded-lg hover:bg-[#0A2342] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            className="w-full bg-[#16305B] text-white font-semibold py-3 px-6 rounded-lg hover:bg-[#0A2342] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
                             disabled={!name || !email || !selectedTime || isSubmitting}
                             onClick={handleSchedule}
                           >

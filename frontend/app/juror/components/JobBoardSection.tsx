@@ -446,7 +446,7 @@ export default function JobBoardSection() {
                       {/* Apply Button */}
                       <button
                         onClick={() => handleApply(caseItem.CaseId)}
-                        className="w-full mt-3 py-2.5 bg-[#0C2D57] text-white rounded-md font-semibold text-sm hover:bg-[#0a2347] transition-colors"
+                        className="w-full mt-3 py-2.5 bg-[#0C2D57] text-white rounded-md font-semibold text-sm hover:bg-[#0a2347] transition-colors cursor-pointer"
                       >
                         Apply
                       </button>
