@@ -231,6 +231,7 @@ export function removeUser(): void {
 export function clearAuth(): void {
   removeToken();
   removeUser();
+  try { localStorage.removeItem("lastActivity"); } catch {}
 }
 
 /* ===========================================================
