@@ -66,11 +66,9 @@ function formatPhoneNumber(value: string): string {
  * Format ZIP code to 12345 or 12345-6789
  */
 function formatZipCode(value: string): string {
-  const cleaned = value.replace(/[^\d-]/g, "");
-  const parts = cleaned.split("-");
-  const main = parts[0].slice(0, 5);
-  const ext = parts[1]?.slice(0, 4) || "";
-  return ext ? `${main}-${ext}` : main;
+  const digits = value.replace(/\D/g, "").slice(0, 9);
+  if (digits.length <= 5) return digits;
+  return `${digits.slice(0, 5)}-${digits.slice(5)}`;
 }
 
 /**

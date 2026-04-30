@@ -274,7 +274,7 @@ export default function JurorQuizOverlay({ open, onClose, onFinish, sidebarColla
                   You can now apply for cases in your county.
                 </p>
                 <button
-                  className="px-8 py-3 rounded-xl font-semibold text-base bg-gradient-to-r from-green-500 to-green-600 text-white hover:shadow-lg transform hover:scale-105 transition-all flex items-center gap-2"
+                  className="px-8 py-3 rounded-xl font-semibold text-base bg-gradient-to-r from-green-500 to-green-600 text-white hover:shadow-lg transform hover:scale-105 transition-all flex items-center gap-2 cursor-pointer"
                   onClick={onFinish}
                 >
                   <span>Go to Job Board</span>

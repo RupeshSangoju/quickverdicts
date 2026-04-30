@@ -1014,7 +1014,7 @@ if (isCaseDayOver(app.ScheduledDate)) {
                       <h3 className="font-bold text-sm text-white line-clamp-1">
                         {app.CaseTitle}
                       </h3>
-                      <p className="text-xs text-blue-200 mt-0.5">App #{app.ApplicationId}</p>
+                      <p className="text-xs text-blue-200 mt-0.5">Case #{app.CaseId}</p>
                     </div>
                     
                     {/* Card Body */}

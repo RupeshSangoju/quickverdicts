@@ -78,7 +78,7 @@ export const jurorStep2SubStep2Schema = z.object({
     city: z.string().min(1, 'City is required'),
     zip: zipCodeSchema,
   }),
-  paymentMethod: z.enum(['venmo', 'paypal', 'cashapp','zelle'], 'Please select a payment method'),
+  paymentMethod: z.enum(['venmo', 'personalcheck','zelle'], 'Please select a payment method'),
 });
 
 

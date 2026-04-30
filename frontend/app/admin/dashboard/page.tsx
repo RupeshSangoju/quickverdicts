@@ -3164,7 +3164,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                               <button
                                 onClick={() => handleVerifyJuror(juror.JurorId)}
                                 disabled={actionLoading === juror.JurorId}
-                                className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold text-white bg-green-600 hover:bg-green-700 hover:shadow-lg disabled:opacity-50 transition-all"
+                                className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold text-white bg-green-600 hover:bg-green-700 hover:shadow-lg disabled:opacity-50 transition-all cursor-pointer"
                               >
                                 {actionLoading === juror.JurorId ? (
                                   <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
@@ -3175,7 +3175,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                               <button
                                 onClick={() => handleDeclineJuror(juror.JurorId)}
                                 disabled={actionLoading === juror.JurorId}
-                                className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold text-white bg-red-600 hover:bg-red-700 hover:shadow-lg disabled:opacity-50 transition-all"
+                                className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold text-white bg-red-600 hover:bg-red-700 hover:shadow-lg disabled:opacity-50 transition-all cursor-pointer"
                               >
                                 <XCircle className="h-4 w-4 mr-1" />Decline
                               </button>
