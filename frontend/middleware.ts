@@ -16,12 +16,11 @@ import type { NextRequest } from 'next/server';
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Define protected route patterns
-  // Each protected route will redirect to its specific login page if accessed directly
+  // Define protected route patterns — match the route and all its sub-paths
   const protectedRoutes = [
-    { pattern: /^\/attorney(?!\/)/i, loginPath: '/login/attorney', name: 'attorney' },
-    { pattern: /^\/admin(?!\/)/i, loginPath: '/admin/login', name: 'admin' },
-    { pattern: /^\/juror(?!\/)/i, loginPath: '/login/juror', name: 'juror' },
+    { pattern: /^\/attorney(\/|$)/i, loginPath: '/login/attorney', name: 'attorney' },
+    { pattern: /^\/admin(\/|$)/i, loginPath: '/admin/login', name: 'admin' },
+    { pattern: /^\/juror(\/|$)/i, loginPath: '/login/juror', name: 'juror' },
   ];
 
   // Public routes that should not be protected

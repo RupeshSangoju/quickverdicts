@@ -129,6 +129,43 @@ export function useProtectedRoute(
     return () => window.removeEventListener("storage", handleStorage);
   }, [requiredUserType]);
 
+  // 20-minute inactivity timeout: reset on any user interaction;
+  // poll every 30 s and redirect to login if idle too long.
+  useEffect(() => {
+    const TIMEOUT_MS = 20 * 60 * 1000; // 20 minutes
+    const POLL_MS = 30_000;            // check every 30 seconds
+
+    const updateActivity = () => {
+      localStorage.setItem("lastActivity", Date.now().toString());
+    };
+
+    // Seed timestamp on mount if not already set
+    if (!localStorage.getItem("lastActivity")) {
+      updateActivity();
+    }
+
+    const activityEvents = ["mousemove", "keydown", "click", "scroll", "touchstart"] as const;
+    activityEvents.forEach(ev => window.addEventListener(ev, updateActivity, { passive: true }));
+
+    const interval = setInterval(() => {
+      const last = parseInt(localStorage.getItem("lastActivity") || "0", 10);
+      if (Date.now() - last > TIMEOUT_MS) {
+        clearAuth();
+        localStorage.removeItem("lastActivity");
+        const loginPath =
+          requiredUserType === "admin"
+            ? "/admin/login"
+            : `/login/${requiredUserType}`;
+        window.location.href = loginPath;
+      }
+    }, POLL_MS);
+
+    return () => {
+      activityEvents.forEach(ev => window.removeEventListener(ev, updateActivity));
+      clearInterval(interval);
+    };
+  }, [requiredUserType]);
+
   useEffect(() => {
     // Only check once per mount
     if (hasChecked.current) return;
