@@ -719,7 +719,7 @@ if (isCaseDayOver(app.ScheduledDate)) {
       </div>
 
       <button
-        className="w-full px-3 py-2 bg-green-600 text-white rounded-lg text-xs font-semibold hover:bg-green-700 transition-colors flex items-center justify-center gap-1.5"
+        className="w-full px-3 py-2 bg-green-600 text-white rounded-lg text-xs font-semibold hover:bg-green-700 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
         onClick={() => router.push(`/juror/war-room/${app.CaseId}`)}
       >
         <svg
@@ -762,7 +762,7 @@ if (isCaseDayOver(app.ScheduledDate)) {
                           {isTrialSoon ? 'Join Now' : 'Join Trial'}
                         </button>
                         <button
-                          className="w-full px-3 py-1.5 bg-slate-100 text-[#0C2D57] rounded-lg text-xs font-medium hover:bg-slate-200 transition-colors"
+                          className="w-full px-3 py-1.5 bg-slate-100 text-[#0C2D57] rounded-lg text-xs font-medium hover:bg-slate-200 transition-colors cursor-pointer"
                           onClick={() => router.push(`/juror/war-room/${app.CaseId}`)}
                         >
                           Case Information
