@@ -719,7 +719,7 @@ if (isCaseDayOver(app.ScheduledDate)) {
       </div>
 
       <button
-        className="w-full px-3 py-2 bg-green-600 text-white rounded-lg text-xs font-semibold hover:bg-green-700 transition-colors flex items-center justify-center gap-1.5"
+        className="w-full px-3 py-2 bg-green-600 text-white rounded-lg text-xs font-semibold hover:bg-green-700 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
         onClick={() => router.push(`/juror/war-room/${app.CaseId}`)}
       >
         <svg
@@ -762,7 +762,7 @@ if (isCaseDayOver(app.ScheduledDate)) {
                           {isTrialSoon ? 'Join Now' : 'Join Trial'}
                         </button>
                         <button
-                          className="w-full px-3 py-1.5 bg-slate-100 text-[#0C2D57] rounded-lg text-xs font-medium hover:bg-slate-200 transition-colors"
+                          className="w-full px-3 py-1.5 bg-slate-100 text-[#0C2D57] rounded-lg text-xs font-medium hover:bg-slate-200 transition-colors cursor-pointer"
                           onClick={() => router.push(`/juror/war-room/${app.CaseId}`)}
                         >
                           Case Information
@@ -1014,7 +1014,7 @@ if (isCaseDayOver(app.ScheduledDate)) {
                       <h3 className="font-bold text-sm text-white line-clamp-1">
                         {app.CaseTitle}
                       </h3>
-                      <p className="text-xs text-blue-200 mt-0.5">App #{app.ApplicationId}</p>
+                      <p className="text-xs text-blue-200 mt-0.5">Case #{app.CaseId}</p>
                     </div>
                     
                     {/* Card Body */}
@@ -1350,7 +1350,7 @@ if (isCaseDayOver(app.ScheduledDate)) {
                       <button
                         onClick={() => router.push(`/juror/apply/${caseItem.CaseId}`)}
                         disabled={!assignmentsCompleted}
-                        className="w-full mt-3 py-2.5 bg-[#0C2D57] text-white rounded-md font-semibold text-sm hover:bg-[#0a2347] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full mt-3 py-2.5 bg-[#0C2D57] text-white rounded-md font-semibold text-sm hover:bg-[#0a2347] transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                       >
                         Apply
                       </button>

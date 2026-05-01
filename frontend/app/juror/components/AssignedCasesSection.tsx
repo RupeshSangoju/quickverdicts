@@ -289,7 +289,7 @@ export default function AssignedCasesSection() {
                       </button>
                       {caseItem.AttorneyStatus === "join_trial" && !isCaseDayOver(caseItem.ScheduledDate) && (
                         <button
-                          className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition"
+                          className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition cursor-pointer"
                           onClick={() => window.open(`/juror/trial/${caseItem.CaseId}/setup`, '_blank')}
                         >
                           <span>Join Trial</span>

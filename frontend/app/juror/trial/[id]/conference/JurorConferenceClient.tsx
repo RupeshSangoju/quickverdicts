@@ -133,10 +133,10 @@ export default function JurorConferenceClient() {
   const submitJuryChargeResponses = async () => {
     // Validate all required questions are answered
     const unanswered = juryChargeQuestions.filter(
-      (q: any) => !juryChargeResponses[q.QuestionId] || juryChargeResponses[q.QuestionId].trim() === ""
+      (q: any) => q.IsRequired && (!juryChargeResponses[q.QuestionId] || juryChargeResponses[q.QuestionId].trim() === "")
     );
     if (unanswered.length > 0) {
-      toast.error(`Please answer all questions. ${unanswered.length} question(s) remaining.`);
+      toast.error(`Please answer all required questions. ${unanswered.length} required question(s) remaining.`);
       return;
     }
 
@@ -1543,10 +1543,36 @@ export default function JurorConferenceClient() {
               <p className="mt-4 text-gray-600">Loading jury charge...</p>
             </div>
           ) : juryChargeSubmitted ? (
-            <div className="text-center py-12">
-              <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-4" />
-              <h4 className="text-xl font-bold text-gray-900 mb-2">Responses Submitted</h4>
-              <p className="text-gray-600">Thank you for submitting your jury charge responses. Your answers have been recorded.</p>
+            <div className="py-6">
+              <div className="flex items-center gap-3 mb-5">
+                <CheckCircle2 className="w-8 h-8 text-green-500 flex-shrink-0" />
+                <div>
+                  <h4 className="text-lg font-bold text-gray-900">Responses Submitted</h4>
+                  <p className="text-sm text-gray-500">Your answers have been recorded.</p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                {juryChargeQuestions.map((question: any, index: number) => {
+                  const answer = juryChargeResponses[question.QuestionId];
+                  const isAnswered = answer && answer.trim() !== "";
+                  return (
+                    <div key={question.QuestionId} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                      <div className="flex items-start gap-2 mb-2">
+                        <span className="flex-shrink-0 text-xs font-semibold text-gray-500">Q{index + 1}</span>
+                        {question.IsRequired && (
+                          <span className="text-xs px-1.5 py-0.5 bg-red-100 text-red-600 rounded">Required</span>
+                        )}
+                      </div>
+                      <p className="text-sm font-medium text-gray-800 mb-2">{question.QuestionText}</p>
+                      {isAnswered ? (
+                        <p className="text-sm text-gray-700 bg-white rounded px-3 py-2 border border-gray-200">{answer}</p>
+                      ) : (
+                        <p className="text-sm italic text-gray-400 bg-white rounded px-3 py-2 border border-dashed border-gray-300">Unanswered</p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           ) : juryChargeQuestions.length === 0 ? (
             <div className="text-center py-12 text-gray-500">

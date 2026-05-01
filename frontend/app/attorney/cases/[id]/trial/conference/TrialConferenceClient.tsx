@@ -1720,7 +1720,7 @@ roomCall.remoteParticipants.forEach((p: any) => {
           <div className="p-5" style={{ backgroundColor: "#16305B", borderBottom: "1px solid #C6CDD9" }}>
             <div className="flex items-center justify-between mb-3">
               <div>
-                <h3 className="text-lg font-bold text-white">Jury Charge Questions</h3>
+                <h3 className="text-lg font-bold text-white">Jury Questions</h3>
                 <p className="text-sm text-white opacity-80">{juryChargeQuestions.length} questions</p>
               </div>
               <button onClick={toggleJuryChargePanel} className="text-white hover:text-gray-300">
@@ -1772,6 +1772,7 @@ roomCall.remoteParticipants.forEach((p: any) => {
                     style={{ backgroundColor: "#ffffff", color: "#0A2342", borderColor: "#C6CDD9" }}
                   >
                     <option value="Multiple Choice">Multiple Choice</option>
+                    <option value="Multiple Select">Multiple Select</option>
                     <option value="Text Response">Text Response</option>
                     <option value="Yes/No">Yes/No</option>
                   </select>
@@ -1857,6 +1858,21 @@ roomCall.remoteParticipants.forEach((p: any) => {
                           style={{ backgroundColor: "#ffffff", color: "#0A2342", borderColor: "#C6CDD9" }}
                           rows={2}
                         />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs mb-1" style={{ color: "#455A7C" }}>Question Type</label>
+                        <select
+                          value={editFormData.QuestionType}
+                          onChange={(e) => setEditFormData({...editFormData, QuestionType: e.target.value})}
+                          className="w-full px-3 py-2 rounded border focus:outline-none focus:border-2"
+                          style={{ backgroundColor: "#ffffff", color: "#0A2342", borderColor: "#C6CDD9" }}
+                        >
+                          <option value="Multiple Choice">Multiple Choice</option>
+                          <option value="Multiple Select">Multiple Select</option>
+                          <option value="Text Response">Text Response</option>
+                          <option value="Yes/No">Yes/No</option>
+                        </select>
                       </div>
 
                       {(editFormData.QuestionType === "Multiple Choice" || editFormData.QuestionType === "Multiple Select") && (

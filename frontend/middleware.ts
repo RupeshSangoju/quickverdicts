@@ -16,12 +16,11 @@ import type { NextRequest } from 'next/server';
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Define protected route patterns
-  // Each protected route will redirect to its specific login page if accessed directly
+  // Define protected route patterns — match the route and all its sub-paths
   const protectedRoutes = [
-    { pattern: /^\/attorney(?!\/)/i, loginPath: '/login/attorney', name: 'attorney' },
-    { pattern: /^\/admin(?!\/)/i, loginPath: '/admin/login', name: 'admin' },
-    { pattern: /^\/juror(?!\/)/i, loginPath: '/login/juror', name: 'juror' },
+    { pattern: /^\/attorney(\/|$)/i, loginPath: '/login/attorney', name: 'attorney' },
+    { pattern: /^\/admin(\/|$)/i, loginPath: '/admin/login', name: 'admin' },
+    { pattern: /^\/juror(\/|$)/i, loginPath: '/login/juror', name: 'juror' },
   ];
 
   // Public routes that should not be protected
@@ -37,19 +36,15 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Check for authentication token in cookies (if available)
+  // Check for authentication token in HTTP-only cookie
   const token = request.cookies.get('token')?.value;
 
   // Check if the current path matches a protected route
   for (const route of protectedRoutes) {
     if (route.pattern.test(pathname)) {
-      // For enhanced security, if cookies are being used, verify them here
-      // Currently, auth is stored in localStorage (client-side only)
-      // The useProtectedRoute hook on each page provides the actual protection
-
-      // This middleware serves as a pattern-based redirect layer
-      // Future enhancement: migrate to HTTP-only cookies for server-side verification
-
+      if (!token) {
+        return NextResponse.redirect(new URL(route.loginPath, request.url));
+      }
       return NextResponse.next();
     }
   }

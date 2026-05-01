@@ -464,45 +464,7 @@ const formatExpiry = (value: string) => {
             </div>
 
             {/* Payment Methods */}
-            <div className="bg-white rounded-lg shadow-md p-8 w-full" style={{ maxWidth: 420 }}>
-              <h2 className="font-bold text-xl mb-6 text-gray-900">Payment Methods</h2>
-              <div className="space-y-4">
-                {paymentMethod ? (
-                  <>
-                    <div className="p-4 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle className="h-5 w-5 text-green-600" />
-                        <span className="text-sm text-green-800 font-medium">{paymentMethod}</span>
-                      </div>
-                      <button
-                        onClick={handleRemovePaymentMethod}
-                        className="text-red-600 hover:text-red-700 text-sm font-semibold underline"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                    <p className="text-xs text-gray-500">This payment method will be used for receiving payouts.</p>
-                  </>
-                ) : (
-                  <>
-                    <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
-                      <p className="text-sm text-gray-600">
-                        No payment method added. Add one to receive payouts for your cases.
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => {
-                        setShowAddPayment(true);
-                        setErrorMessage(null);
-                      }}
-                      className="w-full border-2 border-[#16305B] text-[#16305B] rounded-lg py-3 hover:bg-blue-50 transition-colors text-[15px] font-semibold cursor-pointer"
-                    >
-                      Add Payment Method
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
+
           </div>
 
           {/* Spacer for 20% width on the right */}
@@ -679,7 +641,7 @@ const formatExpiry = (value: string) => {
                 <button
                   className="flex-1 px-6 py-3 bg-[#B3261E] text-white rounded-lg font-semibold hover:bg-[#a11d17] focus:outline-none focus:ring-2 focus:ring-red-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm hover:shadow-md"
                   onClick={handleDeleteAccount}
-                  disabled={deleting}
+                  disabled={deleting || !deletePassword}
                 >
                   {deleting ? (
                     <span className="flex items-center justify-center gap-2">

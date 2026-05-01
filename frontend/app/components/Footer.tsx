@@ -18,15 +18,15 @@ const Footer: FC = () => {
           {/* Bottom Links */}
           <div className="flex flex-wrap gap-6 mt-8 text-sm">
             <span>Quick Verdicts © {new Date().getFullYear()}</span>
-            <Link href="/" className="hover:underline">
-              Privacy
-            </Link>
-            <Link href="/" className="hover:underline">
-              Terms of Use
-            </Link>
-            <Link href="/" className="hover:underline">
-              Consumer Notice
-            </Link>
+              <Link href="/" className="hover:text-white">Privacy</Link>
+                <a
+    href="https://quickverdictsvideo.blob.core.windows.net/videos/QV%20Terms%20and%20Conditions.pdf"
+    target="_blank"
+    rel="noopener noreferrer"
+    className="hover:underline"
+  >
+    Terms of Use
+  </a>
           </div>
         </div>
 

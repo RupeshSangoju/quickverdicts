@@ -457,6 +457,19 @@ router.get(
   asyncHandler(verifyEmailVerificationToken)
 );
 
+/**
+ * POST /api/auth/logout
+ * Clear the HTTP-only auth cookie
+ */
+router.post("/logout", (req, res) => {
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+  });
+  res.json({ success: true, message: "Logged out successfully" });
+});
+
 /* ===========================================================
    AUTHENTICATED ROUTES
    All routes below require valid JWT token

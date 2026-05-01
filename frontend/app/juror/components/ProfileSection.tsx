@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Eye, EyeOff, HelpCircle, X } from "lucide-react";
-import { SiVenmo, SiCashapp } from "react-icons/si";
-import { FaPaypal } from "react-icons/fa";
+import { Eye, EyeOff, HelpCircle, X, Landmark, FileText, AlertCircle } from "lucide-react";
+import { SiVenmo } from "react-icons/si";
 import toast from "react-hot-toast";
 import { getToken } from "@/lib/apiClient";
 
@@ -22,6 +21,7 @@ type Juror = {
   verificationStatus?: string;
   onboardingCompleted?: boolean;
   phone?: string;
+  paymentMethod?: string;
 };
 
 export default function ProfileSection() {
@@ -40,6 +40,7 @@ export default function ProfileSection() {
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+
 
   useEffect(() => {
     const fetchJuror = async () => {
@@ -84,7 +85,8 @@ export default function ProfileSection() {
             phone: jurorData.phoneNumber || jurorData.PhoneNumber || "",
             verified: jurorData.isVerified || jurorData.IsVerified || false,
             verificationStatus: jurorData.verificationStatus || jurorData.VerificationStatus || "pending",
-            onboardingCompleted: jurorData.onboardingCompleted || jurorData.OnboardingCompleted || false
+            onboardingCompleted: jurorData.onboardingCompleted || jurorData.OnboardingCompleted || false,
+            paymentMethod: jurorData.paymentMethod || jurorData.PaymentMethod || null
           });
         } else {
           setError("Failed to fetch juror details");
@@ -449,41 +451,46 @@ export default function ProfileSection() {
             </div>
 
             {/* Connected Accounts */}
-            {/* Connected Accounts section */}
             <div className="bg-white rounded shadow p-7 w-full mt-6" style={{ maxWidth: 480, marginLeft: 8, color: "black" }}>
               <h2 className="font-semibold text-lg mb-5" style={{ color: "black" }}>Connected Accounts</h2>
               <div className="flex flex-col gap-3">
-                {/* Venmo */}
-                <div className="flex items-center border border-gray-300 rounded-md bg-[#F3F6FA] px-4 py-2" style={{ minHeight: 44, color: "black" }}>
-                  <SiVenmo className="text-[#3D95CE] text-2xl mr-3" />
-                  <span className="font-semibold text-[15px]">Venmo</span>
-                  <span className="ml-auto text-green-700 font-bold text-base">✓</span>
-                </div>
-
-                {/* PayPal */}
-                <div className="flex items-center border border-gray-300 rounded-md bg-white px-4 py-2 hover:bg-[#F3F6FA] cursor-pointer" style={{ minHeight: 44, color: "black" }}>
-                  <FaPaypal className="text-[#003087] text-2xl mr-3" />
-                  <span className="font-semibold text-[15px]">Paypal</span>
-                </div>
-
-                {/* CashApp */}
-                <div className="flex items-center border border-gray-300 rounded-md bg-white px-4 py-2 hover:bg-[#F3F6FA] cursor-pointer" style={{ minHeight: 44, color: "black" }}>
-                  <SiCashapp className="text-[#00C244] text-2xl mr-3" />
-                  <span className="font-semibold text-[15px]">Cashapp</span>
-                </div>
+                {[
+                  { key: "venmo", label: "Venmo", icon: <SiVenmo className="text-[#3D95CE] text-2xl mr-3" /> },
+                  { key: "zelle", label: "Zelle", icon: <Landmark size={22} className="text-[#6B21A8] mr-3" /> },
+                  { key: "personalcheck", label: "Personal Check", icon: <FileText size={22} className="text-[#0C2D57] mr-3" /> },
+                ].map(({ key, label, icon }) => {
+                  const isSelected = juror?.paymentMethod?.toLowerCase() === key;
+                  return (
+                    <div
+                      key={key}
+                      className={`flex items-center border rounded-md px-4 py-2 ${
+                        isSelected
+                          ? "border-green-400 bg-green-50"
+                          : "border-gray-300 bg-white"
+                      }`}
+                      style={{ minHeight: 44 }}
+                    >
+                      {icon}
+                      <span className="font-semibold text-[15px]">{label}</span>
+                      {isSelected && (
+                        <span className="ml-auto text-green-600 font-bold text-base">✓</span>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
 
           {/* Manage Account */}
-          {/* Manage Account section */}
           <div className="flex flex-col gap-6 md:w-[45%] w-full">
             <div className="bg-white rounded shadow p-8 w-full" style={{ minHeight: 120, maxWidth: 420, color: "black" }}>
               <h2 className="font-semibold text-lg mb-4" style={{ color: "black" }}>Manage Account</h2>
               <button
-                className="w-full border border-gray-400 rounded py-2 hover:bg-gray-100 transition-colors text-[15px] font-medium text-black"
+                className="w-full border-2 border-red-300 text-red-600 rounded-lg py-3 hover:bg-red-50 transition-colors text-[15px] font-semibold flex items-center justify-center gap-2 group cursor-pointer"
                 onClick={() => setShowDelete(true)}
               >
+                <AlertCircle className="w-5 h-5 group-hover:scale-110 transition-transform" />
                 Delete Account
               </button>
             </div>
@@ -615,9 +622,9 @@ export default function ProfileSection() {
             {/* Modal content styled to match provided image */}
             <div className="relative bg-white rounded-xl shadow-xl p-7 w-full max-w-lg" style={{ minWidth: 380, maxWidth: 440 }}>
               <div className="flex items-center justify-between mb-2">
-                <h2 className="text-xl font-semibold text-[#222]">Delete Account</h2>
+                <h2 className="text-xl font-semibold text-[#222]"><AlertCircle className="w-5 h-5 group-hover:scale-110 transition-transform" />Delete Account</h2>
                 <button
-                  className="text-gray-500 text-xl hover:text-gray-700"
+                  className="w-full border-2 border-red-300 text-red-600 rounded-lg py-3 hover:bg-red-50 transition-colors text-[15px] font-semibold flex items-center justify-center gap-2 group cursor-pointer"
                   onClick={() => {
                     if (!deleting) {
                       setShowDelete(false);
@@ -650,7 +657,7 @@ export default function ProfileSection() {
                 <button
                   className="px-6 py-2 bg-[#B3261E] text-white rounded shadow-sm font-medium text-[16px] hover:bg-[#a11d17] focus:outline-none focus:ring-2 focus:ring-red-400 border border-[#B3261E] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   onClick={handleDeleteAccount}
-                  disabled={deleting}
+                  disabled={deleting || !deletePassword}
                 >
                   {deleting ? "Deleting..." : "Delete"}
                 </button>

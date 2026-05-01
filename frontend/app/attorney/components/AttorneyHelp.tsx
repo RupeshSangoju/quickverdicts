@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { ChevronDown, ChevronLeft, ChevronRight, Search, Play, ArrowLeft, Mail, Video, HelpCircle } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Search, Play, ArrowLeft, Mail, Video, HelpCircle,CircleArrowLeft, CircleArrowRight } from "lucide-react";
 
 const tutorialVideos: { src?: string; iframe?: string; title: string; length?: string; category?: string }[] = [
   {
@@ -37,8 +37,8 @@ const tutorialVideos: { src?: string; iframe?: string; title: string; length?: s
 
 const faqs = [
   {
-    q: "What is Quick Verdicts?",
-    a: `Quick Verdicts is an online platform designed to streamline the trial experience for both attorneys and jurors. Attorneys can present real cases in a secure, efficient digital environment, while jurors have the opportunity to participate, deliberate, and earn compensation—all from the comfort of their own home. Each case is designed to be quick and focused, lasting no more than 4.5 hours total, including introductions, trial presentations, and jury deliberation. Attorneys benefit from valuable insights, and jurors are paid for their time and perspective.`,
+    q: "How do I use the Quick Verdicts War Room to prepare the mock trial?",
+    a: `Once you create a case, a case block will appear in your dashboard. You can access the War Room from the case block to upload demonstrative evidence for the jury’s review during deliberations, list witnesses, review, approve of or reject jurors who have applied, and use the Jury Charge Builder to create the charge to the jury.`,
   },
   {
     q: "How do jurors get picked?",
@@ -54,12 +54,12 @@ const faqs = [
   },
   {
     q: "What happens if fewer than 6 jurors appear for QV trial?",
-    a: "Trials will be scheduled with 8 jurors to allow for no-shows.  Trials will proceed with six (6) jurors; otherwise, the trial will be reset.  Jurors who appear and are dismissed will be paid a stipend.",
+    a: "Attorneys may pick up to 8 jurors to allow for no-shows. Trials will proceed with six (6) jurors; otherwise the trial will be reset. Jurors who appear and are dismissed will be paid a stipend.",
   },
 ];
 
 export default function AttorneyHelp({ onContact, onBack }: { onContact: () => void; onBack?: () => void }) {
-  const [faqOpen, setFaqOpen] = useState<number | null>(0);
+  const [faqOpen, setFaqOpen] = useState<number | null>(null);
   const [search, setSearch] = useState("");
   const [videoStart, setVideoStart] = useState(0);
   const router = useRouter();
@@ -205,28 +205,28 @@ export default function AttorneyHelp({ onContact, onBack }: { onContact: () => v
 
             {/* Navigation Buttons */}
             {filteredVideos.length > 3 && (
-              <div className="flex justify-center gap-3 mt-8">
+              <div className="flex justify-end gap-3 mt-8">
                 <button
-                  className={`p-3 rounded-full border-2 transition-all ${
+                  className={`p-3 transition-all ${
                     canSlideLeft 
-                      ? 'border-[#16305B] text-[#16305B] hover:bg-[#16305B] hover:text-white shadow-sm' 
+                      ? 'border-[#16305B] text-[#16305B] hover:bg-[#16305B] hover:text-white shadow-sm cursor-pointer' 
                       : 'border-gray-300 text-gray-300 cursor-not-allowed'
                   }`}
                   onClick={handleLeft}
                   disabled={!canSlideLeft}
                 >
-                  <ChevronLeft size={20} />
+                  < CircleArrowLeft size={30} />
                 </button>
                 <button
-                  className={`p-3 rounded-full border-2 transition-all ${
+                  className={`p-3  transition-all  ${
                     canSlideRight 
-                      ? 'border-[#16305B] text-[#16305B] hover:bg-[#16305B] hover:text-white shadow-sm' 
+                      ? 'border-[#16305B] text-[#16305B] hover:bg-[#16305B] hover:text-white shadow-sm cursor-pointer' 
                       : 'border-gray-300 text-gray-300 cursor-not-allowed'
                   }`}
                   onClick={handleRight}
                   disabled={!canSlideRight}
                 >
-                  <ChevronRight size={20} />
+                  <CircleArrowRight size={30} />
                 </button>
               </div>
             )}
@@ -296,10 +296,10 @@ export default function AttorneyHelp({ onContact, onBack }: { onContact: () => v
           <p className="text-gray-600 mb-6">Our support team is here to assist you</p>
           <button
             onClick={onContact}
-            className="bg-[#16305B] text-white px-8 py-3 rounded-lg font-semibold hover:bg-[#1e417a] transition-all shadow-sm hover:shadow-md inline-flex items-center gap-2"
+            className="bg-[#16305B] text-white px-8 py-3 rounded-lg font-semibold hover:bg-[#1e417a] transition-all shadow-sm hover:shadow-md inline-flex items-center gap-2 cursor-pointer"
           >
-            <Mail size={20} />
-            Contact Support
+
+            Get Support
           </button>
         </div>
       </div>

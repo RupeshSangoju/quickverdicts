@@ -132,6 +132,7 @@ const PUBLIC_ROUTES = [
 export const api = axios.create({
   baseURL: BASE_URL,
   timeout: REQUEST_TIMEOUT,
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
@@ -230,6 +231,7 @@ export function removeUser(): void {
 export function clearAuth(): void {
   removeToken();
   removeUser();
+  try { localStorage.removeItem("lastActivity"); } catch {}
 }
 
 /* ===========================================================
@@ -475,10 +477,18 @@ export function login(token: string, user: AuthUser): void {
 }
 
 /**
- * Logout user (clear all auth data)
+ * Logout user (clear all auth data and server-side cookie)
  * @param redirectPath - Optional path to redirect to (default: "/login")
  */
 export function logout(redirectPath: string = "/login"): void {
+  // Clear the server-side HTTP-only cookie (fire-and-forget)
+  if (typeof window !== "undefined") {
+    fetch(`${BASE_URL}/auth/logout`, {
+      method: "POST",
+      credentials: "include",
+      keepalive: true,
+    }).catch(() => {});
+  }
   clearAuth();
   if (typeof window !== "undefined") {
     window.location.href = redirectPath;

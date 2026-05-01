@@ -66,11 +66,9 @@ function formatPhoneNumber(value: string): string {
  * Format ZIP code to 12345 or 12345-6789
  */
 function formatZipCode(value: string): string {
-  const cleaned = value.replace(/[^\d-]/g, "");
-  const parts = cleaned.split("-");
-  const main = parts[0].slice(0, 5);
-  const ext = parts[1]?.slice(0, 4) || "";
-  return ext ? `${main}-${ext}` : main;
+  const digits = value.replace(/\D/g, "").slice(0, 9);
+  if (digits.length <= 5) return digits;
+  return `${digits.slice(0, 5)}-${digits.slice(5)}`;
 }
 
 /**
@@ -579,12 +577,10 @@ export function Step2PersonalDetails({
                   }}
                   className="cursor-pointer"
                   options={[
-                    "One",
-                    "Two",
-                    "Three",
-                    "Four",
-                    "Five",
-                    "Six or more",
+                    "1 - 10",
+                    "11 - 20",
+                    "21 - 30",
+                    "30+"
                   ]}
                   placeholder="Select years"
                 />
@@ -894,13 +890,14 @@ export function Step2PersonalDetails({
             Payment Method
           </h2>
           <FormField
-            label="Select Your Preferred Payment Method"
+            label="Select Your Preferred Payment Method."
             required
             validationErrors={validationErrors}
             fieldName="paymentMethod"
           >
+            <h1>This information is required after you have been selected for a case.</h1>
             <div
-              className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3"
+              className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-3"
               role="radiogroup"
               aria-label="Payment method selection"
             >
@@ -920,40 +917,25 @@ export function Step2PersonalDetails({
                 }
               />
               <PaymentMethodButton
-                label="PayPal"
-                selected={formData.paymentMethod === "paypal"}
-                onClick={() => {
-                  onUpdate({ paymentMethod: "paypal" });
-                  onClearError("paymentMethod");
-                }}
-                icon={
-                  <CreditCard
-                    size={20}
-                    className="text-[#0A2342]"
-                    aria-hidden="true"
-                  />
-                }
-              />
-              <PaymentMethodButton
-                label="Cash App"
-                selected={formData.paymentMethod === "cashapp"}
-                onClick={() => {
-                  onUpdate({ paymentMethod: "cashapp" });
-                  onClearError("paymentMethod");
-                }}
-                icon={
-                  <CreditCard
-                    size={20}
-                    className="text-[#0A2342]"
-                    aria-hidden="true"
-                  />
-                }
-              />
-              <PaymentMethodButton
                 label="Zelle"
                 selected={formData.paymentMethod === "zelle"}
                 onClick={() => {
                   onUpdate({ paymentMethod: "zelle" });
+                  onClearError("paymentMethod");
+                }}
+                icon={
+                  <CreditCard
+                    size={20}
+                    className="text-[#0A2342]"
+                    aria-hidden="true"
+                  />
+                }
+              />
+              <PaymentMethodButton
+                label="Personal Check"
+                selected={formData.paymentMethod === "personalcheck"}
+                onClick={() => {
+                  onUpdate({ paymentMethod: "personalcheck" });
                   onClearError("paymentMethod");
                 }}
                 icon={

@@ -326,7 +326,15 @@ export default function WarRoomPage() {
       });
     }
   }, [caseData, showRescheduleModal]);
+useEffect(() => {
+  if (showSuccessMessage) {
+    const timer = setTimeout(() => {
+      router.push("/attorney");
+    }, 2000); // 2 seconds
 
+    return () => clearTimeout(timer);
+  }
+}, [showSuccessMessage, router]);
   // Disable background scroll when application modal is open
   useEffect(() => {
     if (showApplicationModal) {
@@ -2435,7 +2443,7 @@ export default function WarRoomPage() {
                   <button
                     onClick={handleRescheduleRequest}
                     disabled={submittingReschedule || !rescheduleData.newScheduledDate || !rescheduleData.newScheduledTime}
-                    className="flex-1 px-6 py-3 bg-[#16305B] text-white rounded-lg font-semibold text-sm hover:bg-[#0A2342] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 px-6 py-3 bg-[#16305B] text-white rounded-lg font-semibold text-sm hover:bg-[#0A2342] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                   >
                     {submittingReschedule ? (
                       <>

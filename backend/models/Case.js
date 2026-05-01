@@ -35,6 +35,7 @@ const CASE_JURISDICTIONS = {
 };
 
 const CASE_TIERS = {
+  EARLY_ADOPTER: "Early Adopter",
   TIER_1: "Tier 1",
   TIER_2: "Tier 2",
   TIER_3: "Tier 3",
@@ -64,7 +65,7 @@ function validateCaseData(data) {
   if (!data.caseTier?.trim()) {
     errors.push("Case tier is required");
   } else if (!Object.values(CASE_TIERS).includes(data.caseTier.trim())) {
-    errors.push("Invalid case tier. Must be Tier 1, 2, or 3");
+    errors.push("Invalid case tier. Must be Early Adopter, Tier 1, 2, or 3");
   }
   if (!data.state?.trim()) {
     errors.push("State is required");

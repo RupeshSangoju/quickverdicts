@@ -217,10 +217,10 @@ Browse available cases in your area and choose the ones that fit your schedule. 
             Ready to Get Started?
           </h2>
           <p className="text-gray-600 mb-8">
-            Sign up today and start your first case
+            Sign up today or email QVTrial@quickverdicts.com with your name,  state and county and we will notify you when a case in your locale is posted.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/signup/attorney" className="bg-blue-900 text-white px-12 py-3 rounded hover:bg-blue-800 font-medium">
+            <Link href="/signup/juror" className="bg-blue-900 text-white px-12 py-3 rounded hover:bg-blue-800 font-medium">
               Sign up as Juror
             </Link>
             <Link href="/login" className="bg-white text-blue-900 border-2 border-blue-900 px-12 py-3 rounded hover:bg-blue-50 font-medium">
@@ -253,7 +253,14 @@ Browse available cases in your area and choose the ones that fit your schedule. 
             <div className="flex space-x-6 text-sm text-gray-300">
               <Link href="/" className="hover:text-white">Quick Verdicts<sup className="text-[12px]">™</sup></Link>
               <Link href="/" className="hover:text-white">Privacy</Link>
-              <Link href="/" className="hover:text-white">Terms of Use</Link>
+                <a
+    href="https://quickverdictsvideo.blob.core.windows.net/videos/QV%20Terms%20and%20Conditions.pdf"
+    target="_blank"
+    rel="noopener noreferrer"
+    className="hover:underline"
+  >
+    Terms of Use
+  </a>
             </div>
             <div className="flex items-center space-x-4 mt-4 md:mt-0">
               <span className="text-sm text-gray-300">Follow Us</span>

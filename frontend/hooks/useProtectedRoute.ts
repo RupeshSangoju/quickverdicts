@@ -129,6 +129,54 @@ export function useProtectedRoute(
     return () => window.removeEventListener("storage", handleStorage);
   }, [requiredUserType]);
 
+  // 20-minute inactivity timeout: reset on any user interaction;
+  // check immediately on mount so an already-expired session is caught
+  // before the page renders, then poll every 30 s while the tab is open.
+  useEffect(() => {
+    const TIMEOUT_MS = 20 * 60 * 1000; // 20 minutes
+    const POLL_MS = 30_000;            // check every 30 seconds
+
+    const loginPath =
+      requiredUserType === "admin"
+        ? "/admin/login"
+        : `/login/${requiredUserType}`;
+
+    const updateActivity = () => {
+      localStorage.setItem("lastActivity", Date.now().toString());
+    };
+
+    // --- Immediate check on mount ---
+    const last = parseInt(localStorage.getItem("lastActivity") || "0", 10);
+    if (last > 0 && Date.now() - last > TIMEOUT_MS) {
+      clearAuth();
+      localStorage.removeItem("lastActivity");
+      window.location.href = loginPath;
+      return; // skip setting up listeners — redirect is already in flight
+    }
+
+    // Seed timestamp if this is a fresh session with no recorded activity
+    if (!last) {
+      updateActivity();
+    }
+
+    const activityEvents = ["mousemove", "keydown", "click", "scroll", "touchstart"] as const;
+    activityEvents.forEach(ev => window.addEventListener(ev, updateActivity, { passive: true }));
+
+    const interval = setInterval(() => {
+      const latest = parseInt(localStorage.getItem("lastActivity") || "0", 10);
+      if (Date.now() - latest > TIMEOUT_MS) {
+        clearAuth();
+        localStorage.removeItem("lastActivity");
+        window.location.href = loginPath;
+      }
+    }, POLL_MS);
+
+    return () => {
+      activityEvents.forEach(ev => window.removeEventListener(ev, updateActivity));
+      clearInterval(interval);
+    };
+  }, [requiredUserType]);
+
   useEffect(() => {
     // Only check once per mount
     if (hasChecked.current) return;

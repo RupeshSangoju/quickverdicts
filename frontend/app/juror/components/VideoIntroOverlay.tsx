@@ -281,7 +281,7 @@ export default function VideoIntroOverlay({ open, onClose, onNext, sidebarCollap
         >
           <button
             onClick={onNext}
-            className="px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white font-semibold rounded-xl shadow-2xl hover:from-green-600 hover:to-green-700 transform hover:scale-105 transition-all duration-300 flex items-center gap-2"
+            className="px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white font-semibold rounded-xl shadow-2xl hover:from-green-600 hover:to-green-700 transform hover:scale-105 transition-all duration-300 flex items-center gap-2 cursor-pointer"
           >
             <span>Continue to Quiz</span>
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

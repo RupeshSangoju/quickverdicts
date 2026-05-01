@@ -168,7 +168,7 @@ export default function JurorVerdictForm({ caseId, jurorId }: JurorVerdictFormPr
   }
 
   async function handleSubmit() {
-    // Validate all required questions are answered
+    // Validate only required questions are answered
     const unanswered = questions.filter(
       (q) => q.IsRequired && !responses[q.QuestionId.toString()]?.trim()
     );
@@ -327,16 +327,22 @@ export default function JurorVerdictForm({ caseId, jurorId }: JurorVerdictFormPr
           <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-2xl">
             <h4 className="text-sm font-semibold text-blue-900 mb-2">Your Responses:</h4>
             <div className="text-left space-y-3">
-              {questions.map((question) => (
-                <div key={question.QuestionId} className="bg-white rounded p-3">
-                  <p className="text-sm font-medium text-gray-900 mb-1">
-                    {question.QuestionText}
-                  </p>
-                  <p className="text-sm text-gray-700">
-                    {responses[question.QuestionId.toString()] || "(No answer)"}
-                  </p>
-                </div>
-              ))}
+              {questions.map((question) => {
+                const answer = responses[question.QuestionId.toString()];
+                const isAnswered = answer && answer.trim() !== "";
+                return (
+                  <div key={question.QuestionId} className="bg-white rounded p-3">
+                    <p className="text-sm font-medium text-gray-900 mb-1">
+                      {question.QuestionText}
+                    </p>
+                    {isAnswered ? (
+                      <p className="text-sm text-gray-700">{answer}</p>
+                    ) : (
+                      <p className="text-sm italic text-gray-400">Unanswered</p>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

@@ -86,7 +86,7 @@ export interface JurorFormData {
   criteriaAnswers: CriteriaAnswers;
   personalDetails1: PersonalDetails1;
   personalDetails2: PersonalDetails2;
-  paymentMethod: 'venmo' | 'paypal' | 'cashapp' | 'zelle' | null;
+  paymentMethod: 'venmo' | 'paypal' | 'cashapp' | 'zelle' |'personalcheck'| null;
   email: string;
   password: string;
   confirmPassword: string;

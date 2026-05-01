@@ -151,6 +151,7 @@ type Juror = {
   VerificationStatus?: string;
   CriteriaResponses?: { question: string; answer: string }[];
   ApprovedCaseIds?: string | null;
+  PaymentMethod?: string | null;
 };
 
 type Notification = {
@@ -935,6 +936,7 @@ export default function AdminDashboard() {
         VerificationStatus: j.VerificationStatus,
         CriteriaResponses: j.CriteriaResponses ?? j.criteriaResponses ?? [],
         ApprovedCaseIds: j.ApprovedCaseIds ?? null,
+        PaymentMethod: j.PaymentMethod ?? j.paymentMethod ?? null,
       })));
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
@@ -1017,6 +1019,7 @@ export default function AdminDashboard() {
           VerificationStatus: j.VerificationStatus,
           CriteriaResponses: j.CriteriaResponses ?? j.criteriaResponses ?? [],
           ApprovedCaseIds: j.ApprovedCaseIds ?? null,
+          PaymentMethod: j.PaymentMethod ?? j.paymentMethod ?? null,
         })));
         setJurorTotal(data.total || 0);
         setJurorTotalPages(data.totalPages || 1);
@@ -1925,7 +1928,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                 >
                   <Bell className="h-6 w-6 text-gray-700" />
                   {stats.unreadNotifications > 0 && (
-                    <span className="absolute top-1 right-1 h-5 w-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center animate-pulse">
+                    <span className="absolute top-1 right-1 h-5 w-5 bg-[#B3261E] text-white text-xs font-bold rounded-full flex items-center justify-center animate-pulse">
                       {stats.unreadNotifications}
                     </span>
                   )}
@@ -3036,13 +3039,16 @@ function formatTime(timeString: string, scheduledDate: string) {
                       )}
                     </div>
                   </th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                    Payment Method
+                  </th>
                   <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 bg-white">
                 {loadingJurors ? (
                   <tr>
-                    <td colSpan={8} className="px-6 py-16 text-center">
+                    <td colSpan={9} className="px-6 py-16 text-center">
                       <div className="flex flex-col items-center justify-center">
                         <div className="animate-spin h-12 w-12 border-4 border-green-500 border-t-transparent rounded-full mb-4"></div>
                         <p className="text-gray-500 font-medium text-lg">Loading jurors...</p>
@@ -3051,7 +3057,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                   </tr>
                 ) : jurors.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-6 py-16 text-center">
+                    <td colSpan={9} className="px-6 py-16 text-center">
                       <Users className="h-16 w-16 text-gray-300 mx-auto mb-4" />
                       <p className="text-gray-500 font-medium text-lg">No jurors found</p>
                     </td>
@@ -3143,13 +3149,22 @@ function formatTime(timeString: string, scheduledDate: string) {
                         )}
                       </td>
                       <td className="px-6 py-4">
+                        {juror.PaymentMethod ? (
+                          <span className="inline-flex items-center px-2 py-1 rounded text-xs font-semibold bg-blue-50 text-blue-800 capitalize">
+                            {juror.PaymentMethod === "personalcheck" ? "Personal Check" : juror.PaymentMethod}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400 italic">—</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
                         <div className="flex justify-center flex-wrap gap-2">
                           {!juror.IsVerified && juror.VerificationStatus !== "declined" && (
                             <>
                               <button
                                 onClick={() => handleVerifyJuror(juror.JurorId)}
                                 disabled={actionLoading === juror.JurorId}
-                                className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold text-white bg-green-600 hover:bg-green-700 hover:shadow-lg disabled:opacity-50 transition-all"
+                                className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold text-white bg-green-600 hover:bg-green-700 hover:shadow-lg disabled:opacity-50 transition-all cursor-pointer"
                               >
                                 {actionLoading === juror.JurorId ? (
                                   <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
@@ -3160,7 +3175,7 @@ function formatTime(timeString: string, scheduledDate: string) {
                               <button
                                 onClick={() => handleDeclineJuror(juror.JurorId)}
                                 disabled={actionLoading === juror.JurorId}
-                                className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold text-white bg-red-600 hover:bg-red-700 hover:shadow-lg disabled:opacity-50 transition-all"
+                                className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold text-white bg-red-600 hover:bg-red-700 hover:shadow-lg disabled:opacity-50 transition-all cursor-pointer"
                               >
                                 <XCircle className="h-4 w-4 mr-1" />Decline
                               </button>
@@ -4315,14 +4330,14 @@ function formatTime(timeString: string, scheduledDate: string) {
                   setApproveCaseId(null);
                   setApprovalComments("");
                 }}
-                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium"
+                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmApproveCase}
                 disabled={caseActionLoading !== null}
-                className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 font-medium disabled:opacity-50 inline-flex items-center"
+                className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 font-medium disabled:opacity-50 inline-flex items-center cursor-pointer"
               >
                 {caseActionLoading ? (
                   <>

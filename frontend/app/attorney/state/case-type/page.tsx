@@ -83,7 +83,7 @@ export default function CaseTypePage() {
             <p className="text-gray-700 text-center">Please select the jurisdiction your case is in:</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <button
-                className={`bg-[#f5ecd7] px-8 py-8 rounded-lg shadow-md text-2xl font-bold text-[#16305B] border-4 transition-all hover:shadow-xl ${
+                className={`cursor-pointer bg-[#f5ecd7] px-8 py-8 rounded-lg shadow-md text-2xl font-bold text-[#16305B] border-4 transition-all hover:shadow-xl ${
                   selected === "state" ? "border-[#16305B] scale-105" : "border-transparent hover:border-gray-300"
                 }`}
                 onClick={() => handleSelect("state")}
@@ -95,7 +95,7 @@ export default function CaseTypePage() {
                 </div>
               </button>
               <button
-                className={`bg-[#f5ecd7] px-8 py-8 rounded-lg shadow-md text-2xl font-bold text-[#16305B] border-4 transition-all hover:shadow-xl ${
+                className={`cursor-pointer bg-[#f5ecd7] px-8 py-8 rounded-lg shadow-md text-2xl font-bold text-[#16305B] border-4 transition-all hover:shadow-xl ${
                   selected === "federal" ? "border-[#16305B] scale-105" : "border-transparent hover:border-gray-300"
                 }`}
                 onClick={() => handleSelect("federal")}
