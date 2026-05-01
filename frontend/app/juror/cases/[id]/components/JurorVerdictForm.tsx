@@ -168,16 +168,16 @@ export default function JurorVerdictForm({ caseId, jurorId }: JurorVerdictFormPr
   }
 
   async function handleSubmit() {
-    // Validate all questions are answered (required and optional)
+    // Validate only required questions are answered
     const unanswered = questions.filter(
-      (q) => !responses[q.QuestionId.toString()]?.trim()
+      (q) => q.IsRequired && !responses[q.QuestionId.toString()]?.trim()
     );
 
     if (unanswered.length > 0) {
       const questionList = unanswered
         .map((q, i) => `${i + 1}. ${q.QuestionText}`)
         .join("\n");
-      toast.error(`Please answer all questions before submitting:\n\n${questionList}`, {
+      toast.error(`Please answer all required questions:\n\n${questionList}`, {
         duration: 6000,
       });
       return;
@@ -366,7 +366,8 @@ export default function JurorVerdictForm({ caseId, jurorId }: JurorVerdictFormPr
           changed after submission.
         </p>
         <p className="text-sm text-blue-600 mt-2">
-          <strong>{questions.length}</strong> questions — all must be answered before submitting
+          <strong>{questions.filter((q) => q.IsRequired).length}</strong> required questions •{" "}
+          <strong>{questions.filter((q) => !q.IsRequired).length}</strong> optional questions
         </p>
       </div>
 
