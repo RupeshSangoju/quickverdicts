@@ -87,20 +87,8 @@ async function submitVerdict(req, res) {
     const jurorName = jurorData.recordset[0]?.Name || `Juror #${jurorId}`;
     console.log(`📝 [Verdict.submitVerdict] Juror name: ${jurorName}`);
 
-    // Send WebSocket notification to admin
+    // Send WebSocket notification to admin — get status first so count is included
     console.log(`📡 [Verdict.submitVerdict] Sending WebSocket notifications for case ${caseId}...`);
-    try {
-      websocketService.notifyVerdictSubmitted(parseInt(caseId), {
-        verdictId,
-        jurorId: parseInt(jurorId),
-        jurorName,
-      });
-      console.log(`✅ [Verdict.submitVerdict] WebSocket verdict:submitted notification sent`);
-    } catch (wsError) {
-      console.error(`❌ [Verdict.submitVerdict] WebSocket verdict:submitted error:`, wsError);
-    }
-
-    // Get and send updated verdict status
     try {
       const status = await Verdict.getSubmissionStatus(parseInt(caseId));
       console.log(`📊 [Verdict.submitVerdict] Current status:`, {
@@ -108,10 +96,18 @@ async function submitVerdict(req, res) {
         submitted: status.submitted,
         pending: status.pending
       });
+      websocketService.notifyVerdictSubmitted(parseInt(caseId), {
+        verdictId,
+        jurorId: parseInt(jurorId),
+        jurorName,
+        submitted: status.submitted,
+        totalJurors: status.totalJurors,
+      });
+      console.log(`✅ [Verdict.submitVerdict] WebSocket verdict:submitted notification sent`);
       websocketService.notifyVerdictStatusUpdate(parseInt(caseId), status);
       console.log(`✅ [Verdict.submitVerdict] WebSocket verdict:status_update notification sent`);
     } catch (wsError) {
-      console.error(`❌ [Verdict.submitVerdict] WebSocket verdict:status_update error:`, wsError);
+      console.error(`❌ [Verdict.submitVerdict] WebSocket error:`, wsError);
     }
 
     res.status(201).json({

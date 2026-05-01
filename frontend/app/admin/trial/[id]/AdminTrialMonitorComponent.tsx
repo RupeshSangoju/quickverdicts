@@ -237,7 +237,10 @@ export default function AdminTrialMonitor() {
     // Listen for verdict submission events
     const handleVerdictSubmitted = (data: any) => {
       console.log('🎉 🎉 🎉 VERDICT SUBMITTED EVENT RECEIVED!', data);
-      toast.success(`${data.jurorName} submitted their verdict!`, {
+      const countLabel = data.submitted && data.totalJurors
+        ? ` (${data.submitted}/${data.totalJurors} done)`
+        : '';
+      toast.success(`${data.jurorName} submitted their verdict!${countLabel}`, {
         duration: 5000,
         icon: '✅'
       });
