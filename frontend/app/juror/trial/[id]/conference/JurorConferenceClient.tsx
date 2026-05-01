@@ -133,10 +133,10 @@ export default function JurorConferenceClient() {
   const submitJuryChargeResponses = async () => {
     // Validate all required questions are answered
     const unanswered = juryChargeQuestions.filter(
-      (q: any) => !juryChargeResponses[q.QuestionId] || juryChargeResponses[q.QuestionId].trim() === ""
+      (q: any) => q.IsRequired && (!juryChargeResponses[q.QuestionId] || juryChargeResponses[q.QuestionId].trim() === "")
     );
     if (unanswered.length > 0) {
-      toast.error(`Please answer all questions. ${unanswered.length} question(s) remaining.`);
+      toast.error(`Please answer all required questions. ${unanswered.length} required question(s) remaining.`);
       return;
     }
 
