@@ -35,7 +35,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): WebSocketHookRe
       return;
     }
 
-    const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+    const SOCKET_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000').replace(/\/api\/?$/, '');
 
     console.log('🔌 Connecting to WebSocket:', SOCKET_URL);
     console.log('🔑 Using token:', token.substring(0, 20) + '...');

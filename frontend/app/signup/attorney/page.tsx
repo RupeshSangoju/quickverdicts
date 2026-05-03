@@ -345,7 +345,7 @@ function AttorneySignupInner() {
         if (formData.phoneNumber) {
           try {
             actions.setLoading(true);
-            const apiBase = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api").replace(/\/+$/, "");
+            const apiBase = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000").replace(/\/api\/?$/, "").replace(/\/+$/, "") + "/api";
             const phoneRes = await fetch(`${apiBase}/auth/attorney/check-phone`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },

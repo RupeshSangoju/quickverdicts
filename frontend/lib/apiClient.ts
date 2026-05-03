@@ -96,7 +96,8 @@ export interface AuthUser {
    CONFIGURATION
    =========================================================== */
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
+const BASE_URL =
+  ((process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000").replace(/\/api\/?$/, "")) + "/api";
 const REQUEST_TIMEOUT = 30000; // 30 seconds
 
 /**
