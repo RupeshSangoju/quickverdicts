@@ -96,8 +96,7 @@ export interface AuthUser {
    CONFIGURATION
    =========================================================== */
 
-const BASE_URL =
-  ((process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000").replace(/\/api\/?$/, "")) + "/api";
+const BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000").replace(/\/api\/?$/, "");
 const REQUEST_TIMEOUT = 30000; // 30 seconds
 
 /**
@@ -494,7 +493,7 @@ export function login(token: string, user: AuthUser): void {
 export function logout(redirectPath: string = "/login"): void {
   // Clear the server-side HTTP-only cookie (fire-and-forget)
   if (typeof window !== "undefined") {
-    fetch(`${BASE_URL}/auth/logout`, {
+    fetch(`${BASE_URL}/api/auth/logout`, {
       method: "POST",
       credentials: "include",
       keepalive: true,
