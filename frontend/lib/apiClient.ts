@@ -96,7 +96,7 @@ export interface AuthUser {
    CONFIGURATION
    =========================================================== */
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
+const BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000").replace(/\/api\/?$/, "");
 const REQUEST_TIMEOUT = 30000; // 30 seconds
 
 /**
@@ -170,6 +170,12 @@ export function setToken(token: string): void {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem("token", token);
+    // Also set a cookie on the frontend domain so the Next.js middleware
+    // can read it (the httpOnly backend cookie lives on the backend domain
+    // and is invisible to middleware when frontend/backend are on different
+    // Azure subdomains).
+    const secure = window.location.protocol === "https:" ? "; Secure" : "";
+    document.cookie = `token=${token}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Strict${secure}`;
   } catch (error) {
     console.error("Error storing token in localStorage:", error);
   }
@@ -232,6 +238,10 @@ export function clearAuth(): void {
   removeToken();
   removeUser();
   try { localStorage.removeItem("lastActivity"); } catch {}
+  // Clear the frontend-domain cookie used by Next.js middleware
+  if (typeof window !== "undefined") {
+    document.cookie = "token=; path=/; max-age=0; SameSite=Strict";
+  }
 }
 
 /* ===========================================================
@@ -483,7 +493,7 @@ export function login(token: string, user: AuthUser): void {
 export function logout(redirectPath: string = "/login"): void {
   // Clear the server-side HTTP-only cookie (fire-and-forget)
   if (typeof window !== "undefined") {
-    fetch(`${BASE_URL}/auth/logout`, {
+    fetch(`${BASE_URL}/api/auth/logout`, {
       method: "POST",
       credentials: "include",
       keepalive: true,
