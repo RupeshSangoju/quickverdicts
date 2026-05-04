@@ -126,11 +126,16 @@ function formatTime(timeString: string, scheduledDate: string) {
   // }
 }
 
-function isCaseDayOver(scheduledDate: string): boolean {
+function isCaseDayOver(scheduledDate: string, scheduledTime?: string): boolean {
   if (!scheduledDate) return false;
+  const timeStr = scheduledTime || '00:00:00';
+  // Parse stored UTC date+time, then compare in local timezone
+  const trialUtcDate = new Date(`${scheduledDate.slice(0, 10)}T${timeStr}Z`);
+  if (isNaN(trialUtcDate.getTime())) return false;
   const now = new Date();
-  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-  return todayStr > scheduledDate.slice(0, 10);
+  const todayLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const trialLocal = new Date(trialUtcDate.getFullYear(), trialUtcDate.getMonth(), trialUtcDate.getDate());
+  return trialLocal < todayLocal;
 }
 
 function getTimeWarning(scheduledDate: string, scheduledTime: string) {
@@ -364,7 +369,7 @@ export default function AttorneyCasesSection({ onBack }: AttorneyCasesSectionPro
     if (c.AdminApprovalStatus === "approved") {
       // Ready for trial
       if (c.AttorneyStatus === "join_trial") {
-        if (isCaseDayOver(c.ScheduledDate)) {
+        if (isCaseDayOver(c.ScheduledDate, c.ScheduledTime)) {
           return (
             <button
               disabled

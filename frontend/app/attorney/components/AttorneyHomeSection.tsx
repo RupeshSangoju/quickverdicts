@@ -55,11 +55,16 @@ type PaymentStats = {
 
 // Use getToken from apiClient (imported above)
 
-function isCaseDayOver(scheduledDate: string): boolean {
+function isCaseDayOver(scheduledDate: string, scheduledTime?: string): boolean {
   if (!scheduledDate) return false;
+  const timeStr = scheduledTime || '00:00:00';
+  // Parse stored UTC date+time, then compare in local timezone
+  const trialUtcDate = new Date(`${scheduledDate.slice(0, 10)}T${timeStr}Z`);
+  if (isNaN(trialUtcDate.getTime())) return false;
   const now = new Date();
-  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-  return todayStr > scheduledDate.slice(0, 10);
+  const todayLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const trialLocal = new Date(trialUtcDate.getFullYear(), trialUtcDate.getMonth(), trialUtcDate.getDate());
+  return trialLocal < todayLocal;
 }
 
 function getCaseName(plaintiffGroups: string, defendantGroups: string) {
@@ -743,7 +748,7 @@ export default function AttorneyHomeSection({ onSectionChange }: { onSectionChan
 
                         {/* Join Trial Button */}
                         {c.AttorneyStatus === 'join_trial' && (
-                          isCaseDayOver(c.ScheduledDate) ? (
+                          isCaseDayOver(c.ScheduledDate, c.ScheduledTime) ? (
                             <button
                               disabled
                               onClick={(e) => e.stopPropagation()}
