@@ -199,7 +199,7 @@ Browse available cases in your area and choose the ones that fit your schedule. 
               /* YouTube iframe */
               <iframe
                 className="w-full h-full"
-                src={`https://quickverdictsvideo.blob.core.windows.net/videos/Juror How it Works for Info Page.mp4`}
+                src={`https://quickverdictsvideo.blob.core.windows.net/videos/How It Works for Jurors.mp4`}
                 title="YouTube video player"
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"

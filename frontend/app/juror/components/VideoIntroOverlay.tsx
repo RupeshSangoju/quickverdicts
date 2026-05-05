@@ -183,7 +183,7 @@ export default function VideoIntroOverlay({ open, onClose, onNext, sidebarCollap
               {/* Video Element */}
               <video
                 ref={videoRef}
-                src="/introduction_demo_video.mp4"
+                src="https://quickverdictsvideo.blob.core.windows.net/videos/QV Jury Onboarding 05-01-26.mp4"
                 className="w-full h-full object-contain"
                 preload="metadata"
                 onPlay={() => setIsPlaying(true)}

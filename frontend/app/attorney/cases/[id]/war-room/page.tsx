@@ -98,70 +98,19 @@ type CaseData = {
   UpdatedAt?: string;
 };
 
-// Timezone helper functions (same logic as AttorneyHomeSection)
-function getSystemTimezoneInfo() {
-  const offset = new Date().getTimezoneOffset();
-  const offsetHours = offset / 60;
-  const timezoneName = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const sign = offset <= 0 ? '+' : '-';
-  const absHours = Math.floor(Math.abs(offsetHours));
-  const minutes = Math.abs(offsetHours % 1) * 60;
-
-  return {
-    offsetHours: -offsetHours,
-    offsetMinutes: -offset,
-    timezoneName,
-    sign,
-    formatOffset: `UTC${sign}${String(absHours).padStart(2, '0')}:${String(Math.round(minutes)).padStart(2, '0')}`
-  };
-}
-
-function applyOffsetToUtcTime(utcTime: string, dateString: string, timezoneOffset: string, offsetMinutesMap: number) {
-  const offsetMinutes = offsetMinutesMap * 2;
-  if (offsetMinutes === null) throw new Error('Invalid timezoneOffset');
-
-  const utcMs = Date.parse(`${dateString}T${utcTime}Z`);
-  if (isNaN(utcMs)) throw new Error('Invalid UTC date/time');
-
-  const signChar = timezoneOffset.includes('+') ? '+' : timezoneOffset.includes('-') ? '-' : '+';
-  const resultMs = signChar === '+'
-    ? utcMs - offsetMinutes * 60_000
-    : utcMs + Math.abs(offsetMinutes) * 60_000;
-
-  const resultDate = new Date(resultMs);
-  return {
-    date: resultDate,
-    "12HoursTime": resultDate.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }),
-    "24HoursTime": resultDate.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: false })
-  };
-}
-
-function formatTime(timeString: string | undefined, scheduledDate?: string): string {
+function formatTime(timeString: string | undefined): string {
   if (!timeString) return "N/A";
   try {
-    // If scheduledDate is provided, apply timezone conversion (same as attorney home page)
-    if (scheduledDate) {
-      const systemTz = getSystemTimezoneInfo();
-      let zoneMap = '';
-
-      zoneMap = systemTz.formatOffset ? systemTz.formatOffset : "";
-      const offsetMinutes = typeof systemTz.offsetMinutes === 'number' ? systemTz.offsetMinutes : 0;
-
-      const dataSystemmap = applyOffsetToUtcTime(timeString, scheduledDate, zoneMap, offsetMinutes);
-      return dataSystemmap["24HoursTime"];
-    }
-
-    // Fallback to simple formatting if no scheduledDate
-    const cleanTime = timeString.split('.')[0];
-    const [hours, minutes] = cleanTime.split(':').map(Number);
-    const period = hours >= 12 ? 'PM' : 'AM';
-    const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
-    return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
-  } catch (e) {
+    const clean = timeString.split('.')[0];
+    const [hours, minutes] = clean.split(':');
+    const hour = parseInt(hours, 10);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour % 12 || 12;
+    return `${displayHour}:${minutes || '00'} ${ampm}`;
+  } catch {
     return timeString;
   }
 }
-
 const API_BASE = process.env.NEXT_PUBLIC_API_URL
   ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api$/, '')
   : "http://localhost:4000";
@@ -925,7 +874,7 @@ useEffect(() => {
                   Reschedule Request Pending Admin Approval
                 </h3>
                 <p className="text-sm text-amber-800">
-                  Your request to reschedule this case to <span className="font-semibold">{formatDateString(pendingRescheduleRequest.NewScheduledDate)}</span> at <span className="font-semibold">{formatTime(pendingRescheduleRequest.NewScheduledTime, pendingRescheduleRequest.NewScheduledDate)}</span> is awaiting admin review.
+                  Your request to reschedule this case to <span className="font-semibold">{formatDateString(pendingRescheduleRequest.NewScheduledDate)}</span> at <span className="font-semibold">{formatTime(pendingRescheduleRequest.NewScheduledTime)}</span> is awaiting admin review.
                 </p>
                 {pendingRescheduleRequest.AttorneyComments && (
                   <p className="text-xs text-amber-700 mt-2">
@@ -1271,7 +1220,7 @@ useEffect(() => {
                 <InfoCard
                   icon={ClockIcon}
                   label="Trial Time"
-                  value={formatTime(caseData.ScheduledTime, caseData.ScheduledDate)}
+                  value={formatTime(caseData.ScheduledTime)}
                   variant="blue"
                 />
                 <InfoCard
@@ -2349,7 +2298,7 @@ useEffect(() => {
                         Current Scheduled Time
                       </label>
                       <div className="p-3 bg-gray-100 rounded-lg text-sm text-gray-700">
-                        {caseData?.ScheduledTime ? formatTime(caseData.ScheduledTime, caseData.ScheduledDate) : "N/A"}
+                        {caseData?.ScheduledTime ? formatTime(caseData.ScheduledTime) : "N/A"}
                       </div>
                     </div>
                   </div>

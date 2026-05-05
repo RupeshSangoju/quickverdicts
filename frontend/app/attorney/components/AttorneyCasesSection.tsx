@@ -100,37 +100,28 @@ function getSystemTimezoneInfo() {
 }
 
 
-function formatTime(timeString: string, scheduledDate: string) {
-
-  const systemTz = getSystemTimezoneInfo();
-    let zoneMap  = '';
-
-    // use the formatOffset returned from getSystemTimezoneInfo and ensure offsetMinutes is numeric
-    zoneMap = systemTz.formatOffset ? systemTz.formatOffset : "";
-    const offsetMinutes = typeof systemTz.offsetMinutes === 'number' ? systemTz.offsetMinutes : 0;
-
-    // console.log(applyOffsetToUtcTime(timeString, scheduledDate, zoneMap, offsetMinutes));
-
-    const dataSystemmap = applyOffsetToUtcTime(timeString, scheduledDate, zoneMap, offsetMinutes);
-    return dataSystemmap["24HoursTime"];
-
-
-  // try {
-  //   const [hours, minutes] = timeString.split(':');
-  //   const hour = parseInt(hours);
-  //   const ampm = hour >= 12 ? 'PM' : 'AM';
-  //   const displayHour = hour % 12 || 12;
-  //   return `${displayHour}:${minutes} ${ampm}`;
-  // } catch {
-  //   return timeString;
-  // }
+function formatTime(timeString: string, _scheduledDate?: string) {
+  try {
+    const [hours, minutes] = timeString.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour % 12 || 12;
+    return `${displayHour}:${minutes} ${ampm}`;
+  } catch {
+    return timeString;
+  }
 }
 
-function isCaseDayOver(scheduledDate: string): boolean {
+function isCaseDayOver(scheduledDate: string, scheduledTime?: string): boolean {
   if (!scheduledDate) return false;
+  const timeStr = scheduledTime || '00:00:00';
+  // Stored time is local — parse without Z so JS treats it as local
+  const trialDate = new Date(`${scheduledDate.slice(0, 10)}T${timeStr}`);
+  if (isNaN(trialDate.getTime())) return false;
   const now = new Date();
-  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-  return todayStr > scheduledDate.slice(0, 10);
+  const todayLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const trialLocal = new Date(trialDate.getFullYear(), trialDate.getMonth(), trialDate.getDate());
+  return trialLocal < todayLocal;
 }
 
 function getTimeWarning(scheduledDate: string, scheduledTime: string) {
@@ -364,7 +355,7 @@ export default function AttorneyCasesSection({ onBack }: AttorneyCasesSectionPro
     if (c.AdminApprovalStatus === "approved") {
       // Ready for trial
       if (c.AttorneyStatus === "join_trial") {
-        if (isCaseDayOver(c.ScheduledDate)) {
+        if (isCaseDayOver(c.ScheduledDate, c.ScheduledTime)) {
           return (
             <button
               disabled

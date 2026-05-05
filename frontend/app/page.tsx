@@ -325,7 +325,15 @@ cases in:            </p>
           <div className="border-t border-gray-700 pt-8 flex flex-wrap justify-between items-center">
             <div className="flex space-x-6 text-sm text-gray-300">
               <Link href="/" className="hover:text-white">Quick Verdicts<sup className="text-[12px]">™</sup></Link>
-              <Link href="/" className="hover:text-white">Privacy</Link>
+
+                <a
+    href="https://quickverdictsvideo.blob.core.windows.net/videos/QV Privacy Policy.pdf"
+    target="_blank"
+    rel="noopener noreferrer"
+    className="hover:underline"
+  >
+    Privacy
+  </a>
                 <a
     href="https://quickverdictsvideo.blob.core.windows.net/videos/QV%20Terms%20and%20Conditions.pdf"
     target="_blank"
