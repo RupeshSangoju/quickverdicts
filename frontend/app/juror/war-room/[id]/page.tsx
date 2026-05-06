@@ -56,6 +56,13 @@ function isCaseDayOver(scheduledDate: string): boolean {
   return todayStr > scheduledDate.slice(0, 10);
 }
 
+function isTrialDay(scheduledDate: string): boolean {
+  if (!scheduledDate) return false;
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  return scheduledDate.slice(0, 10) === todayStr;
+}
+
 function getCaseName(plaintiffGroups: string, defendantGroups: string) {
   try {
     const plaintiffs = JSON.parse(plaintiffGroups);
@@ -708,7 +715,7 @@ export default function JurorWarRoomPage() {
                     <p className="font-medium text-[#0A2342]">{doc.FileName}</p>
                     <p className="text-sm text-[#455A7C] italic">{doc.Description}</p>
                   </div>
-                  {!isCaseDayOver(caseData.ScheduledDate) && (
+                  {isTrialDay(caseData.ScheduledDate) ? (
                     <button
                       onClick={() => handleViewDocument(doc)}
                       className="flex items-center gap-2 px-4 py-2 bg-[#16305B] text-white rounded hover:bg-[#0A2342] transition"
@@ -716,6 +723,11 @@ export default function JurorWarRoomPage() {
                       <EyeIcon className="w-5 h-5" />
                       <span>View</span>
                     </button>
+                  ) : (
+                    <div className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-400 rounded cursor-not-allowed text-sm">
+                      <EyeIcon className="w-5 h-5" />
+                      <span>{isCaseDayOver(caseData.ScheduledDate) ? 'Expired' : 'Trial Day Only'}</span>
+                    </div>
                   )}
                 </div>
               ))}
@@ -725,7 +737,7 @@ export default function JurorWarRoomPage() {
 
         <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
           <p className="text-sm text-blue-800">
-            <strong>Note:</strong> This is a read-only view. You can view documents in your browser, but cannot make any changes to case materials. Please review all materials before the trial date.
+            <strong>Note:</strong> Case information is available at any time. Document viewing is enabled only on the trial day and cannot be downloaded or modified.
           </p>
         </div>
 {/* Team Members Section 

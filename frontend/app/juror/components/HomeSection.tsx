@@ -768,43 +768,23 @@ if (isCaseDayOver(app.ScheduledDate)) {
                     );
                   }
                 } else {
-                  // War room state (default for approved) - only clickable 1 hour before trial
-                  // Combine ScheduledDate and ScheduledTime for accurate timing
-                  const trialDateTime = new Date(`${app.ScheduledDate}T${app.ScheduledTime || '00:00:00'}`);
-                  const now = new Date();
-                  const hoursUntilTrial = (trialDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
-                  const isAccessible = hoursUntilTrial <= 1; // Can access 1 hour before trial
-
+                  // War room state (default for approved) - case info always accessible
                   statusBadge = {
-                    text: isAccessible ? 'War Room Available' : 'Preparing for Trial',
-                    color: isAccessible ? 'bg-green-100 text-green-800 border-green-300' : 'bg-blue-100 text-blue-800 border-blue-300',
-                    icon: isAccessible ? '✓' : '📋'
+                    text: 'Preparing for Trial',
+                    color: 'bg-blue-100 text-blue-800 border-blue-300',
+                    icon: '📋'
                   };
 
-                  actionButtons = isAccessible ? (
+                  actionButtons = (
                     <button
-                      className="w-full px-3 py-2 bg-green-600 text-white rounded-lg text-xs font-semibold hover:bg-green-700 transition-colors flex items-center justify-center gap-1.5"
+                      className="w-full px-3 py-2 bg-[#0C2D57] text-white rounded-lg text-xs font-semibold hover:bg-[#0a2347] transition-colors flex items-center justify-center gap-1.5"
                       onClick={() => router.push(`/juror/war-room/${app.CaseId}`)}
                     >
                       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
-                      Enter War Room
+                      Case Information
                     </button>
-                  ) : (
-                    <div className="space-y-2">
-                      <div className="w-full px-3 py-2 bg-slate-100 text-slate-500 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 cursor-not-allowed">
-                        <Lock className="w-3.5 h-3.5" />
-                        Courtroom Locked
-                      </div>
-                      <p className="text-xs text-center text-slate-600">
-                        {hoursUntilTrial > 24
-                          ? `Available ${Math.floor(hoursUntilTrial / 24)} days before trial`
-                          : hoursUntilTrial > 1
-                          ? `Available in ${Math.ceil(hoursUntilTrial)} hours`
-                          : 'Available soon'}
-                      </p>
-                    </div>
                   );
                 }
 
