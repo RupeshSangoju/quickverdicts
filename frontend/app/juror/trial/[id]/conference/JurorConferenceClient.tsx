@@ -239,6 +239,11 @@ export default function JurorConferenceClient() {
       if (callRef.current) {
         callRef.current.hangUp({ forEveryone: false }).catch((e: any) => console.error("Hangup error:", e));
       }
+      if (callAgentRef.current) {
+        callAgentRef.current.dispose().catch(() => {});
+        callAgentRef.current = null;
+      }
+      localVideoStream.current = null;
       remoteVideoRefs.current.forEach((r) => r.renderer?.dispose());
       // Dispose any thumbnail and featured renderers
       thumbnailRenderers.current.forEach(r => r?.dispose());
@@ -958,12 +963,25 @@ export default function JurorConferenceClient() {
 
   const leaveCall = async () => {
     try {
+      if (call && localVideoStream.current) {
+        try { await call.stopVideo(localVideoStream.current); } catch {}
+      }
       if (call) await call.hangUp();
+      if (callAgentRef.current) {
+        await callAgentRef.current.dispose();
+        callAgentRef.current = null;
+      }
+      localVideoStream.current = null;
       if (chatClient) await chatClient.stopRealtimeNotifications();
       toast.success("You have left the trial successfully", { duration: 3000 });
       router.push("/juror");
     } catch (error) {
       console.log("Leave call completed with cleanup:", error);
+      if (callAgentRef.current) {
+        try { await callAgentRef.current.dispose(); } catch {}
+        callAgentRef.current = null;
+      }
+      localVideoStream.current = null;
       router.push("/juror");
     }
   };
