@@ -770,7 +770,7 @@ if (isCaseDayOver(app.ScheduledDate)) {
                     // Trial is in the future — show Case Information only
                     actionButtons = (
                       <button
-                        className="w-full px-3 py-2 bg-[#0C2D57] text-white rounded-lg text-xs font-semibold hover:bg-[#0a2347] transition-colors flex items-center justify-center gap-1.5"
+                        className="w-full px-3 py-2 bg-[#0C2D57] text-white rounded-lg text-xs font-semibold hover:bg-[#0a2347] transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                         onClick={() => router.push(`/juror/war-room/${app.CaseId}`)}
                       >
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
