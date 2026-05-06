@@ -206,7 +206,10 @@ if (process.env.NODE_ENV !== "production") {
     "http://localhost:3001",
     "http://localhost:4000",
     "https://localhost:3000",
-    "https://localhost:3001"
+    "https://localhost:3001",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001",
+    "http://127.0.0.1:4000",
   );
 }
 
@@ -246,7 +249,14 @@ app.use(
       "X-Requested-With",
       "Accept",
     ],
-    exposedHeaders: ["X-Request-ID", "X-Response-Time"],
+    exposedHeaders: [
+      "X-Request-ID",
+      "X-Response-Time",
+      "RateLimit-Limit",
+      "RateLimit-Remaining",
+      "RateLimit-Reset",
+      "RateLimit-Policy",
+    ],
     maxAge: 86400, // 24 hours - cache preflight requests
   })
 );
