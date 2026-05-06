@@ -327,13 +327,7 @@ const formatExpiry = (value: string) => {
             <div className="h-8 w-px bg-gray-300" />
             <h1 className="text-3xl font-bold text-[#16305B]">My Profile</h1>
           </div>
-          <button 
-            className="text-gray-500 text-sm flex items-center gap-2 hover:text-[#16305B] transition-colors group" 
-            onClick={() => window.open('/help', '_blank')}
-          >
-            <HelpCircle size={18} className="group-hover:scale-110 transition-transform" />
-            <span>Need Help?</span>
-          </button>
+
         </div>
 
         {/* Success Message */}

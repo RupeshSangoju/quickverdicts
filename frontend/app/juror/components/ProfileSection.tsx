@@ -356,10 +356,7 @@ export default function ProfileSection() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-2xl font-bold text-[#0C2D57]">Profile</h1>
-          <button className="text-gray-500 text-sm flex items-center gap-1 hover:underline" style={{ marginRight: 8 }}>
-            <HelpCircle size={16} className="inline-block align-middle" />
-            <span className="inline-block align-middle">Help</span>
-          </button>
+
         </div>
 
         {/* Main content grid */}
