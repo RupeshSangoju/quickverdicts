@@ -115,13 +115,19 @@ function formatTime(timeString: string, _scheduledDate?: string) {
 function isCaseDayOver(scheduledDate: string, scheduledTime?: string): boolean {
   if (!scheduledDate) return false;
   const timeStr = scheduledTime || '00:00:00';
-  // Stored time is local — parse without Z so JS treats it as local
   const trialDate = new Date(`${scheduledDate.slice(0, 10)}T${timeStr}`);
   if (isNaN(trialDate.getTime())) return false;
   const now = new Date();
   const todayLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const trialLocal = new Date(trialDate.getFullYear(), trialDate.getMonth(), trialDate.getDate());
   return trialLocal < todayLocal;
+}
+
+function isTrialDay(scheduledDate: string): boolean {
+  if (!scheduledDate) return false;
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  return scheduledDate.slice(0, 10) === todayStr;
 }
 
 function getTimeWarning(scheduledDate: string, scheduledTime: string) {
@@ -366,28 +372,31 @@ export default function AttorneyCasesSection({ onBack }: AttorneyCasesSectionPro
             </button>
           );
         }
-        return (
-          <button
-            onClick={(e) => handleJoinTrial(e, c.Id)}
-            className="w-full px-4 py-2.5 bg-green-600 text-white rounded-lg flex items-center justify-center gap-2 text-sm font-semibold hover:bg-green-700 transition-colors shadow-sm hover:shadow-md"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-4 w-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
+        if (isTrialDay(c.ScheduledDate)) {
+          return (
+            <button
+              onClick={(e) => handleJoinTrial(e, c.Id)}
+              className="w-full px-4 py-2.5 bg-green-600 text-white rounded-lg flex items-center justify-center gap-2 text-sm font-semibold hover:bg-green-700 transition-colors shadow-sm hover:shadow-md"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
-              />
-            </svg>
-            Join Trial
-          </button>
-        );
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                />
+              </svg>
+              Join Trial
+            </button>
+          );
+        }
+        // Trial day not yet started — fall through to War Room button
       }
 
       // Trial completed - view details

@@ -17,6 +17,13 @@ function isCaseDayOver(scheduledDate: string): boolean {
   return todayStr > scheduledDate.slice(0, 10);
 }
 
+function isTrialDay(scheduledDate: string): boolean {
+  if (!scheduledDate) return false;
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  return scheduledDate.slice(0, 10) === todayStr;
+}
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL
   ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api$/, '')
   : "http://localhost:4000";
@@ -287,7 +294,7 @@ export default function AssignedCasesSection() {
                         <span>Case Information</span>
                         <ArrowRightIcon className="w-4 h-4" />
                       </button>
-                      {caseItem.AttorneyStatus === "join_trial" && !isCaseDayOver(caseItem.ScheduledDate) && (
+                      {caseItem.AttorneyStatus === "join_trial" && isTrialDay(caseItem.ScheduledDate) && !isCaseDayOver(caseItem.ScheduledDate) && (
                         <button
                           className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition cursor-pointer"
                           onClick={() => window.open(`/juror/trial/${caseItem.CaseId}/setup`, '_blank')}

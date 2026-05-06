@@ -55,10 +55,16 @@ type PaymentStats = {
 
 // Use getToken from apiClient (imported above)
 
+function isTrialDay(scheduledDate: string): boolean {
+  if (!scheduledDate) return false;
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  return scheduledDate.slice(0, 10) === todayStr;
+}
+
 function isCaseDayOver(scheduledDate: string, scheduledTime?: string): boolean {
   if (!scheduledDate) return false;
   const timeStr = scheduledTime || '00:00:00';
-  // Stored time is local — parse without Z so JS treats it as local
   const trialDate = new Date(`${scheduledDate.slice(0, 10)}T${timeStr}`);
   if (isNaN(trialDate.getTime())) return false;
   const now = new Date();
@@ -701,7 +707,7 @@ export default function AttorneyHomeSection({ onSectionChange }: { onSectionChan
                             >
                               Trial Day Ended
                             </button>
-                          ) : (
+                          ) : isTrialDay(c.ScheduledDate) ? (
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -715,7 +721,7 @@ export default function AttorneyHomeSection({ onSectionChange }: { onSectionChan
                               </svg>
                               Join Trial
                             </button>
-                          )
+                          ) : null
                         )}
                       </div>
                     </div>

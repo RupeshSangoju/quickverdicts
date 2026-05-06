@@ -22,6 +22,13 @@ function isCaseDayOver(scheduledDate: string): boolean {
   return todayStr > scheduledDate.slice(0, 10);
 }
 
+function isTrialDay(scheduledDate: string): boolean {
+  if (!scheduledDate) return false;
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  return scheduledDate.slice(0, 10) === todayStr;
+}
+
 const BLUE = "#0A2342";
 const BG = "#FAF9F6";
 const LIGHT_BLUE = "#e6ecf5";
@@ -3464,7 +3471,7 @@ export default function AdminDashboard() {
               </div>
 
               {/* Join Trial Button - Admin Exclusive */}
-              {(selectedCase.AttorneyStatus === 'join_trial' || selectedCase.AttorneyStatus === 'view_details') && (
+              {(selectedCase.AttorneyStatus === 'join_trial' || selectedCase.AttorneyStatus === 'view_details') && (isTrialDay(selectedCase.ScheduledDate) || isCaseDayOver(selectedCase.ScheduledDate)) && (
                 <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl p-6 shadow-lg">
                   <div className="flex items-center justify-between">
                     <div>
