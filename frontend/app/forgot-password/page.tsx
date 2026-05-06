@@ -65,7 +65,7 @@ export default function ForgotPassword() {
 
     setLoading(true);
     try {
-      const response = await api.post("/auth/request-password-reset", {
+      const response = await api.post("api/auth/request-password-reset", {
         email: email.trim().toLowerCase(),
         userType,
       });
@@ -111,7 +111,7 @@ export default function ForgotPassword() {
 
     setLoading(true);
     try {
-      const response = await api.post("/auth/verify-password-reset-otp", {
+      const response = await api.post("api/auth/verify-password-reset-otp", {
         email: email.trim().toLowerCase(),
         otp,
         userType,
@@ -162,7 +162,7 @@ export default function ForgotPassword() {
 
     setLoading(true);
     try {
-      const response = await api.post("/auth/reset-password", {
+      const response = await api.post("api/auth/reset-password", {
         email: email.trim().toLowerCase(),
         otp,
         newPassword,
@@ -197,7 +197,7 @@ export default function ForgotPassword() {
     setLoading(true);
 
     try {
-      const response = await api.post("/auth/request-password-reset", {
+      const response = await api.post("api/auth/request-password-reset", {
         email: email.trim().toLowerCase(),
         userType,
       });
