@@ -698,7 +698,7 @@ export default function AttorneyHomeSection({ onSectionChange }: { onSectionChan
                         )}
 
                         {/* Join Trial Button */}
-                        {(c.AttorneyStatus === 'join_trial' || (isTrialDay(c.ScheduledDate) && c.AttorneyStatus !== 'view_details')) && (
+                        {c.AttorneyStatus === 'join_trial' && (
                           isCaseDayOver(c.ScheduledDate, c.ScheduledTime) ? (
                             <button
                               disabled
@@ -707,7 +707,7 @@ export default function AttorneyHomeSection({ onSectionChange }: { onSectionChan
                             >
                               Trial Day Ended
                             </button>
-                          ) : (
+                          ) : isTrialDay(c.ScheduledDate) ? (
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -721,7 +721,7 @@ export default function AttorneyHomeSection({ onSectionChange }: { onSectionChan
                               </svg>
                               Join Trial
                             </button>
-                          )
+                          ) : null
                         )}
                       </div>
                     </div>

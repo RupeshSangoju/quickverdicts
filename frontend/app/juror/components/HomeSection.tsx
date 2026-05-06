@@ -709,7 +709,7 @@ export default function HomeSection({ sidebarCollapsed }: { sidebarCollapsed: bo
                       View Details
                     </button>
                   );
-                } else if (app.AttorneyStatus === "join_trial" || (isTrialDay(app.ScheduledDate) && app.AttorneyStatus !== "view_details")) {
+                } else if (app.AttorneyStatus === "join_trial") {
                   // Trial is ready to start
                   statusBadge = {
                     text: 'Ready to Join Trial',
@@ -746,27 +746,17 @@ if (isCaseDayOver(app.ScheduledDate)) {
       </button>
     </div>
   );
-} else {
-                    // Combine ScheduledDate and ScheduledTime for accurate timing
-                    const trialDateTime = new Date(`${app.ScheduledDate}T${app.ScheduledTime || '00:00:00'}`);
-                    const now = new Date();
-                    const hoursUntilTrial = (trialDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
-                    const isTrialSoon = hoursUntilTrial <= 24 && hoursUntilTrial >= -2;
-
+} else if (isTrialDay(app.ScheduledDate)) {
                     actionButtons = (
                       <div className="space-y-1.5">
                         <button
-                          className={`w-full px-3 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 ${
-                            isTrialSoon
-                              ? 'bg-green-600 text-white hover:bg-green-700 animate-pulse'
-                              : 'bg-green-600 text-white hover:bg-green-700'
-                          }`}
+                          className="w-full px-3 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 bg-green-600 text-white hover:bg-green-700 animate-pulse"
                           onClick={() => window.open(`/juror/trial/${app.CaseId}/setup`, '_blank')}
                         >
                           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                           </svg>
-                          {isTrialSoon ? 'Join Now' : 'Join Trial'}
+                          Join Trial
                         </button>
                         <button
                           className="w-full px-3 py-1.5 bg-slate-100 text-[#0C2D57] rounded-lg text-xs font-medium hover:bg-slate-200 transition-colors cursor-pointer"
@@ -933,7 +923,7 @@ if (isCaseDayOver(app.ScheduledDate)) {
                         View Details
                       </button>
                     );
-                  } else if (app.AttorneyStatus === "join_trial" || (isTrialDay(app.ScheduledDate) && app.AttorneyStatus !== "view_details")) {
+                  } else if (app.AttorneyStatus === "join_trial") {
                     // Trial is ready to start
                     statusBadge = {
                       text: 'Trial Room - Ready to Join',
@@ -959,27 +949,17 @@ if (isCaseDayOver(app.ScheduledDate)) {
                         View Details
                       </button>
                     );
-                    } else {
-                      // Check if trial is happening soon
-                      const trialDateTime = new Date(`${app.ScheduledDate}T${app.ScheduledTime || '00:00:00'}`);
-                      const now = new Date();
-                      const hoursUntilTrial = (trialDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
-                      const isTrialSoon = hoursUntilTrial <= 24 && hoursUntilTrial >= -2;
-
+                    } else if (isTrialDay(app.ScheduledDate)) {
                       actionButtons = (
                         <div className="space-y-1.5">
                           <button
-                            className={`w-full px-3 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 ${
-                              isTrialSoon
-                                ? 'bg-green-600 text-white hover:bg-green-700 animate-pulse'
-                                : 'bg-green-600 text-white hover:bg-green-700'
-                            }`}
+                            className="w-full px-3 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 bg-green-600 text-white hover:bg-green-700 animate-pulse"
                             onClick={() => window.open(`/juror/trial/${app.CaseId}/setup`, '_blank')}
                           >
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                             </svg>
-                            {isTrialSoon ? 'Join Now' : 'Join Trial'}
+                            Join Trial
                           </button>
                           <button
                             className="w-full px-3 py-1.5 bg-gray-100 text-[#0C2D57] rounded-lg text-xs font-medium hover:bg-gray-200 transition-colors"

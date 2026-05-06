@@ -3471,7 +3471,7 @@ export default function AdminDashboard() {
               </div>
 
               {/* Join Trial Button - Admin Exclusive */}
-              {(selectedCase.AttorneyStatus === 'join_trial' || selectedCase.AttorneyStatus === 'view_details' || isTrialDay(selectedCase.ScheduledDate)) && (
+              {(selectedCase.AttorneyStatus === 'join_trial' || selectedCase.AttorneyStatus === 'view_details') && (isTrialDay(selectedCase.ScheduledDate) || isCaseDayOver(selectedCase.ScheduledDate)) && (
                 <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl p-6 shadow-lg">
                   <div className="flex items-center justify-between">
                     <div>
