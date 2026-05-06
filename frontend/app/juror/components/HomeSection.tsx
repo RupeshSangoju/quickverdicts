@@ -28,6 +28,13 @@ function isCaseDayOver(scheduledDate: string): boolean {
   return todayStr > scheduledDate.slice(0, 10);
 }
 
+function isTrialDay(scheduledDate: string): boolean {
+  if (!scheduledDate) return false;
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  return scheduledDate.slice(0, 10) === todayStr;
+}
+
 function getCaseName(plaintiffGroups: string, defendantGroups: string) {
   try {
     const plaintiffs = JSON.parse(plaintiffGroups);
@@ -702,7 +709,7 @@ export default function HomeSection({ sidebarCollapsed }: { sidebarCollapsed: bo
                       View Details
                     </button>
                   );
-                } else if (app.AttorneyStatus === "join_trial") {
+                } else if (app.AttorneyStatus === "join_trial" || (isTrialDay(app.ScheduledDate) && app.AttorneyStatus !== "view_details")) {
                   // Trial is ready to start
                   statusBadge = {
                     text: 'Ready to Join Trial',
@@ -926,7 +933,7 @@ if (isCaseDayOver(app.ScheduledDate)) {
                         View Details
                       </button>
                     );
-                  } else if (app.AttorneyStatus === "join_trial") {
+                  } else if (app.AttorneyStatus === "join_trial" || (isTrialDay(app.ScheduledDate) && app.AttorneyStatus !== "view_details")) {
                     // Trial is ready to start
                     statusBadge = {
                       text: 'Trial Room - Ready to Join',

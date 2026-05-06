@@ -115,13 +115,19 @@ function formatTime(timeString: string, _scheduledDate?: string) {
 function isCaseDayOver(scheduledDate: string, scheduledTime?: string): boolean {
   if (!scheduledDate) return false;
   const timeStr = scheduledTime || '00:00:00';
-  // Stored time is local — parse without Z so JS treats it as local
   const trialDate = new Date(`${scheduledDate.slice(0, 10)}T${timeStr}`);
   if (isNaN(trialDate.getTime())) return false;
   const now = new Date();
   const todayLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const trialLocal = new Date(trialDate.getFullYear(), trialDate.getMonth(), trialDate.getDate());
   return trialLocal < todayLocal;
+}
+
+function isTrialDay(scheduledDate: string): boolean {
+  if (!scheduledDate) return false;
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  return scheduledDate.slice(0, 10) === todayStr;
 }
 
 function getTimeWarning(scheduledDate: string, scheduledTime: string) {
@@ -354,7 +360,7 @@ export default function AttorneyCasesSection({ onBack }: AttorneyCasesSectionPro
     // Case is approved and in different attorney statuses
     if (c.AdminApprovalStatus === "approved") {
       // Ready for trial
-      if (c.AttorneyStatus === "join_trial") {
+      if (c.AttorneyStatus === "join_trial" || (isTrialDay(c.ScheduledDate) && c.AttorneyStatus !== "view_details")) {
         if (isCaseDayOver(c.ScheduledDate, c.ScheduledTime)) {
           return (
             <button
