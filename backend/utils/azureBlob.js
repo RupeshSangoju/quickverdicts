@@ -650,7 +650,7 @@ async function generateSasUrl(fileUrl, expiryMinutes = 60) {
       containerName: CONTAINER_NAME,
       blobName,
       permissions: BlobSASPermissions.parse("r"),
-      startsOn: new Date(),
+      startsOn: new Date(Date.now() - 5 * 60 * 1000), // 5 min in the past to absorb clock skew
       expiresOn: new Date(Date.now() + expiryMinutes * 60 * 1000),
     };
 
@@ -681,7 +681,7 @@ async function generateUploadSasUrl(originalFileName, expiryMinutes = 120) {
     containerName: CONTAINER_NAME,
     blobName,
     permissions: BlobSASPermissions.parse("cw"), // create + write
-    startsOn: new Date(),
+    startsOn: new Date(Date.now() - 5 * 60 * 1000), // 5 min in the past to absorb clock skew
     expiresOn: new Date(Date.now() + expiryMinutes * 60 * 1000),
   };
 
