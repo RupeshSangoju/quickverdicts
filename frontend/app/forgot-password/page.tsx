@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowLeft, AlertCircle, CheckCircle } from "lucide-react";
-import { api, request } from "@/lib/apiClient";
+import { api } from "@/lib/apiClient";
+import axios from "axios";
 import { Eye, EyeOff } from "lucide-react"; // or any icon library
 const BLUE = "#0A2342";
 const BG = "#FAF9F6";
@@ -29,6 +30,8 @@ export default function ForgotPassword() {
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
+  const [attemptsRemaining, setAttemptsRemaining] = useState<number | null>(null);
+  const MAX_RESET_ATTEMPTS = 5;
 
   // OTP countdown timer
   useEffect(() => {
@@ -62,23 +65,31 @@ export default function ForgotPassword() {
 
     setLoading(true);
     try {
-      const data = await request<ApiResponse>(
-        api.post("/auth/request-password-reset", {
-          email: email.trim().toLowerCase(),
-          userType,
-        })
-      );
+      const response = await api.post("api/auth/request-password-reset", {
+        email: email.trim().toLowerCase(),
+        userType,
+      });
+      const data = response.data;
+      const remaining = response.headers["ratelimit-remaining"] ?? response.headers["x-ratelimit-remaining"];
+      if (remaining !== undefined) setAttemptsRemaining(parseInt(remaining));
 
       if (data.success) {
         setSuccess("Verification code sent to your email");
         setStep("otp");
-        setCountdown(600); // 10 minutes
+        setCountdown(600);
       } else {
         setError(data.message || "Failed to send verification code");
       }
     } catch (err: any) {
-      if (err.message.includes("Too many")) {
-        setError("Too many reset attempts. Please try again later.");
+      if (axios.isAxiosError(err) && err.response?.status === 429) {
+        const resetHeader = err.response.headers["ratelimit-reset"];
+        setAttemptsRemaining(0);
+        if (resetHeader) {
+          const resetAt = new Date(parseInt(resetHeader) * 1000);
+          setError(`Too many attempts. Try again at ${resetAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}.`);
+        } else {
+          setError("Too many attempts. Please try again in 1 hour.");
+        }
       } else {
         setError(err.message || "Network error. Please try again.");
       }
@@ -100,13 +111,12 @@ export default function ForgotPassword() {
 
     setLoading(true);
     try {
-      const data = await request<ApiResponse>(
-        api.post("/auth/verify-password-reset-otp", {
-          email: email.trim().toLowerCase(),
-          otp,
-          userType,
-        })
-      );
+      const response = await api.post("api/auth/verify-password-reset-otp", {
+        email: email.trim().toLowerCase(),
+        otp,
+        userType,
+      });
+      const data = response.data;
 
       if (data.success) {
         setSuccess("Code verified successfully");
@@ -152,14 +162,13 @@ export default function ForgotPassword() {
 
     setLoading(true);
     try {
-      const data = await request<ApiResponse>(
-        api.post("/auth/reset-password", {
-          email: email.trim().toLowerCase(),
-          otp,
-          newPassword,
-          userType,
-        })
-      );
+      const response = await api.post("api/auth/reset-password", {
+        email: email.trim().toLowerCase(),
+        otp,
+        newPassword,
+        userType,
+      });
+      const data = response.data;
 
       if (data.success) {
         setSuccess("Password reset successfully! Redirecting to login...");
@@ -188,21 +197,33 @@ export default function ForgotPassword() {
     setLoading(true);
 
     try {
-      const data = await request<ApiResponse>(
-        api.post("/auth/request-password-reset", {
-          email: email.trim().toLowerCase(),
-          userType,
-        })
-      );
+      const response = await api.post("api/auth/request-password-reset", {
+        email: email.trim().toLowerCase(),
+        userType,
+      });
+      const data = response.data;
+      const remaining = response.headers["ratelimit-remaining"] ?? response.headers["x-ratelimit-remaining"];
+      if (remaining !== undefined) setAttemptsRemaining(parseInt(remaining));
 
       if (data.success) {
         setSuccess("New verification code sent to your email");
-        setCountdown(600); // Reset countdown
+        setCountdown(600);
       } else {
         setError(data.message || "Failed to resend code");
       }
     } catch (err: any) {
-      setError(err.message || "Failed to resend code");
+      if (axios.isAxiosError(err) && err.response?.status === 429) {
+        const resetHeader = err.response.headers["ratelimit-reset"];
+        setAttemptsRemaining(0);
+        if (resetHeader) {
+          const resetAt = new Date(parseInt(resetHeader) * 1000);
+          setError(`Too many attempts. Try again at ${resetAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}.`);
+        } else {
+          setError("Too many attempts. Please try again in 1 hour.");
+        }
+      } else {
+        setError(err.message || "Failed to resend code");
+      }
     } finally {
       setLoading(false);
     }
@@ -389,11 +410,20 @@ export default function ForgotPassword() {
                   className={`w-full rounded px-4 py-3 font-semibold transition-colors text-white focus:outline-none focus:ring-2 focus:ring-[#0A2342] focus:ring-offset-2 ${
                     loading
                       ? "bg-gray-400 cursor-not-allowed"
-                      : "bg-[#0A2342] hover:bg-[#132c54]"
+                      : "bg-[#0A2342] hover:bg-[#132c54] cursor-pointer"
                   }`}
                 >
                   {loading ? "Sending..." : "Send Verification Code"}
                 </button>
+
+                {/* Attempts remaining indicator */}
+                {attemptsRemaining !== null && (
+                  <p className={`text-xs text-center mt-1 ${attemptsRemaining <= 1 ? "text-red-500" : "text-gray-500"}`}>
+                    {attemptsRemaining === 0
+                      ? "No attempts remaining. Please wait before trying again."
+                      : `${attemptsRemaining} of ${MAX_RESET_ATTEMPTS} attempts remaining`}
+                  </p>
+                )}
               </form>
             )}
 

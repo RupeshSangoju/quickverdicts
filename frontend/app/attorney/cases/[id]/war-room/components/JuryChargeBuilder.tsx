@@ -472,7 +472,7 @@ export default function JuryChargeBuilder({
                   }
                 }}
                 disabled={isLocked}
-                className="flex items-center gap-1.5 px-4 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                className="flex items-center gap-1.5 px-4 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 Add Questions
@@ -607,7 +607,7 @@ export default function JuryChargeBuilder({
             <button
               onClick={handleAddAnother}
               disabled={saving}
-              className="flex items-center gap-2 px-5 py-3 bg-white border-2 border-blue-600 text-blue-700 rounded-xl font-bold hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md"
+              className="flex items-center gap-2 px-5 py-3 bg-white border-2 border-blue-600 text-blue-700 rounded-xl font-bold hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md cursor-pointer"
             >
               <Plus className="w-5 h-5" />
               Add Another Question
@@ -616,7 +616,7 @@ export default function JuryChargeBuilder({
             <button
               onClick={handleSaveAllQuestions}
               disabled={saving}
-              className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl font-bold hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg"
+              className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl font-bold hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg cursor-pointer"
             >
               {saving ? (
                 <>
@@ -637,7 +637,7 @@ export default function JuryChargeBuilder({
                 setNewQuestions([]);
               }}
               disabled={saving}
-              className="px-5 py-3 bg-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              className="px-5 py-3 bg-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
             >
               Cancel
             </button>
@@ -818,7 +818,7 @@ function QuestionForm({
         <button
           onClick={onCancel}
           disabled={saving}
-          className="flex items-center gap-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition"
+          className="flex items-center gap-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition cursor-pointer"
         >
           <X className="w-4 h-4" />
           Cancel
@@ -975,14 +975,14 @@ function QuestionCard({
           <div className="flex gap-2 ml-4">
             <button
               onClick={onEdit}
-              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
               title="Edit"
             >
               <Edit2 className="w-4 h-4" />
             </button>
             <button
               onClick={onDelete}
-              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer"
               title="Delete"
             >
               <Trash2 className="w-4 h-4" />

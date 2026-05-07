@@ -90,9 +90,9 @@ const otpVerificationLimiter = createRateLimiter(
   "Too many OTP verification attempts. Try again in 15 minutes."
 );
 const passwordResetLimiter = createRateLimiter(
-  parseInt(process.env.RATE_LIMIT_PASSWORD_RESET) || (isDev ? 50 : 3),
+  parseInt(process.env.RATE_LIMIT_PASSWORD_RESET) || (isDev ? 50 : 5),
   60,
-  "Too many password reset requests. Try again in 1 hour."
+  "Too many password reset requests. Please try again in 1 hour."
 );
 const emailVerificationLimiter = createRateLimiter(
   parseInt(process.env.RATE_LIMIT_EMAIL_VERIFY) || (isDev ? 50 : 3),

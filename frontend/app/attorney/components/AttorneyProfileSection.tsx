@@ -327,13 +327,7 @@ const formatExpiry = (value: string) => {
             <div className="h-8 w-px bg-gray-300" />
             <h1 className="text-3xl font-bold text-[#16305B]">My Profile</h1>
           </div>
-          <button 
-            className="text-gray-500 text-sm flex items-center gap-2 hover:text-[#16305B] transition-colors group" 
-            onClick={() => window.open('/help', '_blank')}
-          >
-            <HelpCircle size={18} className="group-hover:scale-110 transition-transform" />
-            <span>Need Help?</span>
-          </button>
+
         </div>
 
         {/* Success Message */}
@@ -556,7 +550,7 @@ const formatExpiry = (value: string) => {
                 <div className="flex gap-3 mt-6 pt-4 border-t">
                   <button
                     type="submit"
-                    className="flex-1 px-6 py-3 bg-[#16305B] text-white rounded-lg hover:bg-[#1e417a] font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm hover:shadow-md"
+                    className="flex-1 px-6 py-3 bg-[#16305B] text-white rounded-lg hover:bg-[#1e417a] font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm hover:shadow-md cursor-pointer"
                     disabled={updating}
                   >
                     {updating ? (
@@ -572,7 +566,7 @@ const formatExpiry = (value: string) => {
                       setShowEdit(false);
                       setErrorMessage(null);
                     }}
-                    className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 font-semibold transition-colors"
+                    className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 font-semibold transition-colors cursor-pointer"
                     disabled={updating}
                   >
                     Cancel
@@ -639,7 +633,7 @@ const formatExpiry = (value: string) => {
 
               <div className="flex gap-3">
                 <button
-                  className="flex-1 px-6 py-3 bg-[#B3261E] text-white rounded-lg font-semibold hover:bg-[#a11d17] focus:outline-none focus:ring-2 focus:ring-red-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm hover:shadow-md"
+                  className="flex-1 px-6 py-3 bg-[#B3261E] text-white rounded-lg font-semibold hover:bg-[#a11d17] focus:outline-none focus:ring-2 focus:ring-red-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm hover:shadow-md cursor-pointer"
                   onClick={handleDeleteAccount}
                   disabled={deleting || !deletePassword}
                 >
@@ -651,7 +645,7 @@ const formatExpiry = (value: string) => {
                   ) : "Yes, Delete Account"}
                 </button>
                 <button
-                  className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg font-semibold hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-colors"
+                  className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg font-semibold hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-colors cursor-pointer"
                   onClick={() => {
                     setShowDelete(false);
                     setErrorMessage(null);

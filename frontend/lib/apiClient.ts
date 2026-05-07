@@ -333,10 +333,13 @@ api.interceptors.response.use(
 
     // Log error in development
     if (process.env.NODE_ENV === "development") {
-      console.error("❌ API Error:", {
-        url: error.config?.url,
+      const base = error.config?.baseURL ?? "";
+      const path = error.config?.url ?? "";
+      const fullUrl = base && path ? `${base}/${path}`.replace(/([^:])\/\/+/g, "$1/") : path || base || "(unknown)";
+      console.error(`❌ API Error [${error.code ?? "UNKNOWN"}] ${error.config?.method?.toUpperCase() ?? "?"} ${fullUrl}`, {
         status: error.response?.status,
         data: error.response?.data,
+        message: error.message,
       });
     }
 

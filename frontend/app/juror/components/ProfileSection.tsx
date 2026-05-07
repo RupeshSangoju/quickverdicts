@@ -356,10 +356,7 @@ export default function ProfileSection() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-2xl font-bold text-[#0C2D57]">Profile</h1>
-          <button className="text-gray-500 text-sm flex items-center gap-1 hover:underline" style={{ marginRight: 8 }}>
-            <HelpCircle size={16} className="inline-block align-middle" />
-            <span className="inline-block align-middle">Help</span>
-          </button>
+
         </div>
 
         {/* Main content grid */}
@@ -557,35 +554,11 @@ export default function ProfileSection() {
                     className="w-full border rounded px-3 py-2 text-black focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm text-gray-800 font-medium mb-1">New Password (Optional)</label>
-                  <div className="relative">
-                    <input
-                      name="password"
-                      type={showNewPassword ? "text" : "password"}
-                      value={editData.password}
-                      onChange={handleEditChange}
-                      placeholder="Enter new password to change"
-                      className="w-full border rounded px-3 py-2 text-black focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
-                    />
-                    {editData.password && (
-                      <button
-                        type="button"
-                        onClick={() => setShowNewPassword(!showNewPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                      >
-                        {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                      </button>
-                    )}
-                  </div>
-                  {editData.password && (
-                    <p className="text-xs text-amber-600 mt-1">⚠️ Changing password requires email verification</p>
-                  )}
-                </div>
+
                 <div className="flex gap-2 mt-6">
                   <button 
                     onClick={handleEditProfile}
-                    className="px-4 py-2 bg-[#0C2D57] text-white rounded hover:bg-[#0a2342] min-w-[100px] disabled:opacity-50 disabled:cursor-not-allowed transition-colors" 
+                    className="px-4 py-2 bg-[#0C2D57] text-white rounded hover:bg-[#0a2342] min-w-[100px] disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer" 
                     disabled={updating}
                   >
                     {updating ? "Updating..." : "Update"}
@@ -595,7 +568,7 @@ export default function ProfileSection() {
                       setShowEdit(false);
                       setShowNewPassword(false);
                     }}
-                    className="px-4 py-2 text-gray-800 bg-gray-200 rounded hover:bg-gray-300 transition-colors"
+                    className="px-4 py-2 text-gray-800 bg-gray-200 rounded hover:bg-gray-300 transition-colors cursor-pointer"
                     disabled={updating}
                   >
                     Cancel
@@ -624,7 +597,7 @@ export default function ProfileSection() {
               <div className="flex items-center justify-between mb-2">
                 <h2 className="text-xl font-semibold text-[#222]"><AlertCircle className="w-5 h-5 group-hover:scale-110 transition-transform" />Delete Account</h2>
                 <button
-                  className="w-full border-2 border-red-300 text-red-600 rounded-lg py-3 hover:bg-red-50 transition-colors text-[15px] font-semibold flex items-center justify-center gap-2 group cursor-pointer"
+                  className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
                   onClick={() => {
                     if (!deleting) {
                       setShowDelete(false);
@@ -655,14 +628,14 @@ export default function ProfileSection() {
 
               <div className="flex gap-2 justify-end">
                 <button
-                  className="px-6 py-2 bg-[#B3261E] text-white rounded shadow-sm font-medium text-[16px] hover:bg-[#a11d17] focus:outline-none focus:ring-2 focus:ring-red-400 border border-[#B3261E] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="px-6 py-2 bg-[#B3261E] text-white rounded shadow-sm font-medium text-[16px] hover:bg-[#a11d17] focus:outline-none focus:ring-2 focus:ring-red-400 border border-[#B3261E] disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
                   onClick={handleDeleteAccount}
                   disabled={deleting || !deletePassword}
                 >
                   {deleting ? "Deleting..." : "Delete"}
                 </button>
                 <button
-                  className="px-6 py-2 bg-white text-[#222] rounded shadow-sm font-medium text-[16px] border border-gray-300 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-colors"
+                  className="px-6 py-2 bg-white text-[#222] rounded shadow-sm font-medium text-[16px] border border-gray-300 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-colors cursor-pointer"
                   onClick={() => {
                     setShowDelete(false);
                     setDeletePassword("");

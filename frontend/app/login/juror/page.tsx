@@ -404,7 +404,7 @@ export default function JurorLogin() {
                 className={`w-full rounded px-4 py-3 font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-[#0A2342] focus:ring-offset-2 text-white ${
                   loading
                     ? "bg-gray-400 cursor-not-allowed"
-                    : "bg-[#0A2342] hover:bg-[#132c54]"
+                    : "bg-[#0A2342] hover:bg-[#132c54] cursor-pointer"
                 }`}
               >
                 {loading ? (

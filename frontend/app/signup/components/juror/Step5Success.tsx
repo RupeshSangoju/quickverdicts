@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   CheckCircle,
@@ -33,6 +33,21 @@ export function Step5Success({
   const router = useRouter();
   const [isVisible, setIsVisible] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [open, setOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const openOutlook = () => {
+    window.location.href = "mailto:support@quickverdicts.com";
+    setOpen(false);
+  };
+
+  const openGmail = () => {
+    window.open(
+      "https://mail.google.com/mail/?view=cm&fs=1&to=support@quickverdicts.com",
+      "_blank"
+    );
+    setOpen(false);
+  };
 
   /* ===========================================================
      GENERATE STABLE ACCOUNT ID
@@ -78,6 +93,16 @@ export function Step5Success({
       clearTimeout(timer2);
       clearTimeout(timer3);
     };
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   /* ===========================================================
@@ -278,15 +303,37 @@ export function Step5Success({
                 platform:
               </p>
               <div className="flex flex-col sm:flex-row gap-3">
-                <a
-                  href="mailto:support@quickverdicts.com"
-                  className="text-[#0A2342] hover:underline text-sm font-semibold flex items-center gap-1 focus:outline-none focus:ring-2 focus:ring-[#0A2342] focus:ring-offset-2 rounded px-2 py-1 transition-colors"
-                  aria-label="Email support at support@quickverdicts.com"
-                >
-                  <Mail size={16} aria-hidden="true" />
-                  <span>Email Support</span>
-                </a>
-                
+                <div className="relative" ref={dropdownRef}>
+                  <button
+                    onClick={() => setOpen((prev) => !prev)}
+                    className="text-[#0A2342] hover:underline text-sm font-semibold flex items-center gap-1 focus:outline-none focus:ring-2 focus:ring-[#0A2342] focus:ring-offset-2 rounded px-2 py-1 transition-colors"
+                    aria-haspopup="true"
+                    aria-expanded={open}
+                  >
+                    <Mail size={16} aria-hidden="true" />
+                    <span>Email Support</span>
+                  </button>
+
+                  {open && (
+                    <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden w-56 z-50">
+                      <p className="text-xs font-semibold text-gray-500 uppercase px-4 pt-3 pb-1">Open email with</p>
+                      <button
+                        onClick={openOutlook}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-blue-50 transition-colors text-left"
+                      >
+                        <span className="text-xl">📧</span>
+                        <span className="text-sm font-medium text-gray-800">Outlook / Mail App</span>
+                      </button>
+                      <button
+                        onClick={openGmail}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-red-50 transition-colors text-left border-t border-gray-100"
+                      >
+                        <span className="text-xl">📮</span>
+                        <span className="text-sm font-medium text-gray-800">Gmail (Chrome)</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </section>
 
