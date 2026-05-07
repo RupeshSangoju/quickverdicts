@@ -939,7 +939,7 @@ useEffect(() => {
                       className={`px-3 py-1.5 rounded-lg font-semibold text-xs transition-all flex items-center gap-1.5 ${
                         pendingRescheduleRequest
                           ? 'bg-gray-400 cursor-not-allowed opacity-60 text-white'
-                          : 'bg-amber-500/90 hover:bg-amber-500 text-white'
+                          : 'bg-amber-500/90 hover:bg-amber-500 text-white cursor-pointer'
                       }`}
                       title={pendingRescheduleRequest ? 'You have a pending reschedule request' : 'Request to reschedule this case'}
                     >
@@ -1274,7 +1274,7 @@ useEffect(() => {
               <button
                 onClick={() => setShowAddTeam(!showAddTeam)}
                 disabled={isAddingTeam}
-                className="px-4 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg font-semibold text-sm transition-all flex items-center gap-1.5"
+                className="px-4 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg font-semibold text-sm transition-all flex items-center gap-1.5 cursor-pointer"
               >
                 <PlusIcon className="w-4 h-4" />
                 Add Member
@@ -1415,7 +1415,7 @@ useEffect(() => {
                   <button
                     onClick={() => setNewMembers([...newMembers, { Name: "", Role: "", Email: "" }])}
                     disabled={isAddingTeam}
-                    className="px-3 py-1.5 bg-white text-[#16305B] rounded-lg font-semibold text-sm hover:bg-[#f9f7f2] transition-all disabled:opacity-50 border border-[#16305B]"
+                    className="px-3 py-1.5 bg-white text-[#16305B] rounded-lg font-semibold text-sm hover:bg-[#f9f7f2] transition-all disabled:opacity-50 border border-[#16305B] cursor-pointer"
                   >
                     Add Another
                   </button>
@@ -1433,7 +1433,7 @@ useEffect(() => {
                       }
                     }}
                     disabled={isAddingTeam}
-                    className="flex-1 px-4 py-1.5 bg-[#16305B] text-white rounded-lg font-semibold text-sm hover:bg-[#1e417a] transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
+                    className="flex-1 px-4 py-1.5 bg-[#16305B] text-white rounded-lg font-semibold text-sm hover:bg-[#1e417a] transition-all disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     {isAddingTeam ? (
                       <>
@@ -1454,7 +1454,7 @@ useEffect(() => {
                       setTeamEmailErrors([]);
                     }}
                     disabled={isAddingTeam}
-                    className="px-3 py-1.5 bg-[#FAF9F6] text-[#455A7C] rounded-lg font-semibold text-sm hover:bg-[#f0ede6] transition-all disabled:opacity-50"
+                    className="px-3 py-1.5 bg-[#FAF9F6] text-[#455A7C] rounded-lg font-semibold text-sm hover:bg-[#f0ede6] transition-all disabled:opacity-50 cursor-pointer"
                   >
                     Cancel
                   </button>
@@ -1490,7 +1490,7 @@ useEffect(() => {
               <button
                 onClick={() => setShowUploadModal(!showUploadModal)}
                 disabled={uploadingDocuments}
-                className="px-4 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg font-semibold text-sm transition-all flex items-center gap-1.5"
+                className="px-4 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg font-semibold text-sm transition-all flex items-center gap-1.5 cursor-pointer"
               >
                 <PlusIcon className="w-4 h-4" />
                 Upload Videos and Documents
@@ -1665,7 +1665,7 @@ useEffect(() => {
                   >
                     {uploadingDocuments ? (
                       <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white"></div>
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white cursor-pointer"></div>
                         <span>Uploading...</span>
                       </>
                     ) : (

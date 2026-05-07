@@ -410,7 +410,7 @@ export default function ForgotPassword() {
                   className={`w-full rounded px-4 py-3 font-semibold transition-colors text-white focus:outline-none focus:ring-2 focus:ring-[#0A2342] focus:ring-offset-2 ${
                     loading
                       ? "bg-gray-400 cursor-not-allowed"
-                      : "bg-[#0A2342] hover:bg-[#132c54]"
+                      : "bg-[#0A2342] hover:bg-[#132c54] cursor-pointer"
                   }`}
                 >
                   {loading ? "Sending..." : "Send Verification Code"}
