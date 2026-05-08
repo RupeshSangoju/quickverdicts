@@ -18,10 +18,10 @@ export default function ForAttorneys() {
           </Link>
           <nav className="flex items-center space-x-6">
             <Link href="/for-attorneys" className="text-gray-700 hover:text-gray-900">
-              Attorney
+              Attorney Info
             </Link>
-            <Link href="/signup/juror" className="text-gray-700 hover:text-gray-900">
-              Juror
+            <Link href="/for-juror" className="text-gray-700 hover:text-gray-900">
+              Juror Info
             </Link>
             <Link href="/signup" className="bg-blue-900 text-white px-6 py-2 rounded hover:bg-blue-800">
               Sign up
@@ -262,6 +262,7 @@ Browse available cases in your area and choose the ones that fit your schedule. 
     Terms of Use
   </a>
             </div>
+            {/* 
             <div className="flex items-center space-x-4 mt-4 md:mt-0">
               <span className="text-sm text-gray-300">Follow Us</span>
               <a href="/" target="_blank" rel="noopener noreferrer" className="hover:text-white">
@@ -277,6 +278,7 @@ Browse available cases in your area and choose the ones that fit your schedule. 
                 <Linkedin className="w-5 h-5" />
               </a>
             </div>
+            */}
           </div>
         </div>
       </footer>

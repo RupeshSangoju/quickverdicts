@@ -30,11 +30,11 @@ const Footer: FC = () => {
           </div>
         </div>
 
-        {/* Right side */}
+        {/* Right side 
         <div className="flex flex-col justify-end">
-          {/* Push to bottom */}
+          {/* Push to bottom 
           <p className="font-semibold mb-2 text-left">Follow Us</p>
-          {/* Aligned left */}
+          {/* Aligned left 
           <div className="flex gap-4">
             <Link href="#">
               <span className="sr-only">Twitter</span>
@@ -54,6 +54,7 @@ const Footer: FC = () => {
             </Link>
           </div>
         </div>
+        */}
       </div>
     </footer>
   );

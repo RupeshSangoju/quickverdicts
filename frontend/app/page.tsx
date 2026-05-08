@@ -343,6 +343,7 @@ cases in:            </p>
     Terms of Use
   </a>
             </div>
+            {/* Social Media Icons 
             <div className="flex items-center space-x-4 mt-4 md:mt-0">
               <span className="text-sm text-gray-300">Follow Us</span>
               <a href="/" target="_blank" rel="noopener noreferrer" className="hover:text-white">
@@ -358,6 +359,7 @@ cases in:            </p>
                 <Linkedin className="w-5 h-5" />
               </a>
             </div>
+            */}
           </div>
         </div>
       </footer>
