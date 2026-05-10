@@ -24,7 +24,18 @@ type CaseData = {
   ScheduledTime: string;
   County: string;
   CaseType: string;
+  CaseTier: string;
 };
+
+function getJurorCompensation(caseTier: string): number {
+  switch (caseTier?.toLowerCase().trim()) {
+    case 'early adopter': return 50;
+    case 'tier 1': return 75;
+    case 'tier 2': return 100;
+    case 'tier 3': return 125;
+    default: return 50;
+  }
+}
 
 type Document = {
   Id: number;
@@ -612,6 +623,10 @@ export default function JurorWarRoomPage() {
             <div>
               <span className="font-semibold text-[#0A2342]">Location:</span>
               <p className="text-[#455A7C]">{caseData.County}, {caseData.CaseType}</p>
+            </div>
+            <div>
+              <span className="font-semibold text-[#0A2342]">Your Compensation:</span>
+              <p className="text-green-700 font-semibold">${getJurorCompensation(caseData.CaseTier)}</p>
             </div>
           </div>
 

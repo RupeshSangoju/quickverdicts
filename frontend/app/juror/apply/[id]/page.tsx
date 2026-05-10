@@ -28,13 +28,23 @@ type CaseDetails = {
   County: string;
   ScheduledDate: string;
   ScheduledTime: string;
-  PaymentAmount: number;
+  CaseTier: string;
   PlaintiffGroups: string;
   DefendantGroups: string;
   VoirDire1Questions: string;
   LawFirmName: string;
   AttorneyName: string;
 };
+
+function getJurorCompensation(caseTier: string): number {
+  switch (caseTier?.toLowerCase().trim()) {
+    case 'early adopter': return 50;
+    case 'tier 1': return 75;
+    case 'tier 2': return 100;
+    case 'tier 3': return 125;
+    default: return 50;
+  }
+}
 
 type VoirDirePart2 = {
   Id: number;
@@ -326,7 +336,7 @@ export default function JurorApplyPage() {
             <div className="bg-white/10 backdrop-blur-sm px-6 py-3 rounded-xl border border-white/20">
               <div className="text-center">
                 <p className="text-xs text-blue-200 mb-1">Compensation</p>
-                <p className="text-2xl font-bold text-green-300">${caseData.PaymentAmount}</p>
+                <p className="text-2xl font-bold text-green-300">${getJurorCompensation(caseData.CaseTier)}</p>
               </div>
             </div>
           </div>

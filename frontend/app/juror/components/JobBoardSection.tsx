@@ -15,11 +15,19 @@ import { formatDateString } from "@/lib/dateUtils";
 // Format time to clean format (remove milliseconds)
 function formatTimeClean(timeStr: string): string {
   if (!timeStr) return "N/A";
-  // Remove milliseconds (e.g., "16:00:00.0000000" -> "16:00:00")
   const cleanTime = timeStr.split('.')[0];
-  // Extract hours and minutes only (e.g., "16:00:00" -> "16:00")
   const [hours, minutes] = cleanTime.split(':');
   return `${hours}:${minutes}`;
+}
+
+function getJurorCompensation(caseTier: string): number {
+  switch (caseTier?.toLowerCase().trim()) {
+    case 'early adopter': return 50;
+    case 'tier 1': return 75;
+    case 'tier 2': return 100;
+    case 'tier 3': return 125;
+    default: return 50;
+  }
 }
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL
@@ -304,10 +312,10 @@ export default function JobBoardSection() {
       );
     }
     if (sortBy === "compensationAscending") {
-      return a.PaymentAmount - b.PaymentAmount;
+      return getJurorCompensation(a.CaseTier) - getJurorCompensation(b.CaseTier);
     }
     if (sortBy === "compensationDescending") {
-      return b.PaymentAmount - a.PaymentAmount;
+      return getJurorCompensation(b.CaseTier) - getJurorCompensation(a.CaseTier);
     }
     return 0;
   });
@@ -435,6 +443,10 @@ export default function JobBoardSection() {
                         <div className="flex items-center justify-between">
                           <span className="text-gray-600">Location:</span>
                           <span className="font-medium text-gray-900 truncate ml-2">{caseItem.County}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-600">Compensation:</span>
+                          <span className="font-semibold text-green-700">${getJurorCompensation(caseItem.CaseTier)}</span>
                         </div>
                       </div>
 
