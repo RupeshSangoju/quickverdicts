@@ -71,7 +71,7 @@ export default function PlaintiffDetailsPage() {
     value: string
   ) => {
     const newGroups = [...groups];
-    (newGroups[gIdx][type] as Plaintiff[])[idx][field] = value;
+    (newGroups[gIdx][type] as Plaintiff[])[idx][field] = field === "email" ? value.toLowerCase() : value;
     setGroups(newGroups);
   };
 
@@ -185,7 +185,7 @@ export default function PlaintiffDetailsPage() {
                         placeholder="Mock Legal Representation Email"
                         value={rep.email}
                         onChange={e => updateField(gIdx, "reps", rIdx, "email", e.target.value)}
-                        className="w-full px-4 py-2 border border-[#bfc6d1] text-[#16305B] rounded-md focus:outline-[#16305B]"
+                        className="w-full px-4 py-2 border border-[#bfc6d1] text-[#16305B] rounded-md focus:outline-[#16305B] lowercase"
                       />
                       {validationErrors[`repEmail-${gIdx}-${rIdx}`] && (
                         <p className="text-red-500 text-sm">{validationErrors[`repEmail-${gIdx}-${rIdx}`]}</p>
