@@ -25,7 +25,7 @@ export default function LogoutOverlay({ open, onClose, onSignOut }: LogoutOverla
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/20">
       <div className="bg-white rounded-xl shadow-xl p-8 min-w-[340px] max-w-[95vw] relative">
         <button
           className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-xl"
