@@ -760,7 +760,7 @@ export function Step2PersonalDetails({
             <TextInput
               placeholder="John Doe"
               value={formData.personalDetails2.name}
-              onChange={(val) => handleTextChange("name", val)}
+              onChange={(val) => handleTextChange("name", val.replace(/[^a-zA-Z\s'\-]/g, ""))}
               hasError={!!validationErrors["personalDetails2.name"]}
               autoComplete="name"
             />

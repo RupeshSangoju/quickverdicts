@@ -70,7 +70,10 @@ export const jurorStep1Schema = z.object({
 
 export const jurorStep2SubStep2Schema = z.object({
   personalDetails2: z.object({
-    name: z.string().min(1, 'Name is required'),
+    name: z.string()
+      .min(1, 'Name is required')
+      .regex(/^[a-zA-Z\s'\-]+$/, 'Name can only contain letters, spaces, hyphens, and apostrophes')
+      .min(2, 'Name must be at least 2 characters'),
     phone: phoneSchema,
     address1: z.string().min(1, 'Address is required'),
     state: z.string().min(1, 'State is required'),
