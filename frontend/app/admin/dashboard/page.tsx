@@ -262,6 +262,10 @@ export default function AdminDashboard() {
   const [deletedCasesPage, setDeletedCasesPage] = useState(1);
   const [deletedCasesPageSize, setDeletedCasesPageSize] = useState(10);
   const [deletedCasesSearchQuery, setDeletedCasesSearchQuery] = useState("");
+  const [deletedAttorneys, setDeletedAttorneys] = useState<any[]>([]);
+  const [deletedAttorneysPage, setDeletedAttorneysPage] = useState(1);
+  const [deletedAttorneysPageSize, setDeletedAttorneysPageSize] = useState(10);
+  const [deletedAttorneysSearchQuery, setDeletedAttorneysSearchQuery] = useState("");
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -880,13 +884,14 @@ export default function AdminDashboard() {
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      const [dashboardRes, jurRes, casesRes, statsRes, rescheduleRes, deletedCasesRes] = await Promise.all([
+      const [dashboardRes, jurRes, casesRes, statsRes, rescheduleRes, deletedCasesRes, deletedAttorneysRes] = await Promise.all([
         fetchWithAuth(`${API_BASE}/api/admin/dashboard`),
         fetchWithAuth(`${API_BASE}/api/admin/jurors?limit=10`),
         fetchWithAuth(`${API_BASE}/api/admin/cases/pending`),
         fetchWithAuth(`${API_BASE}/api/admin/stats/comprehensive`),
         fetchWithAuth(`${API_BASE}/api/admin/reschedule-requests`),
         fetchWithAuth(`${API_BASE}/api/admin/cases/deleted`),
+        fetchWithAuth(`${API_BASE}/api/admin/attorneys/deleted`),
       ]);
 
       const dashboardData = await dashboardRes.json();
@@ -895,9 +900,13 @@ export default function AdminDashboard() {
       const statsData = await statsRes.json();
       const rescheduleData = await rescheduleRes.json();
       const deletedCasesData = await deletedCasesRes.json();
+      const deletedAttorneysData = await deletedAttorneysRes.json();
 
       if (deletedCasesData.success) {
         setDeletedCases(deletedCasesData.cases || []);
+      }
+      if (deletedAttorneysData.success) {
+        setDeletedAttorneys(deletedAttorneysData.attorneys || []);
       }
 
       if (dashboardData.success) {
@@ -3426,6 +3435,200 @@ export default function AdminDashboard() {
                     className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
                     disabled={deletedCasesPage === totalPages}
                     onClick={() => setDeletedCasesPage(p => p + 1)}
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Deleted Attorneys */}
+        {(() => {
+          const q = deletedAttorneysSearchQuery.toLowerCase();
+          const filtered = q
+            ? deletedAttorneys.filter(a =>
+                (`${a.FirstName} ${a.LastName}`).toLowerCase().includes(q) ||
+                (a.Email || "").toLowerCase().includes(q) ||
+                (a.LawFirmName || "").toLowerCase().includes(q) ||
+                (a.StateBarNumber || "").toLowerCase().includes(q) ||
+                (a.State || "").toLowerCase().includes(q)
+              )
+            : deletedAttorneys;
+          const totalPages = Math.max(1, Math.ceil(filtered.length / deletedAttorneysPageSize));
+          const pageItems = filtered.slice(
+            (deletedAttorneysPage - 1) * deletedAttorneysPageSize,
+            deletedAttorneysPage * deletedAttorneysPageSize
+          );
+          return (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+              {/* Header */}
+              <div className="p-6 border-b border-gray-200">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-red-100 rounded-lg">
+                      <Trash2 className="h-6 w-6 text-red-600" />
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-bold" style={{ color: BLUE }}>Deleted Attorneys</h2>
+                      <p className="text-gray-600 text-sm">{deletedAttorneys.length} record{deletedAttorneys.length !== 1 ? "s" : ""} total</p>
+                    </div>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Search by name, email, law firm, state..."
+                    className="border-2 border-gray-300 rounded-lg px-4 py-2 text-sm text-black bg-white focus:border-red-400 focus:outline-none w-96"
+                    value={deletedAttorneysSearchQuery}
+                    onChange={(e) => { setDeletedAttorneysSearchQuery(e.target.value); setDeletedAttorneysPage(1); }}
+                  />
+                </div>
+              </div>
+
+              {/* Table */}
+              <div className="overflow-x-auto" style={{ maxHeight: '450px', overflowY: 'auto' }}>
+                <table className="w-full">
+                  <thead className="bg-gray-100 sticky top-0 z-20">
+                    <tr>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider sticky left-0 z-30 bg-gray-100" style={{ minWidth: '200px', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.1)' }}>
+                        Attorney
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider" style={{ minWidth: '220px' }}>
+                        Law Firm
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider" style={{ minWidth: '160px' }}>
+                        State Bar #
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider" style={{ minWidth: '100px' }}>
+                        State
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider" style={{ minWidth: '130px' }}>
+                        Deleted By
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider" style={{ minWidth: '160px' }}>
+                        Deleted At
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider" style={{ minWidth: '130px' }}>
+                        Joined
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 bg-white">
+                    {pageItems.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="px-6 py-16 text-center">
+                          <Trash2 className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                          <p className="text-gray-500 font-medium text-lg">
+                            {deletedAttorneysSearchQuery ? "No deleted attorneys match your search" : "No deleted attorneys on record"}
+                          </p>
+                        </td>
+                      </tr>
+                    ) : (
+                      pageItems.map((a: any) => {
+                        const fullName = [a.FirstName, a.MiddleName, a.LastName].filter(Boolean).join(" ");
+                        const deletedByLabel = a.DeletedBy === "admin"
+                          ? { label: "Admin", cls: "bg-red-100 text-red-700" }
+                          : a.DeletedBy === "self"
+                          ? { label: "Self", cls: "bg-orange-100 text-orange-700" }
+                          : { label: "Unknown", cls: "bg-gray-100 text-gray-600" };
+                        return (
+                          <tr key={a.AttorneyId} className="hover:bg-gray-50 transition-colors">
+                            <td className="px-6 py-4 sticky left-0 bg-white hover:bg-gray-50" style={{ boxShadow: '2px 0 4px -2px rgba(0,0,0,0.1)' }}>
+                              <p className="font-semibold text-gray-900 text-sm">{fullName}</p>
+                              <p className="text-gray-500 text-xs mt-0.5">{a.Email}</p>
+                              {a.PhoneNumber && <p className="text-gray-400 text-xs">{a.PhoneNumber}</p>}
+                            </td>
+                            <td className="px-6 py-4">
+                              <p className="text-gray-800 text-sm">{a.LawFirmName || "—"}</p>
+                            </td>
+                            <td className="px-6 py-4">
+                              <p className="text-gray-700 text-sm font-mono">{a.StateBarNumber || "—"}</p>
+                            </td>
+                            <td className="px-6 py-4">
+                              <p className="text-gray-700 text-sm">{a.State || "—"}</p>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${deletedByLabel.cls}`}>
+                                {deletedByLabel.label}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <p className="text-gray-700 text-sm">
+                                {a.DeletedAt ? new Date(a.DeletedAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) : "—"}
+                              </p>
+                              {a.DeletedAt && (
+                                <p className="text-gray-400 text-xs">{new Date(a.DeletedAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}</p>
+                              )}
+                            </td>
+                            <td className="px-6 py-4">
+                              <p className="text-gray-700 text-sm">
+                                {a.CreatedAt ? new Date(a.CreatedAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) : "—"}
+                              </p>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination */}
+              <div className="px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <span>Show</span>
+                  <select
+                    className="border border-gray-300 rounded px-2 py-1 text-sm text-black bg-white"
+                    value={deletedAttorneysPageSize}
+                    onChange={(e) => { setDeletedAttorneysPageSize(Number(e.target.value)); setDeletedAttorneysPage(1); }}
+                  >
+                    {[10, 25, 50].map(n => <option key={n} value={n}>{n}</option>)}
+                  </select>
+                  <span>per page · {filtered.length} total</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                    disabled={deletedAttorneysPage === 1}
+                    onClick={() => setDeletedAttorneysPage(p => p - 1)}
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+                  <div className="flex items-center gap-1">
+                    {(() => {
+                      const pages: number[] = [];
+                      if (totalPages <= 7) {
+                        for (let i = 1; i <= totalPages; i++) pages.push(i);
+                      } else if (deletedAttorneysPage <= 3) {
+                        pages.push(1, 2, 3, 4, -1, totalPages);
+                      } else if (deletedAttorneysPage >= totalPages - 2) {
+                        pages.push(1, -1, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+                      } else {
+                        pages.push(1, -1, deletedAttorneysPage - 1, deletedAttorneysPage, deletedAttorneysPage + 1, -2, totalPages);
+                      }
+                      return pages.map((pg, i) =>
+                        pg < 0 ? (
+                          <span key={`ellipsis-${i}`} className="px-2 text-gray-400">…</span>
+                        ) : (
+                          <button
+                            key={pg}
+                            onClick={() => setDeletedAttorneysPage(pg)}
+                            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                              pg === deletedAttorneysPage
+                                ? "bg-red-600 text-white"
+                                : "bg-gray-200 text-black hover:bg-gray-300"
+                            }`}
+                          >
+                            {pg}
+                          </button>
+                        )
+                      );
+                    })()}
+                  </div>
+                  <button
+                    className="px-4 py-2 rounded-lg bg-gray-200 text-black font-medium hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                    disabled={deletedAttorneysPage === totalPages}
+                    onClick={() => setDeletedAttorneysPage(p => p + 1)}
                   >
                     <ChevronRight className="h-5 w-5" />
                   </button>

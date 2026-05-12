@@ -412,7 +412,7 @@ async function deleteAccountHandler(req, res) {
     }
 
     // Soft delete account so it disappears from admin dashboard
-    await Attorney.softDeleteAccount(attorneyId);
+    await Attorney.softDeleteAccount(attorneyId, "self");
 
     // Notify admin of account deletion
     try {

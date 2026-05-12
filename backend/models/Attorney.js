@@ -514,15 +514,37 @@ async function reactivateAccount(attorneyId) {
   }
 }
 
-async function softDeleteAccount(attorneyId) {
+async function ensureDeletedByColumns() {
+  try {
+    await executeQuery(async (pool) => {
+      await pool.request().query(`
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE Name = N'DeletedBy' AND Object_ID = Object_ID(N'dbo.Attorneys'))
+          ALTER TABLE dbo.Attorneys ADD DeletedBy NVARCHAR(20) NULL;
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE Name = N'DeletedAt' AND Object_ID = Object_ID(N'dbo.Attorneys'))
+          ALTER TABLE dbo.Attorneys ADD DeletedAt DATETIME2 NULL;
+      `);
+    });
+  } catch (err) {
+    console.warn("⚠️ [Attorney] Migration warning:", err.message);
+  }
+}
+
+// Run migration once at startup
+ensureDeletedByColumns();
+
+async function softDeleteAccount(attorneyId, deletedBy = "self") {
   try {
     const id = parseInt(attorneyId, 10);
     if (isNaN(id) || id <= 0) throw new Error("Valid attorney ID required");
 
     await executeQuery(async (pool) => {
-      await pool.request().input("attorneyId", sql.Int, id).query(`
+      await pool.request()
+        .input("attorneyId", sql.Int, id)
+        .input("deletedBy", sql.NVarChar, deletedBy)
+        .query(`
           UPDATE dbo.Attorneys
-          SET IsDeleted = 1, IsActive = 0, UpdatedAt = GETUTCDATE()
+          SET IsDeleted = 1, IsActive = 0, UpdatedAt = GETUTCDATE(),
+              DeletedBy = @deletedBy, DeletedAt = GETUTCDATE()
           WHERE AttorneyId = @attorneyId
         `);
     });

@@ -1449,7 +1449,7 @@ router.delete("/attorneys/:attorneyId", authMiddleware, requireAdmin, async (req
       .query("SELECT Email, FirstName, LastName FROM dbo.Attorneys WHERE AttorneyId = @attorneyId");
     const attorney = attorneyResult.recordset[0];
 
-    await Attorney.softDeleteAccount(attorneyId);
+    await Attorney.softDeleteAccount(attorneyId, "admin");
 
     if (attorney && attorney.Email) {
       const name = `${attorney.FirstName || ""} ${attorney.LastName || ""}`.trim() || "Attorney";
@@ -1480,6 +1480,28 @@ router.delete("/attorneys/:attorneyId", authMiddleware, requireAdmin, async (req
   } catch (error) {
     console.error("Error deleting attorney:", error);
     res.status(500).json({ success: false, message: "Failed to delete attorney", error: error.message });
+  }
+});
+
+router.get("/attorneys/deleted", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request().query(`
+      SELECT
+        AttorneyId, FirstName, MiddleName, LastName, Email, PhoneNumber,
+        LawFirmName, StateBarNumber, State, TierLevel,
+        VerificationStatus, IsVerified,
+        CreatedAt, UpdatedAt,
+        ISNULL(DeletedBy, 'unknown') AS DeletedBy,
+        ISNULL(DeletedAt, UpdatedAt) AS DeletedAt
+      FROM dbo.Attorneys
+      WHERE IsDeleted = 1
+      ORDER BY ISNULL(DeletedAt, UpdatedAt) DESC
+    `);
+    res.json({ success: true, attorneys: result.recordset });
+  } catch (error) {
+    console.error("Error fetching deleted attorneys:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch deleted attorneys" });
   }
 });
 
