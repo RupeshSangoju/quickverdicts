@@ -118,7 +118,7 @@ export default function AttorneyHelp({ onContact, onBack }: { onContact: () => v
           {/* Title + Search Bar */}
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 cursor-pointer">
             <div>
-              <h1 className="text-4xl font-bold text-[#16305B] mb-2">Help & Support</h1>
+              <h1 className="text-3xl font-bold text-[#16305B] mb-2">Tutorials & FAQs</h1>
               <p className="text-gray-600">Find answers, tutorials, and get in touch with our team</p>
             </div>
             <div className="flex items-center gap-2 bg-white rounded-lg shadow-sm border border-gray-200 px-4 py-2 w-full md:w-auto md:min-w-[400px]">

@@ -76,10 +76,10 @@ export default function AttorneyContact({ onBack }: { onBack: () => void }) {
             className="flex items-center gap-2 text-[#16305B] hover:text-[#1e417a] transition-colors group mb-6"
           >
             <ArrowLeft size={24} className="group-hover:-translate-x-1 transition-transform cursor-pointer" />
-            <span className="font-semibold">Back to Help</span>
+            <span className="font-semibold">Back to Tutorials and FAQs</span>
           </button>
           <div>
-            <h1 className="text-4xl font-bold text-[#16305B] mb-2">Get in Touch</h1>
+            <h1 className="text-3xl font-bold text-[#16305B] mb-2">Get Support</h1>
             <p className="text-gray-600">We're here to help and answer any questions you might have</p>
           </div>
         </div>
@@ -115,7 +115,7 @@ export default function AttorneyContact({ onBack }: { onBack: () => void }) {
               </div>
             </div>
 
-            {/* Phone Card */}
+            {/* Phone Card 
             <div className="bg-white rounded-xl shadow-md p-6 border border-gray-200 hover:shadow-lg transition-all">
               <div className="flex items-start gap-4">
                 <div className="bg-green-50 p-3 rounded-lg">
@@ -135,7 +135,7 @@ export default function AttorneyContact({ onBack }: { onBack: () => void }) {
                 </div>
               </div>
             </div>
-
+*/}
             {/* Email Card */}
             <div className="bg-white rounded-xl shadow-md p-6 border border-gray-200 hover:shadow-lg transition-all">
               <div className="flex items-start gap-4">

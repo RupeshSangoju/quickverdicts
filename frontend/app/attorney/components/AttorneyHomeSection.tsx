@@ -529,8 +529,7 @@ export default function AttorneyHomeSection({ onSectionChange }: { onSectionChan
                   <div className="flex items-center gap-3 text-sm text-gray-700">
                     <button className="flex items-center gap-2 px-3 py-1 rounded hover:bg-white/60 cursor-pointer"
                     onClick={() => setShowHelp(true)}>
-                      <QuestionMarkCircleIcon className="w-5 h-5 text-gray-600" />
-                      <span>Help</span>
+                      <span>Tutorials & FAQs</span>
                     </button>
                   </div>
       </div>

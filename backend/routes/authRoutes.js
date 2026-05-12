@@ -75,7 +75,7 @@ const loginLimiter = createRateLimiter(
   "Too many login attempts. Try again in 15 minutes."
 );
 const adminLoginLimiter = createRateLimiter(
-  parseInt(process.env.RATE_LIMIT_ADMIN_LOGIN) || (isDev ? 50 : 3),
+  parseInt(process.env.RATE_LIMIT_ADMIN_LOGIN) || (isDev ? 50 : 10),
   15,
   "Too many admin login attempts. Try again in 15 minutes."
 );

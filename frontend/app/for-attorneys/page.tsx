@@ -276,7 +276,7 @@ period with the jurors.
           <div className="grid md:grid-cols-2 gap-8 mb-8">
             <div>
               <h3 className="font-bold mb-4">Contact</h3>
-              <p className="text-gray-300">650-762-6574</p>
+
               <p className="text-gray-300">QVTrial@quickverdicts.com</p>
             </div>
             <div>
