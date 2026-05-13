@@ -1,5 +1,4 @@
 "use client";
-const CENSUS_API_KEY = process.env.NEXT_PUBLIC_CENSUS_API_KEY ?? "";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -81,15 +80,13 @@ export default function CaseDetailsPage() {
   useEffect(() => {
     async function fetchStates() {
       try {
-        const res = await fetch(`https://api.census.gov/data/2020/dec/pl?get=NAME&for=state:*&key=${CENSUS_API_KEY}`);
+        const res = await fetch("/api/location/states");
         const data = await res.json();
-        const states = data.slice(1).map((row: [string, string]) => ({
-          label: row[0], // Display name: "Texas"
-          value: row[0].toUpperCase(), // Stored value: "TEXAS"
-          code: row[1] // Census code for API: "48"
+        const states = (data.states ?? []).map((s: { label: string; value: string }) => ({
+          label: s.label,
+          value: s.label.toUpperCase(),
+          code: s.value,
         }));
-        // Sort states alphabetically by label
-        states.sort((a: { label: string; value: string; code: string }, b: { label: string; value: string; code: string }) => a.label.localeCompare(b.label));
         setAvailableStates(states);
         if (typeof window !== "undefined") {
           localStorage.setItem("availableStates", JSON.stringify(states));
@@ -107,24 +104,13 @@ export default function CaseDetailsPage() {
       if (stateCode) {
         setCountiesLoading(true);
         try {
-          const res = await fetch(
-            `https://api.census.gov/data/2020/dec/pl?get=NAME&for=county:*&in=state:${stateCode.padStart(2, "0")}&key=${CENSUS_API_KEY}`
-          );
+          const res = await fetch(`/api/location/counties?stateCode=${stateCode}`);
           const data = await res.json();
           setAvailableCounties(
-            data.slice(1).map((row: [string, string, string]) => {
-              // row[0] = "Anderson County, Texas"
-              // Extract just "Anderson"
-              const fullName = row[0];
-              const countyName = fullName
-                .replace(/ County.*$/i, '') // Remove " County" and everything after
-                .replace(/ Parish.*$/i, '') // Handle Louisiana parishes
-                .trim();
-              return {
-                label: fullName, // Display: "Anderson County, Texas"
-                value: countyName // Store: "Anderson"
-              };
-            })
+            (data.counties ?? []).map((c: { label: string; value: string }) => ({
+              label: c.label,
+              value: c.value,
+            }))
           );
         } catch (error) {
           setAvailableCounties([]);

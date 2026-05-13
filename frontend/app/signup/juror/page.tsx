@@ -26,8 +26,6 @@ import { Step5Success } from "../components/juror/Step5Success";
    CONSTANTS
    =========================================================== */
 
-const CENSUS_API_BASE = "https://api.census.gov/data/2020/dec/pl";
-const CENSUS_API_KEY = process.env.NEXT_PUBLIC_CENSUS_API_KEY ?? "";
 const IMAGES_TO_PRELOAD = ["/logo_sidebar_signup.png", "/Image1.png"];
 
 /* ===========================================================
@@ -190,17 +188,9 @@ function JurorSignupInner() {
   useEffect(() => {
     const fetchStates = async () => {
       try {
-        const res = await fetch(`${CENSUS_API_BASE}?get=NAME&for=state:*&key=${CENSUS_API_KEY}`);
+        const res = await fetch("/api/location/states");
         const data = await res.json();
-
-        const sorted = data
-          .slice(1)
-          .map((r: [string, string]) => ({ label: r[0], value: r[1] }))
-          .sort((a: LocationOption, b: LocationOption) =>
-            a.label.localeCompare(b.label)
-          );
-
-        setAvailableStates(sorted);
+        setAvailableStates(data.states ?? []);
       } catch (err) {
         console.error("State fetch failed:", err);
         showToast("Failed to load states", "error");
@@ -236,22 +226,13 @@ function JurorSignupInner() {
       setCountiesLoading(true);
       try {
         const res = await fetch(
-          `${CENSUS_API_BASE}?get=NAME&for=county:*&in=state:${selectedState.value}&key=${CENSUS_API_KEY}`
+          `/api/location/counties?stateCode=${selectedState.value}&stateName=${encodeURIComponent(selectedState.label)}`
         );
         const data = await res.json();
-
-        if (!Array.isArray(data) || data.length < 2) {
-          throw new Error("Invalid county data");
-        }
-
-        const counties = data
-          .slice(1)
-          .map((r: [string, string, string], idx: number) => ({
-            label: r[0].replace(` County, ${selectedState.label}`, "").trim(),
-            value: `${selectedState.value}-${r[2] || idx}`,
-          }))
-          .sort((a, b) => a.label.localeCompare(b.label));
-
+        const counties = (data.counties ?? []).map((c: { label: string; value: string; code: string }) => ({
+          label: c.label.replace(` County, ${selectedState.label}`, "").trim(),
+          value: c.code,
+        }));
         setAvailableCounties(counties);
       } catch (err) {
         console.error("County fetch failed:", err);
@@ -290,27 +271,9 @@ function JurorSignupInner() {
     const fetchCities = async () => {
       setCitiesLoading(true);
       try {
-        const res = await fetch(
-          `${CENSUS_API_BASE}?get=NAME&for=place:*&in=state:${selectedState.value}&key=${CENSUS_API_KEY}`
-        );
+        const res = await fetch(`/api/location/cities?stateCode=${selectedState.value}`);
         const data = await res.json();
-
-        if (!Array.isArray(data) || data.length < 2) {
-          throw new Error("Invalid city data");
-        }
-
-        const cities = data
-          .slice(1)
-          .map((r: [string, string, string], idx: number) => ({
-            label: r[0]
-              .replace(/, [^,]+$/, "")
-              .replace(/\s+(city|town|village|borough|CDP|township|municipality)\s*$/i, "")
-              .trim(),
-            value: `${selectedState.value}-${r[2] || idx}`,
-          }))
-          .sort((a, b) => a.label.localeCompare(b.label));
-
-        setAvailableCities(cities);
+        setAvailableCities(data.cities ?? []);
       } catch (err) {
         console.error("City fetch failed:", err);
         setAvailableCities([]);

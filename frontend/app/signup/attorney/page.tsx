@@ -30,9 +30,6 @@ import { Step5Success } from "../components/attorney/Step5Success";
    CONSTANTS
    =========================================================== */
 
-const CENSUS_API_BASE = "https://api.census.gov/data/2020/dec/pl";
-const CENSUS_API_KEY = process.env.NEXT_PUBLIC_CENSUS_API_KEY ?? "";
-
 const US_STATES: LocationOption[] = [
   { label: "Alabama", value: "01" },
   { label: "Alaska", value: "02" },
@@ -219,22 +216,13 @@ function AttorneySignupInner() {
       setCountiesLoading(true);
       try {
         const res = await fetch(
-          `${CENSUS_API_BASE}?get=NAME&for=county:*&in=state:${selectedState.value}&key=${CENSUS_API_KEY}`
+          `/api/location/counties?stateCode=${selectedState.value}&stateName=${encodeURIComponent(selectedState.label)}`
         );
-
-        const data = await safeJsonParse(res);
-        if (!Array.isArray(data) || data.length < 2) {
-          throw new Error("Invalid county data");
-        }
-
-        const counties = data
-          .slice(1)
-          .map((r: [string, string, string], idx: number) => ({
-            label: r[0].replace(` County, ${selectedState.label}`, "").trim(),
-            value: `${selectedState.value}-${r[2] || idx}`,
-          }))
-          .sort((a, b) => a.label.localeCompare(b.label));
-
+        const data = await res.json();
+        const counties = (data.counties ?? []).map((c: { label: string; value: string; code: string }) => ({
+          label: c.label.replace(` County, ${selectedState.label}`, "").trim(),
+          value: c.code,
+        }));
         setAvailableCounties(counties);
       } catch (err) {
         console.error("County fetch failed:", err);
@@ -272,24 +260,9 @@ function AttorneySignupInner() {
     const fetchCities = async () => {
       setCitiesLoading(true);
       try {
-        const res = await fetch(
-          `${CENSUS_API_BASE}?get=NAME&for=place:*&in=state:${selectedState.value}&key=${CENSUS_API_KEY}`
-        );
-
-        const data = await safeJsonParse(res);
-        if (!Array.isArray(data) || data.length < 2) {
-          throw new Error("Invalid city data");
-        }
-
-        const cities = data
-          .slice(1)
-          .map((r: [string, string, string], idx: number) => ({
-            label: r[0].trim(),
-            value: `${selectedState.value}-${r[2] || idx}`,
-          }))
-          .sort((a, b) => a.label.localeCompare(b.label));
-
-        setAvailableCities(cities);
+        const res = await fetch(`/api/location/cities?stateCode=${selectedState.value}`);
+        const data = await res.json();
+        setAvailableCities(data.cities ?? []);
       } catch (err) {
         console.error("City fetch failed:", err);
         setAvailableCities([]);
