@@ -31,6 +31,7 @@ import { Step5Success } from "../components/attorney/Step5Success";
    =========================================================== */
 
 const CENSUS_API_BASE = "https://api.census.gov/data/2020/dec/pl";
+const CENSUS_API_KEY = process.env.NEXT_PUBLIC_CENSUS_API_KEY ?? "";
 
 const US_STATES: LocationOption[] = [
   { label: "Alabama", value: "01" },
@@ -218,7 +219,7 @@ function AttorneySignupInner() {
       setCountiesLoading(true);
       try {
         const res = await fetch(
-          `${CENSUS_API_BASE}?get=NAME&for=county:*&in=state:${selectedState.value}`
+          `${CENSUS_API_BASE}?get=NAME&for=county:*&in=state:${selectedState.value}&key=${CENSUS_API_KEY}`
         );
 
         const data = await safeJsonParse(res);
@@ -272,7 +273,7 @@ function AttorneySignupInner() {
       setCitiesLoading(true);
       try {
         const res = await fetch(
-          `${CENSUS_API_BASE}?get=NAME&for=place:*&in=state:${selectedState.value}`
+          `${CENSUS_API_BASE}?get=NAME&for=place:*&in=state:${selectedState.value}&key=${CENSUS_API_KEY}`
         );
 
         const data = await safeJsonParse(res);

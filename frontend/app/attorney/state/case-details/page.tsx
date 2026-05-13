@@ -1,4 +1,5 @@
 "use client";
+const CENSUS_API_KEY = process.env.NEXT_PUBLIC_CENSUS_API_KEY ?? "";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -80,7 +81,7 @@ export default function CaseDetailsPage() {
   useEffect(() => {
     async function fetchStates() {
       try {
-        const res = await fetch("https://api.census.gov/data/2020/dec/pl?get=NAME&for=state:*");
+        const res = await fetch(`https://api.census.gov/data/2020/dec/pl?get=NAME&for=state:*&key=${CENSUS_API_KEY}`);
         const data = await res.json();
         const states = data.slice(1).map((row: [string, string]) => ({
           label: row[0], // Display name: "Texas"
@@ -107,7 +108,7 @@ export default function CaseDetailsPage() {
         setCountiesLoading(true);
         try {
           const res = await fetch(
-            `https://api.census.gov/data/2020/dec/pl?get=NAME&for=county:*&in=state:${stateCode.padStart(2, "0")}`
+            `https://api.census.gov/data/2020/dec/pl?get=NAME&for=county:*&in=state:${stateCode.padStart(2, "0")}&key=${CENSUS_API_KEY}`
           );
           const data = await res.json();
           setAvailableCounties(

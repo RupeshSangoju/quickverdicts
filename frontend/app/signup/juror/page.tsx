@@ -27,6 +27,7 @@ import { Step5Success } from "../components/juror/Step5Success";
    =========================================================== */
 
 const CENSUS_API_BASE = "https://api.census.gov/data/2020/dec/pl";
+const CENSUS_API_KEY = process.env.NEXT_PUBLIC_CENSUS_API_KEY ?? "";
 const IMAGES_TO_PRELOAD = ["/logo_sidebar_signup.png", "/Image1.png"];
 
 /* ===========================================================
@@ -189,7 +190,7 @@ function JurorSignupInner() {
   useEffect(() => {
     const fetchStates = async () => {
       try {
-        const res = await fetch(`${CENSUS_API_BASE}?get=NAME&for=state:*`);
+        const res = await fetch(`${CENSUS_API_BASE}?get=NAME&for=state:*&key=${CENSUS_API_KEY}`);
         const data = await res.json();
 
         const sorted = data
@@ -235,7 +236,7 @@ function JurorSignupInner() {
       setCountiesLoading(true);
       try {
         const res = await fetch(
-          `${CENSUS_API_BASE}?get=NAME&for=county:*&in=state:${selectedState.value}`
+          `${CENSUS_API_BASE}?get=NAME&for=county:*&in=state:${selectedState.value}&key=${CENSUS_API_KEY}`
         );
         const data = await res.json();
 
@@ -290,7 +291,7 @@ function JurorSignupInner() {
       setCitiesLoading(true);
       try {
         const res = await fetch(
-          `${CENSUS_API_BASE}?get=NAME&for=place:*&in=state:${selectedState.value}`
+          `${CENSUS_API_BASE}?get=NAME&for=place:*&in=state:${selectedState.value}&key=${CENSUS_API_KEY}`
         );
         const data = await res.json();
 

@@ -37,6 +37,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL
   : "http://localhost:4000";
 
 const CENSUS_API_BASE = "https://api.census.gov/data/2020/dec/pl";
+const CENSUS_API_KEY = process.env.NEXT_PUBLIC_CENSUS_API_KEY ?? "";
 
 const US_STATES = [
   { label: "Alabama", value: "01" }, { label: "Alaska", value: "02" },
@@ -594,7 +595,7 @@ export default function AdminDashboard() {
     if (!stateEntry) { setVenueCounties([]); return; }
     setVenueCountiesLoading(true);
     setVenueCounties([]);
-    fetch(`${CENSUS_API_BASE}?get=NAME&for=county:*&in=state:${stateEntry.value}`)
+    fetch(`${CENSUS_API_BASE}?get=NAME&for=county:*&in=state:${stateEntry.value}&key=${CENSUS_API_KEY}`)
       .then(r => r.json())
       .then((data: string[][]) => {
         if (!Array.isArray(data) || data.length < 2) return;
