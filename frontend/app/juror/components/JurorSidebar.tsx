@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import LogoutOverlay from "./LogoutOverlay";
 import NotificationPreview from "@/app/components/NotificationPreview";
 import { logout as logoutUser, getToken } from "@/lib/apiClient";
+import { useWebSocket } from "@/hooks/useWebSocket";
 import { useInactivityLogout } from "@/hooks/useInactivityLogout";
 import {
   User,
@@ -211,11 +212,23 @@ export default function JurorSidebar({ selectedSection, onSectionChange, onColla
     };
   }, [isVerified]);
 
+  const { on, off } = useWebSocket();
+
   useEffect(() => {
     fetchUnreadCount();
     // Poll for new notifications every 30 seconds
     const interval = setInterval(fetchUnreadCount, 30000);
-    return () => clearInterval(interval);
+
+    // Refresh immediately when server pushes a notification via WebSocket
+    const handleNewNotification = () => {
+      fetchUnreadCount();
+    };
+    on("notification:new", handleNewNotification);
+
+    return () => {
+      clearInterval(interval);
+      off("notification:new", handleNewNotification);
+    };
   }, []);
 
   const navLinks = [

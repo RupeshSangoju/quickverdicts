@@ -7,6 +7,7 @@ const JurorApplication = require("../models/JurorApplication");
 const Case = require("../models/Case");
 const Event = require("../models/Event");
 const Notification = require("../models/Notification");
+const { notifyUser } = require("../services/websocketService");
 
 // ============================================
 // HELPER FUNCTIONS
@@ -232,6 +233,15 @@ async function reviewApplication(req, res) {
               }" was not selected.${comments ? " Reason: " + comments : ""}`,
       }),
     ]);
+
+    // Push real-time notification to juror immediately
+    notifyUser(application.JurorId, "juror", "notification:new", {
+      type: decision === "approved"
+        ? Notification.NOTIFICATION_TYPES.APPLICATION_APPROVED
+        : Notification.NOTIFICATION_TYPES.APPLICATION_REJECTED,
+      title: `Application ${decision === "approved" ? "Approved" : "Rejected"}`,
+      caseId,
+    });
 
     // Check if case now has enough jurors to proceed
     const newApprovedCount = await Case.getApprovedJurorsCount(caseId);
