@@ -73,7 +73,10 @@ export default function DefendantDetailsPage() {
     value: string
   ) => {
     const newGroups = [...groups];
-    newGroups[gIdx].reps[idx][field] = field === "email" ? value.toLowerCase() : value;
+    const sanitized = field === "email"
+      ? value.toLowerCase()
+      : value.replace(/[^a-zA-Z\s'\-\.]/g, "");
+    newGroups[gIdx].reps[idx][field] = sanitized;
     setGroups(newGroups);
   };
 
@@ -83,7 +86,7 @@ export default function DefendantDetailsPage() {
     value: string
   ) => {
     const newGroups = [...groups];
-    newGroups[gIdx].defendants[idx].name = value;
+    newGroups[gIdx].defendants[idx].name = value.replace(/[^a-zA-Z\s'\-\.]/g, "");
     setGroups(newGroups);
   };
 

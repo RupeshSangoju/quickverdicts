@@ -71,7 +71,10 @@ export default function PlaintiffDetailsPage() {
     value: string
   ) => {
     const newGroups = [...groups];
-    (newGroups[gIdx][type] as Plaintiff[])[idx][field] = field === "email" ? value.toLowerCase() : value;
+    const sanitized = field === "email"
+      ? value.toLowerCase()
+      : value.replace(/[^a-zA-Z\s'\-\.]/g, "");
+    (newGroups[gIdx][type] as Plaintiff[])[idx][field] = sanitized;
     setGroups(newGroups);
   };
 
