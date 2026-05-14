@@ -36,9 +36,12 @@ Everything happens online — no courtroom, no travel.
    - Step 7 — Schedule the Trial
 5. [After You Submit — Waiting for Approval](#5-after-you-submit--waiting-for-approval)
 6. [The War Room (Trial Preparation)](#6-the-war-room-trial-preparation)
-7. [Trial Day](#7-trial-day)
-8. [After the Trial](#8-after-the-trial)
-9. [Your Profile & Account Settings](#9-your-profile--account-settings)
+7. [Rescheduling a Trial](#7-rescheduling-a-trial)
+   - Admin asks you to reschedule
+   - You request a reschedule yourself
+8. [Trial Day](#8-trial-day)
+9. [After the Trial](#9-after-the-trial)
+10. [Your Profile & Account Settings](#10-your-profile--account-settings)
 10. [Common Questions](#10-common-questions)
 
 ---
@@ -452,7 +455,118 @@ The jury charge contains the legal instructions the jury will receive before del
 
 ---
 
-## 7. Trial Day
+## 7. Rescheduling a Trial
+
+There are two reschedule scenarios: the **admin asks you to pick a new time**, or **you ask the admin to approve a new time**. Both are handled differently.
+
+---
+
+### Scenario A — Admin Asks You to Reschedule
+
+Sometimes the admin cannot approve your original time slot (scheduling conflict, platform maintenance, etc.) and will offer you **3 alternative time slots** to choose from.
+
+**How you are notified:**
+
+- A notification appears in your **Notifications** section
+- Your case card in **Cases** shows a **"Needs Rescheduling"** badge
+- If you open the War Room for that case, a banner appears at the top
+
+**How to respond:**
+
+1. Go to your dashboard and click **Cases** in the sidebar  
+2. Find the case marked **"Needs Rescheduling"** and click the badge, **or** navigate directly to **Reschedule Requests** in your sidebar
+3. You will see the request card showing:
+   - Your original scheduled date and time (shown in red, struck through)
+   - Your case title and description
+   - 3 alternative time slots offered by the admin
+
+4. Click **View Options** to expand the slot selector
+5. Click on your preferred slot from the 3 options — it highlights in blue when selected
+6. Click **Confirm Reschedule**
+
+**What happens next:**
+
+- Your trial is rescheduled to the slot you chose
+- The case moves back to **War Room** status
+- Your juror applications are **reset** — all previously approved, pending, and rejected applications are removed
+- Jurors receive a notification that the case has been rescheduled and can reapply for the new date
+- You will need to review and approve new juror applications from your War Room
+
+> ⚠️ **Important:** Choosing a new slot deletes all existing juror applications. Your jurors will need to reapply. Plan accordingly — allow enough time before the new trial date for jurors to apply and be reviewed.
+
+---
+
+### Scenario B — You Request a Reschedule
+
+If you need to move your trial to a different date or time, you can submit a reschedule request from inside your case's War Room. The admin must approve it.
+
+**When you can request a reschedule:**
+
+- Your case has already been scheduled (approved by admin)
+- The trial has not started yet
+- You do not already have a pending reschedule request for this case (only one at a time is allowed)
+
+**How to submit a request:**
+
+1. Go to **Cases** in your sidebar and open the case you want to reschedule
+2. Click **View War Room**
+3. Inside the War Room, find the **Reschedule** option (usually a button in the case overview area or action menu)
+4. A form appears asking for:
+
+| Field | Notes |
+|---|---|
+| **New Date** | The date you want to move the trial to |
+| **New Time** | The time you want for the new slot |
+| **Reason** | Why you need to reschedule (optional but recommended) |
+| **Additional Comments** | Any extra context for the admin (optional) |
+
+5. Click **Submit Reschedule Request**
+
+**What happens next:**
+
+- Your request status shows as **Pending Admin Approval** in the War Room with a banner at the top showing your requested new date/time
+- The admin reviews your request and either approves or rejects it
+- You receive a **notification** with the outcome
+
+**If the admin approves:**
+
+- Your trial moves to the new date and time you requested
+- **All juror applications are deleted** (approved, pending, and rejected)
+- Each affected juror receives a notification that the case has been rescheduled and their application removed
+- Jurors can reapply from the job board for the new date
+- Your case returns to **War Room** status — review and approve new applications before the trial
+
+**If the admin rejects:**
+
+- Your original trial date and time stay unchanged
+- Your existing juror applications remain intact
+- You receive a notification with the admin's reason for rejection
+- You can submit a new reschedule request if needed (after the rejected one is resolved)
+
+---
+
+### Tracking Your Reschedule Request
+
+You can check the status of a request you submitted at any time:
+
+- **War Room:** A banner at the top of the page shows *"Reschedule Request Pending Admin Approval"* along with your requested new date/time and any comments you added
+- **Notifications:** An update arrives as soon as the admin approves or rejects
+- **Cases section:** The case card shows the current status
+
+---
+
+### Key Rules to Know
+
+| Rule | Detail |
+|---|---|
+| Only one pending request per case | You cannot submit a second request while one is waiting for admin review |
+| Admin must approve | You cannot change the date yourself — admin approval is always required |
+| Juror applications reset on approval | Every reschedule (both admin-initiated and self-initiated) wipes all juror applications |
+| Admin-provided slots may conflict | If the slot you chose from admin's 3 options is no longer available when you confirm, you will see an error — contact admin for new options |
+
+---
+
+## 8. Trial Day
 
 ### Before You Join
 
@@ -508,7 +622,7 @@ Jurors observe, take notes, and will deliberate privately after proceedings conc
 
 ---
 
-## 8. After the Trial
+## 9. After the Trial
 
 Once the trial session ends:
 
@@ -528,7 +642,7 @@ The completed case remains in your Cases section for your records.
 
 ---
 
-## 9. Your Profile & Account Settings
+## 10. Your Profile & Account Settings
 
 Go to **Profile** in the sidebar to manage your account.
 
@@ -565,7 +679,7 @@ Click **Sign Out** at the bottom of the sidebar. A confirmation dialog appears �
 
 ---
 
-## 10. Common Questions
+## 11. Common Questions
 
 **Q: How long does account verification take?**
 A: Typically 1–2 business days. You'll receive an email when your account is verified.
