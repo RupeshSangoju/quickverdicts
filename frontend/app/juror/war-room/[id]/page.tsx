@@ -622,7 +622,7 @@ export default function JurorWarRoomPage() {
             </div>
             <div>
               <span className="font-semibold text-[#0A2342]">Location:</span>
-              <p className="text-[#455A7C]">{caseData.County}, {caseData.CaseType}</p>
+              <p className="text-[#455A7C]">{caseData.County}, {caseData.State}</p>
             </div>
             <div>
               <span className="font-semibold text-[#0A2342]">Your Compensation:</span>
