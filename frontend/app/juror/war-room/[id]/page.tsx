@@ -25,6 +25,7 @@ type CaseData = {
   County: string;
   CaseType: string;
   CaseTier: string;
+  State: string;
 };
 
 function getJurorCompensation(caseTier: string): number {
