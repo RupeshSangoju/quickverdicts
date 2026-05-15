@@ -23,11 +23,11 @@ export async function GET(req: NextRequest) {
       .slice(1)
       .map((r, idx) => ({
         label: r[0],
-        // strip " County, StateName" / " Parish, StateName" to get bare name
+        // Census format: "Barnstable County, Massachusetts"
+        // 1) strip ", StateName" suffix  2) strip trailing " County"/" Parish"/etc.
         value: r[0]
-          .replace(new RegExp(` County,\\s*${stateName}`, "i"), "")
-          .replace(new RegExp(` Parish,\\s*${stateName}`, "i"), "")
-          .replace(new RegExp(`,\\s*${stateName}`, "i"), "")
+          .replace(/,.*$/, "")
+          .replace(/ (County|Parish|Borough|City and Borough|Census Area|Municipality)$/i, "")
           .trim() || r[0],
         code: `${stateCode}-${r[2] ?? idx}`,
       }))
