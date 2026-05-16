@@ -431,7 +431,6 @@ useEffect(() => {
       for (let i = 0; i < filesToUpload.length; i++) {
         const fileData = filesToUpload[i];
 
-        // Skip if already completed or cancelled
         if (fileData.status === 'completed') continue;
 
         const controller = new AbortController();
@@ -440,27 +439,7 @@ useEffect(() => {
         ));
 
         try {
-          const headers = createAuthHeaders(token);
-
-          // Step 1 — ask backend for a write SAS URL (small request, no timeout risk)
-          const sasRes = await fetch(
-            `${API_BASE}/api/war-room/cases/${caseId}/war-room/documents/sas`,
-            {
-              method: 'POST',
-              headers: { ...headers, 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                fileName: fileData.file.name,
-                mimeType: fileData.file.type || 'application/octet-stream',
-                size: fileData.file.size,
-              }),
-              signal: controller.signal,
-            }
-          );
-
-          if (!sasRes.ok) throw new Error(`SAS request failed: ${sasRes.status}`);
-          const { sasUrl, blobName, blobBaseUrl } = await sasRes.json();
-
-          // Step 2 — upload directly to Azure Blob Storage (bypasses App Service timeout)
+          // Upload through backend to avoid browser→Azure CORS restrictions
           await new Promise<void>((resolve, reject) => {
             const xhr = new XMLHttpRequest();
 
@@ -474,44 +453,28 @@ useEffect(() => {
             });
 
             xhr.addEventListener('load', () => {
-              // Azure returns 201 Created on successful block blob PUT
               if (xhr.status >= 200 && xhr.status < 300) {
                 resolve();
               } else {
-                reject(new Error(`Azure upload failed: ${xhr.status}`));
+                reject(new Error(`Upload failed: ${xhr.status}`));
               }
             });
 
-            xhr.addEventListener('error', () => reject(new Error('Network error during Azure upload')));
+            xhr.addEventListener('error', () => reject(new Error('Network error during upload')));
             xhr.addEventListener('abort', () => reject(new Error('AbortError')));
             controller.signal.addEventListener('abort', () => xhr.abort());
 
-            xhr.open('PUT', sasUrl);
-            xhr.setRequestHeader('x-ms-blob-type', 'BlockBlob');
-            xhr.setRequestHeader('Content-Type', fileData.file.type || 'application/octet-stream');
-            xhr.send(fileData.file);
+            const formData = new FormData();
+            formData.append('file', fileData.file);
+            if (fileData.description) {
+              formData.append('description', fileData.description);
+            }
+
+            xhr.open('POST', `${API_BASE}/api/war-room/cases/${caseId}/war-room/documents`);
+            xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+            xhr.send(formData);
           });
 
-          // Step 3 — notify backend to save metadata in the DB
-          const completeRes = await fetch(
-            `${API_BASE}/api/war-room/cases/${caseId}/war-room/documents/complete`,
-            {
-              method: 'POST',
-              headers: { ...headers, 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                blobName,
-                blobBaseUrl,
-                fileName: fileData.file.name,
-                mimeType: fileData.file.type || 'application/octet-stream',
-                size: fileData.file.size,
-                description: fileData.description,
-              }),
-            }
-          );
-
-          if (!completeRes.ok) throw new Error(`Metadata save failed: ${completeRes.status}`);
-
-          // Remove completed file from the list
           setFilesToUpload(prev => prev.filter(f => f.id !== fileData.id));
 
         } catch (error: any) {
@@ -526,10 +489,8 @@ useEffect(() => {
         }
       }
 
-      // Refresh documents list
       await fetchWarRoomData();
 
-      // Close modal if no files left to upload
       if (filesToUpload.length === 0) {
         setShowUploadModal(false);
       }
