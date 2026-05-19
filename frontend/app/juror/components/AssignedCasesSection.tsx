@@ -28,6 +28,16 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL
   ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api$/, '')
   : "http://localhost:4000";
 
+function getJurorCompensation(caseTier: string): number {
+  switch (caseTier?.toLowerCase().trim()) {
+    case 'early adopter': return 50;
+    case 'tier 1': return 75;
+    case 'tier 2': return 100;
+    case 'tier 3': return 125;
+    default: return 50;
+  }
+}
+
 type ApprovedCase = {
   ApplicationId: number;
   CaseId: number;
@@ -35,6 +45,7 @@ type ApprovedCase = {
   ScheduledDate: string;
   ScheduledTime: string;
   PaymentAmount: number;
+  CaseTier: string;
   LawFirmName: string;
   AttorneyStatus?: string;
 };
@@ -281,7 +292,7 @@ export default function AssignedCasesSection() {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Compensation:</span>
-                        <span className="font-semibold text-green-600">${caseItem.PaymentAmount}</span>
+                        <span className="font-semibold text-green-600">${getJurorCompensation(caseItem.CaseTier)}</span>
                       </div>
                     </div>
 

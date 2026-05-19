@@ -56,7 +56,8 @@ type Application = {
   ScheduledDate: string;
   ScheduledTime?: string;
   PaymentAmount: number;
-  AttorneyStatus?: string; // To track case state: war_room, join_trial, view_details
+  CaseTier: string;
+  AttorneyStatus?: string;
 };
 
 type PaymentStats = {
@@ -66,6 +67,16 @@ type PaymentStats = {
   failedPayments: number;
   totalTransactions: number;
 };
+
+function getJurorCompensation(caseTier: string): number {
+  switch (caseTier?.toLowerCase().trim()) {
+    case 'early adopter': return 50;
+    case 'tier 1': return 75;
+    case 'tier 2': return 100;
+    case 'tier 3': return 125;
+    default: return 50;
+  }
+}
 
 export default function HomeSection({ sidebarCollapsed }: { sidebarCollapsed: boolean }) {
   const [juror, setJuror] = useState<any>(null);
@@ -1041,7 +1052,7 @@ if (isCaseDayOver(app.ScheduledDate)) {
                             </svg>
                             Pay:
                           </span>
-                          <span className="font-bold text-green-600 text-xs">${app.PaymentAmount}</span>
+                          <span className="font-bold text-green-600 text-xs">${getJurorCompensation(app.CaseTier)}</span>
                         </div>
                       </div>
                       
