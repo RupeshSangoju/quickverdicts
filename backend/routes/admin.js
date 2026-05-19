@@ -1987,11 +1987,12 @@ router.post("/cases/:caseId/reschedule", authMiddleware, requireAdmin, async (re
           .input("adminId", sql.Int, adminId)
           .query(`
             UPDATE dbo.Cases
-            SET AttorneyStatus      = 'war_room',
-                AdminApprovalStatus = 'reschedule',
-                RescheduleRequired  = 1,
-                AdminRescheduledBy  = @adminId,
-                UpdatedAt           = GETUTCDATE()
+            SET AttorneyStatus        = 'war_room',
+                AdminApprovalStatus   = 'reschedule',
+                RescheduleRequired    = 1,
+                RescheduleRequestedBy = @adminId,
+                RescheduleRequestedAt = GETUTCDATE(),
+                UpdatedAt             = GETUTCDATE()
             WHERE CaseId = @caseId AND IsDeleted = 0
           `);
       });
