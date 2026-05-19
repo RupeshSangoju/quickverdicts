@@ -755,7 +755,7 @@ router.post("/cases/:caseId/check-slot-availability", async (req, res) => {
 router.post("/cases/:caseId/request-reschedule", async (req, res) => {
   try {
     const { caseId } = req.params;
-    const { alternateSlots } = req.body;
+    const { alternateSlots, reason, adminComments } = req.body;
 
     // Validate input
     if (!Array.isArray(alternateSlots) || alternateSlots.length !== 3) {
@@ -791,7 +791,7 @@ router.post("/cases/:caseId/request-reschedule", async (req, res) => {
       caseId: parseInt(caseId),
       type: "case_reschedule_needed",
       title: "Case Needs Rescheduling",
-      message: `Your case "${caseData.CaseTitle}" time slot is already booked. Please select one of the 3 alternate time slots provided by admin.`,
+      message: `Your case "${caseData.CaseTitle}" needs to be rescheduled. Please select one of the 3 alternate time slots provided by admin.${reason ? ` Reason: ${reason}.` : ""}${adminComments ? ` Comments: ${adminComments}.` : ""}`,
     });
 
     // Create event
@@ -1801,7 +1801,7 @@ router.post("/reschedule-requests/:requestId/approve", authMiddleware, requireAd
         caseId: request.CaseId,
         type: "reschedule_approved",
         title: "Reschedule Request Approved",
-        message: `Your reschedule request for case "${request.CaseTitle}" has been approved. The case has been rescheduled to ${request.NewScheduledDate} at ${request.NewScheduledTime}. All juror applications have been removed and the case is now available on the job board for new applications.`,
+        message: `Your reschedule request for case "${request.CaseTitle}" has been approved. The case has been rescheduled to ${request.NewScheduledDate} at ${request.NewScheduledTime}. All juror applications have been removed and the case is now available on the job board for new applications.${adminComments ? ` Admin comments: ${adminComments}.` : ""}`,
       });
       console.log(`📧 Notification sent to attorney ${request.AttorneyId}`);
     } catch (notifError) {

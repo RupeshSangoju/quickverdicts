@@ -960,13 +960,15 @@ router.post(
 
       // Create notification for each admin
       for (const adminId of adminIds) {
+        const reasonPart = reason ? ` Reason: ${reason}.` : "";
+        const commentsPart = attorneyComments ? ` Comments: ${attorneyComments}.` : "";
         await Notification.create({
           userId: adminId,
           userType: "admin",
           caseId: parseInt(caseId),
           type: "attorney_reschedule_request",
           title: "New Reschedule Request",
-          message: `Attorney has requested to reschedule case "${caseData.CaseTitle}" from ${caseData.ScheduledDate} to ${newScheduledDate}`,
+          message: `Attorney has requested to reschedule case "${caseData.CaseTitle}" from ${caseData.ScheduledDate} to ${newScheduledDate}.${reasonPart}${commentsPart}`,
         });
       }
     } catch (notifError) {
