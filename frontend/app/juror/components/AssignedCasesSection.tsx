@@ -246,9 +246,9 @@ export default function AssignedCasesSection() {
                   };
                 } else if (caseItem.AttorneyStatus === "join_trial") {
                   statusBadge = {
-                    text: 'Ready to Join Trial',
-                    color: 'bg-green-100 text-green-800 border-green-300',
-                    icon: '🎥'
+                    text: 'Preparing for Trial',
+                    color: 'bg-blue-100 text-blue-800 border-blue-300',
+                    icon: '📋'
                   };
                 } else if (isAccessible) {
                   statusBadge = {
