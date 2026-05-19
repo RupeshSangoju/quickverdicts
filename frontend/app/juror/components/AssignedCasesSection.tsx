@@ -245,7 +245,11 @@ export default function AssignedCasesSection() {
                     icon: '✓'
                   };
                 } else if (caseItem.AttorneyStatus === "join_trial") {
-                  statusBadge = { text: '', color: '', icon: '' };
+                  statusBadge = {
+                    text: 'Ready to Join Trial',
+                    color: 'bg-green-100 text-green-800 border-green-300',
+                    icon: '🎥'
+                  };
                 } else if (isAccessible) {
                   statusBadge = {
                     text: 'War Room Available',
@@ -268,14 +272,12 @@ export default function AssignedCasesSection() {
                     </div>
 
                     {/* Status Badge */}
-                    {statusBadge.text && (
-                      <div className="mb-4">
-                        <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border ${statusBadge.color}`}>
-                          <span>{statusBadge.icon}</span>
-                          <span>{statusBadge.text}</span>
-                        </div>
+                    <div className="mb-4">
+                      <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border ${statusBadge.color}`}>
+                        <span>{statusBadge.icon}</span>
+                        <span>{statusBadge.text}</span>
                       </div>
-                    )}
+                    </div>
 
                     <div className="space-y-2 mb-4 text-sm">
                       <div className="flex justify-between">
