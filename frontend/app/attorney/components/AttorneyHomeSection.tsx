@@ -502,7 +502,7 @@ export default function AttorneyHomeSection({ onSectionChange }: { onSectionChan
     if (c.AttorneyStatus === "join_trial") {
  //     return { label: "Ready for Trial", color: "bg-green-100 text-green-700 border-green-300" };
     }
-    if (c.RescheduleRequired || c.AdminApprovalStatus === "reschedule") {
+    if (c.RescheduleRequired) {
       return { label: "Reschedule Required", color: "bg-orange-100 text-orange-700 border-orange-300" };
     }
     if (c.AttorneyStatus === "view_details") {

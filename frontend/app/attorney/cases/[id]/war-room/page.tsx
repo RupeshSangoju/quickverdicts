@@ -1837,15 +1837,18 @@ useEffect(() => {
               <div className="space-y-4">
                 {/* Basic Info Grid */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <div className="bg-white rounded-lg p-3 border border-[#C6CDD9]">
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <div className="p-1 bg-[#16305B]/10 rounded">
-                        <EnvelopeIcon className="w-3 h-3 text-[#16305B]" />
-                      </div>
-                      <label className="text-xs font-semibold text-[#455A7C] uppercase">Email</label>
-                    </div>
-                    <p className="text-[#0A2342] font-semibold text-sm break-all">{selectedApplication.JurorEmail}</p>
-                  </div>
+                {/* Status */}
+                <div className="bg-white rounded-lg p-4 border border-[#C6CDD9]">
+                  <label className="text-xs font-semibold text-[#455A7C] uppercase mb-2 block">Application Status</label>
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold uppercase ${
+                    selectedApplication.Status === "approved" ? "bg-green-50 text-green-700" :
+                    selectedApplication.Status === "rejected" ? "bg-red-50 text-red-700" :
+                    "bg-amber-50 text-amber-700"
+                  }`}>
+                    <span className="w-1.5 h-1.5 bg-current rounded-full"></span>
+                    {selectedApplication.Status}
+                  </span>
+                </div>
 
                   <div className="bg-white rounded-lg p-3 border border-[#C6CDD9]">
                     <div className="flex items-center gap-1.5 mb-1">
@@ -1876,20 +1879,10 @@ useEffect(() => {
                     </div>
                     <p className="text-[#0A2342] font-semibold text-sm">{new Date(selectedApplication.AppliedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
                   </div>
+
                 </div>
 
-                {/* Status */}
-                <div className="bg-white rounded-lg p-4 border border-[#C6CDD9]">
-                  <label className="text-xs font-semibold text-[#455A7C] uppercase mb-2 block">Application Status</label>
-                  <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold uppercase ${
-                    selectedApplication.Status === "approved" ? "bg-green-50 text-green-700" :
-                    selectedApplication.Status === "rejected" ? "bg-red-50 text-red-700" :
-                    "bg-amber-50 text-amber-700"
-                  }`}>
-                    <span className="w-1.5 h-1.5 bg-current rounded-full"></span>
-                    {selectedApplication.Status}
-                  </span>
-                </div>
+
 
                 {/* Voir Dire Part 1 */}
                 <div className="bg-white rounded-lg p-4 border border-[#C6CDD9]">
