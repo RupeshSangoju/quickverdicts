@@ -962,7 +962,7 @@ router.post(
       for (const adminId of adminIds) {
         const reasonPart = reason ? ` Reason: ${reason}.` : "";
         const commentsPart = attorneyComments ? ` Comments: ${attorneyComments}.` : "";
-        await Notification.create({
+        await Notification.createNotification({
           userId: adminId,
           userType: "admin",
           caseId: parseInt(caseId),
