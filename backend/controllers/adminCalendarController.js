@@ -195,6 +195,7 @@ async function getCasesByDate(req, res) {
           c.CaseTitle,
           c.CaseType,
           c.County,
+          c.State as CaseState,
           c.ScheduledDate,
           c.ScheduledTime,
           c.AttorneyStatus,
@@ -333,7 +334,7 @@ async function getCasesByDate(req, res) {
 
           return {
             ...caseItem,
-            State: caseItem.AttorneyState,
+            State: caseItem.CaseState,
             witnesses: witnessesResult.recordset,
             juryQuestions: questionsResult.recordset.map((q) => ({
               ...q,
@@ -354,7 +355,7 @@ async function getCasesByDate(req, res) {
           // Return case without details if there's an error
           return {
             ...caseItem,
-            State: caseItem.AttorneyState,
+            State: caseItem.CaseState,
             witnesses: [],
             juryQuestions: [],
             jurors: [],
