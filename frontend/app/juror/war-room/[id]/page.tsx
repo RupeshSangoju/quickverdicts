@@ -267,6 +267,16 @@ export default function JurorWarRoomPage() {
     fetchWarRoomData();
   }, [caseId]);
 
+  // Block juror access before trial day
+  useEffect(() => {
+    if (!caseData) return;
+    const onTrialDay = isTrialDay(caseData.ScheduledDate);
+    const dayOver = isCaseDayOver(caseData.ScheduledDate);
+    if (!onTrialDay && !dayOver) {
+      router.replace("/juror");
+    }
+  }, [caseData]);
+
   // WebSocket listener for jury charge release
   useEffect(() => {
     if (!isConnected || !socket || !caseId) return;

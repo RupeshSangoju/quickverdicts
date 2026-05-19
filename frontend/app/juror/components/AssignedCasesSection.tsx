@@ -298,13 +298,20 @@ export default function AssignedCasesSection() {
 
                     {/* Conditional access based on trial timing and case day */}
                     <div className="space-y-2">
-                      <button
-                        className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-[#0C2D57] text-white rounded-md hover:bg-[#0a2347] transition"
-                        onClick={() => router.push(`/juror/war-room/${caseItem.CaseId}`)}
-                      >
-                        <span>Case Information</span>
-                        <ArrowRightIcon className="w-4 h-4" />
-                      </button>
+                      {isTrialDay(caseItem.ScheduledDate) || isCaseDayOver(caseItem.ScheduledDate) || caseItem.AttorneyStatus === "view_details" ? (
+                        <button
+                          className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-[#0C2D57] text-white rounded-md hover:bg-[#0a2347] transition"
+                          onClick={() => router.push(`/juror/war-room/${caseItem.CaseId}`)}
+                        >
+                          <span>Case Information</span>
+                          <ArrowRightIcon className="w-4 h-4" />
+                        </button>
+                      ) : (
+                        <div className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 text-gray-500 rounded-md cursor-not-allowed text-sm font-semibold">
+                          <Lock className="w-4 h-4" />
+                          <span>War Room Opens on Trial Day</span>
+                        </div>
+                      )}
                       {caseItem.AttorneyStatus === "join_trial" && isTrialDay(caseItem.ScheduledDate) && !isCaseDayOver(caseItem.ScheduledDate) && (
                         <button
                           className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition cursor-pointer"
