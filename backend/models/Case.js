@@ -1156,6 +1156,7 @@ async function requestReschedule(caseId, adminId, alternateSlots) {
           UPDATE dbo.Cases
           SET
             RescheduleRequired = 1,
+            AdminApprovalStatus = 'reschedule',
             AlternateSlots = @alternateSlots,
             OriginalScheduledDate = @originalDate,
             OriginalScheduledTime = @originalTime,

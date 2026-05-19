@@ -313,7 +313,7 @@ export default function AttorneyCasesSection({ onBack }: AttorneyCasesSectionPro
         icon: <ChevronRight className="w-3 h-3" />
       };
     }
-    if (c.RescheduleRequired) {
+    if (c.RescheduleRequired || c.AdminApprovalStatus === "reschedule") {
       return {
         label: "Reschedule Required",
         color: "bg-orange-100 text-orange-700 border-orange-300",
