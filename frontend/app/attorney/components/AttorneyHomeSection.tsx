@@ -502,14 +502,13 @@ export default function AttorneyHomeSection({ onSectionChange }: { onSectionChan
     if (c.AttorneyStatus === "join_trial") {
  //     return { label: "Ready for Trial", color: "bg-green-100 text-green-700 border-green-300" };
     }
+    if (c.RescheduleRequired) {
+      return { label: "Reschedule Required", color: "bg-orange-100 text-orange-700 border-orange-300" };
+    }
     if (c.AttorneyStatus === "view_details") {
       return { label: "Completed", color: "bg-purple-100 text-purple-700 border-purple-300" };
     }
     if (c.AttorneyStatus === "war_room") {
-      // Check if admin rescheduled this case
-      if (c.AdminRescheduledBy) {
-        return { label: "Admin Rescheduled Case", color: "bg-orange-100 text-orange-700 border-orange-300" };
-      }
       return { label: "Open for Applications", color: "bg-blue-100 text-blue-700 border-blue-300" };
     }
     return null;

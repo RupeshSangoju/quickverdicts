@@ -313,6 +313,13 @@ export default function AttorneyCasesSection({ onBack }: AttorneyCasesSectionPro
         icon: <ChevronRight className="w-3 h-3" />
       };
     }
+    if (c.RescheduleRequired) {
+      return {
+        label: "Reschedule Required",
+        color: "bg-orange-100 text-orange-700 border-orange-300",
+        icon: <ChevronRight className="w-3 h-3" />
+      };
+    }
     if (c.AttorneyStatus === "view_details") {
       return {
         label: "Completed",
