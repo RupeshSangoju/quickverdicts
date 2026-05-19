@@ -1978,13 +1978,24 @@ router.post("/cases/:caseId/reschedule", authMiddleware, requireAdmin, async (re
       console.error("❌ Error deleting juror applications:", error);
     }
 
-    // Reset case status to war_room and mark as admin-rescheduled
+    // Reset case status and mark as requiring reschedule
     try {
-      await Case.updateCaseDetails(caseId, {
-        attorneyStatus: 'war_room',
-        adminRescheduledBy: adminId,
+      const { executeQuery, sql } = require("../config/db");
+      await executeQuery(async (pool) => {
+        await pool.request()
+          .input("caseId", sql.Int, parseInt(caseId))
+          .input("adminId", sql.Int, adminId)
+          .query(`
+            UPDATE dbo.Cases
+            SET AttorneyStatus      = 'war_room',
+                AdminApprovalStatus = 'reschedule',
+                RescheduleRequired  = 1,
+                AdminRescheduledBy  = @adminId,
+                UpdatedAt           = GETUTCDATE()
+            WHERE CaseId = @caseId AND IsDeleted = 0
+          `);
       });
-      console.log(`✅ Case ${caseId} status reset to war_room and marked as admin-rescheduled`);
+      console.log(`✅ Case ${caseId} status set to war_room / reschedule, RescheduleRequired = 1`);
     } catch (error) {
       console.error("❌ Error updating case status:", error);
       throw new Error(`Failed to update case status: ${error.message}`);
