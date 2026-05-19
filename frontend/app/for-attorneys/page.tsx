@@ -215,37 +215,21 @@ period with the jurors.
 </div>
 <br></br>
           <p className="text-center text-gray-600 mb-8">
-            Click on the below video for a close up of the Attorney Journey
+            Click below for a close up of the Attorney Journey
           </p>
 
           {/* Video Player - user will replace with YouTube embed */}
           <div className="relative rounded-lg overflow-hidden aspect-video shadow-lg bg-black">
-            {!isPlaying ? (
-              <>
-                {/* Thumbnail */}
-                <img src="/images/l.png" className="w-full h-full object-cover"/>
-
-                {/* Play Button Overlay */}
-                <button
-                  onClick={() => setIsPlaying(true)}
-                  className="absolute inset-0 flex items-center justify-center cursor-pointer bg-black/30 hover:bg-black/40 transition"
-                >
-                  <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center hover:scale-110 transition-transform">
-                    <Play className="w-10 h-10 text-gray-900 ml-1" fill="currentColor" />
-                  </div>
-                </button>
-              </>
-            ) : (
+            { 
               /* YouTube iframe */
               <iframe
                 className="w-full h-full"
                 src={`https://sway.cloud.microsoft/s/a4IsVExPsi6KOpj5/embed`}
-                title="YouTube video player"
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 allowFullScreen
               />
-            )}
+            }
           </div>
         </div>
       </section>
