@@ -2102,4 +2102,49 @@ router.post("/run-migration/006", authMiddleware, requireAdmin, async (req, res)
   }
 });
 
+// ============================================
+// ONE-TIME MIGRATION ROUTE
+// POST /api/admin/run-migration/007
+// Adds 'reschedule' and 'cancelled' to Cases.AdminApprovalStatus CHECK constraint
+// ============================================
+
+router.post("/run-migration/007", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const pool = await poolPromise;
+
+    // Step 1: Find and drop the existing CHECK constraint on AdminApprovalStatus
+    const findResult = await pool.request().query(`
+      SELECT cc.CONSTRAINT_NAME
+      FROM INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE AS ccu
+      INNER JOIN INFORMATION_SCHEMA.CHECK_CONSTRAINTS AS cc
+        ON cc.CONSTRAINT_NAME = ccu.CONSTRAINT_NAME
+      WHERE ccu.TABLE_NAME = 'Cases'
+        AND ccu.COLUMN_NAME = 'AdminApprovalStatus'
+    `);
+
+    let droppedConstraint = null;
+    if (findResult.recordset.length > 0) {
+      droppedConstraint = findResult.recordset[0].CONSTRAINT_NAME;
+      await pool.request().query(`ALTER TABLE dbo.Cases DROP CONSTRAINT [${droppedConstraint}]`);
+    }
+
+    // Step 2: Add updated constraint that includes 'reschedule' and 'cancelled'
+    await pool.request().query(`
+      ALTER TABLE dbo.Cases
+      ADD CONSTRAINT CK_Cases_AdminApprovalStatus
+      CHECK (AdminApprovalStatus IN ('pending', 'approved', 'rejected', 'reschedule', 'cancelled'))
+    `);
+
+    res.json({
+      success: true,
+      message: "Migration 007 applied successfully — AdminApprovalStatus now allows: pending, approved, rejected, reschedule, cancelled",
+      droppedConstraint: droppedConstraint || "none found",
+      newConstraint: "CK_Cases_AdminApprovalStatus",
+    });
+  } catch (error) {
+    console.error("Migration 007 error:", error);
+    res.status(500).json({ success: false, message: "Migration failed", error: error.message });
+  }
+});
+
 module.exports = router;
