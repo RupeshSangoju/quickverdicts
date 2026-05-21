@@ -1760,8 +1760,7 @@ router.post("/reschedule-requests/:requestId/approve", authMiddleware, requireAd
 
     // Delete ALL juror applications for this case (approved, pending, rejected)
     // This ensures the case goes back to job board and no jurors see it in "My Cases"
-    const { executeQuery, sql } = require("../config/db");
-    let deletedCount = 0;
+    const { executeQuery } = require("../config/db");
     let affectedJurors = [];
 
     try {
@@ -1992,7 +1991,7 @@ router.post("/cases/:caseId/reschedule", authMiddleware, requireAdmin, async (re
 
     // Reset case status and mark as requiring reschedule
     try {
-      const { executeQuery, sql } = require("../config/db");
+      const { executeQuery } = require("../config/db");
       await executeQuery(async (pool) => {
         await pool.request()
           .input("caseId", sql.Int, parseInt(caseId))
