@@ -140,7 +140,7 @@ export default function VideoIntroOverlay({
           <div className="mb-3">
             <div className="flex items-center justify-between text-xs mb-1.5">
               <span className="text-gray-500">
-                Scroll horizontally through all slides to continue
+                Scroll vertically through all slides to continue
               </span>
               {canContinue ? (
                 <span className="text-green-600 font-semibold">✓ Presentation complete</span>
