@@ -1732,15 +1732,27 @@ router.post("/reschedule-requests/:requestId/approve", authMiddleware, requireAd
 
     console.log(`📅 Updating case ${request.CaseId} schedule to ${request.NewScheduledDate} ${request.NewScheduledTime}`);
 
-    // Update case with new scheduled date/time AND reset status to war_room
-    // This ensures the case appears on the job board for new juror applications
+    // Update case with new scheduled date/time, reset AdminApprovalStatus to approved
+    // and clear the reschedule flags so the war room unlocks
     try {
-      await Case.updateCaseDetails(request.CaseId, {
-        scheduledDate: request.NewScheduledDate,
-        scheduledTime: request.NewScheduledTime,
-        attorneyStatus: 'war_room',
-      });
-      console.log(`✅ Case schedule updated and status reset to war_room`);
+      const pool = await poolPromise;
+      await pool.request()
+        .input("caseId", sql.Int, parseInt(request.CaseId))
+        .input("scheduledDate", sql.Date, request.NewScheduledDate)
+        .input("scheduledTime", sql.NVarChar, request.NewScheduledTime)
+        .query(`
+          UPDATE dbo.Cases
+          SET ScheduledDate        = @scheduledDate,
+              ScheduledTime        = @scheduledTime,
+              AttorneyStatus       = 'war_room',
+              AdminApprovalStatus  = 'approved',
+              RescheduleRequired   = 0,
+              RescheduleRequestedBy = NULL,
+              RescheduleRequestedAt = NULL,
+              UpdatedAt            = GETUTCDATE()
+          WHERE CaseId = @caseId AND IsDeleted = 0
+        `);
+      console.log(`✅ Case schedule updated, AdminApprovalStatus reset to approved, RescheduleRequired cleared`);
     } catch (updateError) {
       console.error("❌ Error updating case schedule:", updateError);
       throw new Error(`Failed to update case schedule: ${updateError.message}`);

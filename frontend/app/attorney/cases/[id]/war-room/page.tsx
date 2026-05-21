@@ -265,16 +265,16 @@ export default function WarRoomPage() {
     fetchWarRoomData();
   }, [caseId]);
 
-  // Auto-open reschedule modal if admin rescheduled the case
+  // Auto-open reschedule modal if admin marked this case for rescheduling
   useEffect(() => {
-    if (caseData && caseData.AdminRescheduledBy && !showRescheduleModal) {
+    if (caseData && caseData.AdminApprovalStatus === 'reschedule' && !pendingRescheduleRequest && !showRescheduleModal) {
       setShowRescheduleModal(true);
       toast("Admin has requested that you reschedule this case. Please update the trial schedule.", {
         icon: '📅',
         duration: 5000,
       });
     }
-  }, [caseData, showRescheduleModal]);
+  }, [caseData, pendingRescheduleRequest, showRescheduleModal]);
 useEffect(() => {
   if (showSuccessMessage) {
     const timer = setTimeout(() => {
@@ -944,8 +944,39 @@ useEffect(() => {
           </div>
         </div>
 
-        {/* Admin Approval Pending Overlay */}
-        {!isAdminApproved && (
+        {/* Admin-requested reschedule state */}
+        {!isAdminApproved && caseData.AdminApprovalStatus === 'reschedule' && (
+          <div className="bg-white rounded-lg shadow border-2 border-orange-400 overflow-hidden">
+            <div className="p-8 text-center">
+              <div className="inline-flex p-4 bg-orange-100 rounded-full mb-4">
+                <CalendarIcon className="w-12 h-12 text-orange-600" />
+              </div>
+              <h3 className="text-xl font-bold text-[#0A2342] mb-2">
+                Reschedule Required
+              </h3>
+              <p className="text-[#455A7C] mb-4 max-w-md mx-auto">
+                The admin has requested that this case be rescheduled. Please submit a new trial date and time for admin approval.
+              </p>
+              {pendingRescheduleRequest ? (
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                  <span className="w-2 h-2 bg-current rounded-full animate-pulse"></span>
+                  Reschedule request submitted — awaiting admin approval
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowRescheduleModal(true)}
+                  className="inline-flex items-center gap-2 px-6 py-2.5 bg-orange-500 text-white rounded-lg text-sm font-semibold hover:bg-orange-600 transition-colors"
+                >
+                  <CalendarIcon className="w-4 h-4" />
+                  Update Trial Schedule
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Generic lock screen for pending / rejected */}
+        {!isAdminApproved && caseData.AdminApprovalStatus !== 'reschedule' && (
           <div className="bg-white rounded-lg shadow border-2 border-amber-400 overflow-hidden">
             <div className="p-8 text-center">
               <div className="inline-flex p-4 bg-amber-100 rounded-full mb-4">
