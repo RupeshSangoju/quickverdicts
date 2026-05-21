@@ -323,47 +323,38 @@ export default function HomeSection({ sidebarCollapsed }: { sidebarCollapsed: bo
   const handleVideoNext = async () => {
     try {
       const token = getToken();
-      // ✅ FIXED: Correct endpoint is /onboarding/:taskId/complete
-      const res = await fetch(`${API_BASE}/api/juror/onboarding/intro_video/complete`, {
-        method: "POST",
-        headers: {
-          "Authorization": token ? `Bearer ${token}` : "",
-          "Content-Type": "application/json"
-        },
-      });
+      // Mark both video AND quiz complete — Sway replaces both steps
+      await Promise.all([
+        fetch(`${API_BASE}/api/juror/onboarding/intro_video/complete`, {
+          method: "POST",
+          headers: { "Authorization": token ? `Bearer ${token}` : "", "Content-Type": "application/json" },
+        }),
+        fetch(`${API_BASE}/api/juror/onboarding/juror_quiz/complete`, {
+          method: "POST",
+          headers: { "Authorization": token ? `Bearer ${token}` : "", "Content-Type": "application/json" },
+        }),
+      ]);
 
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error("Backend error:", errorText);
-        throw new Error(`Failed to update video completion: ${res.status}`);
-      }
-
-      const data = await res.json();
-      console.log("✅ Video completion saved:", data);
-
-      // Update state immediately
       setShowIntroVideo(false);
       setIntroVideoCompleted(true);
+      setQuizCompleted(true);
 
-      // Update localStorage immediately to prevent overwrites
       const storedUser = localStorage.getItem("jurorUser");
       if (storedUser) {
         try {
           const user = JSON.parse(storedUser);
           user.introVideoCompleted = true;
+          user.jurorQuizCompleted = true;
+          user.onboardingCompleted = true;
           localStorage.setItem("jurorUser", JSON.stringify(user));
-          console.log("✅ Updated localStorage with video completion");
-        } catch (e) {
-          console.error("Failed to update localStorage:", e);
-        }
+        } catch (e) {}
       }
 
-      // Wait a bit before fetching to ensure backend has committed
       await new Promise(resolve => setTimeout(resolve, 500));
       await fetchJurorProfile();
     } catch (error) {
-      console.error("Failed to update video completion:", error);
-      alert("Failed to save video completion. Please try again.");
+      console.error("Failed to update onboarding completion:", error);
+      alert("Failed to save progress. Please try again.");
     }
   };
 
