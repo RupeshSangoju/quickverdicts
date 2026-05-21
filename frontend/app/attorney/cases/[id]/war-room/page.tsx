@@ -227,6 +227,7 @@ export default function WarRoomPage() {
   const [filesToUpload, setFilesToUpload] = useState<FileToUpload[]>([]);
   const [uploadingDocuments, setUploadingDocuments] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const hasAutoOpenedRescheduleModal = useRef(false);
 
   // Jury Charge
   const [juryChargeLocked, setJuryChargeLocked] = useState(false);
@@ -265,16 +266,22 @@ export default function WarRoomPage() {
     fetchWarRoomData();
   }, [caseId]);
 
-  // Auto-open reschedule modal if admin marked this case for rescheduling
+  // Auto-open reschedule modal once on first load if admin marked this case for rescheduling
   useEffect(() => {
-    if (caseData && caseData.AdminApprovalStatus === 'reschedule' && !pendingRescheduleRequest && !showRescheduleModal) {
+    if (
+      !hasAutoOpenedRescheduleModal.current &&
+      caseData &&
+      caseData.AdminApprovalStatus === 'reschedule' &&
+      !pendingRescheduleRequest
+    ) {
+      hasAutoOpenedRescheduleModal.current = true;
       setShowRescheduleModal(true);
       toast("Admin has requested that you reschedule this case. Please update the trial schedule.", {
         icon: '📅',
         duration: 5000,
       });
     }
-  }, [caseData, pendingRescheduleRequest, showRescheduleModal]);
+  }, [caseData, pendingRescheduleRequest]);
 useEffect(() => {
   if (showSuccessMessage) {
     const timer = setTimeout(() => {
