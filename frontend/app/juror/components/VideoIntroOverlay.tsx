@@ -20,8 +20,11 @@ export default function VideoIntroOverlay({
   sidebarCollapsed = false,
 }: VideoIntroOverlayProps) {
   const [secondsLeft, setSecondsLeft] = useState(REQUIRED_SECONDS);
-  const [canContinue, setCanContinue] = useState(false);
+  const [timerDone, setTimerDone] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const canContinue = timerDone && confirmed;
 
   // Lock background scroll while overlay is open
   useEffect(() => {
@@ -49,13 +52,14 @@ export default function VideoIntroOverlay({
     if (!open) return;
 
     setSecondsLeft(REQUIRED_SECONDS);
-    setCanContinue(false);
+    setTimerDone(false);
+    setConfirmed(false);
 
     intervalRef.current = setInterval(() => {
       setSecondsLeft((s) => {
         if (s <= 1) {
           clearInterval(intervalRef.current!);
-          setCanContinue(true);
+          setTimerDone(true);
           return 0;
         }
         return s - 1;
@@ -70,7 +74,7 @@ export default function VideoIntroOverlay({
         (e.data.type === "sway:end" || e.data.event === "slideEnd" || e.data.completed)
       ) {
         clearInterval(intervalRef.current!);
-        setCanContinue(true);
+        setTimerDone(true);
         setSecondsLeft(0);
       }
     };
@@ -162,6 +166,20 @@ export default function VideoIntroOverlay({
               />
             </div>
           </div>
+
+          {timerDone && (
+            <label className="flex items-center gap-2 cursor-pointer mb-4 select-none">
+              <input
+                type="checkbox"
+                checked={confirmed}
+                onChange={(e) => setConfirmed(e.target.checked)}
+                className="w-4 h-4 accent-[#0C2D57] cursor-pointer"
+              />
+              <span className="text-sm text-gray-700">
+                I confirm I have scrolled through the entire presentation
+              </span>
+            </label>
+          )}
 
           <div className="flex justify-end">
             <button
