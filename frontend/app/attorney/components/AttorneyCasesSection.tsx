@@ -572,8 +572,8 @@ export default function AttorneyCasesSection({ onBack }: AttorneyCasesSectionPro
               return (
                 <div
                   key={c.Id}
-                  onClick={() => { if (!c.RescheduleRequired && c.AdminApprovalStatus !== 'reschedule') handleCaseClick(c.Id); }}
-                  className={`bg-white rounded-xl shadow-sm transition-all duration-300 border border-gray-200 overflow-hidden group flex flex-col h-full ${c.RescheduleRequired || c.AdminApprovalStatus === 'reschedule' ? 'cursor-default' : 'hover:shadow-lg hover:border-[#16305B] cursor-pointer'}`}
+                  onClick={() => handleCaseClick(c.Id)}
+                  className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-200 hover:border-[#16305B] cursor-pointer overflow-hidden group flex flex-col h-full"
                 >
                   {/* Card Header */}
                   <div className="p-5 border-b border-gray-100 bg-gradient-to-r from-[#16305B] to-[#1e417a] min-h-[80px]">

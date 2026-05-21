@@ -652,8 +652,8 @@ export default function AttorneyHomeSection({ onSectionChange }: { onSectionChan
                   return (
                     <div
                       key={c.Id}
-                      onClick={() => { if (!c.RescheduleRequired && c.AdminApprovalStatus !== 'reschedule') handleCaseClick(c.Id); }}
-                      className={`bg-white rounded-xl shadow-sm transition-all border border-gray-200 overflow-hidden ${c.RescheduleRequired || c.AdminApprovalStatus === 'reschedule' ? 'cursor-default' : 'hover:shadow-lg cursor-pointer hover:border-[#16305B]'}`}
+                      onClick={() => handleCaseClick(c.Id)}
+                      className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all cursor-pointer border border-gray-200 hover:border-[#16305B] overflow-hidden"
                     >
                       <div className="p-4 bg-gradient-to-r from-[#16305B] to-[#1e417a] relative">
                         <h3 className="font-bold text-white mb-1 line-clamp-2">
