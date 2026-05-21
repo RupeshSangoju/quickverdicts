@@ -23,6 +23,16 @@ export default function VideoIntroOverlay({
   const [canContinue, setCanContinue] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Lock background scroll while overlay is open
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = "hidden";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
+
   // Reset and start timer each time the overlay opens
   useEffect(() => {
     if (!open) return;
