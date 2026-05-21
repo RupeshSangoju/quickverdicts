@@ -266,9 +266,10 @@ export default function WarRoomPage() {
     fetchWarRoomData();
   }, [caseId]);
 
-  // Auto-open reschedule modal once on first load if admin marked this case for rescheduling
+  // Auto-open reschedule modal once after data is fully loaded
   useEffect(() => {
     if (
+      !loading &&
       !hasAutoOpenedRescheduleModal.current &&
       caseData &&
       caseData.AdminApprovalStatus === 'reschedule' &&
@@ -281,7 +282,7 @@ export default function WarRoomPage() {
         duration: 5000,
       });
     }
-  }, [caseData, pendingRescheduleRequest]);
+  }, [loading, caseData, pendingRescheduleRequest]);
 useEffect(() => {
   if (showSuccessMessage) {
     const timer = setTimeout(() => {
