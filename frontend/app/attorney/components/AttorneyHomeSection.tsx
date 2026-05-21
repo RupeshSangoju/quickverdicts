@@ -627,14 +627,11 @@ export default function AttorneyHomeSection({ onSectionChange }: { onSectionChan
               </p>
             </div>
           </div>
-          {isVerified && cases.filter(c => c.RescheduleRequired).length > 0 && (
-            <button
-              onClick={() => router.push('/attorney/reschedule-requests')}
-              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors animate-pulse"
-            >
+          {isVerified && cases.filter(c => c.RescheduleRequired || c.AdminApprovalStatus === 'reschedule').length > 0 && (
+            <div className="flex items-center gap-2 px-4 py-2 bg-orange-100 text-orange-700 border border-orange-300 rounded-lg text-sm font-medium">
               <AlertCircle className="w-4 h-4" />
-              <span>{cases.filter(c => c.RescheduleRequired).length} Reschedule{cases.filter(c => c.RescheduleRequired).length > 1 ? 's' : ''} Needed</span>
-            </button>
+              <span>{cases.filter(c => c.RescheduleRequired || c.AdminApprovalStatus === 'reschedule').length} case{cases.filter(c => c.RescheduleRequired || c.AdminApprovalStatus === 'reschedule').length > 1 ? 's' : ''} need rescheduling</span>
+            </div>
           )}
         </div>
         
@@ -655,25 +652,19 @@ export default function AttorneyHomeSection({ onSectionChange }: { onSectionChan
                   return (
                     <div
                       key={c.Id}
-                      onClick={() => handleCaseClick(c.Id)}
-                      className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all cursor-pointer border border-gray-200 hover:border-[#16305B] overflow-hidden"
+                      onClick={() => { if (!c.RescheduleRequired && c.AdminApprovalStatus !== 'reschedule') handleCaseClick(c.Id); }}
+                      className={`bg-white rounded-xl shadow-sm transition-all border border-gray-200 overflow-hidden ${c.RescheduleRequired || c.AdminApprovalStatus === 'reschedule' ? 'cursor-default' : 'hover:shadow-lg cursor-pointer hover:border-[#16305B]'}`}
                     >
                       <div className="p-4 bg-gradient-to-r from-[#16305B] to-[#1e417a] relative">
                         <h3 className="font-bold text-white mb-1 line-clamp-2">
                           {caseTitle}
                         </h3>
                         <p className="text-xs text-blue-200">Case #{c.Id}</p>
-                        
-                        {c.RescheduleRequired ? (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              router.push('/attorney/reschedule-requests');
-                            }}
-                            className="absolute top-3 right-3 px-2 py-1 rounded text-xs font-semibold bg-red-600 text-white animate-pulse hover:bg-red-700 transition-colors"
-                          >
-                            ⚠️ RESCHEDULE NEEDED
-                          </button>
+
+                        {(c.RescheduleRequired || c.AdminApprovalStatus === 'reschedule') ? (
+                          <div className="absolute top-3 right-3 px-2 py-1 rounded text-xs font-semibold bg-orange-500 text-white">
+                            Reschedule Needed
+                          </div>
                         ) : statusInfo && (
                           <div className={`absolute top-3 right-3 px-2 py-1 rounded text-xs font-semibold ${statusInfo.color}`}>
                             {statusInfo.label}

@@ -572,8 +572,8 @@ export default function AttorneyCasesSection({ onBack }: AttorneyCasesSectionPro
               return (
                 <div
                   key={c.Id}
-                  onClick={() => handleCaseClick(c.Id)}
-                  className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-200 hover:border-[#16305B] cursor-pointer overflow-hidden group flex flex-col h-full"
+                  onClick={() => { if (!c.RescheduleRequired && c.AdminApprovalStatus !== 'reschedule') handleCaseClick(c.Id); }}
+                  className={`bg-white rounded-xl shadow-sm transition-all duration-300 border border-gray-200 overflow-hidden group flex flex-col h-full ${c.RescheduleRequired || c.AdminApprovalStatus === 'reschedule' ? 'cursor-default' : 'hover:shadow-lg hover:border-[#16305B] cursor-pointer'}`}
                 >
                   {/* Card Header */}
                   <div className="p-5 border-b border-gray-100 bg-gradient-to-r from-[#16305B] to-[#1e417a] min-h-[80px]">
@@ -584,17 +584,11 @@ export default function AttorneyCasesSection({ onBack }: AttorneyCasesSectionPro
                         </h3>
                         <p className="text-xs text-blue-200">Case #{c.Id}</p>
                       </div>
-                      {c.RescheduleRequired ? (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            router.push('/attorney/reschedule-requests');
-                          }}
-                          className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold border bg-red-600 text-white border-red-700 flex-shrink-0 animate-pulse hover:bg-red-700 transition-colors"
-                        >
+                      {(c.RescheduleRequired || c.AdminApprovalStatus === 'reschedule') ? (
+                        <div className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold border bg-orange-100 text-orange-700 border-orange-300 flex-shrink-0">
                           <AlertCircle className="w-3 h-3" />
-                          <span>RESCHEDULE</span>
-                        </button>
+                          <span>Reschedule Needed</span>
+                        </div>
                       ) : statusInfo && (
                         <div className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold border ${statusInfo.color} flex-shrink-0`}>
                           {statusInfo.icon}
