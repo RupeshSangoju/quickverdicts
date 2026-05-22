@@ -345,36 +345,7 @@ export default function AttorneySidebar({ selectedSection, onSectionChange }: At
         })}
       </nav>
 
-      {/* Reschedule Requests (if any pending) */}
-      {rescheduleCount > 0 && isVerified && (
-        <>
-          <div className="mt-4 border-t border-white/20" />
-          <div className="mt-2 px-2">
-            <button
-              type="button"
-              onClick={() => router.push("/attorney/reschedule-requests")}
-              className={`flex items-center rounded transition-all duration-500 ease-in-out cursor-pointer w-full bg-yellow-600/20 hover:bg-yellow-600/30 ${
-                collapsed ? "justify-center py-3" : "px-4 py-3 gap-3"
-              }`}
-            >
-              <div className="flex items-center justify-center w-10 h-10 relative flex-shrink-0" style={{ color: "#FCD34D" }}>
-                <AlertCircle className="w-6 h-6" />
-                <span className="absolute -top-1 -right-1 bg-yellow-500 text-gray-900 text-[10px] rounded-full w-5 h-5 flex items-center justify-center font-bold">
-                  {rescheduleCount}
-                </span>
-              </div>
-              <span
-                className={`text-[16px] font-semibold whitespace-nowrap transition-all duration-500 ease-in-out ${
-                  collapsed ? "opacity-0 translate-x-[-10px] w-0 overflow-hidden" : "opacity-100 translate-x-0 ml-2"
-                }`}
-                style={{ color: "#FCD34D" }}
-              >
-                Reschedule Needed
-              </span>
-            </button>
-          </div>
-        </>
-      )}
+
 
       <div className="flex-1" />
 

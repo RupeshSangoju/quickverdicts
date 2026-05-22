@@ -188,8 +188,9 @@ app.use(
 // CORS CONFIGURATION
 // ============================================
 
-// Build allowed origins list based on environment
-const allowedOrigins = [];
+let allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(",").map(origin => origin.trim())
+  : [];
 
 // Always add configured URLs
 if (process.env.FRONTEND_URL) {
