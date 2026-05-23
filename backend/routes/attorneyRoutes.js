@@ -1011,12 +1011,16 @@ router.get(
       });
     }
 
-    // Get latest reschedule request for this case
+    // Get attorney's own reschedule request (attorney-initiated)
     const rescheduleRequest = await AttorneyRescheduleRequest.findByCaseId(caseId);
+
+    // Get admin's reschedule request with suggested slots (admin-initiated)
+    const adminRescheduleRequest = await CaseReschedule.getRescheduleRequestByCase(caseId);
 
     res.json({
       success: true,
       rescheduleRequest,
+      adminRescheduleRequest: adminRescheduleRequest || null,
     });
   })
 );

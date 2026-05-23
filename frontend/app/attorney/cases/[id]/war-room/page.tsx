@@ -261,6 +261,9 @@ export default function WarRoomPage() {
   });
   const [submittingReschedule, setSubmittingReschedule] = useState(false);
   const [pendingRescheduleRequest, setPendingRescheduleRequest] = useState<any>(null);
+  const [adminRescheduleRequest, setAdminRescheduleRequest] = useState<any>(null);
+  const [selectedAdminSlot, setSelectedAdminSlot] = useState<number | null>(null);
+  const [confirmingSlot, setConfirmingSlot] = useState(false);
 
   useEffect(() => {
     fetchWarRoomData();
@@ -352,9 +355,12 @@ useEffect(() => {
 
       if (rescheduleRes.ok) {
         const rescheduleJson = await rescheduleRes.json();
-        // Only set pending request if status is 'pending'
+        // Attorney's own pending request (attorney-initiated)
         const request = rescheduleJson.rescheduleRequest;
         setPendingRescheduleRequest(request && request.Status === 'pending' ? request : null);
+        // Admin's reschedule request with suggested slots
+        setAdminRescheduleRequest(rescheduleJson.adminRescheduleRequest || null);
+        setSelectedAdminSlot(null);
       }
     } catch (error) {
       console.error("Error fetching war room data:", error);
@@ -757,6 +763,34 @@ useEffect(() => {
     }
   };
 
+  const handleConfirmSlot = async () => {
+    if (selectedAdminSlot === null || !adminRescheduleRequest?.SuggestedSlots) return;
+    const slot = adminRescheduleRequest.SuggestedSlots[selectedAdminSlot];
+    if (!slot) return;
+
+    try {
+      setConfirmingSlot(true);
+      const token = getToken();
+      const response = await fetch(`${API_BASE}/api/attorney/cases/${caseId}/confirm-reschedule`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ selectedSlot: { date: slot.date, time: slot.time } }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.message || "Failed to confirm slot");
+      }
+
+      toast.success("Slot confirmed! Your case has been rescheduled.");
+      await fetchWarRoomData();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to confirm slot");
+    } finally {
+      setConfirmingSlot(false);
+    }
+  };
+
   const handleRescheduleRequest = async () => {
     try {
       setSubmittingReschedule(true);
@@ -955,20 +989,69 @@ useEffect(() => {
         {/* Admin-requested reschedule state */}
         {!isAdminApproved && caseData.AdminApprovalStatus === 'reschedule' && (
           <div className="bg-white rounded-lg shadow border-2 border-orange-400 overflow-hidden">
-            <div className="p-8 text-center">
-              <div className="inline-flex p-4 bg-orange-100 rounded-full mb-4">
-                <CalendarIcon className="w-12 h-12 text-orange-600" />
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-3 bg-orange-100 rounded-full">
+                  <CalendarIcon className="w-6 h-6 text-orange-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-[#0A2342]">Reschedule Required</h3>
+                  <p className="text-sm text-[#455A7C]">
+                    {adminRescheduleRequest?.AdminComments && (
+                      <span className="italic">"{adminRescheduleRequest.AdminComments}" — </span>
+                    )}
+                    {adminRescheduleRequest?.SuggestedSlots?.length > 0
+                      ? "Admin has provided the following time slots. Please select one to confirm."
+                      : "The admin has requested that this case be rescheduled. Please submit a new trial date and time."}
+                  </p>
+                </div>
               </div>
-              <h3 className="text-xl font-bold text-[#0A2342] mb-2">
-                Reschedule Required
-              </h3>
-              <p className="text-[#455A7C] mb-4 max-w-md mx-auto">
-                The admin has requested that this case be rescheduled. Please submit a new trial date and time for admin approval.
-              </p>
+
               {pendingRescheduleRequest ? (
                 <div className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-amber-50 text-amber-700 border border-amber-200">
                   <span className="w-2 h-2 bg-current rounded-full animate-pulse"></span>
                   Reschedule request submitted — awaiting admin approval
+                </div>
+              ) : adminRescheduleRequest?.SuggestedSlots?.length > 0 ? (
+                <div className="space-y-3">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Select one of the admin-provided slots:</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {adminRescheduleRequest.SuggestedSlots.map((slot: any, idx: number) => (
+                      <button
+                        key={idx}
+                        onClick={() => setSelectedAdminSlot(selectedAdminSlot === idx ? null : idx)}
+                        className={`p-4 rounded-xl border-2 text-left transition-all ${
+                          selectedAdminSlot === idx
+                            ? "border-orange-500 bg-orange-50 shadow-md"
+                            : "border-gray-200 bg-white hover:border-orange-300 hover:bg-orange-50/50"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-semibold text-gray-500">Option {idx + 1}</span>
+                          {selectedAdminSlot === idx && (
+                            <span className="w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center">
+                              <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            </span>
+                          )}
+                        </div>
+                        <p className="font-bold text-[#0A2342] text-sm">{formatDateString(slot.date)}</p>
+                        <p className="text-orange-600 font-semibold text-sm">{formatTime(slot.time)}</p>
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    onClick={handleConfirmSlot}
+                    disabled={selectedAdminSlot === null || confirmingSlot}
+                    className="mt-2 inline-flex items-center gap-2 px-6 py-2.5 bg-orange-500 text-white rounded-lg text-sm font-semibold hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {confirmingSlot ? (
+                      <><div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white" />Confirming...</>
+                    ) : (
+                      <><CalendarIcon className="w-4 h-4" />Confirm Selected Slot</>
+                    )}
+                  </button>
                 </div>
               ) : (
                 <button
