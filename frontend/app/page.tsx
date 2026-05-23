@@ -327,7 +327,7 @@ cases in:            </p>
               <Link href="/" className="hover:text-white">Quick Verdicts<sup className="text-[12px]">™</sup></Link>
 
                 <a
-    href="https://quickverdictsvideo.blob.core.windows.net/videos/QV Privacy Policy.pdf"
+    href="https://quickverdicts.blob.core.windows.net/docs/QV Privacy Policy.pdf"
     target="_blank"
     rel="noopener noreferrer"
     className="hover:underline"

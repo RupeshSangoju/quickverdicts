@@ -20,7 +20,7 @@ const Footer: FC = () => {
             <span>Quick Verdicts © {new Date().getFullYear()}</span>
               <Link href="/" className="hover:text-white">Privacy</Link>
                 <a
-    href="https://quickverdictsvideo.blob.core.windows.net/videos/QV%20Terms%20and%20Conditions.pdf"
+    href="https://documents83y89129y.blob.core.windows.net/new/QV%20Privacy%20Policy.pdf"
     target="_blank"
     rel="noopener noreferrer"
     className="hover:underline"
