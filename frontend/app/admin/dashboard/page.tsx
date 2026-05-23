@@ -2257,7 +2257,7 @@ export default function AdminDashboard() {
                       </div>
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <Calendar className="h-4 w-4" />
-                        <span><strong>Scheduled:</strong> {formatTime(caseItem.ScheduledTime)}</span>
+                        <span><strong>Scheduled:</strong> {formatDateString(caseItem.ScheduledDate)} at {formatTime(caseItem.ScheduledTime)}</span>
                       </div>
                     </div>
                     <div className="flex space-x-3 ml-6">
