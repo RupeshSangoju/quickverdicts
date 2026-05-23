@@ -269,7 +269,7 @@ export default function WarRoomPage() {
     fetchWarRoomData();
   }, [caseId]);
 
-  // Auto-open reschedule modal once after data is fully loaded
+  // Auto-notify once after data is fully loaded when admin requests reschedule
   useEffect(() => {
     if (
       !loading &&
@@ -279,8 +279,7 @@ export default function WarRoomPage() {
       !pendingRescheduleRequest
     ) {
       hasAutoOpenedRescheduleModal.current = true;
-      setShowRescheduleModal(true);
-      toast("Admin has requested that you reschedule this case. Please update the trial schedule.", {
+      toast("Admin has requested that you reschedule this case. Please select one of the provided time slots.", {
         icon: '📅',
         duration: 5000,
       });
