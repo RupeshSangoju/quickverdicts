@@ -27,6 +27,8 @@ const Juror = require("../models/Juror");
 const Case = require("../models/Case");
 const JurorApplication = require("../models/JurorApplication");
 const Notification = require("../models/Notification");
+const Attorney = require("../models/Attorney");
+const { sendNotificationEmail } = require("../utils/email");
 
 /* ===========================================================
    ✅ PUBLIC ROUTES (no authentication required)
@@ -613,7 +615,7 @@ router.post(
       voirDire2Responses: voirDire2Responses || [],
     });
 
-    // Notify attorney (if Notification model is ready)
+    // Notify attorney (in-app + email)
     try {
       if (Notification && Notification.createNotification) {
         await Notification.createNotification({
@@ -624,6 +626,30 @@ router.post(
           title: "New Juror Application",
           message: `A juror has applied to your case "${caseData.CaseTitle}". Please approve or disapprove of juror applications timely so jurors can plan accordingly.`,
         });
+      }
+
+      // Send email to attorney
+      const attorney = await Attorney.findById(caseData.AttorneyId);
+      if (attorney && attorney.Email) {
+        await sendNotificationEmail(
+          attorney.Email,
+          "New Juror Application",
+          `<h2 style="color:#16305B;margin-top:0;">New Juror Application</h2>
+          <p style="color:#666;line-height:1.6;">Dear ${attorney.FirstName || "Attorney"},</p>
+          <p style="color:#666;line-height:1.6;">
+            A juror has applied to your case <strong>"${caseData.CaseTitle}"</strong>.
+          </p>
+          <p style="color:#666;line-height:1.6;">
+            Please log in to your Quick Verdicts dashboard and review juror applications timely so jurors can plan accordingly.
+          </p>
+          <div style="margin:24px 0;">
+            <a href="${process.env.FRONTEND_URL || 'https://quickverdicts.com'}/attorney"
+               style="background:#16305B;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:15px;">
+              Review Applications
+            </a>
+          </div>
+          <p style="color:#999;font-size:13px;">Related to: ${caseData.CaseTitle}</p>`
+        ).catch(err => console.error("Failed to send juror application email:", err.message));
       }
     } catch (error) {
       console.warn("Could not send notification:", error.message);
