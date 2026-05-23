@@ -917,9 +917,9 @@ export default function AdminDashboard() {
 
       if (statsData.success) {
         setStats({
-          totalAttorneys: statsData.stats.VerifiedAttorneys + statsData.stats.PendingAttorneys,
+          totalAttorneys: statsData.stats.TotalAttorneys ?? (statsData.stats.VerifiedAttorneys + statsData.stats.PendingAttorneys),
           verifiedAttorneys: statsData.stats.VerifiedAttorneys,
-          totalJurors: statsData.stats.VerifiedJurors + statsData.stats.PendingJurors,
+          totalJurors: statsData.stats.TotalJurors ?? (statsData.stats.VerifiedJurors + statsData.stats.PendingJurors),
           verifiedJurors: statsData.stats.VerifiedJurors,
           pendingCases: statsData.stats.PendingCases,
           activeTrials: statsData.stats.ActiveTrials,

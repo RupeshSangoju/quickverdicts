@@ -644,8 +644,10 @@ async function getDashboardStats(userId) {
         .input("userId", sql.Int, userId)
         .query(`
         SELECT
+          (SELECT COUNT(*) FROM dbo.Attorneys WHERE IsDeleted = 0) AS TotalAttorneys,
           (SELECT COUNT(*) FROM dbo.Attorneys WHERE IsVerified = 1 AND IsDeleted = 0 AND IsActive = 1) AS VerifiedAttorneys,
           (SELECT COUNT(*) FROM dbo.Attorneys WHERE IsVerified = 0 AND IsDeleted = 0 AND IsActive = 1) AS PendingAttorneys,
+          (SELECT COUNT(*) FROM dbo.Jurors WHERE IsDeleted = 0) AS TotalJurors,
           (SELECT COUNT(*) FROM dbo.Jurors WHERE IsVerified = 1 AND IsDeleted = 0 AND IsActive = 1) AS VerifiedJurors,
           (SELECT COUNT(*) FROM dbo.Jurors WHERE IsVerified = 0 AND IsDeleted = 0 AND IsActive = 1) AS PendingJurors,
           (SELECT COUNT(*) FROM dbo.Cases WHERE AdminApprovalStatus = 'pending' AND IsDeleted = 0) AS PendingCases,
