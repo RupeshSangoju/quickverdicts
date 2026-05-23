@@ -29,6 +29,7 @@ const {
 
 // Import email utility
 const { sendNotificationEmail } = require("../utils/email");
+const { notifyUser } = require("../services/websocketService");
 
 // Import models
 const Attorney = require("../models/Attorney");
@@ -1451,6 +1452,13 @@ router.delete("/attorneys/:attorneyId", authMiddleware, requireAdmin, async (req
 
     await Attorney.softDeleteAccount(attorneyId, "admin");
 
+    // Push real-time logout signal if the attorney is currently online
+    try {
+      notifyUser(attorneyId, "attorney", "account_deleted", {
+        message: "Your account has been deleted by the administrator.",
+      });
+    } catch (_) {}
+
     if (attorney && attorney.Email) {
       const name = `${attorney.FirstName || ""} ${attorney.LastName || ""}`.trim() || "Attorney";
       await sendNotificationEmail(
@@ -1594,6 +1602,13 @@ router.delete("/jurors/:jurorId", authMiddleware, requireAdmin, async (req, res)
     const juror = jurorResult.recordset[0];
 
     await Juror.softDeleteJuror(jurorId);
+
+    // Push real-time logout signal if the juror is currently online
+    try {
+      notifyUser(jurorId, "juror", "account_deleted", {
+        message: "Your account has been deleted by the administrator.",
+      });
+    } catch (_) {}
 
     if (juror && juror.Email) {
       const name = juror.Name || "Juror";

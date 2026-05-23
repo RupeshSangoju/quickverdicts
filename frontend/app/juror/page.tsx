@@ -3,6 +3,9 @@ import { useState, useEffect } from "react";
 import JurorSidebar from "./components/JurorSidebar";
 import JurorMainSection from "./components/JurorMainSection";
 import { useProtectedRoute } from "@/hooks/useProtectedRoute";
+import { useWebSocket } from "@/hooks/useWebSocket";
+import { logout } from "@/lib/apiClient";
+import toast from "react-hot-toast";
 
 type Section = "home" | "profile" | "notifications" | "jobs";
 
@@ -28,8 +31,19 @@ async function fetchWithAuth(url: string, options: RequestInit = {}) {
 }
 
 export default function JurorDashboard() {
-  // Use protected route hook - FIXED: Pass object instead of string
   useProtectedRoute({ requiredUserType: 'juror' });
+
+  const { on, off } = useWebSocket();
+
+  // Forced logout when admin deletes or declines this account
+  useEffect(() => {
+    const handleAccountDeleted = (data: any) => {
+      toast.error(data?.message || "Your account has been removed by the administrator.", { duration: 5000 });
+      setTimeout(() => logout("/login/juror"), 1500);
+    };
+    on("account_deleted", handleAccountDeleted);
+    return () => off("account_deleted", handleAccountDeleted);
+  }, [on, off]);
 
   const [selectedSection, setSelectedSection] = useState<Section>("home");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);

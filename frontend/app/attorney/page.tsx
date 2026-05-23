@@ -5,6 +5,8 @@ import AttorneySidebar from "./components/AttorneySidebar";
 import AttorneyMainSection from "./components/AttorneyMainSection";
 import { useProtectedRoute } from "@/hooks/useProtectedRoute";
 import { getToken, logout } from "@/lib/apiClient";
+import { useWebSocket } from "@/hooks/useWebSocket";
+import toast from "react-hot-toast";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL
   ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api$/, '')
@@ -43,8 +45,19 @@ const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
 };
 
 export default function AttorneyDashboard() {
-  // Use protected route hook - FIXED: Pass object instead of string
   useProtectedRoute({ requiredUserType: 'attorney' });
+
+  const { on, off } = useWebSocket();
+
+  // Forced logout when admin deletes or declines this account
+  useEffect(() => {
+    const handleAccountDeleted = (data: any) => {
+      toast.error(data?.message || "Your account has been removed by the administrator.", { duration: 5000 });
+      setTimeout(() => logout("/login/attorney"), 1500);
+    };
+    on("account_deleted", handleAccountDeleted);
+    return () => off("account_deleted", handleAccountDeleted);
+  }, [on, off]);
 
   const [selectedSection, setSelectedSection] = useState<Section>("home");
   const [verificationStatusChanged, setVerificationStatusChanged] = useState(0);

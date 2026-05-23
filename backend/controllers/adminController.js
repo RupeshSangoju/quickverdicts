@@ -10,6 +10,7 @@ const Attorney = require("../models/Attorney");
 const Juror = require("../models/Juror");
 const AdminCalendar = require("../models/AdminCalendar");
 const CaseReschedule = require("../models/CaseReschedule");
+const { notifyUser } = require("../services/websocketService");
 
 /**
  * Get cases pending admin approval
@@ -555,6 +556,13 @@ async function verifyAttorney(req, res) {
       await Attorney.deactivateAccount(attorneyId);
       await Attorney.updateVerificationStatus(attorneyId, "declined");
 
+      // Push real-time logout signal if the attorney is currently online
+      try {
+        notifyUser(parseInt(attorneyId), "attorney", "account_deleted", {
+          message: "Your account has been declined by the administrator.",
+        });
+      } catch (_) {}
+
       // Send decline email with reason - with error handling
       try {
         const { sendAccountDeclinedEmail } = require("../utils/email");
@@ -663,6 +671,13 @@ async function verifyJuror(req, res) {
       // Deactivate the juror account and persist declined status to DB
       await Juror.deactivateJuror(jurorId);
       await Juror.updateVerificationStatus(jurorId, "declined");
+
+      // Push real-time logout signal if the juror is currently online
+      try {
+        notifyUser(parseInt(jurorId), "juror", "account_deleted", {
+          message: "Your account has been declined by the administrator.",
+        });
+      } catch (_) {}
 
       // Send decline email with reason - with error handling
       try {
