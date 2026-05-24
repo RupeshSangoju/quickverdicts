@@ -2359,7 +2359,11 @@ export default function AdminDashboard() {
                       </div>
                     </div>
 
-                    {isCaseDayOver(trial.ScheduledDate) ? (
+                    {trial.AttorneyStatus === 'trial_completed' ? (
+                      <div className="w-full bg-blue-50 border border-blue-200 text-blue-700 font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2">
+                        Trial Completed
+                      </div>
+                    ) : isCaseDayOver(trial.ScheduledDate) ? (
                       <div className="w-full bg-gray-200 text-gray-500 font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2 cursor-not-allowed">
                         <Video className="h-5 w-5" />
                         Trial Day Ended
@@ -3669,7 +3673,17 @@ export default function AdminDashboard() {
               </div>
 
               {/* Join Trial Button - Admin Exclusive */}
-              {(selectedCase.AttorneyStatus === 'join_trial' || selectedCase.AttorneyStatus === 'view_details') && (isTrialDay(selectedCase.ScheduledDate) || isCaseDayOver(selectedCase.ScheduledDate)) && (
+              {selectedCase.AttorneyStatus === 'trial_completed' ? (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+                  <div className="flex items-center gap-3">
+                    <Video className="h-6 w-6 text-blue-600" />
+                    <div>
+                      <h3 className="text-blue-700 font-bold text-xl">Trial Completed</h3>
+                      <p className="text-blue-600 text-sm">This trial session has been ended by the administrator.</p>
+                    </div>
+                  </div>
+                </div>
+              ) : (selectedCase.AttorneyStatus === 'join_trial' || selectedCase.AttorneyStatus === 'view_details') && (isTrialDay(selectedCase.ScheduledDate) || isCaseDayOver(selectedCase.ScheduledDate)) && (
                 <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl p-6 shadow-lg">
                   <div className="flex items-center justify-between">
                     <div>

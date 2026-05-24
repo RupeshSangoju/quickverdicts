@@ -1481,6 +1481,12 @@ router.post(
       // Update meeting status to ended
       await TrialMeeting.updateMeetingStatus(meeting.MeetingId, "ended");
 
+      // Mark case as trial_completed so Join Trial button disappears from dashboards
+      const pool = await poolPromise;
+      await pool.request()
+        .input("caseId", sql.Int, caseId)
+        .query(`UPDATE dbo.Cases SET AttorneyStatus = 'trial_completed' WHERE CaseId = @caseId`);
+
       // Create event in audit trail
       await Event.createEvent({
         caseId,

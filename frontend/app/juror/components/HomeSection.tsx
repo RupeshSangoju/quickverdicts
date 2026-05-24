@@ -713,6 +713,13 @@ export default function HomeSection({ sidebarCollapsed }: { sidebarCollapsed: bo
                       View Details
                     </button>
                   );
+                } else if (app.AttorneyStatus === "trial_completed") {
+                  statusBadge = { text: 'Trial Completed', color: 'bg-blue-100 text-blue-700', icon: '' };
+                  actionButtons = (
+                    <div className="w-full px-3 py-2 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5">
+                      Trial Completed
+                    </div>
+                  );
                 } else if (app.AttorneyStatus === "join_trial") {
                   statusBadge = { text: '', color: '', icon: '' };
 
@@ -906,6 +913,13 @@ if (isCaseDayOver(app.ScheduledDate)) {
                         </svg>
                         View Details
                       </button>
+                    );
+                  } else if (app.AttorneyStatus === "trial_completed") {
+                    statusBadge = { text: 'Trial Completed', color: 'bg-blue-100 text-blue-700', icon: '' };
+                    actionButtons = (
+                      <div className="w-full px-3 py-2 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5">
+                        Trial Completed
+                      </div>
                     );
                   } else if (app.AttorneyStatus === "join_trial") {
                     statusBadge = { text: '', color: '', icon: '' };

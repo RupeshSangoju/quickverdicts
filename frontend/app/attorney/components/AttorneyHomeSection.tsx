@@ -665,6 +665,10 @@ export default function AttorneyHomeSection({ onSectionChange }: { onSectionChan
                           <div className="absolute top-3 right-3 px-2 py-1 rounded text-xs font-semibold bg-orange-500 text-white">
                             Reschedule Needed
                           </div>
+                        ) : c.AttorneyStatus === 'trial_completed' ? (
+                          <div className="absolute top-3 right-3 px-2 py-1 rounded text-xs font-semibold bg-blue-500 text-white">
+                            Trial Completed
+                          </div>
                         ) : statusInfo && (
                           <div className={`absolute top-3 right-3 px-2 py-1 rounded text-xs font-semibold ${statusInfo.color}`}>
                             {statusInfo.label}
@@ -687,7 +691,14 @@ export default function AttorneyHomeSection({ onSectionChange }: { onSectionChan
                         )}
 
                         {/* Join Trial Button */}
-                        {c.AttorneyStatus === 'join_trial' && (
+                        {c.AttorneyStatus === 'trial_completed' ? (
+                          <div
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-full mt-3 bg-blue-50 border border-blue-200 text-blue-700 font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2"
+                          >
+                            Trial Completed
+                          </div>
+                        ) : c.AttorneyStatus === 'join_trial' && (
                           isCaseDayOver(c.ScheduledDate, c.ScheduledTime) ? (
                             <button
                               disabled

@@ -312,7 +312,11 @@ export default function AssignedCasesSection() {
                           <span>War Room Opens on Trial Day</span>
                         </div>
                       )}
-                      {caseItem.AttorneyStatus === "join_trial" && isTrialDay(caseItem.ScheduledDate) && !isCaseDayOver(caseItem.ScheduledDate) && (
+                      {caseItem.AttorneyStatus === "trial_completed" ? (
+                        <div className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-50 border border-blue-200 text-blue-700 rounded-md text-sm font-semibold">
+                          Trial Completed
+                        </div>
+                      ) : caseItem.AttorneyStatus === "join_trial" && isTrialDay(caseItem.ScheduledDate) && !isCaseDayOver(caseItem.ScheduledDate) && (
                         <button
                           className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition cursor-pointer"
                           onClick={() => window.open(`/juror/trial/${caseItem.CaseId}/setup`, '_blank')}
