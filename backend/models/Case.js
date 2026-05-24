@@ -1088,8 +1088,8 @@ async function checkSlotAvailability(scheduledDate, scheduledTime, excludeCaseId
       let query = `
         SELECT TOP 1 CaseId, CaseTitle, AttorneyId
         FROM dbo.Cases
-        WHERE ScheduledDate = @scheduledDate
-          AND ScheduledTime = @scheduledTime
+        WHERE CONVERT(DATE, ScheduledDate) = @scheduledDate
+          AND CAST(ScheduledTime AS TIME) = CAST(@scheduledTime AS TIME)
           AND IsDeleted = 0
           AND AdminApprovalStatus = 'approved'
       `;
