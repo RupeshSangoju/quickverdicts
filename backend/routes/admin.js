@@ -1745,6 +1745,24 @@ router.post("/reschedule-requests/:requestId/approve", authMiddleware, requireAd
       });
     }
 
+    // Check the new slot is not already taken by an approved case
+    const newDate = request.NewScheduledDate instanceof Date
+      ? request.NewScheduledDate.toISOString().split('T')[0]
+      : String(request.NewScheduledDate).split('T')[0];
+    const newTime = typeof request.NewScheduledTime === 'string'
+      ? request.NewScheduledTime.split('.')[0]
+      : request.NewScheduledTime;
+
+    const availability = await Case.checkSlotAvailability(newDate, newTime, request.CaseId);
+    if (!availability.available) {
+      return res.status(409).json({
+        success: false,
+        message: `Cannot approve: the requested time slot (${newDate} at ${newTime}) is already taken by another approved case "${availability.conflictingCaseTitle}". Please reject this request and ask the attorney to choose a different time.`,
+        conflictingCaseId: availability.conflictingCaseId,
+        conflictingCaseTitle: availability.conflictingCaseTitle,
+      });
+    }
+
     console.log(`📅 Updating case ${request.CaseId} schedule to ${request.NewScheduledDate} ${request.NewScheduledTime}`);
 
     // Update case with new scheduled date/time, reset AdminApprovalStatus to approved
