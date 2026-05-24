@@ -298,7 +298,7 @@ export default function AssignedCasesSection() {
 
                     {/* Conditional access based on trial timing and case day */}
                     <div className="space-y-2">
-                      {isTrialDay(caseItem.ScheduledDate) || isCaseDayOver(caseItem.ScheduledDate) || caseItem.AttorneyStatus === "view_details" ? (
+                      {isTrialDay(caseItem.ScheduledDate) || isCaseDayOver(caseItem.ScheduledDate) || caseItem.AttorneyStatus === "view_details" || caseItem.AttorneyStatus === "trial_completed" ? (
                         <button
                           className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-[#0C2D57] text-white rounded-md hover:bg-[#0a2347] transition"
                           onClick={() => router.push(`/juror/war-room/${caseItem.CaseId}`)}

@@ -716,8 +716,19 @@ export default function HomeSection({ sidebarCollapsed }: { sidebarCollapsed: bo
                 } else if (app.AttorneyStatus === "trial_completed") {
                   statusBadge = { text: 'Trial Completed', color: 'bg-blue-100 text-blue-700', icon: '' };
                   actionButtons = (
-                    <div className="w-full px-3 py-2 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5">
-                      Trial Completed
+                    <div className="flex flex-col gap-2 w-full">
+                      <div className="w-full px-3 py-2 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5">
+                        Trial Completed
+                      </div>
+                      <button
+                        className="w-full px-3 py-2 bg-[#0C2D57] text-white rounded-lg text-xs font-semibold hover:bg-[#0a2347] transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                        onClick={() => router.push(`/juror/war-room/${app.CaseId}`)}
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Case Information
+                      </button>
                     </div>
                   );
                 } else if (app.AttorneyStatus === "join_trial") {
@@ -917,8 +928,19 @@ if (isCaseDayOver(app.ScheduledDate)) {
                   } else if (app.AttorneyStatus === "trial_completed") {
                     statusBadge = { text: 'Trial Completed', color: 'bg-blue-100 text-blue-700', icon: '' };
                     actionButtons = (
-                      <div className="w-full px-3 py-2 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5">
-                        Trial Completed
+                      <div className="space-y-1.5">
+                        <div className="w-full px-3 py-2 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5">
+                          Trial Completed
+                        </div>
+                        <button
+                          className="w-full px-3 py-2 bg-[#0C2D57] text-white rounded-lg text-xs font-semibold hover:bg-[#0a2347] transition-colors flex items-center justify-center gap-1.5"
+                          onClick={() => router.push(`/juror/war-room/${app.CaseId}`)}
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          Case Information
+                        </button>
                       </div>
                     );
                   } else if (app.AttorneyStatus === "join_trial") {
