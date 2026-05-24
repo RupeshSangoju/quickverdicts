@@ -666,7 +666,7 @@ export default function AttorneyHomeSection({ onSectionChange }: { onSectionChan
                             Reschedule Needed
                           </div>
                         ) : c.AttorneyStatus === 'trial_completed' ? (
-                          <div className="absolute top-3 right-3 px-2 py-1 rounded text-xs font-semibold bg-blue-500 text-white">
+                          <div className="absolute top-3 right-3 px-2 py-1 rounded text-xs font-semibold bg-purple-500 text-white">
                             Trial Completed
                           </div>
                         ) : statusInfo && (
@@ -694,7 +694,7 @@ export default function AttorneyHomeSection({ onSectionChange }: { onSectionChan
                         {c.AttorneyStatus === 'trial_completed' ? (
                           <div
                             onClick={(e) => e.stopPropagation()}
-                            className="w-full mt-3 bg-blue-50 border border-blue-200 text-blue-700 font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2"
+                            className="w-full mt-3 bg-purple-50 border border-purple-200 text-purple-700 font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2"
                           >
                             Trial Completed
                           </div>

@@ -313,7 +313,7 @@ export default function AssignedCasesSection() {
                         </div>
                       )}
                       {caseItem.AttorneyStatus === "trial_completed" ? (
-                        <div className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-50 border border-blue-200 text-blue-700 rounded-md text-sm font-semibold">
+                        <div className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-purple-50 border border-purple-200 text-purple-700 rounded-md text-sm font-semibold">
                           Trial Completed
                         </div>
                       ) : caseItem.AttorneyStatus === "join_trial" && isTrialDay(caseItem.ScheduledDate) && !isCaseDayOver(caseItem.ScheduledDate) && (

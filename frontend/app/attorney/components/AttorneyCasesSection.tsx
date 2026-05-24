@@ -368,7 +368,7 @@ export default function AttorneyCasesSection({ onBack }: AttorneyCasesSectionPro
     if (c.AdminApprovalStatus === "approved") {
       if (c.AttorneyStatus === "trial_completed") {
         return (
-          <div className="w-full px-4 py-2.5 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg flex items-center justify-center gap-2 text-sm font-semibold">
+          <div className="w-full px-4 py-2.5 bg-purple-50 border border-purple-200 text-purple-700 rounded-lg flex items-center justify-center gap-2 text-sm font-semibold">
             Trial Completed
           </div>
         );

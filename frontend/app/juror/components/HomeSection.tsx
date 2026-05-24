@@ -714,10 +714,10 @@ export default function HomeSection({ sidebarCollapsed }: { sidebarCollapsed: bo
                     </button>
                   );
                 } else if (app.AttorneyStatus === "trial_completed") {
-                  statusBadge = { text: 'Trial Completed', color: 'bg-blue-100 text-blue-700', icon: '' };
+                  statusBadge = { text: 'Trial Completed', color: 'bg-purple-100 text-purple-700', icon: '' };
                   actionButtons = (
                     <div className="flex flex-col gap-2 w-full">
-                      <div className="w-full px-3 py-2 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5">
+                      <div className="w-full px-3 py-2 bg-purple-50 border border-purple-200 text-purple-700 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5">
                         Trial Completed
                       </div>
                       <button
@@ -926,10 +926,10 @@ if (isCaseDayOver(app.ScheduledDate)) {
                       </button>
                     );
                   } else if (app.AttorneyStatus === "trial_completed") {
-                    statusBadge = { text: 'Trial Completed', color: 'bg-blue-100 text-blue-700', icon: '' };
+                    statusBadge = { text: 'Trial Completed', color: 'bg-purple-100 text-purple-700', icon: '' };
                     actionButtons = (
                       <div className="space-y-1.5">
-                        <div className="w-full px-3 py-2 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5">
+                        <div className="w-full px-3 py-2 bg-purple-50 border border-purple-200 text-purple-700 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5">
                           Trial Completed
                         </div>
                         <button
