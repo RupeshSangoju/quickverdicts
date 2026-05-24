@@ -97,7 +97,9 @@ export default function ConflictModal({
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return "";
-    const date = new Date(dateStr);
+    // Parse as local date (YYYY-MM-DD) to avoid UTC-to-local timezone shift
+    const [year, month, day] = dateStr.split("T")[0].split("-").map(Number);
+    const date = new Date(year, month - 1, day);
     return date.toLocaleDateString("en-US", {
       weekday: "long",
       year: "numeric",
