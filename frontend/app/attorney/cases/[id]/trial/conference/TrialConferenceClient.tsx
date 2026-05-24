@@ -109,28 +109,61 @@ export default function TrialConferenceClient() {
   const currentUserId = useRef<string>("");
   const callRef = useRef<any>(null);
   const callAgentRef = useRef<any>(null);
+  // Cached MediaStream references so we can stop hardware (camera/mic) synchronously on cleanup.
+  // ACS keeps these alive even after hangUp until callAgent.dispose() completes, which may not
+  // finish before the tab closes / component unmounts. Calling track.stop() directly is sync
+  // and immediately turns off the browser camera/mic indicators.
+  const acsCameraStreamRef = useRef<MediaStream | null>(null);
+  const acsMicStreamRef = useRef<MediaStream | null>(null);
+
+  const stopAllMediaTracks = () => {
+    try {
+      if (acsCameraStreamRef.current) {
+        acsCameraStreamRef.current.getTracks().forEach((t) => {
+          try { t.stop(); } catch (_) {}
+        });
+        acsCameraStreamRef.current = null;
+      }
+    } catch (_) {}
+    try {
+      if (acsMicStreamRef.current) {
+        acsMicStreamRef.current.getTracks().forEach((t) => {
+          try { t.stop(); } catch (_) {}
+        });
+        acsMicStreamRef.current = null;
+      }
+    } catch (_) {}
+  };
 
   useEffect(() => {
-    const handleBeforeUnload = async () => {
-      console.log("Page closing/refreshing - cleaning up call...");
+    // SYNC handler — beforeunload/pagehide must be synchronous; browsers ignore async work here.
+    // We stop the camera/mic tracks immediately so the OS hardware indicators turn off
+    // even if ACS hangUp/dispose never gets to run.
+    const handleBeforeUnload = () => {
+      console.log("Page closing/refreshing - stopping camera/mic synchronously...");
+      stopAllMediaTracks();
       try {
         if (callRef.current) {
-          await callRef.current.hangUp({ forEveryone: false });
+          callRef.current.hangUp({ forEveryone: false }).catch(() => {});
         }
         if (callAgentRef.current) {
-          await callAgentRef.current.dispose();
+          callAgentRef.current.dispose().catch(() => {});
         }
-      } catch (e) {
-        console.error("Cleanup error:", e);
-      }
+      } catch (_) {}
     };
 
     window.addEventListener("beforeunload", handleBeforeUnload);
+    // pagehide fires more reliably than beforeunload on tab close / bfcache
+    window.addEventListener("pagehide", handleBeforeUnload);
 
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
+      window.removeEventListener("pagehide", handleBeforeUnload);
+      // Stop hardware tracks SYNCHRONOUSLY before async ACS teardown
+      stopAllMediaTracks();
       if (callRef.current) {
         callRef.current.hangUp({ forEveryone: false }).catch((e: any) => console.error("Hangup error:", e));
+        callRef.current = null;
       }
       if (callAgentRef.current) {
         callAgentRef.current.dispose().catch(() => {});
@@ -613,6 +646,35 @@ export default function TrialConferenceClient() {
         if (roomCall.state === "Connected") {
           setIsMuted(roomCall.isMuted);
           triggerReRender();
+
+          // Cache the underlying MediaStreams so cleanup can stop tracks SYNC even
+          // if hangUp/dispose never runs (tab close, React unmount).
+          try {
+            if (localVideoStream.current?.getMediaStream) {
+              const camStream = await localVideoStream.current.getMediaStream();
+              if (camStream) {
+                acsCameraStreamRef.current = camStream;
+                console.log("📹 Cached ACS camera stream:", camStream.getTracks().length, "tracks");
+              }
+            }
+          } catch (e) {
+            console.warn("Could not cache ACS camera stream:", e);
+          }
+          try {
+            const audioStreams = (roomCall as any).localAudioStreams || [];
+            for (const audioStream of audioStreams) {
+              if (audioStream?.getMediaStream) {
+                const micStream = await audioStream.getMediaStream();
+                if (micStream) {
+                  acsMicStreamRef.current = micStream;
+                  console.log("🎤 Cached ACS mic stream:", micStream.getTracks().length, "tracks");
+                  break;
+                }
+              }
+            }
+          } catch (e) {
+            console.warn("Could not cache ACS mic stream:", e);
+          }
         }
       });
 
@@ -1231,6 +1293,10 @@ roomCall.remoteParticipants.forEach((p: any) => {
   };
 
   const leaveCall = async () => {
+    // 🛑 Stop camera/mic tracks IMMEDIATELY (sync) so the browser releases the
+    // hardware right away — don't wait for ACS hangUp/dispose to finish.
+    stopAllMediaTracks();
+
     try {
       if (call && localVideoStream.current) {
         try { await call.stopVideo(localVideoStream.current); } catch {}
@@ -1240,6 +1306,7 @@ roomCall.remoteParticipants.forEach((p: any) => {
         await callAgentRef.current.dispose();
         callAgentRef.current = null;
       }
+      callRef.current = null;
       localVideoStream.current = null;
       if (chatClient) await chatClient.stopRealtimeNotifications();
       toast.success("You have left the trial successfully", { duration: 3000 });
@@ -1250,6 +1317,7 @@ roomCall.remoteParticipants.forEach((p: any) => {
         try { await callAgentRef.current.dispose(); } catch {}
         callAgentRef.current = null;
       }
+      callRef.current = null;
       localVideoStream.current = null;
       router.push("/attorney");
     }
