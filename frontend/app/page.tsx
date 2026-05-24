@@ -308,7 +308,7 @@ cases in:            </p>
             <div>
               <h3 className="font-bold mb-4">Contact</h3>
               <p className="text-gray-300">Hours:</p>
-              <p className="text-gray-300">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;9:00 a.m. to 5:00 p.m. M-F (or as needed) </p>
+              <p className="text-gray-300">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;8:00 a.m. to 5:00 p.m. M-F </p>
               <p className='text-gray-300'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;9:00 a.m. to 2:00 p.m. Sat.</p>
               <p className="text-gray-300">QVTrial@quickverdicts.com</p>
             </div>
@@ -327,7 +327,7 @@ cases in:            </p>
               <Link href="/" className="hover:text-white">Quick Verdicts<sup className="text-[12px]">™</sup></Link>
 
                 <a
-    href="https://quickverdicts.blob.core.windows.net/docs/QV Privacy Policy.pdf"
+    href="https://documents83y89129y.blob.core.windows.net/new/QV%20Privacy%20Policy.pdf"
     target="_blank"
     rel="noopener noreferrer"
     className="hover:underline"
@@ -335,7 +335,7 @@ cases in:            </p>
     Privacy
   </a>
                 <a
-    href="https://quickverdictsvideo.blob.core.windows.net/videos/QV%20Terms%20and%20Conditions.pdf"
+    href="https://documents83y89129y.blob.core.windows.net/new/QV%20Terms%20and%20Conditions.pdf"
     target="_blank"
     rel="noopener noreferrer"
     className="hover:underline"
