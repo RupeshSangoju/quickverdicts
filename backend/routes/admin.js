@@ -1746,12 +1746,21 @@ router.post("/reschedule-requests/:requestId/approve", authMiddleware, requireAd
     }
 
     // Check the new slot is not already taken by an approved case
-    const newDate = request.NewScheduledDate instanceof Date
-      ? request.NewScheduledDate.toISOString().split('T')[0]
-      : String(request.NewScheduledDate).split('T')[0];
-    const newTime = typeof request.NewScheduledTime === 'string'
-      ? request.NewScheduledTime.split('.')[0]
-      : request.NewScheduledTime;
+    let newDate, newTime;
+    try {
+      newDate = request.NewScheduledDate instanceof Date
+        ? request.NewScheduledDate.toISOString().split('T')[0]
+        : String(request.NewScheduledDate).split('T')[0];
+      newTime = typeof request.NewScheduledTime === 'string'
+        ? request.NewScheduledTime.split('.')[0]
+        : String(request.NewScheduledTime);
+    } catch (parseErr) {
+      return res.status(400).json({ success: false, message: `Invalid date/time on reschedule request: ${parseErr.message}` });
+    }
+
+    if (!newDate || !newTime || newDate === 'null' || newDate === 'undefined') {
+      return res.status(400).json({ success: false, message: "Reschedule request is missing a valid date or time." });
+    }
 
     const availability = await Case.checkSlotAvailability(newDate, newTime, request.CaseId);
     if (!availability.available) {
@@ -1763,7 +1772,7 @@ router.post("/reschedule-requests/:requestId/approve", authMiddleware, requireAd
       });
     }
 
-    console.log(`📅 Updating case ${request.CaseId} schedule to ${request.NewScheduledDate} ${request.NewScheduledTime}`);
+    console.log(`📅 Updating case ${request.CaseId} schedule to ${newDate} ${newTime}`);
 
     // Update case with new scheduled date/time, reset AdminApprovalStatus to approved
     // and clear the reschedule flags so the war room unlocks

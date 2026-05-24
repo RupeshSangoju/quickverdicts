@@ -72,14 +72,9 @@ async function reviewCaseApproval(req, res) {
       let timeString;
 
       if (caseData.ScheduledTime instanceof Date) {
-        // If it's a Date object, extract time components
         timeString = `${String(caseData.ScheduledTime.getHours()).padStart(2, '0')}:${String(caseData.ScheduledTime.getMinutes()).padStart(2, '0')}:${String(caseData.ScheduledTime.getSeconds()).padStart(2, '0')}`;
       } else if (typeof caseData.ScheduledTime === 'string') {
-        // If it's a string, strip microseconds and validate format
-        // Format from DB: '03:30:00.0000000' or '03:30:00'
-        timeString = caseData.ScheduledTime.split('.')[0]; // Remove microseconds
-
-        // Ensure it's in HH:MM:SS format
+        timeString = caseData.ScheduledTime.split('.')[0];
         const timeParts = timeString.split(':');
         if (timeParts.length === 3) {
           timeString = `${timeParts[0].padStart(2, '0')}:${timeParts[1].padStart(2, '0')}:${timeParts[2].padStart(2, '0')}`;
@@ -89,6 +84,25 @@ async function reviewCaseApproval(req, res) {
       } else {
         throw new Error(`Unexpected ScheduledTime type: ${typeof caseData.ScheduledTime}`);
       }
+
+      // ── Hard server-side conflict check ──────────────────────────────────
+      let scheduledDateStr;
+      if (caseData.ScheduledDate instanceof Date) {
+        scheduledDateStr = caseData.ScheduledDate.toISOString().split('T')[0];
+      } else {
+        scheduledDateStr = String(caseData.ScheduledDate).split('T')[0];
+      }
+
+      const slotCheck = await Case.checkSlotAvailability(scheduledDateStr, timeString, caseId);
+      if (!slotCheck.available) {
+        return res.status(409).json({
+          success: false,
+          message: `Cannot approve: the time slot (${scheduledDateStr} at ${timeString}) is already taken by another approved case "${slotCheck.conflictingCaseTitle}". Please reject this case and ask the attorney to reschedule.`,
+          conflictingCaseId: slotCheck.conflictingCaseId,
+          conflictingCaseTitle: slotCheck.conflictingCaseTitle,
+        });
+      }
+      // ─────────────────────────────────────────────────────────────────────
 
       console.log(`🕐 Converting ScheduledTime for calendar block:`, {
         original: caseData.ScheduledTime,
