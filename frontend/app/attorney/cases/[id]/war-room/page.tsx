@@ -1011,6 +1011,35 @@ useEffect(() => {
                   <span className="w-2 h-2 bg-current rounded-full animate-pulse"></span>
                   Reschedule request submitted — awaiting admin approval
                 </div>
+              ) : adminRescheduleRequest?.SuggestedSlots?.length > 0 ? (
+                <div className="space-y-3">
+                  <div className="flex flex-col gap-2">
+                    {adminRescheduleRequest.SuggestedSlots.map((slot: any, idx: number) => (
+                      <button
+                        key={idx}
+                        onClick={() => setSelectedAdminSlot(idx)}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-lg border-2 text-sm font-medium transition-colors text-left ${
+                          selectedAdminSlot === idx
+                            ? "border-orange-500 bg-orange-50 text-orange-700"
+                            : "border-gray-200 bg-white text-gray-700 hover:border-orange-300"
+                        }`}
+                      >
+                        <CalendarIcon className="w-4 h-4 flex-shrink-0" />
+                        <span>{formatDateString(slot.date)}</span>
+                        <span className="text-gray-400">at</span>
+                        <span>{slot.time}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    onClick={handleConfirmSlot}
+                    disabled={selectedAdminSlot === null || confirmingSlot}
+                    className="inline-flex items-center gap-2 px-6 py-2.5 bg-orange-500 text-white rounded-lg text-sm font-semibold hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <CalendarIcon className="w-4 h-4" />
+                    {confirmingSlot ? "Confirming..." : "Confirm Selected Slot"}
+                  </button>
+                </div>
               ) : (
                 <button
                   onClick={() => setShowRescheduleModal(true)}
