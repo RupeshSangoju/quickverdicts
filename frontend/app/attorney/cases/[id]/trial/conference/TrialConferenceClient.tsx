@@ -117,6 +117,7 @@ export default function TrialConferenceClient() {
   const acsMicStreamRef = useRef<MediaStream | null>(null);
 
   const stopAllMediaTracks = () => {
+    // 1. Stop cached camera stream
     try {
       if (acsCameraStreamRef.current) {
         acsCameraStreamRef.current.getTracks().forEach((t) => {
@@ -125,12 +126,43 @@ export default function TrialConferenceClient() {
         acsCameraStreamRef.current = null;
       }
     } catch (_) {}
+    // 2. Stop cached mic stream
     try {
       if (acsMicStreamRef.current) {
         acsMicStreamRef.current.getTracks().forEach((t) => {
           try { t.stop(); } catch (_) {}
         });
         acsMicStreamRef.current = null;
+      }
+    } catch (_) {}
+    // 3. Fallback: ACS may have recreated streams since we cached them. Fetch current
+    // streams from LocalVideoStream and call.localAudioStreams and stop those too.
+    // These are async (getMediaStream returns a Promise) — fire-and-forget. If the
+    // browser tab survives long enough, the tracks will be stopped.
+    try {
+      const lvs = localVideoStream.current;
+      if (lvs?.getMediaStream) {
+        Promise.resolve(lvs.getMediaStream())
+          .then((stream: MediaStream | undefined) => {
+            if (stream) {
+              stream.getTracks().forEach((t) => { try { t.stop(); } catch (_) {} });
+            }
+          })
+          .catch(() => {});
+      }
+    } catch (_) {}
+    try {
+      const audioStreams = (callRef.current as any)?.localAudioStreams || [];
+      for (const audioStream of audioStreams) {
+        if (audioStream?.getMediaStream) {
+          Promise.resolve(audioStream.getMediaStream())
+            .then((stream: MediaStream | undefined) => {
+              if (stream) {
+                stream.getTracks().forEach((t) => { try { t.stop(); } catch (_) {} });
+              }
+            })
+            .catch(() => {});
+        }
       }
     } catch (_) {}
   };
@@ -207,17 +239,35 @@ export default function TrialConferenceClient() {
 
   // When admin ends the trial, redirect attorney to home
   useEffect(() => {
-    const handleTrialEnded = (data: any) => {
+    const handleTrialEnded = async (data: any) => {
       if (String(data.caseId) === String(caseId)) {
-        console.log("[ATTORNEY] trial_ended received — redirecting home");
+        console.log("[ATTORNEY] trial_ended received — full cleanup before redirect");
         toast.error("The trial has been ended by the administrator.", { duration: 4000 });
+        // Full cleanup BEFORE redirect — same as leaveCall — so the camera/mic are
+        // released even if the unmount cleanup gets cut short by the navigation.
+        stopAllMediaTracks();
+        try {
+          if (callRef.current && localVideoStream.current) {
+            try { await callRef.current.stopVideo(localVideoStream.current); } catch {}
+          }
+          if (callRef.current) {
+            try { await callRef.current.hangUp(); } catch {}
+            callRef.current = null;
+          }
+          if (callAgentRef.current) {
+            try { await callAgentRef.current.dispose(); } catch {}
+            callAgentRef.current = null;
+          }
+          localVideoStream.current = null;
+        } catch (_) {}
+        // Re-stop in case ACS recreated streams between dispose calls
         stopAllMediaTracks();
         router.push("/attorney");
       }
     };
     on("trial_ended", handleTrialEnded);
     return () => off("trial_ended", handleTrialEnded);
-  }, [on, off, caseId]);
+  }, [on, off, caseId, router]);
 
   useEffect(() => {
     if (chatMessagesEndRef.current) {
@@ -695,6 +745,12 @@ export default function TrialConferenceClient() {
           } catch (e) {
             console.warn("Could not cache ACS mic stream:", e);
           }
+        }
+        if (roomCall.state === "Disconnected") {
+          // Call ended — could be user-initiated, admin-kicked, or network drop.
+          // Either way, release the hardware so the camera/mic indicators turn off.
+          console.log("[ATTORNEY] Call disconnected — stopping camera/mic tracks");
+          stopAllMediaTracks();
         }
       });
 
