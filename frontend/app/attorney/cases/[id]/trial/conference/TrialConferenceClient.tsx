@@ -51,6 +51,7 @@ export default function TrialConferenceClient() {
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [displayName, setDisplayName] = useState("You");
   const [renderTrigger, setRenderTrigger] = useState(0);
+  const [isClosingTab, setIsClosingTab] = useState(false);
 
   // Track video, speaking, and mute states
   const [participantVideoStates, setParticipantVideoStates] = useState<Map<string, boolean>>(new Map());
@@ -1385,8 +1386,8 @@ roomCall.remoteParticipants.forEach((p: any) => {
       callRef.current = null;
       localVideoStream.current = null;
       if (chatClient) await chatClient.stopRealtimeNotifications();
-      toast.success("You have left the trial successfully", { duration: 3000 });
-      router.push("/attorney");
+      setIsClosingTab(true);
+      setTimeout(() => window.close(), 300);
     } catch (error) {
       console.log("Leave call completed with cleanup:", error);
       if (callAgentRef.current) {
@@ -1395,7 +1396,8 @@ roomCall.remoteParticipants.forEach((p: any) => {
       }
       callRef.current = null;
       localVideoStream.current = null;
-      router.push("/attorney");
+      setIsClosingTab(true);
+      setTimeout(() => window.close(), 300);
     }
   };
 
@@ -1441,6 +1443,17 @@ roomCall.remoteParticipants.forEach((p: any) => {
     const hash = name.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
     return colors[hash % colors.length];
   };
+
+  if (isClosingTab) {
+    return (
+      <div className="h-screen flex items-center justify-center" style={{ backgroundColor: "#0A2342" }}>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-white mx-auto mb-6"></div>
+          <p className="text-white text-2xl font-semibold">This tab is closing...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
