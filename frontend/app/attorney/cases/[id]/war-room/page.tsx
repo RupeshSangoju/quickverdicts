@@ -94,6 +94,7 @@ type CaseData = {
   ApprovedAt?: string;
   ApprovedBy?: number;
   AdminComments?: string;
+  AlternateSlots?: Array<{ date: string; time: string }> | null;
   CreatedAt?: string;
   UpdatedAt?: string;
 };
@@ -334,7 +335,12 @@ useEffect(() => {
 
       if (caseRes.ok) {
         const caseJson = await caseRes.json();
-        setCaseData(caseJson.case || caseJson);
+        const parsedCase = caseJson.case || caseJson;
+        // Parse AlternateSlots from JSON string to array if needed
+        if (parsedCase.AlternateSlots && typeof parsedCase.AlternateSlots === 'string') {
+          try { parsedCase.AlternateSlots = JSON.parse(parsedCase.AlternateSlots); } catch { parsedCase.AlternateSlots = []; }
+        }
+        setCaseData(parsedCase);
       }
 
       if (teamRes.ok) {
@@ -763,8 +769,9 @@ useEffect(() => {
   };
 
   const handleConfirmSlot = async () => {
-    if (selectedAdminSlot === null || !adminRescheduleRequest?.SuggestedSlots) return;
-    const slot = adminRescheduleRequest.SuggestedSlots[selectedAdminSlot];
+    const slots = Array.isArray(caseData?.AlternateSlots) ? caseData!.AlternateSlots! : [];
+    if (selectedAdminSlot === null || !slots.length) return;
+    const slot = slots[selectedAdminSlot];
     if (!slot) return;
 
     try {
@@ -999,7 +1006,7 @@ useEffect(() => {
                     {adminRescheduleRequest?.AdminComments && (
                       <span className="italic">"{adminRescheduleRequest.AdminComments}" — </span>
                     )}
-                    {adminRescheduleRequest?.SuggestedSlots?.length > 0
+                    {Array.isArray(caseData?.AlternateSlots) && caseData!.AlternateSlots!.length > 0
                       ? "Admin has provided the following time slots. Please select one to confirm."
                       : "The admin has requested that this case be rescheduled. Please submit a new trial date and time."}
                   </p>
@@ -1011,10 +1018,10 @@ useEffect(() => {
                   <span className="w-2 h-2 bg-current rounded-full animate-pulse"></span>
                   Reschedule request submitted — awaiting admin approval
                 </div>
-              ) : adminRescheduleRequest?.SuggestedSlots?.length > 0 ? (
+              ) : Array.isArray(caseData?.AlternateSlots) && caseData!.AlternateSlots!.length > 0 ? (
                 <div className="space-y-3">
                   <div className="flex flex-col gap-2">
-                    {adminRescheduleRequest.SuggestedSlots.map((slot: any, idx: number) => (
+                    {caseData!.AlternateSlots!.map((slot, idx) => (
                       <button
                         key={idx}
                         onClick={() => setSelectedAdminSlot(idx)}
