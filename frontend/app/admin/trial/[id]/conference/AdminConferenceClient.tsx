@@ -124,6 +124,28 @@ export default function AdminConferenceClient() {
   const currentUserId = useRef<string>("");
   const callRef = useRef<any>(null);
   const callAgentRef = useRef<any>(null);
+  // Cached MediaStream references for synchronous camera/mic track stopping on cleanup.
+  const acsCameraStreamRef = useRef<MediaStream | null>(null);
+  const acsMicStreamRef = useRef<MediaStream | null>(null);
+
+  const stopAllMediaTracks = () => {
+    try {
+      if (acsCameraStreamRef.current) {
+        acsCameraStreamRef.current.getTracks().forEach((t) => {
+          try { t.stop(); } catch (_) {}
+        });
+        acsCameraStreamRef.current = null;
+      }
+    } catch (_) {}
+    try {
+      if (acsMicStreamRef.current) {
+        acsMicStreamRef.current.getTracks().forEach((t) => {
+          try { t.stop(); } catch (_) {}
+        });
+        acsMicStreamRef.current = null;
+      }
+    } catch (_) {}
+  };
 
   // WebSocket for real-time jury charge updates
   const { on, off, joinRoom, leaveRoom, isConnected } = useWebSocket();
@@ -154,28 +176,31 @@ export default function AdminConferenceClient() {
 
   // Cleanup on page close/refresh
   useEffect(() => {
-    const handleBeforeUnload = async () => {
-      console.log("Page closing/refreshing - cleaning up call...");
+    const handleBeforeUnload = () => {
+      console.log("Page closing/refreshing - stopping camera/mic synchronously...");
+      stopAllMediaTracks();
       try {
         stopRecording();
         if (callRef.current) {
-          await callRef.current.hangUp({ forEveryone: false });
+          callRef.current.hangUp({ forEveryone: false }).catch(() => {});
         }
         if (callAgentRef.current) {
-          await callAgentRef.current.dispose();
+          callAgentRef.current.dispose().catch(() => {});
         }
-      } catch (e) {
-        console.error("Cleanup error:", e);
-      }
+      } catch (_) {}
     };
 
     window.addEventListener("beforeunload", handleBeforeUnload);
+    window.addEventListener("pagehide", handleBeforeUnload);
 
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
+      window.removeEventListener("pagehide", handleBeforeUnload);
+      stopAllMediaTracks();
       stopRecording();
       if (callRef.current) {
         callRef.current.hangUp({ forEveryone: false }).catch((e: any) => console.error("Hangup error:", e));
+        callRef.current = null;
       }
       if (callAgentRef.current) {
         callAgentRef.current.dispose().catch(() => {});
@@ -790,6 +815,35 @@ async function renderFeaturedVideo() {
           if (call.state === "Connected") {
             setIsMuted(call.isMuted);
             triggerReRender();
+
+            // Cache the underlying MediaStreams so cleanup can stop tracks SYNC even
+            // if hangUp/dispose never runs (tab close, React unmount).
+            try {
+              if (localVideoStream.current?.getMediaStream) {
+                const camStream = await localVideoStream.current.getMediaStream();
+                if (camStream) {
+                  acsCameraStreamRef.current = camStream;
+                  console.log("📹 Cached ACS camera stream:", camStream.getTracks().length, "tracks");
+                }
+              }
+            } catch (e) {
+              console.warn("Could not cache ACS camera stream:", e);
+            }
+            try {
+              const audioStreams = (call as any).localAudioStreams || [];
+              for (const audioStream of audioStreams) {
+                if (audioStream?.getMediaStream) {
+                  const micStream = await audioStream.getMediaStream();
+                  if (micStream) {
+                    acsMicStreamRef.current = micStream;
+                    console.log("🎤 Cached ACS mic stream:", micStream.getTracks().length, "tracks");
+                    break;
+                  }
+                }
+              }
+            } catch (e) {
+              console.warn("Could not cache ACS mic stream:", e);
+            }
           }
           if (call.state === "Disconnected" && reason?.code === 490 && reason?.subCode === 4502 && joinRetries < 3) {
             joinRetries++;
@@ -1726,6 +1780,10 @@ async function renderFeaturedVideo() {
   };
 
   const leaveCall = async () => {
+    // 🛑 Stop camera/mic tracks IMMEDIATELY (sync) so the browser releases the
+    // hardware right away — don't wait for ACS hangUp/dispose to finish.
+    stopAllMediaTracks();
+
     try {
       stopRecording();
       if (call && localVideoStream.current) {
@@ -1736,6 +1794,7 @@ async function renderFeaturedVideo() {
         await callAgentRef.current.dispose();
         callAgentRef.current = null;
       }
+      callRef.current = null;
       localVideoStream.current = null;
       if (chatClient) await chatClient.stopRealtimeNotifications();
       toast.success("You have left the trial successfully", { duration: 3000 });
@@ -1746,6 +1805,7 @@ async function renderFeaturedVideo() {
         try { await callAgentRef.current.dispose(); } catch {}
         callAgentRef.current = null;
       }
+      callRef.current = null;
       localVideoStream.current = null;
       router.push("/admin/dashboard");
     }
