@@ -750,36 +750,18 @@ router.post("/cases/:caseId/check-slot-availability", async (req, res) => {
 });
 
 /**
- * Admin requests reschedule by providing 3 alternate slots
- * Called when admin detects conflict and picks alternate slots
+ * Admin requests reschedule — attorney will propose their own date
+ * Called when admin detects a time slot conflict during case approval
  */
 router.post("/cases/:caseId/request-reschedule", async (req, res) => {
   try {
     const { caseId } = req.params;
-    const { alternateSlots, reason, adminComments } = req.body;
-
-    // Validate input
-    if (!Array.isArray(alternateSlots) || alternateSlots.length !== 3) {
-      return res.status(400).json({
-        success: false,
-        message: "Exactly 3 alternate slots are required",
-      });
-    }
-
-    // Validate each slot has date and time
-    for (const slot of alternateSlots) {
-      if (!slot.date || !slot.time) {
-        return res.status(400).json({
-          success: false,
-          message: "Each alternate slot must have date and time",
-        });
-      }
-    }
+    const { reason, adminComments } = req.body;
 
     const adminId = req.user?.id || req.user?.userId || 1;
 
-    // Request reschedule
-    await Case.requestReschedule(caseId, adminId, alternateSlots);
+    // Flag the case for reschedule (no slots — attorney picks their own date)
+    await Case.requestReschedule(caseId, adminId, []);
 
     // Get case data for notification
     const caseData = await Case.findById(caseId);
@@ -792,7 +774,7 @@ router.post("/cases/:caseId/request-reschedule", async (req, res) => {
       caseId: parseInt(caseId),
       type: "case_reschedule_needed",
       title: "Case Needs Rescheduling",
-      message: `Your case "${caseData.CaseTitle}" needs to be rescheduled. Please select one of the 3 alternate time slots provided by admin.${reason ? ` Reason: ${reason}.` : ""}${adminComments ? ` Comments: ${adminComments}.` : ""}`,
+      message: `Your case "${caseData.CaseTitle}" needs to be rescheduled due to a time slot conflict. Please propose a new date and time for admin approval.${reason ? ` Reason: ${reason}.` : ""}${adminComments ? ` Comments: ${adminComments}.` : ""}`,
     });
 
     // Create event
@@ -800,7 +782,7 @@ router.post("/cases/:caseId/request-reschedule", async (req, res) => {
     await Event.createEvent({
       caseId: parseInt(caseId),
       eventType: "admin_requested_reschedule",
-      description: `Admin requested reschedule due to time slot conflict. Provided 3 alternate slots.`,
+      description: `Admin requested reschedule due to time slot conflict. Attorney will propose a new date.`,
       triggeredBy: adminId,
       userType: "admin",
     });
@@ -808,7 +790,6 @@ router.post("/cases/:caseId/request-reschedule", async (req, res) => {
     res.json({
       success: true,
       message: "Reschedule request sent to attorney successfully",
-      alternateSlots,
     });
   } catch (error) {
     console.error("Error requesting reschedule:", error);

@@ -1127,17 +1127,15 @@ async function checkSlotAvailability(scheduledDate, scheduledTime, excludeCaseId
  * @param {Array<{date: string, time: string}>} alternateSlots - Array of 0 (attorney picks) or 3 (admin suggests) alternate time slots
  * @returns {Promise<boolean>}
  */
-async function requestReschedule(caseId, adminId, alternateSlots) {
+async function requestReschedule(caseId, adminId, alternateSlots = []) {
   try {
     const id = parseInt(caseId, 10);
     if (isNaN(id) || id <= 0) throw new Error("Valid case ID is required");
 
-    // ✅ FIX: Allow 0 or 3 slots (0 = attorney picks their own, 3 = admin provides suggestions)
-    if (!Array.isArray(alternateSlots) || (alternateSlots.length !== 0 && alternateSlots.length !== 3)) {
-      throw new Error("Alternate slots must be either 0 (attorney picks) or 3 (admin suggests)");
-    }
+    // Attorney always picks their own date — no slots needed from admin
+    const slots = Array.isArray(alternateSlots) ? alternateSlots : [];
 
-    console.log(`📋 [requestReschedule] Case ${id} - Admin ${adminId} requesting reschedule with ${alternateSlots.length} slots`);
+    console.log(`📋 [requestReschedule] Case ${id} - Admin ${adminId} requesting reschedule, attorney will propose date`);
 
     // Get current case data to store original scheduled time
     const caseData = await findById(id);
@@ -1149,7 +1147,7 @@ async function requestReschedule(caseId, adminId, alternateSlots) {
       await pool.request()
         .input("id", sql.Int, id)
         .input("adminId", sql.Int, parseInt(adminId))
-        .input("alternateSlots", sql.NVarChar, JSON.stringify(alternateSlots))
+        .input("alternateSlots", sql.NVarChar, JSON.stringify(slots))
         .input("originalDate", sql.Date, caseData.ScheduledDate)
         .input("originalTime", sql.VarChar, caseData.ScheduledTime)
         .query(`

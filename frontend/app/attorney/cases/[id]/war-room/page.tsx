@@ -279,7 +279,7 @@ export default function WarRoomPage() {
       !pendingRescheduleRequest
     ) {
       hasAutoOpenedRescheduleModal.current = true;
-      toast("Admin has requested that you reschedule this case. Please select one of the provided time slots.", {
+      toast("Admin has requested that you reschedule this case. Please propose a new date and time.", {
         icon: '📅',
         duration: 5000,
       });
@@ -1011,54 +1011,13 @@ useEffect(() => {
                   <span className="w-2 h-2 bg-current rounded-full animate-pulse"></span>
                   Reschedule request submitted — awaiting admin approval
                 </div>
-              ) : adminRescheduleRequest?.SuggestedSlots?.length > 0 ? (
-                <div className="space-y-3">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Select one of the admin-provided slots:</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    {adminRescheduleRequest.SuggestedSlots.map((slot: any, idx: number) => (
-                      <button
-                        key={idx}
-                        onClick={() => setSelectedAdminSlot(selectedAdminSlot === idx ? null : idx)}
-                        className={`p-4 rounded-xl border-2 text-left transition-all ${
-                          selectedAdminSlot === idx
-                            ? "border-orange-500 bg-orange-50 shadow-md"
-                            : "border-gray-200 bg-white hover:border-orange-300 hover:bg-orange-50/50"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-semibold text-gray-500">Option {idx + 1}</span>
-                          {selectedAdminSlot === idx && (
-                            <span className="w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center">
-                              <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                            </span>
-                          )}
-                        </div>
-                        <p className="font-bold text-[#0A2342] text-sm">{formatDateString(slot.date)}</p>
-                        <p className="text-orange-600 font-semibold text-sm">{formatTime(slot.time)}</p>
-                      </button>
-                    ))}
-                  </div>
-                  <button
-                    onClick={handleConfirmSlot}
-                    disabled={selectedAdminSlot === null || confirmingSlot}
-                    className="mt-2 inline-flex items-center gap-2 px-6 py-2.5 bg-orange-500 text-white rounded-lg text-sm font-semibold hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {confirmingSlot ? (
-                      <><div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white" />Confirming...</>
-                    ) : (
-                      <><CalendarIcon className="w-4 h-4" />Confirm Selected Slot</>
-                    )}
-                  </button>
-                </div>
               ) : (
                 <button
                   onClick={() => setShowRescheduleModal(true)}
                   className="inline-flex items-center gap-2 px-6 py-2.5 bg-orange-500 text-white rounded-lg text-sm font-semibold hover:bg-orange-600 transition-colors"
                 >
                   <CalendarIcon className="w-4 h-4" />
-                  Update Trial Schedule
+                  Propose New Date
                 </button>
               )}
             </div>

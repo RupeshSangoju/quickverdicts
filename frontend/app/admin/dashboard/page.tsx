@@ -1152,13 +1152,13 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleSubmitAlternateSlots = async (alternateSlots: Array<{ date: string; time: string }>) => {
+  const handleSubmitAlternateSlots = async () => {
     if (!conflictCaseId) return;
 
     try {
       const response = await fetchWithAuth(`${API_BASE}/api/admin/cases/${conflictCaseId}/request-reschedule`, {
         method: "POST",
-        body: JSON.stringify({ alternateSlots }),
+        body: JSON.stringify({}),
       });
 
       if (response.ok) {
@@ -1172,19 +1172,16 @@ export default function AdminDashboard() {
           duration: 4000,
           icon: "✅",
         });
-
-        // Optionally refresh pending cases
-        // fetchDashboardData();
       } else {
         const error = await response.json();
         throw new Error(error.message || "Failed to send reschedule request");
       }
     } catch (error: any) {
-      console.error("Error submitting alternate slots:", error);
+      console.error("Error submitting reschedule request:", error);
       toast.error(`Failed to send reschedule request: ${error.message}`, {
         duration: 5000,
       });
-      throw error; // Re-throw to let ConflictModal handle it
+      throw error;
     }
   };
 
