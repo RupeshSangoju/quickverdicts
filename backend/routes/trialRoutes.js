@@ -6,7 +6,7 @@
 const express = require("express");
 const router = express.Router();
 const rateLimit = require("express-rate-limit");
-const { notifyRoomRecreated } = require("../services/websocketService");
+const { notifyRoomRecreated, getIO } = require("../services/websocketService");
 const {
   CommunicationIdentityClient,
 } = require("@azure/communication-identity");
@@ -1495,6 +1495,14 @@ router.post(
         triggeredBy: req.user?.id || 0,
         userType: "admin",
       });
+
+      // Notify all participants in the case room to redirect home
+      try {
+        getIO().to(`case_${caseId}`).emit("trial_ended", { caseId });
+        console.log(`📡 trial_ended emitted to case_${caseId}`);
+      } catch (e) {
+        console.warn("WebSocket emit trial_ended failed:", e);
+      }
 
       res.json({
         success: true,

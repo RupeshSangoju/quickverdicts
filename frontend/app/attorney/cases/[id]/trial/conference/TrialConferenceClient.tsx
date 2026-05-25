@@ -37,7 +37,7 @@ export default function TrialConferenceClient() {
   const router = useRouter();
   const caseId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";
 
-  const { on, off } = useWebSocket();
+  const { on, off, emit, isConnected } = useWebSocket();
 
   const [call, setCall] = useState<any>(null);
   const [callState, setCallState] = useState("Initializing...");
@@ -198,6 +198,26 @@ export default function TrialConferenceClient() {
     on("room_recreated", handleRoomRecreated);
     return () => off("room_recreated", handleRoomRecreated);
   }, [on, off]);
+
+  // Join the case WebSocket room so we receive trial_ended and other case events
+  useEffect(() => {
+    if (!isConnected || !caseId) return;
+    emit("join_case", caseId);
+  }, [isConnected, caseId]);
+
+  // When admin ends the trial, redirect attorney to home
+  useEffect(() => {
+    const handleTrialEnded = (data: any) => {
+      if (String(data.caseId) === String(caseId)) {
+        console.log("[ATTORNEY] trial_ended received — redirecting home");
+        toast.error("The trial has been ended by the administrator.", { duration: 4000 });
+        stopAllMediaTracks();
+        router.push("/attorney");
+      }
+    };
+    on("trial_ended", handleTrialEnded);
+    return () => off("trial_ended", handleTrialEnded);
+  }, [on, off, caseId]);
 
   useEffect(() => {
     if (chatMessagesEndRef.current) {

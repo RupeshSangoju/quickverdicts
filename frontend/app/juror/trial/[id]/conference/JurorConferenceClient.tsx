@@ -233,9 +233,20 @@ export default function JurorConferenceClient() {
     };
     wsOn("room_recreated", handleRoomRecreated);
 
+    const handleTrialEnded = (data: any) => {
+      if (String(data.caseId) === String(caseId)) {
+        console.log("[JUROR] trial_ended received — redirecting home");
+        toast.error("The trial has been ended by the administrator.", { duration: 4000 });
+        stopAllMediaTracks();
+        router.push("/juror");
+      }
+    };
+    wsOn("trial_ended", handleTrialEnded);
+
     return () => {
       wsOff("jury_charge:released", handleJuryChargeReleased);
       wsOff("room_recreated", handleRoomRecreated);
+      wsOff("trial_ended", handleTrialEnded);
     };
   }, [wsConnected, caseId]);
 
