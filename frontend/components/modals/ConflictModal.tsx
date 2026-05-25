@@ -87,41 +87,15 @@ export default function ConflictModal({
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex gap-3">
             <Calendar className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
             <div>
-              <p className="text-sm font-semibold text-blue-900 mb-1">Attorney will choose a new date</p>
               <p className="text-sm text-blue-700">
-                Sending this request will notify the attorney that their current slot is unavailable.
-                The attorney can then propose any date they prefer, and you will see their request in
-                the <strong>Reschedule Requests</strong> section for approval.
+                Please reject this case with schedule conflict reason and provide alternate dates that work for you. The attorney will then select a new date. 
               </p>
             </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 bg-gray-50 rounded-b-xl">
-          <button
-            onClick={onClose}
-            disabled={isSubmitting}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={isSubmitting}
-            className="px-6 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
-            style={{ backgroundColor: BLUE }}
-          >
-            {isSubmitting ? (
-              <>
-                <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
-                Sending...
-              </>
-            ) : (
-              "Request Reschedule from Attorney"
-            )}
-          </button>
-        </div>
+
       </div>
     </div>
   );

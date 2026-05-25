@@ -9,16 +9,18 @@ const Footer: FC = () => {
         {/* Left side */}
         <div className="flex flex-col justify-between">
           {/* Contact Info */}
-          <div>
-            <p className="font-semibold">Contact Quick Verdicts</p>
-            <p className="mt-2 text-sm">832-745-8743</p>
-            <p className="text-sm">help@QV.com</p>
-          </div>
+            <div>
+              <h3 className="font-bold mb-4">Contact</h3>
+              <p className="text-gray-300">Hours:</p>
+              <p className="text-gray-300">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;8:00 a.m. to 5:00 p.m. M-F </p>
+              <p className='text-gray-300'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;9:00 a.m. to 2:00 p.m. Sat.</p>
+              <p className="text-gray-300">QVTrial@quickverdicts.com</p>
+            </div>
 
           {/* Bottom Links */}
           <div className="flex flex-wrap gap-6 mt-8 text-sm">
-            <span>Quick Verdicts © {new Date().getFullYear()}</span>
-              <Link href="/" className="hover:text-white">Privacy</Link>
+              <Link href="/" className="hover:text-white">Quick Verdicts<sup className="text-[12px]">™</sup></Link>
+              <span className="hover:text-white">Privacy</span>
                 <a
     href="https://documents83y89129y.blob.core.windows.net/new/QV%20Privacy%20Policy.pdf"
     target="_blank"
