@@ -1755,6 +1755,11 @@ router.post("/reschedule-requests/:requestId/approve", authMiddleware, requireAd
 
     console.log(`📅 Updating case ${request.CaseId} schedule to ${newDate} ${newTime}`);
 
+    // Format the date as "Wed, May 27 2026" — parse at noon UTC so no timezone day-shift
+    const formattedDate = new Date(newDate + 'T12:00:00Z').toLocaleDateString('en-US', {
+      weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC'
+    });
+
     // Update case with new scheduled date/time, reset AdminApprovalStatus to approved
     // and clear the reschedule flags so the war room unlocks
     try {
@@ -1835,7 +1840,7 @@ router.post("/reschedule-requests/:requestId/approve", authMiddleware, requireAd
         caseId: request.CaseId,
         type: "reschedule_approved",
         title: "Reschedule Request Approved",
-        message: `Your reschedule request for case "${request.CaseTitle}" has been approved. The case has been rescheduled to ${request.NewScheduledDate} at ${request.NewScheduledTime}. All juror applications have been removed and the case is now available on the job board for new applications.${adminComments ? ` Admin comments: ${adminComments}.` : ""}`,
+        message: `Your reschedule request for case "${request.CaseTitle}" has been approved. The case has been rescheduled to ${formattedDate} at ${newTime}. All juror applications have been removed and the case is now available on the job board for new applications.${adminComments ? ` Admin comments: ${adminComments}.` : ""}`,
       });
       console.log(`📧 Notification sent to attorney ${request.AttorneyId}`);
     } catch (notifError) {
@@ -1853,7 +1858,7 @@ router.post("/reschedule-requests/:requestId/approve", authMiddleware, requireAd
           caseId: request.CaseId,
           type: "case_rescheduled",
           title: "Case Rescheduled - Application Removed",
-          message: `The case "${request.CaseTitle}" has been rescheduled to ${request.NewScheduledDate} at ${request.NewScheduledTime}. Your ${statusText} application has been removed. You can reapply from the job board if you're available at the new time.`,
+          message: `The case "${request.CaseTitle}" has been rescheduled to ${formattedDate} at ${newTime}. Your ${statusText} application has been removed. You can reapply from the job board if you're available at the new time.`,
         });
       }
       console.log(`📧 Notifications sent to ${affectedJurors.length} affected jurors`);
