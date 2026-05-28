@@ -62,6 +62,7 @@ export default function VoirDirePart2() {
   };
 
   const addQuestion = () => {
+    if (questions.length >= 6) return;
     setQuestions([...questions, { question: "", type: "yesno" }]);
   };
 
@@ -187,14 +188,20 @@ export default function VoirDirePart2() {
                   </div>
                 </div>
               ))}
-              <button
-                type="button"
-                onClick={addQuestion}
-                className="text-[#16305B] text-sm font-medium mb-4 hover:text-[#0A2342] transition-colors flex items-center gap-1"
-              >
-                <span className="text-lg">+</span>
-                <span>Add Another Voir Dire Question</span>
-              </button>
+              {questions.length < 6 ? (
+                <button
+                  type="button"
+                  onClick={addQuestion}
+                  className="text-[#16305B] text-sm font-medium mb-4 hover:text-[#0A2342] transition-colors flex items-center gap-1"
+                >
+                  <span className="text-lg">+</span>
+                  <span>Add Another Voir Dire Question ({questions.length}/6)</span>
+                </button>
+              ) : (
+                <p className="text-sm text-amber-600 font-medium mb-4">
+                  Maximum of 6 custom Voir Dire questions reached.
+                </p>
+              )}
               <button
                 type="submit"
                 disabled={isSubmitting}
