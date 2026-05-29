@@ -714,10 +714,10 @@ router.post(
         });
       }
 
-      if (approvedCount > 7) {
+      if (approvedCount > 6) {
         return res.status(400).json({
           success: false,
-          message: `Cannot submit war room: Maximum 7 jurors allowed (currently have ${approvedCount})`,
+          message: `Cannot submit war room: Maximum 6 jurors allowed (currently have ${approvedCount})`,
           code: "TOO_MANY_JURORS",
           maxJurors: 7,
           currentJurors: approvedCount,

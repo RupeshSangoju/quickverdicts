@@ -188,9 +188,9 @@ router.get("/case/:caseId/trial-status", async (req, res) => {
       issues.push(
         `Not enough approved jurors (${jurorStats.ApprovedCount}/1 minimum)`
       );
-    } else if (jurorStats.ApprovedCount > 7) {
+    } else if (jurorStats.ApprovedCount > 6) {
       issues.push(
-        `Too many approved jurors (${jurorStats.ApprovedCount}/7 maximum)`
+        `Too many approved jurors (${jurorStats.ApprovedCount}/6 maximum)`
       );
     }
 
@@ -274,7 +274,7 @@ function generateRecommendations(issues, caseData, meetingData) {
         );
       } else if (issue.includes("Too many")) {
         recommendations.push(
-          "Attorney needs to reject some jurors (maximum 7 allowed)"
+          "Attorney needs to reject some jurors (maximum 6 allowed)"
         );
       }
     }

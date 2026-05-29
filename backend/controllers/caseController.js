@@ -221,7 +221,7 @@ async function createCase(req, res) {
         .input("defendantGroups", sql.NVarChar, JSON.stringify(typeof caseData.defendantGroups === 'string' ? JSON.parse(caseData.defendantGroups) : (caseData.defendantGroups || [])))
         .input("voirDire1Questions", sql.NVarChar, JSON.stringify(typeof caseData.voirDire1Questions === 'string' ? JSON.parse(caseData.voirDire1Questions) : (caseData.voirDire1Questions || [])))
         .input("voirDire2Questions", sql.NVarChar, JSON.stringify(typeof caseData.voirDire2Questions === 'string' ? JSON.parse(caseData.voirDire2Questions) : (caseData.voirDire2Questions || [])))
-        .input("requiredJurors", sql.Int, parseInt(caseData.requiredJurors) || 7)
+        .input("requiredJurors", sql.Int, parseInt(caseData.requiredJurors) || 6)
         .input("attorneyStatus", sql.NVarChar, Case.ATTORNEY_CASE_STATES.PENDING_ADMIN_APPROVAL)
         .input("adminApprovalStatus", sql.NVarChar, "pending")
         .query(`
@@ -467,7 +467,7 @@ async function getCaseDetails(req, res) {
       verdictSummary,
       canTransitionToTrial:
         applications.filter((app) => app.Status === "approved").length >=
-        (caseData.RequiredJurors || 7),
+        (caseData.RequiredJurors || 6),
     });
   } catch (error) {
     console.error("Get case details error:", error);
