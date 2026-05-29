@@ -31,7 +31,7 @@ export default function ProfileSection() {
   const [showEdit, setShowEdit] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [deletePassword, setDeletePassword] = useState("");
-  const [editData, setEditData] = useState({ name: "", email: "", password: "", phone: "" });
+  const [editData, setEditData] = useState({ name: "", email: "", password: "", phone: "", state: "", county: "" });
   const [updating, setUpdating] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showOtpModal, setShowOtpModal] = useState(false);
@@ -176,6 +176,8 @@ export default function ProfileSection() {
           email: editData.email,
           password: editData.password,
           phone: editData.phone,
+          state: editData.state,
+          county: editData.county,
         }),
       });
 
@@ -184,13 +186,13 @@ export default function ProfileSection() {
         if (updateData.juror) {
           setJuror(updateData.juror);
         } else {
-          setJuror(j => j ? { ...j, name: editData.name, phone: editData.phone } : j);
+          setJuror(j => j ? { ...j, name: editData.name, phone: editData.phone, state: editData.state, county: editData.county } : j);
         }
         setShowOtpModal(false);
         setShowEdit(false);
         setOtp("");
         setOtpSent(false);
-        setEditData({ name: "", email: "", password: "", phone: "" });
+        setEditData({ name: "", email: "", password: "", phone: "", state: "", county: "" });
         setShowNewPassword(false);
         setSuccessMessage("Profile updated successfully!");
         setTimeout(() => setSuccessMessage(""), 5000);
@@ -253,6 +255,8 @@ export default function ProfileSection() {
           name: editData.name,
           email: editData.email,
           phone: editData.phone,
+          state: editData.state,
+          county: editData.county,
         }),
       });
       const data = await res.json();
@@ -260,7 +264,7 @@ export default function ProfileSection() {
         if (data.juror) {
           setJuror(data.juror);
         } else {
-          setJuror(j => j ? { ...j, name: editData.name, phone: editData.phone } : j);
+          setJuror(j => j ? { ...j, name: editData.name, phone: editData.phone, state: editData.state, county: editData.county } : j);
         }
         setShowEdit(false);
         setShowNewPassword(false);
@@ -437,7 +441,9 @@ export default function ProfileSection() {
                       name: juror?.name || "",
                       email: juror?.email || "",
                       password: "",
-                      phone: juror?.phone || ""
+                      phone: juror?.phone || "",
+                      state: juror?.state || "",
+                      county: juror?.county || "",
                     });
                     setShowEdit(true);
                   }}
@@ -551,6 +557,28 @@ export default function ProfileSection() {
                     type="text"
                     value={editData.phone}
                     onChange={handleEditChange}
+                    className="w-full border rounded px-3 py-2 text-black focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-800 font-medium mb-1">State</label>
+                  <input
+                    name="state"
+                    type="text"
+                    value={editData.state}
+                    onChange={handleEditChange}
+                    placeholder="e.g. TX"
+                    className="w-full border rounded px-3 py-2 text-black focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-800 font-medium mb-1">County</label>
+                  <input
+                    name="county"
+                    type="text"
+                    value={editData.county}
+                    onChange={handleEditChange}
+                    placeholder="e.g. Travis County"
                     className="w-full border rounded px-3 py-2 text-black focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
