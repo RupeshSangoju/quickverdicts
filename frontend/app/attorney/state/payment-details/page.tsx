@@ -63,7 +63,7 @@ export default function PaymentDetailsPage() {
 
     setPaymentMethod(savedPaymentMethod);
     setCaseTier(savedTier);
-    setRequiredJurors("7"); // Always 7 jurors
+    setRequiredJurors("6"); // Always 6 jurors
 
     // Auto-set payment amount based on tier
     if (savedTier) {

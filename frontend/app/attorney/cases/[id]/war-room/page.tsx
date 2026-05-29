@@ -630,7 +630,7 @@ useEffect(() => {
         } else if (data.code === "INSUFFICIENT_JURORS") {
           setErrorMessage(data.message || "You need at least the required number of approved jurors");
         } else if (data.code === "TOO_MANY_JURORS") {
-          setErrorMessage(data.message || "Maximum 7 jurors allowed");
+          setErrorMessage(data.message || "Maximum 6 jurors allowed");
         } else {
           setErrorMessage(data.message || "Failed to submit war room. Please try again.");
         }
@@ -673,7 +673,7 @@ useEffect(() => {
   const requiredJurors = caseData?.RequiredJurors ?? 1;
   // Check if war room can be submitted (jurors + case status)
   const isWarRoomStatus = caseData?.AttorneyStatus === "war_room";
-  const canSubmitWarRoom = approvedCount >= requiredJurors && approvedCount <= 7 && isWarRoomStatus && isAdminApproved && !pendingRescheduleRequest;
+  const canSubmitWarRoom = approvedCount >= requiredJurors && approvedCount <= 6 && isWarRoomStatus && isAdminApproved && !pendingRescheduleRequest;
 
   const jurorCountMessage = !isAdminApproved
     ? `⏳ Waiting for admin approval`
@@ -683,8 +683,8 @@ useEffect(() => {
     ? `⏳ Waiting for admin to approve reschedule request`
     : approvedCount < requiredJurors
     ? `Need ${requiredJurors - approvedCount} more approved juror${requiredJurors - approvedCount === 1 ? '' : 's'}`
-    : approvedCount > 7
-    ? 'Too many jurors! Maximum is 7'
+    : approvedCount > 6
+    ? 'Too many jurors! Maximum is 6'
     : `✓ Ready to submit (${approvedCount} approved jurors)`;
 
   const filteredApplications = applications.filter(app =>
@@ -1060,8 +1060,8 @@ useEffect(() => {
           </div>
         )}
 
-        {/* Generic lock screen for pending / rejected */}
-        {!isAdminApproved && caseData.AdminApprovalStatus !== 'reschedule' && (
+        {/* Pending: waiting for admin review */}
+        {!isAdminApproved && caseData.AdminApprovalStatus === 'pending' && (
           <div className="bg-white rounded-lg shadow border-2 border-amber-400 overflow-hidden">
             <div className="p-8 text-center">
               <div className="inline-flex p-4 bg-amber-100 rounded-full mb-4">
@@ -1073,13 +1073,32 @@ useEffect(() => {
               <p className="text-[#455A7C] mb-4 max-w-md mx-auto">
                 Your case is currently under review by our admin team. Once approved, you'll be able to access the war room to manage juror applications, upload documents, and prepare for trial.
               </p>
-              <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold ${
-                caseData.AdminApprovalStatus === 'pending'
-                  ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                  : 'bg-red-50 text-red-700 border border-red-200'
-              }`}>
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-amber-50 text-amber-700 border border-amber-200">
                 <span className="w-2 h-2 bg-current rounded-full animate-pulse"></span>
-                Case Status: {caseData.AdminApprovalStatus === 'pending' ? 'Pending Admin Review' : 'Not Approved'}
+                Pending Admin Review
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Rejected: case was not approved */}
+        {!isAdminApproved && caseData.AdminApprovalStatus === 'rejected' && (
+          <div className="bg-white rounded-lg shadow border-2 border-red-400 overflow-hidden">
+            <div className="p-8 text-center">
+              <div className="inline-flex p-4 bg-red-100 rounded-full mb-4">
+                <ExclamationCircleIcon className="w-12 h-12 text-red-600" />
+              </div>
+              <h3 className="text-xl font-bold text-[#0A2342] mb-2">
+                Case Not Approved
+              </h3>
+              <p className="text-[#455A7C] mb-4 max-w-md mx-auto">
+                {caseData.AdminComments
+                  ? `Your case was not approved. Reason: ${caseData.AdminComments}`
+                  : "Your case was not approved by the admin team. Please contact support for more information."}
+              </p>
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-red-50 text-red-700 border border-red-200">
+                <span className="w-2 h-2 bg-current rounded-full"></span>
+                Case Rejected
               </div>
             </div>
           </div>
@@ -1144,13 +1163,13 @@ useEffect(() => {
                   label="Required Jurors"
                   value={
                     (() => {
-                      const jurors: any = caseData.RequiredJurors || 7;
-                      // Handle cases where RequiredJurors might be a string like "7,7" or array
+                      const jurors: any = caseData.RequiredJurors || 6;
+                      // Handle cases where RequiredJurors might be a string like "6,6" or array
                       if (typeof jurors === 'string') {
                         return jurors.split(',')[0].trim();
                       }
                       if (Array.isArray(jurors)) {
-                        return jurors[0]?.toString() || '7';
+                        return jurors[0]?.toString() || '6';
                       }
                       return String(jurors);
                     })()

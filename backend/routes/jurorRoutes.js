@@ -597,12 +597,12 @@ router.post(
       });
     }
 
-    // Check if case is full (maximum 7 jurors allowed)
+    // Check if case is full (maximum 6 jurors allowed)
     const approvedCount = await Case.getApprovedJurorsCount(caseId);
-    if (approvedCount >= 7) {
+    if (approvedCount >= 6) {
       return res.status(400).json({
         success: false,
-        error: "This case has reached the maximum of 7 jurors",
+        error: "This case has reached the maximum of 6 jurors",
         code: "CASE_FULL",
       });
     }

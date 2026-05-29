@@ -510,7 +510,7 @@ router.put(
 
     // Check if case still needs jurors
     const approvedCount = await Case.getApprovedJurorsCount(caseId);
-    const requiredJurors = caseData.RequiredJurors || 7;
+    const requiredJurors = caseData.RequiredJurors || 6;
 
     if (approvedCount >= requiredJurors) {
       return res.status(400).json({
@@ -600,7 +600,7 @@ router.post(
 
     // Check if we can approve this many
     const approvedCount = await Case.getApprovedJurorsCount(caseId);
-    const requiredJurors = caseData.RequiredJurors || 7;
+    const requiredJurors = caseData.RequiredJurors || 6;
     const slotsAvailable = requiredJurors - approvedCount;
 
     if (slotsAvailable <= 0) {

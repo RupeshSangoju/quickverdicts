@@ -517,10 +517,10 @@ async function getApplicationStatistics(req, res) {
       rejectedApplications: applications.filter(
         (app) => app.Status === "rejected"
       ).length,
-      requiredJurors: caseData.RequiredJurors || 7,
+      requiredJurors: caseData.RequiredJurors || 6,
       canProceedToTrial:
         applications.filter((app) => app.Status === "approved").length >=
-        (caseData.RequiredJurors || 7),
+        (caseData.RequiredJurors || 6),
       applicationsByCounty: {},
     };
 

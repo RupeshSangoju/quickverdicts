@@ -14,7 +14,7 @@ export default function CaseDetailsPage() {
   const [county, setCounty] = useState("");
   const [caseType, setCaseType] = useState("");
   const [caseTier, setCaseTier] = useState("");
-  const [requiredJurors] = useState("7"); // Fixed to 7 jurors always
+  const [requiredJurors] = useState("6"); // Fixed to 6 jurors always
   const [caseDescription, setCaseDescription] = useState("");
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [caseJurisdiction, setCaseJurisdiction] = useState<string | null>(null);

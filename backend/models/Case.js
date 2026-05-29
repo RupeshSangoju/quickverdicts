@@ -273,7 +273,7 @@ async function createCase(data) {
           sql.NVarChar,
           safeJSONStringify(safeJSONParse(data.voirDire2Questions))
         )
-        .input("requiredJurors", sql.Int, parseInt(data.requiredJurors) || 7)
+        .input("requiredJurors", sql.Int, parseInt(data.requiredJurors) || 6)
         .input(
           "attorneyStatus",
           sql.NVarChar,
@@ -336,7 +336,7 @@ async function findById(caseId, options = {}) {
             a.PhoneNumber AS AttorneyPhone,
             a.StateBarNumber,
             a.State AS AttorneyState,
-            ISNULL(c.RequiredJurors, 7) AS RequiredJurors
+            ISNULL(c.RequiredJurors, 6) AS RequiredJurors
           FROM dbo.Cases c
           LEFT JOIN dbo.Attorneys a ON c.AttorneyId = a.AttorneyId
           WHERE c.CaseId = @id${whereDeletedClause}
@@ -503,7 +503,7 @@ async function getCasesPendingAdminApproval(limit = 50) {
             a.PhoneNumber AS AttorneyPhone,
             a.StateBarNumber,
             a.State AS AttorneyState,
-            ISNULL(c.RequiredJurors, 7) AS RequiredJurors
+            ISNULL(c.RequiredJurors, 6) AS RequiredJurors
           FROM dbo.Cases c
           LEFT JOIN dbo.Attorneys a ON c.AttorneyId = a.AttorneyId
           WHERE c.AdminApprovalStatus = 'pending' AND c.IsDeleted = 0
@@ -545,7 +545,7 @@ async function getAvailableCasesForJurors(county = null, jurorId = null, state =
           c.PlaintiffGroups, c.DefendantGroups, c.VoirDire1Questions, c.VoirDire2Questions,
           c.AttorneyStatus, c.AdminApprovalStatus, c.CreatedAt,
           a.FirstName + ' ' + a.LastName AS AttorneyName, a.LawFirmName,
-          ISNULL(c.RequiredJurors, 7) AS RequiredJurors,
+          ISNULL(c.RequiredJurors, 6) AS RequiredJurors,
           (SELECT COUNT(*) FROM dbo.JurorApplications ja
            WHERE ja.CaseId = c.CaseId AND ja.Status = 'approved') AS ApprovedJurors,
           (SELECT COUNT(*) FROM dbo.JurorApplications ja
@@ -681,7 +681,7 @@ async function getAllCases(options = {}) {
           a.Email AS AttorneyEmail,
           a.LawFirmName,
           a.State AS AttorneyState,
-          ISNULL(c.RequiredJurors, 7) AS RequiredJurors,
+          ISNULL(c.RequiredJurors, 6) AS RequiredJurors,
           (SELECT COUNT(*) FROM dbo.JurorApplications ja
            WHERE ja.CaseId = c.CaseId AND ja.Status = 'approved') AS ApprovedJurors
         FROM dbo.Cases c
@@ -1333,7 +1333,7 @@ async function validateCaseStateTransition(caseId, newStatus) {
         return { valid: false, message: "Case must be approved by admin" };
       }
 
-      const required = caseData.RequiredJurors || 7;
+      const required = caseData.RequiredJurors || 6;
       const approved = await getApprovedJurorsCount(caseId);
       if (approved < required) {
         return {
