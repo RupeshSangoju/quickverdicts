@@ -32,6 +32,11 @@ export default function ProfileSection() {
   const [showDelete, setShowDelete] = useState(false);
   const [deletePassword, setDeletePassword] = useState("");
   const [editData, setEditData] = useState({ name: "", email: "", password: "", phone: "", state: "", county: "" });
+  const [availableStates, setAvailableStates] = useState<{ label: string; value: string }[]>([]);
+  const [availableCounties, setAvailableCounties] = useState<{ label: string; value: string }[]>([]);
+  const [statesLoading, setStatesLoading] = useState(false);
+  const [countiesLoading, setCountiesLoading] = useState(false);
+  const [selectedStateCode, setSelectedStateCode] = useState("");
   const [updating, setUpdating] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showOtpModal, setShowOtpModal] = useState(false);
@@ -101,8 +106,78 @@ export default function ProfileSection() {
     fetchJuror();
   }, []);
 
-  function handleEditChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleEditChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
     setEditData({ ...editData, [e.target.name]: e.target.value });
+  }
+
+  async function fetchCountiesForState(stateCode: string, stateName: string) {
+    setCountiesLoading(true);
+    setAvailableCounties([]);
+    try {
+      const res = await fetch(
+        `/api/location/counties?stateCode=${stateCode}&stateName=${encodeURIComponent(stateName)}`
+      );
+      const data = await res.json();
+      const counties = (data.counties ?? []).map(
+        (c: { label: string; value: string; code: string }) => ({
+          label: c.label
+            .replace(`, ${stateName}`, "")
+            .replace(/ (County|Parish|Borough|City and Borough|Census Area|Municipality)$/i, "")
+            .trim(),
+          value: c.value,
+        })
+      );
+      setAvailableCounties(counties);
+    } catch {
+      toast.error("Failed to load counties");
+    } finally {
+      setCountiesLoading(false);
+    }
+  }
+
+  async function initLocationDropdowns(currentState: string, currentCounty: string) {
+    let states = availableStates;
+    if (states.length === 0) {
+      setStatesLoading(true);
+      try {
+        const res = await fetch("/api/location/states");
+        const data = await res.json();
+        states = data.states ?? [];
+        setAvailableStates(states);
+      } catch {
+        toast.error("Failed to load states");
+      } finally {
+        setStatesLoading(false);
+      }
+    }
+
+    const matched = states.find(
+      (s) => s.label.toUpperCase() === currentState.toUpperCase()
+    );
+    if (matched) {
+      setSelectedStateCode(matched.value);
+      await fetchCountiesForState(matched.value, matched.label);
+    } else {
+      setSelectedStateCode("");
+      setAvailableCounties([]);
+    }
+  }
+
+  function handleStateSelect(e: React.ChangeEvent<HTMLSelectElement>) {
+    const option = availableStates.find((s) => s.value === e.target.value);
+    if (option) {
+      setSelectedStateCode(option.value);
+      setEditData((prev) => ({ ...prev, state: option.label, county: "" }));
+      fetchCountiesForState(option.value, option.label);
+    } else {
+      setSelectedStateCode("");
+      setEditData((prev) => ({ ...prev, state: "", county: "" }));
+      setAvailableCounties([]);
+    }
+  }
+
+  function handleCountySelect(e: React.ChangeEvent<HTMLSelectElement>) {
+    setEditData((prev) => ({ ...prev, county: e.target.value }));
   }
 
   async function sendOtp() {
@@ -193,6 +268,7 @@ export default function ProfileSection() {
         setOtp("");
         setOtpSent(false);
         setEditData({ name: "", email: "", password: "", phone: "", state: "", county: "" });
+        setSelectedStateCode("");
         setShowNewPassword(false);
         setSuccessMessage("Profile updated successfully!");
         setTimeout(() => setSuccessMessage(""), 5000);
@@ -268,6 +344,7 @@ export default function ProfileSection() {
         }
         setShowEdit(false);
         setShowNewPassword(false);
+        setSelectedStateCode("");
         setSuccessMessage("Profile updated successfully!");
         setTimeout(() => setSuccessMessage(""), 5000);
       } else {
@@ -437,15 +514,18 @@ export default function ProfileSection() {
                   className="mt-2 px-5 py-2 bg-[#0C2D57] text-white rounded-md hover:bg-[#0a2342] text-[15px] font-medium shadow-sm transition"
                   style={{ width: 130 }}
                   onClick={() => {
+                    const currentState = juror?.state || "";
+                    const currentCounty = juror?.county || "";
                     setEditData({
                       name: juror?.name || "",
                       email: juror?.email || "",
                       password: "",
                       phone: juror?.phone || "",
-                      state: juror?.state || "",
-                      county: juror?.county || "",
+                      state: currentState,
+                      county: currentCounty,
                     });
                     setShowEdit(true);
+                    initLocationDropdowns(currentState, currentCounty);
                   }}
                 >
                   Edit Profile
@@ -509,7 +589,7 @@ export default function ProfileSection() {
             {/* Lighter subtle grey overlay to highlight modal */}
             <div
             className="absolute inset-0 bg-black/10"
-            onClick={() => !updating && setShowEdit(false)}
+            onClick={() => { if (!updating) { setShowEdit(false); setSelectedStateCode(""); } }}
             ></div>
             {/* Modal content */}
             <div className="relative bg-white rounded-lg shadow-2xl p-8 w-full max-w-md border-4" style={{ borderColor: '#0C2D57' }}>
@@ -520,6 +600,7 @@ export default function ProfileSection() {
                     if (!updating) {
                       setShowEdit(false);
                       setShowNewPassword(false);
+                      setSelectedStateCode("");
                     }
                   }}
                   className="text-gray-400 hover:text-gray-600"
@@ -562,31 +643,46 @@ export default function ProfileSection() {
                 </div>
                 <div>
                   <label className="block text-sm text-gray-800 font-medium mb-1">State</label>
-                  <input
-                    name="state"
-                    type="text"
-                    value={editData.state}
-                    onChange={handleEditChange}
-                    placeholder="e.g. TX"
-                    className="w-full border rounded px-3 py-2 text-black focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                  {statesLoading ? (
+                    <p className="text-sm text-gray-500 py-2">Loading states...</p>
+                  ) : (
+                    <select
+                      value={selectedStateCode}
+                      onChange={handleStateSelect}
+                      className="w-full border rounded px-3 py-2 text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Select State</option>
+                      {availableStates.map((s) => (
+                        <option key={s.value} value={s.value}>{s.label}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm text-gray-800 font-medium mb-1">County</label>
-                  <input
-                    name="county"
-                    type="text"
-                    value={editData.county}
-                    onChange={handleEditChange}
-                    placeholder="e.g. Travis County"
-                    className="w-full border rounded px-3 py-2 text-black focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                  {countiesLoading ? (
+                    <p className="text-sm text-gray-500 py-2">Loading counties...</p>
+                  ) : (
+                    <select
+                      value={editData.county}
+                      onChange={handleCountySelect}
+                      disabled={!selectedStateCode}
+                      className="w-full border rounded px-3 py-2 text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    >
+                      <option value="">
+                        {selectedStateCode ? "Select County" : "Select a state first"}
+                      </option>
+                      {availableCounties.map((c) => (
+                        <option key={c.value} value={c.value}>{c.label}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
 
                 <div className="flex gap-2 mt-6">
-                  <button 
+                  <button
                     onClick={handleEditProfile}
-                    className="px-4 py-2 bg-[#0C2D57] text-white rounded hover:bg-[#0a2342] min-w-[100px] disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer" 
+                    className="px-4 py-2 bg-[#0C2D57] text-white rounded hover:bg-[#0a2342] min-w-[100px] disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
                     disabled={updating}
                   >
                     {updating ? "Updating..." : "Update"}
@@ -595,6 +691,7 @@ export default function ProfileSection() {
                     onClick={() => {
                       setShowEdit(false);
                       setShowNewPassword(false);
+                      setSelectedStateCode("");
                     }}
                     className="px-4 py-2 text-gray-800 bg-gray-200 rounded hover:bg-gray-300 transition-colors cursor-pointer"
                     disabled={updating}
