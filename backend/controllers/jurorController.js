@@ -5,8 +5,10 @@
 const Juror = require("../models/Juror");
 const JurorApplication = require("../models/JurorApplication");
 const Notification = require("../models/Notification");
+const Attorney = require("../models/Attorney");
 const { sendNotificationEmail } = require("../utils/email");
 const bcrypt = require("bcryptjs");
+const { poolPromise, sql } = require("../config/db");
 
 /* ===========================================================
    PROFILE MANAGEMENT
@@ -105,6 +107,8 @@ async function updateProfileHandler(req, res) {
       "address1",
       "address2",
       "city",
+      "state",
+      "county",
       "zipCode",
       "paymentMethod",
       "maritalStatus",
@@ -164,6 +168,28 @@ async function updateProfileHandler(req, res) {
       }
     }
 
+    // Validate state if provided
+    if (updates.state !== undefined) {
+      if (!updates.state || updates.state.trim().length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: "State cannot be empty",
+          code: "INVALID_INPUT",
+        });
+      }
+    }
+
+    // Validate county if provided
+    if (updates.county !== undefined) {
+      if (!updates.county || updates.county.trim().length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: "County cannot be empty",
+          code: "INVALID_INPUT",
+        });
+      }
+    }
+
     // Validate years in county if provided
     if (updates.yearsInCounty !== undefined) {
       const years = parseInt(updates.yearsInCounty);
@@ -206,18 +232,103 @@ async function updateProfileHandler(req, res) {
       await Juror.updateTaskCompletion(jurorId, "profile", true);
     }
 
+    // Check if state or county changed
+    const stateChanged = updates.state !== undefined &&
+      updates.state.trim().toUpperCase() !== (existingJuror.State || "").toUpperCase();
+    const countyChanged = updates.county !== undefined &&
+      updates.county.trim() !== (existingJuror.County || "");
+    const locationChanged = stateChanged || countyChanged;
+
     // Notify admin of profile update
     try {
       const updatedFields = Object.keys(updates).join(", ");
+      const adminMessage = locationChanged
+        ? `Juror ${existingJuror.Name} changed their location. ` +
+          (stateChanged ? `State: ${existingJuror.State || "N/A"} → ${updates.state.trim().toUpperCase()}. ` : "") +
+          (countyChanged ? `County: ${existingJuror.County || "N/A"} → ${updates.county.trim()}.` : "")
+        : `Juror ${existingJuror.Name} updated their profile. Updated fields: ${updatedFields}`;
+
       await Notification.createNotification({
-        userId: 1, // Admin user ID
+        userId: 1,
         userType: "admin",
         type: "juror_profile_updated",
-        title: "Juror Profile Updated",
-        message: `Juror ${existingJuror.Name} updated their profile. Updated fields: ${updatedFields}`,
+        title: locationChanged ? "Juror Location Changed" : "Juror Profile Updated",
+        message: adminMessage,
       });
+
+      if (locationChanged) {
+        await sendNotificationEmail(
+          "admin@quickverdicts.com",
+          "Juror Location Changed",
+          `<h2 style="color:#16305B;margin-top:0;">Juror Location Update</h2>
+          <p style="color:#666;line-height:1.6;">Juror <strong>${existingJuror.Name}</strong> has updated their location information.</p>
+          <table style="border-collapse:collapse;width:100%;margin:16px 0;">
+            ${stateChanged ? `<tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold;">State</td><td style="padding:8px;border:1px solid #ddd;">${existingJuror.State || "N/A"} → ${updates.state.trim().toUpperCase()}</td></tr>` : ""}
+            ${countyChanged ? `<tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold;">County</td><td style="padding:8px;border:1px solid #ddd;">${existingJuror.County || "N/A"} → ${updates.county.trim()}</td></tr>` : ""}
+          </table>
+          <p style="color:#666;line-height:1.6;">Please review this change in the admin dashboard.</p>`
+        );
+      }
     } catch (notifError) {
       console.error("Failed to create admin notification:", notifError);
+    }
+
+    // If location changed, notify attorneys of active cases involving this juror
+    if (locationChanged) {
+      try {
+        const pool = await poolPromise;
+        const activeCasesResult = await pool
+          .request()
+          .input("jurorId", sql.Int, jurorId)
+          .query(`
+            SELECT
+              c.CaseId,
+              c.CaseTitle,
+              c.AttorneyId,
+              a.Email AS AttorneyEmail,
+              a.FirstName + ' ' + a.LastName AS AttorneyName
+            FROM dbo.JurorApplications ja
+            JOIN dbo.Cases c ON ja.CaseId = c.CaseId
+            JOIN dbo.Attorneys a ON c.AttorneyId = a.AttorneyId
+            WHERE ja.JurorId = @jurorId
+              AND ja.Status = 'approved'
+              AND c.IsDeleted = 0
+              AND c.AttorneyStatus IN ('war_room', 'join_trial', 'view_details')
+          `);
+
+        for (const activeCase of activeCasesResult.recordset) {
+          const locationSummary = [
+            stateChanged ? `State: ${existingJuror.State || "N/A"} → ${updates.state.trim().toUpperCase()}` : null,
+            countyChanged ? `County: ${existingJuror.County || "N/A"} → ${updates.county.trim()}` : null,
+          ].filter(Boolean).join(", ");
+
+          await Notification.createNotification({
+            userId: activeCase.AttorneyId,
+            userType: "attorney",
+            caseId: activeCase.CaseId,
+            type: "juror_location_changed",
+            title: "Juror Location Changed",
+            message: `Juror ${existingJuror.Name} on case "${activeCase.CaseTitle}" has updated their location. ${locationSummary}.`,
+          });
+
+          await sendNotificationEmail(
+            activeCase.AttorneyEmail,
+            `Juror Location Change – ${activeCase.CaseTitle}`,
+            `<h2 style="color:#16305B;margin-top:0;">Juror Location Update</h2>
+            <p style="color:#666;line-height:1.6;">Dear ${activeCase.AttorneyName},</p>
+            <p style="color:#666;line-height:1.6;">A juror on your case <strong>"${activeCase.CaseTitle}"</strong> has updated their location information.</p>
+            <p style="color:#666;line-height:1.6;"><strong>Juror:</strong> ${existingJuror.Name}</p>
+            <table style="border-collapse:collapse;width:100%;margin:16px 0;">
+              ${stateChanged ? `<tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold;">State</td><td style="padding:8px;border:1px solid #ddd;">${existingJuror.State || "N/A"} → ${updates.state.trim().toUpperCase()}</td></tr>` : ""}
+              ${countyChanged ? `<tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold;">County</td><td style="padding:8px;border:1px solid #ddd;">${existingJuror.County || "N/A"} → ${updates.county.trim()}</td></tr>` : ""}
+            </table>
+            <p style="color:#666;line-height:1.6;">Please review this information in your case dashboard.</p>
+            <p style="color:#666;line-height:1.6;">Quick Verdicts Team</p>`
+          );
+        }
+      } catch (notifyError) {
+        console.error("Failed to notify attorneys of juror location change:", notifyError);
+      }
     }
 
     // Remove sensitive data
