@@ -278,9 +278,11 @@ async function markAllNotificationsAsRead(userId, userType) {
       .request()
       .input("userId", sql.Int, id)
       .input("userType", sql.NVarChar, userType).query(`
-        UPDATE dbo.Notifications 
+        UPDATE dbo.Notifications
         SET IsRead = 1, ReadAt = GETUTCDATE()
-        WHERE UserId = @userId AND UserType = @userType AND IsRead = 0;
+        WHERE (@userType = 'admin' OR UserId = @userId)
+          AND UserType = @userType
+          AND IsRead = 0;
         SELECT @@ROWCOUNT as affected;
       `);
 
@@ -351,7 +353,9 @@ async function getUnreadNotificationCount(userId, userType) {
       .input("userType", sql.NVarChar, userType).query(`
         SELECT COUNT(*) as count
         FROM dbo.Notifications
-        WHERE UserId = @userId AND UserType = @userType AND IsRead = 0
+        WHERE (@userType = 'admin' OR UserId = @userId)
+          AND UserType = @userType
+          AND IsRead = 0
       `);
 
     return result.recordset[0].count;

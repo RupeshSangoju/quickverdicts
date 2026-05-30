@@ -242,10 +242,16 @@ async function updateProfileHandler(req, res) {
     // Notify admin of profile update
     try {
       const updatedFields = Object.keys(updates).join(", ");
+
+      // The state after the update — used as context when county-only changes
+      const newStateName = stateChanged
+        ? updates.state.trim().toUpperCase()
+        : (existingJuror.State || "N/A");
+
       const adminMessage = locationChanged
         ? `Juror ${existingJuror.Name} changed their location. ` +
-          (stateChanged ? `State: ${existingJuror.State || "N/A"} -> ${updates.state.trim().toUpperCase()}. ` : "") +
-          (countyChanged ? `County: ${existingJuror.County || "N/A"} -> ${updates.county.trim()}.` : "")
+          (stateChanged ? `State: ${existingJuror.State || "N/A"} -> ${newStateName}. ` : "") +
+          (countyChanged ? `County (${newStateName}): ${existingJuror.County || "N/A"} -> ${updates.county.trim()}.` : "")
         : `Juror ${existingJuror.Name} updated their profile. Updated fields: ${updatedFields}`;
 
       await Notification.createNotification({
@@ -263,7 +269,9 @@ async function updateProfileHandler(req, res) {
           `<h2 style="color:#16305B;margin-top:0;">Juror Location Update</h2>
           <p style="color:#666;line-height:1.6;">Juror <strong>${existingJuror.Name}</strong> has updated their location information.</p>
           <table style="border-collapse:collapse;width:100%;margin:16px 0;">
-            ${stateChanged ? `<tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold;">State</td><td style="padding:8px;border:1px solid #ddd;">${existingJuror.State || "N/A"} -> ${updates.state.trim().toUpperCase()}</td></tr>` : ""}
+            ${stateChanged
+              ? `<tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold;">State</td><td style="padding:8px;border:1px solid #ddd;">${existingJuror.State || "N/A"} -> ${newStateName}</td></tr>`
+              : `<tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold;">State</td><td style="padding:8px;border:1px solid #ddd;">${newStateName} (no change)</td></tr>`}
             ${countyChanged ? `<tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold;">County</td><td style="padding:8px;border:1px solid #ddd;">${existingJuror.County || "N/A"} -> ${updates.county.trim()}</td></tr>` : ""}
           </table>
           <p style="color:#666;line-height:1.6;">Please review this change in the admin dashboard.</p>`
@@ -297,10 +305,14 @@ async function updateProfileHandler(req, res) {
           `);
 
         for (const activeCase of activeCasesResult.recordset) {
+          const newStateName = stateChanged
+            ? updates.state.trim().toUpperCase()
+            : (existingJuror.State || "N/A");
+
           const locationSummary = [
-            stateChanged ? `State: ${existingJuror.State || "N/A"} -> ${updates.state.trim().toUpperCase()}` : null,
-            countyChanged ? `County: ${existingJuror.County || "N/A"} -> ${updates.county.trim()}` : null,
-          ].filter(Boolean).join(", ");
+            stateChanged ? `State: ${existingJuror.State || "N/A"} -> ${newStateName}` : null,
+            countyChanged ? `County (${newStateName}): ${existingJuror.County || "N/A"} -> ${updates.county.trim()}` : null,
+          ].filter(Boolean).join(". ");
 
           await Notification.createNotification({
             userId: activeCase.AttorneyId,
@@ -319,7 +331,9 @@ async function updateProfileHandler(req, res) {
             <p style="color:#666;line-height:1.6;">A juror on your case <strong>"${activeCase.CaseTitle}"</strong> has updated their location information.</p>
             <p style="color:#666;line-height:1.6;"><strong>Juror:</strong> ${existingJuror.Name}</p>
             <table style="border-collapse:collapse;width:100%;margin:16px 0;">
-              ${stateChanged ? `<tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold;">State</td><td style="padding:8px;border:1px solid #ddd;">${existingJuror.State || "N/A"} -> ${updates.state.trim().toUpperCase()}</td></tr>` : ""}
+              ${stateChanged
+                ? `<tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold;">State</td><td style="padding:8px;border:1px solid #ddd;">${existingJuror.State || "N/A"} -> ${newStateName}</td></tr>`
+                : `<tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold;">State</td><td style="padding:8px;border:1px solid #ddd;">${newStateName} (no change)</td></tr>`}
               ${countyChanged ? `<tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold;">County</td><td style="padding:8px;border:1px solid #ddd;">${existingJuror.County || "N/A"} -> ${updates.county.trim()}</td></tr>` : ""}
             </table>
             <p style="color:#666;line-height:1.6;">Please review this information in your case dashboard.</p>
