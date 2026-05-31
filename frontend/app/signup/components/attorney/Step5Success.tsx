@@ -275,12 +275,12 @@ export function Step5Success({
                 If you have questions about verification or need account assistance:
               </p>
               <a
-                href="mailto:support@quickverdicts.com"
+                href="mailto:QVTrials@quickverdicts.com"
                 className="text-[#0A2342] hover:underline text-sm font-semibold inline-flex items-center gap-1 focus:outline-none focus:ring-2 focus:ring-[#0A2342] focus:ring-offset-2 rounded px-2 py-1 transition-colors"
-                aria-label="Email support at support@quickverdicts.com"
+                aria-label="Email support at QVTrials@quickverdicts.com"
               >
                 <Mail size={16} aria-hidden="true" />
-                <span>support@quickverdicts.com</span>
+                <span>QVTrials@quickverdicts.com</span>
               </a>
             </section>
 

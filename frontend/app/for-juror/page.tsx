@@ -66,9 +66,7 @@ export default function ForAttorneys() {
               Earn Money for Each Case Completed
             </h3>
             <p className="text-sm text-gray-600 mt-2 leading-relaxed">
-                Get paid $75-$125 per case you complete. Trials
-                are set for 2.5 hours, 3.5 hours and
-                4.5 hours
+                Get paid competitive rates for each case you complete.  Trials are set for 2.5 hours, 3.5 hours and 4.5 hours.
             </p>
           </div>
 

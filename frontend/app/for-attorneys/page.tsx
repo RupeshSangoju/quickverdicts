@@ -94,17 +94,19 @@ export default function ForAttorneys() {
             </div>
 
             {/* Card 3 */}
-            <div className="bg-white/95 rounded-xl shadow-lg p-6 border border-gray-200">
-              <div className="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center mb-4">
-                <span className="text-orange-500 text-xl">⚖️</span>
-              </div>
-              <h3 className="font-semibold text-gray-900">Low Cost</h3>
-              <p className="text-sm text-gray-600 mt-2 leading-relaxed">
-                Tier One&nbsp;&nbsp;&nbsp;&nbsp;2.5 hrs $3,500 <br />
-                Tier Two&nbsp;&nbsp;&nbsp;&nbsp;3.5 hrs $4,500 <br />
-                Tier Three&nbsp;&nbsp;4.5 hrs $5,500
-              </p>
-            </div>
+<div className="bg-white/95 rounded-xl shadow-lg p-6 border border-gray-200 text-center">
+  <div className="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center mb-4 mx-auto">
+    <span className="text-orange-500 text-xl">⚖️</span>
+  </div>
+
+  <h3 className="font-semibold text-gray-900">Low Cost</h3>
+
+  <p className="text-sm text-gray-600 mt-2 leading-relaxed">
+    Tier One&nbsp;&nbsp;&nbsp;&nbsp;2.5 hrs<br />
+    Tier Two&nbsp;&nbsp;&nbsp;&nbsp;3.5 hrs<br />
+    Tier Three&nbsp;&nbsp;4.5 hrs
+  </p>
+</div>
           </div>
 
           {/* Button */}

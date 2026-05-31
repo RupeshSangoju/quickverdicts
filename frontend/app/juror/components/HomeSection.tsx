@@ -795,7 +795,7 @@ if (isCaseDayOver(app.ScheduledDate)) {
                 } else {
                   // Preparing for trial — war room locked until trial day
                   statusBadge = {
-                    text: 'Preparing for Trial',
+                    text: 'QV Courtroom Opens on Trial Day',
                     color: 'bg-blue-100 text-blue-800 border-blue-300',
                     icon: '📋'
                   };

@@ -70,12 +70,12 @@ const signupLimiter = createRateLimiter(
   "Too many signup attempts. Try again in 15 minutes."
 );
 const loginLimiter = createRateLimiter(
-  parseInt(process.env.RATE_LIMIT_LOGIN) || (isDev ? 100 : 10),
+  parseInt(process.env.RATE_LIMIT_LOGIN) || (isDev ? 100 : 100),
   15,
   "Too many login attempts. Try again in 15 minutes."
 );
 const adminLoginLimiter = createRateLimiter(
-  parseInt(process.env.RATE_LIMIT_ADMIN_LOGIN) || (isDev ? 50 : 10),
+  parseInt(process.env.RATE_LIMIT_ADMIN_LOGIN) || (isDev ? 50 : 100),
   15,
   "Too many admin login attempts. Try again in 15 minutes."
 );

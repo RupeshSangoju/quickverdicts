@@ -138,6 +138,9 @@ export default function ReviewPage() {
               <div className="mb-4">
                 <strong>Payment Amount:</strong> {form.paymentAmount}
               </div>
+              <div className="mb-4" style={{ color: "#b33a3a" }}>
+                <strong>Payment is placed on hold until conflicts check is completed.</strong>
+              </div>
             </div>
             <button
               type="button"

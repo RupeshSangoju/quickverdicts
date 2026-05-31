@@ -284,7 +284,7 @@ export function Step5Success({
                 process:
               </p>
               <ul className="text-xs text-gray-600 space-y-1" role="list">
-                <li>• Watch the juror orientation video (~2 minutes)</li>
+                <li>• Review the juror orientation slides (~2 minutes)</li>
                 <li>• Pass the juror qualification quiz (80% required)</li>
                 <li>• Review platform guidelines and code of conduct</li>
               </ul>

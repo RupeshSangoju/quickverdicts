@@ -193,7 +193,7 @@ export default function VideoIntroOverlay({
             >
               {canContinue ? (
                 <>
-                  Continue to Job Board
+                  Continue to Onboarding Quiz
                   <ChevronRight className="w-5 h-5" />
                 </>
               ) : (
