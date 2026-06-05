@@ -593,7 +593,9 @@ export default function JuryChargeBuilder({
                       onChange={(e) => updateNewQuestion(index, "Options", e.target.value)}
                       className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium"
                       rows={3}
-                      placeholder="Option A&#10;Option B&#10;Option C"
+                        placeholder={`Option A
+Option B
+Option C`}
                     />
                   </div>
                 )}
