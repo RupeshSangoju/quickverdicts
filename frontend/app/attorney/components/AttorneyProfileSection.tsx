@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Eye, EyeOff, HelpCircle, X, ArrowLeft, CheckCircle, AlertCircle } from "lucide-react";
+import { Eye, EyeOff, HelpCircle, X, ArrowLeft, CheckCircle, AlertCircle, FileText, Download, Printer } from "lucide-react";
 import { getToken } from "@/lib/apiClient";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL
@@ -29,6 +29,7 @@ export default function AttorneyProfileSection({ onBack }: AttorneyProfileSectio
   const [error, setError] = useState<string | null>(null);
   const [showEdit, setShowEdit] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
+  const [showAgreement, setShowAgreement] = useState(false);
   const [deletePassword, setDeletePassword] = useState("");
   const [editData, setEditData] = useState({ firstName: "", lastName: "", email: "", phoneNumber: "" });
   const [updating, setUpdating] = useState(false);
@@ -137,6 +138,78 @@ const formatExpiry = (value: string) => {
     };
     fetchAttorney();
   }, []);
+
+  function handlePrintAgreement() {
+    const attorneyName = `${attorney?.firstName || ""} ${attorney?.lastName || ""}`.trim();
+    const date = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+    const content = document.getElementById("profile-agreement-content")?.innerHTML || "";
+    const printWindow = window.open("", "_blank");
+    if (printWindow) {
+      printWindow.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Attorney User Agreement</title>
+        <style>body{font-family:Arial,sans-serif;line-height:1.6;max-width:800px;margin:0 auto;padding:20px}h1,h2,h3{color:#0A2342}.header{border-bottom:2px solid #0A2342;padding-bottom:10px;margin-bottom:20px}.footer{border-top:2px solid #0A2342;padding-top:10px;margin-top:20px}</style></head>
+        <body><div class="header"><h1>Attorney User Agreement for QuickVerdicts</h1><p><strong>Effective Date:</strong> ${date}</p><p><strong>Attorney:</strong> ${attorneyName}</p></div>
+        ${content}
+        <div class="footer"><p><strong>Accepted on:</strong> ${date}</p><p><strong>Attorney:</strong> ${attorneyName}</p></div></body></html>`);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => { printWindow.print(); printWindow.close(); }, 250);
+    }
+  }
+
+  function handleDownloadAgreement() {
+    const attorneyName = `${attorney?.firstName || ""} ${attorney?.lastName || ""}`.trim();
+    const date = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+    import("jspdf").then(({ jsPDF }) => {
+      const doc = new jsPDF({ unit: "pt", format: "letter" });
+      const pageW = doc.internal.pageSize.getWidth();
+      const margin = 50;
+      const maxW = pageW - margin * 2;
+      let y = margin;
+      const addText = (text: string, size: number, bold: boolean, color: [number,number,number] = [0,0,0], extra = 0) => {
+        doc.setFontSize(size); doc.setFont("helvetica", bold ? "bold" : "normal"); doc.setTextColor(...color);
+        doc.splitTextToSize(text, maxW).forEach((line: string) => {
+          if (y + size + 4 > doc.internal.pageSize.getHeight() - margin) { doc.addPage(); y = margin; }
+          doc.text(line, margin, y); y += size + 4;
+        }); y += extra;
+      };
+      const addBullet = (text: string) => {
+        doc.setFontSize(10); doc.setFont("helvetica", "normal"); doc.setTextColor(0,0,0);
+        doc.splitTextToSize(text, maxW - 16).forEach((line: string, i: number) => {
+          if (y + 14 > doc.internal.pageSize.getHeight() - margin) { doc.addPage(); y = margin; }
+          doc.text(i === 0 ? "•" : " ", margin + 2, y); doc.text(line, margin + 16, y); y += 14;
+        });
+      };
+      doc.setFillColor(10,35,66); doc.rect(0,0,pageW,60,"F");
+      doc.setFontSize(20); doc.setFont("helvetica","bold"); doc.setTextColor(255,255,255);
+      doc.text("Attorney User Agreement for QuickVerdicts", margin, 38); y = 80;
+      addText(`Effective Date: ${date}`, 10, false, [80,80,80]);
+      addText(`Attorney: ${attorneyName}`, 10, false, [80,80,80], 10);
+      doc.setDrawColor(10,35,66); doc.setLineWidth(1); doc.line(margin, y, pageW - margin, y); y += 16;
+      addText(`This Attorney User Agreement ("Agreement") is entered into between QuickVerdicts ("Platform", "we", "us") and you ("Attorney", "you") as of the date of your electronic acceptance.`, 10, false, [0,0,0], 10);
+      const sections: { title: string; body?: string; bullets?: string[] }[] = [
+        { title: "1. Acceptance of Terms", body: "By creating an attorney account on QuickVerdicts, you acknowledge that you have read, understood, and agree to be bound by this Agreement and all applicable laws and regulations." },
+        { title: "2. Attorney Eligibility", body: "You represent and warrant that:", bullets: ["You are a licensed attorney in good standing in at least one U.S. jurisdiction","Your bar license is current and has not been suspended or revoked","You have the authority to represent clients in small claims matters","All information provided during registration is accurate and complete"] },
+        { title: "3. Platform Services", body: "QuickVerdicts provides a virtual platform for small claims dispute resolution. As an attorney user, you may:", bullets: ["Create and manage case filings on behalf of clients","Participate in virtual trials before online juror panels","Submit evidence and documentation electronically","Communicate with jurors through the platform's messaging system"] },
+        { title: "4. Professional Conduct", body: "You agree to:", bullets: ["Maintain the highest standards of professional ethics","Comply with all applicable bar rules and regulations","Treat all platform users with respect and professionalism","Not engage in any fraudulent, misleading, or deceptive practices","Protect client confidentiality and attorney-client privilege"] },
+        { title: "5. Fees and Payment", body: "Attorney fees and platform usage fees are as follows:", bullets: ["Platform filing fees are outlined in our Fee Schedule","You are responsible for collecting your own attorney fees from clients","The Platform does not mediate fee disputes between attorneys and clients"] },
+        { title: "6. Intellectual Property", body: "All content, trademarks, and materials on the Platform are owned by QuickVerdicts. You may not reproduce, distribute, or create derivative works without express written permission." },
+        { title: "7. Data Privacy and Security", body: "We take data security seriously. However, you acknowledge that:", bullets: ["No online platform can guarantee 100% security","You are responsible for maintaining the confidentiality of your login credentials","You must use reasonable security measures when accessing the platform"] },
+        { title: "8. Limitation of Liability", body: "TO THE MAXIMUM EXTENT PERMITTED BY LAW, QUICKVERDICTS SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES ARISING OUT OF OR RELATED TO YOUR USE OF THE PLATFORM." },
+        { title: "9. Termination", body: "We reserve the right to terminate or suspend your account at any time for violation of this Agreement, misconduct, or any other reason at our sole discretion." },
+        { title: "10. Governing Law", body: "This Agreement shall be governed by and construed in accordance with the laws of the State of Texas, without regard to its conflict of law provisions." },
+      ];
+      sections.forEach(({ title, body, bullets }) => {
+        addText(title, 12, true, [10,35,66], 4);
+        if (body) addText(body, 10, false, [0,0,0], bullets ? 4 : 10);
+        if (bullets) { bullets.forEach(addBullet); y += 10; }
+      });
+      doc.setFillColor(240,240,240); doc.rect(margin, y, maxW, 50, "F"); y += 14;
+      addText("END OF AGREEMENT", 11, true, [10,35,66]);
+      addText(`Accepted on: ${date}`, 10, false, [80,80,80]);
+      addText(`Attorney: ${attorneyName}`, 10, false, [80,80,80]);
+      doc.save(`QuickVerdicts-Attorney-Agreement-${Date.now()}.pdf`);
+    });
+  }
 
   function handleEditChange(e: React.ChangeEvent<HTMLInputElement>) {
     setEditData({ ...editData, [e.target.name]: e.target.value });
@@ -448,6 +521,13 @@ const formatExpiry = (value: string) => {
                   </p>
                 </div>
                 <button
+                  className="w-full border-2 border-[#16305B] text-[#16305B] rounded-lg py-3 hover:bg-blue-50 transition-colors text-[15px] font-semibold flex items-center justify-center gap-2 group cursor-pointer"
+                  onClick={() => setShowAgreement(true)}
+                >
+                  <FileText className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                  View User Agreement
+                </button>
+                <button
                   className="w-full border-2 border-red-300 text-red-600 rounded-lg py-3 hover:bg-red-50 transition-colors text-[15px] font-semibold flex items-center justify-center gap-2 group cursor-pointer"
                   onClick={() => setShowDelete(true)}
                 >
@@ -654,6 +734,120 @@ const formatExpiry = (value: string) => {
                   disabled={deleting}
                 >
                   Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* User Agreement Modal */}
+        {showAgreement && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-auto bg-black/40 backdrop-blur-sm">
+            <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-3xl mx-4 animate-scale-in flex flex-col" style={{ maxHeight: "90vh" }}>
+              {/* Modal Header */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                    <FileText className="w-5 h-5 text-[#16305B]" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-[#16305B]">Attorney User Agreement</h2>
+                    <p className="text-xs text-gray-500">QuickVerdicts · Version 1.0</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handlePrintAgreement}
+                    className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2 transition-colors cursor-pointer"
+                  >
+                    <Printer size={15} />
+                    <span className="hidden sm:inline">Print</span>
+                  </button>
+                  <button
+                    onClick={handleDownloadAgreement}
+                    className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2 transition-colors cursor-pointer"
+                  >
+                    <Download size={15} />
+                    <span className="hidden sm:inline">Download</span>
+                  </button>
+                  <button
+                    onClick={() => setShowAgreement(false)}
+                    className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-100"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Agreement content */}
+              <div className="overflow-y-auto px-8 py-6 text-sm text-gray-800 leading-relaxed">
+                <div id="profile-agreement-content">
+                  <p className="mb-4">
+                    This Attorney User Agreement ("Agreement") is entered into between QuickVerdicts ("Platform", "we", "us") and you ("Attorney", "you") as of the date of your electronic acceptance.
+                  </p>
+                  <h3 className="text-base font-bold text-[#16305B] mt-6 mb-2">1. Acceptance of Terms</h3>
+                  <p className="mb-4">By creating an attorney account on QuickVerdicts, you acknowledge that you have read, understood, and agree to be bound by this Agreement and all applicable laws and regulations.</p>
+                  <h3 className="text-base font-bold text-[#16305B] mt-6 mb-2">2. Attorney Eligibility</h3>
+                  <p className="mb-2">You represent and warrant that:</p>
+                  <ul className="list-disc pl-6 mb-4 space-y-1">
+                    <li>You are a licensed attorney in good standing in at least one U.S. jurisdiction</li>
+                    <li>Your bar license is current and has not been suspended or revoked</li>
+                    <li>You have the authority to represent clients in small claims matters</li>
+                    <li>All information provided during registration is accurate and complete</li>
+                  </ul>
+                  <h3 className="text-base font-bold text-[#16305B] mt-6 mb-2">3. Platform Services</h3>
+                  <p className="mb-2">QuickVerdicts provides a virtual platform for small claims dispute resolution. As an attorney user, you may:</p>
+                  <ul className="list-disc pl-6 mb-4 space-y-1">
+                    <li>Create and manage case filings on behalf of clients</li>
+                    <li>Participate in virtual trials before online juror panels</li>
+                    <li>Submit evidence and documentation electronically</li>
+                    <li>Communicate with jurors through the platform's messaging system</li>
+                  </ul>
+                  <h3 className="text-base font-bold text-[#16305B] mt-6 mb-2">4. Professional Conduct</h3>
+                  <p className="mb-2">You agree to:</p>
+                  <ul className="list-disc pl-6 mb-4 space-y-1">
+                    <li>Maintain the highest standards of professional ethics</li>
+                    <li>Comply with all applicable bar rules and regulations</li>
+                    <li>Treat all platform users with respect and professionalism</li>
+                    <li>Not engage in any fraudulent, misleading, or deceptive practices</li>
+                    <li>Protect client confidentiality and attorney-client privilege</li>
+                  </ul>
+                  <h3 className="text-base font-bold text-[#16305B] mt-6 mb-2">5. Fees and Payment</h3>
+                  <p className="mb-2">Attorney fees and platform usage fees are as follows:</p>
+                  <ul className="list-disc pl-6 mb-4 space-y-1">
+                    <li>Platform filing fees are outlined in our Fee Schedule</li>
+                    <li>You are responsible for collecting your own attorney fees from clients</li>
+                    <li>The Platform does not mediate fee disputes between attorneys and clients</li>
+                  </ul>
+                  <h3 className="text-base font-bold text-[#16305B] mt-6 mb-2">6. Intellectual Property</h3>
+                  <p className="mb-4">All content, trademarks, and materials on the Platform are owned by QuickVerdicts. You may not reproduce, distribute, or create derivative works without express written permission.</p>
+                  <h3 className="text-base font-bold text-[#16305B] mt-6 mb-2">7. Data Privacy and Security</h3>
+                  <p className="mb-2">We take data security seriously. However, you acknowledge that:</p>
+                  <ul className="list-disc pl-6 mb-4 space-y-1">
+                    <li>No online platform can guarantee 100% security</li>
+                    <li>You are responsible for maintaining the confidentiality of your login credentials</li>
+                    <li>You must use reasonable security measures when accessing the platform</li>
+                  </ul>
+                  <h3 className="text-base font-bold text-[#16305B] mt-6 mb-2">8. Limitation of Liability</h3>
+                  <p className="mb-4">TO THE MAXIMUM EXTENT PERMITTED BY LAW, QUICKVERDICTS SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES ARISING OUT OF OR RELATED TO YOUR USE OF THE PLATFORM.</p>
+                  <h3 className="text-base font-bold text-[#16305B] mt-6 mb-2">9. Termination</h3>
+                  <p className="mb-4">We reserve the right to terminate or suspend your account at any time for violation of this Agreement, misconduct, or any other reason at our sole discretion.</p>
+                  <h3 className="text-base font-bold text-[#16305B] mt-6 mb-2">10. Governing Law</h3>
+                  <p className="mb-4">This Agreement shall be governed by and construed in accordance with the laws of the State of Texas, without regard to its conflict of law provisions.</p>
+                  <div className="mt-8 p-4 bg-gray-100 rounded-lg border border-gray-300 text-center">
+                    <p className="font-bold text-[#16305B]">END OF AGREEMENT</p>
+                    <p className="text-sm text-gray-600 mt-1">By accepting this agreement during registration, you acknowledged that you read and understood all terms.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 py-4 border-t border-gray-200 shrink-0 flex justify-end">
+                <button
+                  onClick={() => setShowAgreement(false)}
+                  className="px-6 py-2.5 bg-[#16305B] text-white rounded-lg hover:bg-[#1e417a] font-semibold transition-colors cursor-pointer"
+                >
+                  Close
                 </button>
               </div>
             </div>
