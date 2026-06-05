@@ -803,7 +803,7 @@ if (isCaseDayOver(app.ScheduledDate)) {
                   actionButtons = (
                     <div className="w-full px-3 py-2 bg-gray-100 text-gray-500 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 cursor-not-allowed">
                       <Lock className="w-3.5 h-3.5" />
-                      War Room Opens on Trial Day
+                      QV Courtroom Opens on Trial Day
                     </div>
                   );
                 }

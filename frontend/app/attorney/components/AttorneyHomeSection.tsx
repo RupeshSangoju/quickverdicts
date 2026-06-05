@@ -743,7 +743,7 @@ export default function AttorneyHomeSection({ onSectionChange }: { onSectionChan
               <Briefcase className="mx-auto h-16 w-16 text-gray-300 mb-4" />
               <h3 className="text-xl font-bold text-gray-900 mb-2">No Cases Yet</h3>
               <p className="text-gray-600">
-                Create your first case to get started
+                Go to Cases to Create a New Case
               </p>
             </div>
           )
@@ -826,7 +826,7 @@ export default function AttorneyHomeSection({ onSectionChange }: { onSectionChan
               </svg>
             </div>
             <h2 className="text-xl font-bold text-[#16305B] mb-2">Ready to Join?</h2>
-            <p className="text-gray-600 mb-6">Join the QV Courtroom 10 minutes after the start time.</p>
+            <p className="text-gray-600 mb-6">Attorneys join the QV Courtroom 10 minutes after the start time. The jurors are watching an instructional video. </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setShowJoinPrompt(false)}

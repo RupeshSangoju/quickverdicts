@@ -37,13 +37,13 @@ export function Step5Success({
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const openOutlook = () => {
-    window.location.href = "mailto:support@quickverdicts.com";
+    window.location.href = "mailto:QVTrials@quickverdicts.com";
     setOpen(false);
   };
 
   const openGmail = () => {
     window.open(
-      "https://mail.google.com/mail/?view=cm&fs=1&to=support@quickverdicts.com",
+      "https://mail.google.com/mail/?view=cm&fs=1&to=QVTrials@quickverdicts.com",
       "_blank"
     );
     setOpen(false);

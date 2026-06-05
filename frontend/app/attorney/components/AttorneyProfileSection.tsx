@@ -550,7 +550,7 @@ const formatExpiry = (value: string) => {
           <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-auto bg-black/20 backdrop-blur-sm">
             <div className="relative bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md border-4 border-[#16305B] animate-scale-in">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-[#16305B]">Edit Profile</h2>
+                <h2 className="text-2xl font-bold text-[#16305B]"> Attorney Profile/Edit Profile</h2>
                 <button
                   onClick={() => {
                     if (!updating) {
@@ -613,7 +613,8 @@ const formatExpiry = (value: string) => {
                     disabled
                     className="w-full border border-gray-300 rounded-lg px-4 py-2.5 bg-gray-100 text-gray-600 cursor-not-allowed"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
+                  <p className="text-xs text-gray-500 mt-1">Email cannot be changed. If you have changed firms, please delete account and start a 
+new one.  If you have pending cases, please contact QVTrial@quickverdicts.com. </p>
                 </div>
                 <div>
                   <label className="block text-sm text-gray-800 font-semibold mb-2">Phone Number</label>

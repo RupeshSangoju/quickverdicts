@@ -80,7 +80,7 @@ export default function AttorneyContact({ onBack }: { onBack: () => void }) {
           </button>
           <div>
             <h1 className="text-3xl font-bold text-[#16305B] mb-2">Get Support</h1>
-            <p className="text-gray-600">We're here to help and answer any questions you might have</p>
+            <p className="text-gray-600">We're here and answer any questions you might have</p>
           </div>
         </div>
 
@@ -99,12 +99,16 @@ export default function AttorneyContact({ onBack }: { onBack: () => void }) {
                   <h3 className="text-xl font-bold text-[#16305B] mb-4">Business Hours</h3>
                   <div className="space-y-3">
                     <div className="flex justify-between items-center pb-2 border-b border-gray-100">
-                      <span className="font-medium text-gray-700">Monday - Friday</span>
-                      <span className="text-gray-600">8:00 AM - 5:00 PM CST</span>
+                      <span className="font-medium text-gray-700">Mon, Wed, Fri </span>
+                      <span className="text-gray-600">9:00 am – 5:00 pm CST</span>
                     </div>
                     <div className="flex justify-between items-center pb-2 border-b border-gray-100">
-                      <span className="font-medium text-gray-700">Saturday</span>
-                      <span className="text-gray-600">8:00 AM - 2:00 PM CST</span>
+                      <span className="font-medium text-gray-700">Tues. & Thurs </span>
+                      <span className="text-gray-600">9:00 am – 8:30 pm CST </span>
+                    </div>
+                    <div className="flex justify-between items-center pb-2 border-b border-gray-100">
+                      <span className="font-medium text-gray-700">Sat.</span>
+                      <span className="text-gray-600">9:00 am – 2:00 PM CST</span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="font-medium text-gray-700">Sunday</span>
@@ -144,9 +148,6 @@ export default function AttorneyContact({ onBack }: { onBack: () => void }) {
                 </div>
                 <div className="flex-1">
                   <h3 className="text-xl font-bold text-[#16305B] mb-2">Email Support</h3>
-                  <p className="text-gray-600 text-sm mb-3">
-                    Get a response within 24 hours
-                  </p>
                   <a
                     href="mailto:QVTrial@quickverdicts.com"
                     className="text-lg font-semibold text-[#16305B] hover:text-[#1e417a] transition-colors underline"
@@ -196,19 +197,7 @@ export default function AttorneyContact({ onBack }: { onBack: () => void }) {
               </div>
             </div>
 
-            {/* Quick Response Info */}
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100">
-              <div className="flex items-start gap-3">
-                <MessageCircle className="text-[#16305B] flex-shrink-0 mt-1" size={24} />
-                <div>
-                  <h4 className="font-bold text-[#16305B] mb-2">Quick Response Guarantee</h4>
-                  <p className="text-sm text-gray-600 leading-relaxed">
-                    We strive to respond to all inquiries within 24 hours during business hours. 
-                    For urgent matters, please call our phone support line directly.
-                  </p>
-                </div>
-              </div>
-            </div>
+
           </div>
         </div>
 

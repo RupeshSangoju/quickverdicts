@@ -384,7 +384,7 @@ export default function CaseDetailsPage() {
               {/* Case Description */}
               <div>
                 <label className="block mb-1 text-[#16305B] font-medium">
-                  Case Description <span className="text-red-500">*</span>
+                  Case Description <span className="text-red-500">*</span><span className="text-xs text-[#455A7C] font-normal"> (For conflicts purposes, please include the names of all parties.)</span>
                 </label>
                 <textarea
                   value={caseDescription}

@@ -301,9 +301,7 @@ export function Step5Success({
               className="text-center text-sm text-gray-600 pt-4 border-t-2 border-gray-100"
               role="contentinfo"
             >
-              <p className="mb-2">
-                Your verification status will be updated within 2–3 business days
-              </p>
+
               <p className="text-xs text-gray-500 font-mono">
                 Account ID: {displayAccountId}
               </p>
