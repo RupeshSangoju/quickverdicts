@@ -263,7 +263,7 @@ period with the jurors.
             <div>
               <h3 className="font-bold mb-4">Contact</h3>
               <p className="text-gray-300">Hours:</p>
-              <p className="text-gray-300">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Mon., Wed., Fri.&nbsp;&nbsp;8:00 a.m. to 5:00 p.m. CST </p>
+              <p className="text-gray-300">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Mon., Wed., Fri.&nbsp;&nbsp;9:00 a.m. to 5:00 p.m. CST </p>
               <p className='text-gray-300'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Tues. & Thurs.&nbsp;&nbsp;&nbsp;&nbsp;9:00 a.m. to 8:30 p.m. CST</p>
               <p className='text-gray-300'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Sat.&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;9:00 a.m. to 2:00 p.m. CST</p>
               <p className="text-gray-300">QVTrial@quickverdicts.com</p>

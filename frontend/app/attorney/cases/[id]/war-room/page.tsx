@@ -2409,7 +2409,7 @@ useEffect(() => {
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-[#0A2342] mb-2">
-                        New Time <span className="text-red-500">*</span><span className="text-xs text-[#455A7C] font-normal"> (24-hour format)</span>
+                        New Time <span className="text-red-500">*</span><span className="text-xs text-[#455A7C] font-normal"> (24-Hour Clock)</span>
                       </label>
                       <div className="flex items-center gap-2">
                         <select

@@ -63,7 +63,7 @@ export default function QuickVerdictsLanding() {
               Real-time.  Remote.  Reasonably Priced.
             </h2>
             <p className="text-[18px] leading-[1.6] font-medium text-gray-600 max-w-3xl mx-auto mb-10">
-Quick Verdicts is legal tech for mock jury trials.  QV’s platform offers an easy mock trial journey including preparation for attorneys, juror screening, and a virtual jury trial with 6-8 jurors.  Selected jurors get paid for their service.  Flexible hours are offered for the convenience of jurors.  Mock trials are scheduled for 2.5 hours, 3.5 hours or 4.5 hours. If 
+Quick Verdicts is legal tech for mock jury trials.  QV’s platform offers an easy mock trial journey including preparation for attorneys, juror screening, and a virtual jury trial with 6-8 jurors.  Selected jurors get paid for their service.  Flexible hours are available for the convenience of jurors.  Mock trials are scheduled for 2.5 hours, 3.5 hours or 4.5 hours. If 
 you are interested in a Texas county not currently served, email us at 
 QVTrial@quickverdicts.com for possible accommodation.    
  <br></br>
@@ -102,7 +102,7 @@ cases in:            </p>
           <option value="Tarrant ">Tarrant</option>
         )}
         {selectedState === "texas" && (
-          <option value="ravis">Ravis</option>
+          <option value="ravis">Travis</option>
         )}
 
       </select>

@@ -110,10 +110,6 @@ export default function AttorneyContact({ onBack }: { onBack: () => void }) {
                       <span className="font-medium text-gray-700">Sat.</span>
                       <span className="text-gray-600">9:00 am – 2:00 PM CST</span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium text-gray-700">Sunday</span>
-                      <span className="text-red-600 font-semibold">Closed</span>
-                    </div>
                   </div>
                 </div>
               </div>
