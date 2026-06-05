@@ -63,7 +63,9 @@ export default function QuickVerdictsLanding() {
               Real-time.  Remote.  Reasonably Priced.
             </h2>
             <p className="text-[18px] leading-[1.6] font-medium text-gray-600 max-w-3xl mx-auto mb-10">
-Quick Verdicts is legal tech for mock jury trials.  QV offers a platform for easy preparation for attorneys, juror screening, and a virtual jury trial with 6-8 jurors.  Jurors are vetted and if chosen, get paid.  Flexible hours are offered for the convenience of jurors.  Mock trials are scheduled for 2.5 hours, 3.5 hours or 4.5 hours. 
+Quick Verdicts is legal tech for mock jury trials.  QV’s platform offers an easy mock trial journey including preparation for attorneys, juror screening, and a virtual jury trial with 6-8 jurors.  Selected jurors get paid for their service.  Flexible hours are offered for the convenience of jurors.  Mock trials are scheduled for 2.5 hours, 3.5 hours or 4.5 hours. If 
+you are interested in a Texas county not currently served, email us at 
+QVTrial@quickverdicts.com for possible accommodation.    
  <br></br>
 Currently serving 
 cases in:            </p>
@@ -90,6 +92,19 @@ cases in:            </p>
         {selectedState === "texas" && (
           <option value="dallas">Dallas</option>
         )}
+        {selectedState === "texas" && (
+          <option value="Harris">Harris</option>
+        )}
+        {selectedState === "texas" && (
+          <option value="Bexar ">Bexar</option>
+        )}
+        {selectedState === "texas" && (
+          <option value="Tarrant ">Tarrant</option>
+        )}
+        {selectedState === "texas" && (
+          <option value="ravis">Ravis</option>
+        )}
+
       </select>
 
     </div>
@@ -165,27 +180,27 @@ cases in:            </p>
             <ul className="space-y-3 text-gray-700">
               <li className="flex items-start">
                 <span className="mr-2">•</span>
-                <span>Multi-factor identification is used for attorneys and jurors.</span>
+                <span>Multi-factor identification is used for attorneys and jurors</span>
               </li>
               <li className="flex items-start">
                 <span className="mr-2">•</span>
-                <span>Jurors appear live following login.</span>
+                <span>Jurors appear live following login</span>
               </li>
               <li className="flex items-start">
                 <span className="mr-2">•</span>
-                <span>Demonstrative aids used for jurors’ consideration are deleted following the QV Trial.</span>
+                <span>Demonstrative aids are deleted following the QV Trial</span>
               </li>
               <li className="flex items-start">
                 <span className="mr-2">•</span>
-                <span>Trial presentations are considered privileged under state and federal law.</span>
+                <span>Trial presentations are considered privileged under state and federal law</span>
               </li>
               <li className="flex items-start">
                 <span className="mr-2">•</span>
-                <span>Jurors are initially screened for qualifications based on residency, employment and knowledge of parties.</span>
+                <span>Jurors are initially screened for qualifications based on residency, employment and knowledge of parties</span>
               </li>
               <li className="flex items-start">
                 <span className="mr-2">•</span>
-                <span>Attorneys create additional screening questions and select jurors from applicants.</span>
+                <span>Attorneys create additional screening questions and select jurors from applicants</span>
               </li>
               <li className="flex items-start">
                 <span className="mr-2">•</span>
@@ -250,7 +265,7 @@ cases in:            </p>
           <div className="space-y-8">
             <div>
               <h3 className="font-bold text-gray-900 mb-2">What is Quick Verdicts?</h3>
-              <p className="text-gray-600 mb-6">Quick Verdicts is a low-cost virtual courtroom platform where attorneys schedule and prepare a case for a timed presentation to local mock jurors, who then deliberate the issues and submit a final mock verdict.
+              <p className="text-gray-600 mb-6">Quick Verdicts is a cost effective virtual courtroom platform where attorneys schedule and prepare a case for a timed presentation to local mock jurors, who then deliberate the issues and submit a final mock verdict.
               </p>
               <hr className="border-black" />
             </div>
@@ -258,7 +273,7 @@ cases in:            </p>
             <div>
               <h3 className="font-bold text-gray-900 mb-2">How does it work for attorneys?</h3>
               <p className="text-gray-600 mb-6">
-                Attorneys login to create a case.  QV provides a War Room for attorneys to upload demonstratives and create jury questions in the easy-to-use Jury Charge Builder. Attorneys can present a case either live or by pre-recorded video.  Each case will have 5-8 local mock jurors who appear at the scheduled time to review the presentation, deliberate, and submit their Final Verdict. A short de-briefing period is provided. Please click on Attorney Info above for more information. 
+                Attorneys login to create a case.  QV provides a War Room for attorneys to upload demonstratives and create jury questions in the easy-to-use Jury Charge Builder. Attorneys can present a case either live or by pre-recorded video.  Each case will have 6-8 local mock jurors who appear at the scheduled time to review the presentation, deliberate, and submit their Final Verdict. A short de-briefing period is provided. Please click on Attorney Info above for more information. 
               </p>
               <hr className="border-black" />
             </div>
@@ -274,7 +289,7 @@ cases in:            </p>
             <div>
               <h3 className="font-bold text-gray-900 mb-2">What does a juror do on Quick Verdicts?</h3>
               <p className="text-gray-600">
-                Jurors sign up and can access a Job Board for cases in their county of residence. If selected, jurors are paid by the case immediately following the case presentation. Jurors are paid by the case immediately following the case presentation.  Jurors may be asked to decide what caused an accident or an incident and how much money should be awarded to a plaintiff.  
+                Jurors sign up and can access a Job Board for cases in their county of residence. If selected, jurors are paid by the case immediately following the case presentation. First time jurors will participate in an onboarding process with a short (and easy!) quiz.Jurors may be asked to decide what caused an accident or an incident and how much money should be awarded to a plaintiff.  
               </p>
             </div>
           </div>
@@ -308,8 +323,9 @@ cases in:            </p>
             <div>
               <h3 className="font-bold mb-4">Contact</h3>
               <p className="text-gray-300">Hours:</p>
-              <p className="text-gray-300">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;8:00 a.m. to 5:00 p.m. M-F </p>
-              <p className='text-gray-300'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;9:00 a.m. to 2:00 p.m. Sat.</p>
+              <p className="text-gray-300">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Mon., Wed., Fri.&nbsp;&nbsp;8:00 a.m. to 5:00 p.m. CST </p>
+              <p className='text-gray-300'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Tues. & Thurs.&nbsp;&nbsp;&nbsp;&nbsp;9:00 a.m. to 8:30 p.m. CST</p>
+              <p className='text-gray-300'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Sat.&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;9:00 a.m. to 2:00 p.m. CST</p>
               <p className="text-gray-300">QVTrial@quickverdicts.com</p>
             </div>
             <div>
@@ -324,7 +340,7 @@ cases in:            </p>
 
           <div className="border-t border-gray-700 pt-8 flex flex-wrap justify-between items-center">
             <div className="flex space-x-6 text-sm text-gray-300">
-              <Link href="/" className="hover:text-white">Quick Verdicts<sup className="text-[12px]">™</sup></Link>
+              <Link href="/" className="hover:text-white">&copy; 2026 Quick Verdicts<sup className="text-[12px]">™</sup></Link>
 
                 <a
     href="https://documents83y89129y.blob.core.windows.net/new/QV%20Privacy%20Policy.pdf"

@@ -22,7 +22,7 @@ const quizQuestions = [
     explanation: "All of these are required for participation in a Quick Verdict trial."
   },
   {
-    question: "What is the main purpose of Quick Verdict?",
+    question: "What is the main purpose of Quick Verdicts?",
     options: [
       "Provide legal representation",
       "File court documents",
@@ -72,7 +72,7 @@ const quizQuestions = [
     explanation: "The foreperson helps guide the group and keeps things on track."
   },
   {
-    question: "Quick Verdicts times the case presentation, deliberations and debriefing period to finalize the case within the time allotted. ",
+    question: "Quick Verdicts keeps time of the case presentation, deliberations and debriefing period to finalize the mock trial within the time allotted. ",
     options: ["True", "False"],
     answer: "True",
     explanation: "A timer is used to keep the session focused and on schedule."

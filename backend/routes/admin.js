@@ -2051,7 +2051,7 @@ router.post("/cases/:caseId/reschedule", authMiddleware, requireAdmin, async (re
         caseId: parseInt(caseId),
         type: "admin_case_rescheduled",
         title: "Case Rescheduled by Admin",
-        message: `Your case "${caseData.CaseTitle}" has been rescheduled by the administrator. Reason: ${reason}. All juror applications have been removed. Please update the trial schedule and resubmit the case.`,
+        message: `Your case "${caseData.CaseTitle}" has been requested to be rescheduled by the administrator. Reschedule for ${reason}. All juror applications have been removed. Please update the trial schedule or choose another date and time.`,
       });
       notificationsSent++;
       console.log(`📧 Notification sent to attorney ${caseData.AttorneyId}`);
