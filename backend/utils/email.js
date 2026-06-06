@@ -73,30 +73,37 @@ async function getTransporter() {
  */
 async function createTransporter() {
   try {
+    // SMTP host/port are configurable so you can switch providers via .env:
+    //   Gmail:   EMAIL_HOST=smtp.gmail.com        EMAIL_PORT=587
+    //   Outlook: EMAIL_HOST=smtp.office365.com    EMAIL_PORT=587
+    const smtpHost = process.env.EMAIL_HOST || "smtp.gmail.com";
+    const smtpPort = parseInt(process.env.EMAIL_PORT || "587", 10);
+
     if (process.env.NODE_ENV === "production") {
-      // Production: Use Gmail with consistent environment variables
       const transporter = nodemailer.createTransport({
-        host: "smtp.gmail.com",
-        port: 587,
+        host: smtpHost,
+        port: smtpPort,
         secure: false,
         auth: {
           user: process.env.EMAIL_USER,
           pass: process.env.EMAIL_APP_PASSWORD,
         },
-        pool: true, // Use pooled connections
+        pool: true,
         maxConnections: 5,
         maxMessages: 100,
       });
 
       // Verify configuration
       await transporter.verify();
-      console.log("✅ Production email transporter created and verified");
+      console.log(`✅ Production email transporter created and verified (${smtpHost})`);
       return transporter;
     } else {
-      // Development: prefer Gmail if provided, otherwise use Ethereal test account
+      // Development: prefer configured SMTP if credentials provided, otherwise Ethereal
       if (process.env.EMAIL_USER && process.env.EMAIL_APP_PASSWORD) {
         const transporter = nodemailer.createTransport({
-          service: "gmail",
+          host: smtpHost,
+          port: smtpPort,
+          secure: false,
           auth: {
             user: process.env.EMAIL_USER,
             pass: process.env.EMAIL_APP_PASSWORD,
@@ -105,7 +112,7 @@ async function createTransporter() {
         });
 
         await transporter.verify();
-        console.log("✅ Development email transporter created (Gmail)");
+        console.log(`✅ Development email transporter created (${smtpHost})`);
         return transporter;
       }
 
