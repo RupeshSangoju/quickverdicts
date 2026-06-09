@@ -9,6 +9,7 @@ import { useProtectedRoute } from "@/hooks/useProtectedRoute";
 import Stepper from "../../components/Stepper";
 import { Calendar, Clock, MapPin, Monitor, ChevronLeft, ChevronRight, CheckCircle2 } from "lucide-react";
 import { getToken } from "@/lib/apiClient";
+import { loadStripe } from "@stripe/stripe-js";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL
   ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api$/, '')
@@ -491,18 +492,94 @@ export default function ScheduleTrialPage() {
 
       console.log("✅ Case created successfully:", data);
 
-      // Success! Show toast notification
-      toast.success("Trial date pending QV confirmation. War Room will be accessible upon confirmation of trial setting.", {
-        duration: 3000,
-        icon: "⏳",
-      });
+      const createdCaseId = data.caseId || data.case?.Id;
 
       // ✅ TRIGGER CALENDAR REFRESH: Notify calendar to update
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('case-updated', {
-          detail: { caseId: data.caseId || data.case?.Id }
+          detail: { caseId: createdCaseId }
         }));
         console.log('📅 Dispatched case-updated event for calendar refresh');
+      }
+
+      // Process Stripe payment if card was used
+      const savedPaymentMethod = localStorage.getItem("paymentMethod");
+      const stripePaymentMethodId = localStorage.getItem("stripePaymentMethodId");
+
+      if (
+        (savedPaymentMethod === "Credit Card" || savedPaymentMethod === "Debit Card") &&
+        stripePaymentMethodId &&
+        createdCaseId
+      ) {
+        try {
+          const stripe = await loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "");
+          if (!stripe) throw new Error("Stripe failed to load");
+
+          // Create payment intent on backend
+          const piRes = await fetch(`${API_BASE}/api/payments/create-payment-intent`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`,
+            },
+            body: JSON.stringify({ caseId: createdCaseId, paymentMethod: "card" }),
+          });
+
+          if (!piRes.ok) {
+            const piErr = await piRes.json();
+            console.error("Payment intent creation failed:", piErr);
+            toast.error(
+              "Case created but payment setup failed. Please complete payment from your dashboard.",
+              { duration: 7000 }
+            );
+          } else {
+            const { clientSecret, paymentIntentId } = await piRes.json();
+
+            // Confirm payment using the stored PaymentMethod ID
+            const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(
+              clientSecret,
+              { payment_method: stripePaymentMethodId }
+            );
+
+            if (stripeError) {
+              console.error("Stripe payment failed:", stripeError);
+              toast.error(
+                `Case created but payment failed: ${stripeError.message}. Please retry from your dashboard.`,
+                { duration: 7000 }
+              );
+            } else if (paymentIntent?.status === "succeeded") {
+              // Notify backend of confirmed payment
+              await fetch(`${API_BASE}/api/payments/confirm-payment`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "Authorization": `Bearer ${token}`,
+                },
+                body: JSON.stringify({ paymentIntentId: paymentIntent.id }),
+              });
+              toast.success(
+                "Payment processed successfully! Trial date pending QV confirmation.",
+                { duration: 4000, icon: "✅" }
+              );
+            }
+          }
+        } catch (paymentError) {
+          console.error("Payment processing error:", paymentError);
+          toast.error(
+            "Case created. Payment could not be processed — please complete from your dashboard.",
+            { duration: 7000 }
+          );
+        } finally {
+          localStorage.removeItem("stripePaymentMethodId");
+          localStorage.removeItem("cardLastFour");
+          localStorage.removeItem("cardBrand");
+          localStorage.removeItem("cardholderName");
+        }
+      } else {
+        toast.success(
+          "Trial date pending QV confirmation. War Room will be accessible upon confirmation of trial setting.",
+          { duration: 3000, icon: "⏳" }
+        );
       }
 
       // Clear localStorage items related to case creation

@@ -20,6 +20,8 @@ export default function ReviewPage() {
     caseDescription: "",
     paymentMethod: "",
     paymentAmount: "",
+    cardLastFour: "",
+    cardBrand: "",
   });
   const [plaintiffGroups, setPlaintiffGroups] = useState<any[]>([]);
   const [defendantGroups, setDefendantGroups] = useState<any[]>([]);
@@ -36,6 +38,8 @@ export default function ReviewPage() {
       caseDescription: localStorage.getItem("caseDescription") || "",
       paymentMethod: localStorage.getItem("paymentMethod") || "",
       paymentAmount: localStorage.getItem("paymentAmount") || "",
+      cardLastFour: localStorage.getItem("cardLastFour") || "",
+      cardBrand: localStorage.getItem("cardBrand") || "",
     });
     setPlaintiffGroups(JSON.parse(localStorage.getItem("plaintiffGroups") || "[]"));
     setDefendantGroups(JSON.parse(localStorage.getItem("defendantGroups") || "[]"));
@@ -134,9 +138,15 @@ export default function ReviewPage() {
               </div>
               <div className="mb-4">
                 <strong>Payment Method:</strong> {form.paymentMethod}
+                {form.cardLastFour && (
+                  <span className="ml-2 text-gray-600">
+                    ({form.cardBrand ? form.cardBrand.charAt(0).toUpperCase() + form.cardBrand.slice(1) : "Card"} ending in {form.cardLastFour})
+                  </span>
+                )}
               </div>
               <div className="mb-4">
-                <strong>Payment Amount:</strong> {form.paymentAmount}
+                <strong>Payment Amount:</strong>{" "}
+                {form.paymentAmount ? `$${parseInt(form.paymentAmount).toLocaleString()}` : form.paymentAmount}
               </div>
               <div className="mb-4" style={{ color: "#b33a3a" }}>
                 <strong>Payment is placed on hold until conflicts check is completed.</strong>
