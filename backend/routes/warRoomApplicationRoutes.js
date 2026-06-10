@@ -197,8 +197,33 @@ router.get(
       const caseId = req.validatedCaseId;
       const pool = await poolPromise;
 
-      const result = await pool.request().input("caseId", sql.Int, caseId)
-        .query(`
+      const baseSelect = `
+          SELECT
+            ja.ApplicationId,
+            ja.JurorId,
+            j.Name as JurorName,
+            j.Email as JurorEmail,
+            j.County,
+            j.State,
+            j.AgeRange,
+            j.Gender,
+            j.EmployerName,
+            j.SpouseEmployer,
+            j.Education,
+            j.YearsInCounty,
+            j.MaritalStatus,
+            ja.Status,
+            ja.VoirDire1Responses,
+            ja.VoirDire2Responses,
+            ja.AppliedAt,
+            ja.ReviewedAt,
+            ja.ReviewedBy
+          FROM dbo.JurorApplications ja
+          INNER JOIN dbo.Jurors j ON ja.JurorId = j.JurorId
+          WHERE ja.CaseId = @caseId
+          ORDER BY ja.AppliedAt DESC`;
+
+      const fullSelect = `
           SELECT
             ja.ApplicationId,
             ja.JurorId,
@@ -224,8 +249,15 @@ router.get(
           FROM dbo.JurorApplications ja
           INNER JOIN dbo.Jurors j ON ja.JurorId = j.JurorId
           WHERE ja.CaseId = @caseId
-          ORDER BY ja.AppliedAt DESC
-        `);
+          ORDER BY ja.AppliedAt DESC`;
+
+      let result;
+      try {
+        result = await pool.request().input("caseId", sql.Int, caseId).query(fullSelect);
+      } catch (colErr) {
+        // Fall back if new columns don't exist yet in this environment
+        result = await pool.request().input("caseId", sql.Int, caseId).query(baseSelect);
+      }
 
       // Parse JSON fields safely
       const applications = result.recordset.map((app) => ({
@@ -278,10 +310,33 @@ router.get(
       const applicationId = req.validatedApplicationId;
       const pool = await poolPromise;
 
-      const result = await pool
-        .request()
-        .input("applicationId", sql.Int, applicationId)
-        .input("caseId", sql.Int, caseId).query(`
+      const baseDetailQuery = `
+          SELECT
+            ja.ApplicationId,
+            ja.JurorId,
+            j.Name as JurorName,
+            j.Email as JurorEmail,
+            j.PhoneNumber as JurorPhone,
+            j.County,
+            j.State,
+            j.AgeRange,
+            j.Gender,
+            j.EmployerName,
+            j.SpouseEmployer,
+            j.Education,
+            j.YearsInCounty,
+            j.MaritalStatus,
+            ja.Status,
+            ja.VoirDire1Responses,
+            ja.VoirDire2Responses,
+            ja.AppliedAt,
+            ja.ReviewedAt,
+            ja.ReviewedBy
+          FROM dbo.JurorApplications ja
+          INNER JOIN dbo.Jurors j ON ja.JurorId = j.JurorId
+          WHERE ja.ApplicationId = @applicationId AND ja.CaseId = @caseId`;
+
+      const fullDetailQuery = `
           SELECT
             ja.ApplicationId,
             ja.JurorId,
@@ -307,8 +362,20 @@ router.get(
             ja.ReviewedBy
           FROM dbo.JurorApplications ja
           INNER JOIN dbo.Jurors j ON ja.JurorId = j.JurorId
-          WHERE ja.ApplicationId = @applicationId AND ja.CaseId = @caseId
-        `);
+          WHERE ja.ApplicationId = @applicationId AND ja.CaseId = @caseId`;
+
+      let result;
+      try {
+        result = await pool.request()
+          .input("applicationId", sql.Int, applicationId)
+          .input("caseId", sql.Int, caseId)
+          .query(fullDetailQuery);
+      } catch (colErr) {
+        result = await pool.request()
+          .input("applicationId", sql.Int, applicationId)
+          .input("caseId", sql.Int, caseId)
+          .query(baseDetailQuery);
+      }
 
       if (result.recordset.length === 0) {
         return res.status(404).json({
