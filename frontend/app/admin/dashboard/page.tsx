@@ -227,6 +227,7 @@ type CaseDetail = {
   teamMembers: TeamMember[];
   approvedJurorCount: number;
   canJoin: boolean;
+  CaseDescription?: string;
 };
 
 type PendingCase = {
@@ -3674,6 +3675,12 @@ export default function AdminDashboard() {
                     <div><span className="font-medium text-gray-700">Recording:</span><p className="text-red-600 font-bold">● REC</p></div>
                   )}
                 </div>
+                {selectedCase.CaseDescription && (
+                  <div className="mt-3 pt-3 border-t border-blue-200 text-sm">
+                    <span className="font-medium text-gray-700">Description:</span>
+                    <p className="text-gray-900 mt-1 whitespace-pre-wrap">{selectedCase.CaseDescription}</p>
+                  </div>
+                )}
               </div>
 
               {/* Join Trial Button - Admin Exclusive */}

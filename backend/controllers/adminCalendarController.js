@@ -194,6 +194,7 @@ async function getCasesByDate(req, res) {
           c.CaseId,
           c.CaseTitle,
           c.CaseType,
+          c.CaseDescription,
           c.County,
           c.State as CaseState,
           c.ScheduledDate,
