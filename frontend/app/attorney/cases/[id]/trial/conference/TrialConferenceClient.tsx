@@ -26,6 +26,7 @@ import {
   Pin,
   Volume2,
   FileText,
+  Hand,
 } from "lucide-react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL
@@ -58,6 +59,8 @@ export default function TrialConferenceClient() {
   const [participantSpeakingStates, setParticipantSpeakingStates] = useState<Map<string, boolean>>(new Map());
   const [participantMuteStates, setParticipantMuteStates] = useState<Map<string, boolean>>(new Map());
   const [activeSpeaker, setActiveSpeaker] = useState<string | null>(null);
+  const [isHandRaised, setIsHandRaised] = useState(false);
+  const [raisedHands, setRaisedHands] = useState<Set<string>>(new Set());
 
   // Hover menu states
   const [hoveredParticipant, setHoveredParticipant] = useState<string | null>(null);
@@ -269,6 +272,25 @@ export default function TrialConferenceClient() {
     on("trial_ended", handleTrialEnded);
     return () => off("trial_ended", handleTrialEnded);
   }, [on, off, caseId, router]);
+
+  useEffect(() => {
+    const handleRaiseHand = (data: any) => {
+      setRaisedHands(prev => new Set(prev).add(data.participantName));
+    };
+    const handleLowerHand = (data: any) => {
+      setRaisedHands(prev => {
+        const next = new Set(prev);
+        next.delete(data.participantName);
+        return next;
+      });
+    };
+    on("raise_hand", handleRaiseHand);
+    on("lower_hand", handleLowerHand);
+    return () => {
+      off("raise_hand", handleRaiseHand);
+      off("lower_hand", handleLowerHand);
+    };
+  }, [on, off]);
 
   useEffect(() => {
     if (chatMessagesEndRef.current) {
@@ -1369,6 +1391,16 @@ roomCall.remoteParticipants.forEach((p: any) => {
     }
   };
 
+  const toggleHand = () => {
+    const newState = !isHandRaised;
+    setIsHandRaised(newState);
+    if (newState) {
+      emit("raise_hand", { caseId, participantName: displayName });
+    } else {
+      emit("lower_hand", { caseId, participantName: displayName });
+    }
+  };
+
   const leaveCall = async () => {
     // 🛑 Stop camera/mic tracks IMMEDIATELY (sync) so the browser releases the
     // hardware right away — don't wait for ACS hangUp/dispose to finish.
@@ -1684,6 +1716,12 @@ roomCall.remoteParticipants.forEach((p: any) => {
                       </div>
                     )}
 
+                    {(participant.isLocal ? isHandRaised : raisedHands.has(participant.displayName)) && !isScreenShare && (
+                      <div className="absolute top-9 right-2 bg-orange-500 p-1.5 rounded-full shadow-lg animate-bounce">
+                        <Hand className="w-3 h-3 text-white" />
+                      </div>
+                    )}
+
                     {isSpeaking && !isScreenShare && (
                       <div className="absolute bottom-2 right-2 bg-green-500 p-1.5 rounded-full animate-pulse">
                         <Volume2 className="w-4 h-4 text-white" />
@@ -1774,6 +1812,15 @@ roomCall.remoteParticipants.forEach((p: any) => {
               </div>
               <span className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
                 {isScreenSharing ? "Stop Sharing" : "Share Screen"}
+              </span>
+            </button>
+
+            <button onClick={toggleHand} className="flex flex-col items-center gap-1 hover:scale-110 transition-transform group relative" title={isHandRaised ? "Lower Hand" : "Raise Hand"}>
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: isHandRaised ? "#FDB71A" : "#5B9BD5" }}>
+                <Hand className="w-6 h-6 text-white" />
+              </div>
+              <span className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                {isHandRaised ? "Lower Hand" : "Raise Hand"}
               </span>
             </button>
           </div>

@@ -31,6 +31,7 @@ import {
   Volume2,
   UserX,
   FileText,
+  Hand,
 } from "lucide-react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL
@@ -65,6 +66,7 @@ export default function AdminConferenceClient() {
   const [participantMuteStates, setParticipantMuteStates] = useState<Map<string, boolean>>(new Map());
   const [participantScreenShareStates, setParticipantScreenShareStates] = useState<Map<string, boolean>>(new Map());
   const [activeSpeaker, setActiveSpeaker] = useState<string | null>(null);
+  const [raisedHands, setRaisedHands] = useState<Set<string>>(new Set());
 
   // Hover menu states
   const [hoveredParticipant, setHoveredParticipant] = useState<string | null>(null);
@@ -166,11 +168,26 @@ export default function AdminConferenceClient() {
     on('jury_charge:question_deleted', handleQuestionChange);
     on('jury_charge:questions_reordered', handleQuestionChange);
 
+    const handleRaiseHand = (data: any) => {
+      setRaisedHands(prev => new Set(prev).add(data.participantName));
+    };
+    const handleLowerHand = (data: any) => {
+      setRaisedHands(prev => {
+        const next = new Set(prev);
+        next.delete(data.participantName);
+        return next;
+      });
+    };
+    on('raise_hand', handleRaiseHand);
+    on('lower_hand', handleLowerHand);
+
     return () => {
       off('jury_charge:question_added', handleQuestionChange);
       off('jury_charge:question_updated', handleQuestionChange);
       off('jury_charge:question_deleted', handleQuestionChange);
       off('jury_charge:questions_reordered', handleQuestionChange);
+      off('raise_hand', handleRaiseHand);
+      off('lower_hand', handleLowerHand);
       leaveRoom(`case_${caseId}`);
     };
   }, [isConnected, caseId]);
@@ -2119,6 +2136,12 @@ async function renderFeaturedVideo() {
                     {isPinned && (
                       <div className="absolute top-2 right-2 bg-yellow-500 p-1 rounded-full">
                         <Pin className="w-3 h-3 text-white" />
+                      </div>
+                    )}
+
+                    {raisedHands.has(participant.displayName) && !isScreenShare && (
+                      <div className="absolute top-9 right-2 bg-orange-500 p-1.5 rounded-full shadow-lg animate-bounce">
+                        <Hand className="w-3 h-3 text-white" />
                       </div>
                     )}
 

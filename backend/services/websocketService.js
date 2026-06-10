@@ -102,6 +102,19 @@ function initializeWebSocket(server) {
       );
     });
 
+    // Raise / lower hand in a trial room
+    socket.on("raise_hand", ({ caseId, participantName }) => {
+      const roomName = `case_${caseId}`;
+      socket.to(roomName).emit("raise_hand", { caseId, participantName });
+      console.log(`✋ [WebSocket] ${participantName} raised hand in case ${caseId}`);
+    });
+
+    socket.on("lower_hand", ({ caseId, participantName }) => {
+      const roomName = `case_${caseId}`;
+      socket.to(roomName).emit("lower_hand", { caseId, participantName });
+      console.log(`👇 [WebSocket] ${participantName} lowered hand in case ${caseId}`);
+    });
+
     // Heartbeat/ping
     socket.on("ping", () => {
       socket.emit("pong", { timestamp: Date.now() });
