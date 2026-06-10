@@ -61,6 +61,15 @@ type Application = {
   JurorEmail: string;
   County: string;
   State?: string;
+  AgeRange?: string;
+  Gender?: string;
+  EmployerName?: string;
+  SpouseEmployer?: string;
+  Education?: string;
+  YearsInCounty?: string;
+  MaritalStatus?: string;
+  RegisteredToVote?: string;
+  HasTexasDriversLicense?: string;
   Status: "pending" | "approved" | "rejected";
   VoirDire1Responses: string | any[];
   VoirDire2Responses: string | any[];
@@ -2019,6 +2028,34 @@ useEffect(() => {
                 </div>
 
 
+
+                {/* Juror Demographics */}
+                <div className="bg-white rounded-lg p-4 border border-[#C6CDD9]">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="p-1.5 bg-[#16305B]/10 rounded">
+                      <DocumentTextIcon className="w-4 h-4 text-[#16305B]" />
+                    </div>
+                    <label className="text-xs font-semibold text-[#0A2342] uppercase">Juror Demographics</label>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
+                    {[
+                      { label: 'Age Range', value: selectedApplication.AgeRange },
+                      { label: 'Gender', value: selectedApplication.Gender },
+                      { label: 'Occupation', value: selectedApplication.EmployerName },
+                      { label: "Spouse's Occupation", value: selectedApplication.SpouseEmployer },
+                      { label: 'Educational Level', value: selectedApplication.Education },
+                      { label: 'Years in County', value: selectedApplication.YearsInCounty },
+                      { label: 'Marital Status', value: selectedApplication.MaritalStatus },
+                      { label: 'Registered to Vote', value: selectedApplication.RegisteredToVote },
+                      { label: "Texas Driver's License", value: selectedApplication.HasTexasDriversLicense },
+                    ].map(({ label, value }) => (
+                      <div key={label} className="bg-[#FAF9F6] rounded p-3 border border-[#C6CDD9]">
+                        <p className="text-[#455A7C] font-semibold uppercase mb-1" style={{ fontSize: '10px' }}>{label}</p>
+                        <p className="text-[#0A2342] font-semibold">{value || <span className="text-[#C6CDD9] italic">N/A</span>}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
 
                 {/* Voir Dire Part 1 */}
                 <div className="bg-white rounded-lg p-4 border border-[#C6CDD9]">

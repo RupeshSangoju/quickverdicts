@@ -199,13 +199,22 @@ router.get(
 
       const result = await pool.request().input("caseId", sql.Int, caseId)
         .query(`
-          SELECT 
+          SELECT
             ja.ApplicationId,
             ja.JurorId,
             j.Name as JurorName,
             j.Email as JurorEmail,
             j.County,
             j.State,
+            j.AgeRange,
+            j.Gender,
+            j.EmployerName,
+            j.SpouseEmployer,
+            j.Education,
+            j.YearsInCounty,
+            j.MaritalStatus,
+            j.RegisteredToVote,
+            j.HasTexasDriversLicense,
             ja.Status,
             ja.VoirDire1Responses,
             ja.VoirDire2Responses,
@@ -273,7 +282,7 @@ router.get(
         .request()
         .input("applicationId", sql.Int, applicationId)
         .input("caseId", sql.Int, caseId).query(`
-          SELECT 
+          SELECT
             ja.ApplicationId,
             ja.JurorId,
             j.Name as JurorName,
@@ -281,6 +290,15 @@ router.get(
             j.PhoneNumber as JurorPhone,
             j.County,
             j.State,
+            j.AgeRange,
+            j.Gender,
+            j.EmployerName,
+            j.SpouseEmployer,
+            j.Education,
+            j.YearsInCounty,
+            j.MaritalStatus,
+            j.RegisteredToVote,
+            j.HasTexasDriversLicense,
             ja.Status,
             ja.VoirDire1Responses,
             ja.VoirDire2Responses,
