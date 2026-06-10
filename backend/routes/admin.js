@@ -374,6 +374,7 @@ router.get("/calendar/cases-by-date", async (req, res) => {
           c.CaseId,
           c.CaseTitle,
           c.CaseType,
+          c.CaseDescription,
           c.County,
           c.State,
           c.ScheduledDate,
