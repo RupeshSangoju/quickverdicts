@@ -674,7 +674,15 @@ async function jurorSignup(req, res) {
       // Criteria (from Step 1 - sent as JSON string)
       criteriaResponses,
 
-      // Qualification questions (from Step 2)
+      // Demographic fields (from Step 2 - personalDetails1)
+      maritalStatus,
+      employerName,
+      spouseEmployer,
+      employerAddress,
+      yearsInCounty,
+      ageRange,
+      gender,
+      education,
       registeredToVote,
       hasTexasDriversLicense,
     } = req.body;
@@ -772,6 +780,14 @@ async function jurorSignup(req, res) {
       paymentMethod: paymentMethod.toLowerCase(),
       criteriaResponses: criteriaResponses || null,
       userAgreementAccepted: true,
+      maritalStatus: maritalStatus || null,
+      employerName: employerName || null,
+      spouseEmployer: spouseEmployer || null,
+      employerAddress: employerAddress || null,
+      yearsInCounty: yearsInCounty || null,
+      ageRange: ageRange || null,
+      gender: gender || null,
+      education: education || null,
       registeredToVote: registeredToVote || null,
       hasTexasDriversLicense: hasTexasDriversLicense || null,
     });

@@ -170,7 +170,7 @@ async function createJuror(data) {
           sql.NVarChar,
           data.employerAddress?.trim() || null
         )
-        .input("yearsInCounty", sql.Int, parseInt(data.yearsInCounty) || null)
+        .input("yearsInCounty", sql.NVarChar, data.yearsInCounty?.trim() || null)
         .input("ageRange", sql.NVarChar, data.ageRange?.trim() || null)
         .input("gender", sql.NVarChar, data.gender?.trim() || null)
         .input("education", sql.NVarChar, data.education?.trim() || null)

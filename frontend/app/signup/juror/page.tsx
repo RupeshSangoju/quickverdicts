@@ -457,6 +457,15 @@ function JurorSignupInner() {
             county: formData.personalDetails2.county,
             paymentMethod: formData.paymentMethod,
             agreedToTerms: formData.agreedToTerms,
+            // Demographic fields from personalDetails1
+            maritalStatus: formData.personalDetails1.maritalStatus || null,
+            employerName: formData.personalDetails1.employerName || null,
+            spouseEmployer: formData.personalDetails1.spouseEmployer || null,
+            employerAddress: formData.personalDetails1.employerAddress || null,
+            yearsInCounty: formData.personalDetails1.yearsInCounty || null,
+            ageRange: formData.personalDetails1.ageRange || null,
+            gender: formData.personalDetails1.gender || null,
+            education: formData.personalDetails1.education || null,
             registeredToVote: formData.personalDetails1.registeredToVote || null,
             hasTexasDriversLicense: formData.personalDetails1.hasTexasDriversLicense || null,
           };

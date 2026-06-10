@@ -2040,14 +2040,14 @@ useEffect(() => {
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
                     {[
                       { label: 'Age Range', value: selectedApplication.AgeRange },
-                      { label: 'Gender', value: selectedApplication.Gender },
                       { label: 'Occupation', value: selectedApplication.EmployerName },
-                      { label: "Spouse's Occupation", value: selectedApplication.SpouseEmployer },
+                      { label: "Spouse's Employer", value: selectedApplication.SpouseEmployer },
                       { label: 'Educational Level', value: selectedApplication.Education },
+                      { label: 'Gender', value: selectedApplication.Gender },
                       { label: 'Years in County', value: selectedApplication.YearsInCounty },
                       { label: 'Marital Status', value: selectedApplication.MaritalStatus },
-                      { label: 'Registered to Vote', value: selectedApplication.RegisteredToVote },
-                      { label: "Texas Driver's License", value: selectedApplication.HasTexasDriversLicense },
+                      { label: 'Current Voter Registration', value: selectedApplication.RegisteredToVote },
+                      { label: "Current Driver's License", value: selectedApplication.HasTexasDriversLicense },
                     ].map(({ label, value }) => (
                       <div key={label} className="bg-[#FAF9F6] rounded p-3 border border-[#C6CDD9]">
                         <p className="text-[#455A7C] font-semibold uppercase mb-1" style={{ fontSize: '10px' }}>{label}</p>
