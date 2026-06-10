@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Bell,
@@ -17,7 +17,9 @@ import {
   FileText,
   Users,
   Scale,
-  RefreshCw
+  RefreshCw,
+  Search,
+  X
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useProtectedRoute } from "@/hooks/useProtectedRoute";
@@ -60,9 +62,10 @@ export default function AdminNotificationsPage() {
     hasMore: false
   });
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState("");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    // Check authentication on mount
     const user = getUser();
     if (!isAdmin(user)) {
       console.warn("⚠️ Admin notifications: User is not admin, redirecting to login");
@@ -70,8 +73,19 @@ export default function AdminNotificationsPage() {
       return;
     }
     setCurrentPage(1);
-    fetchNotifications(1);
+    fetchNotifications(1, searchQuery);
   }, [filter]);
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setCurrentPage(1);
+      fetchNotifications(1, searchQuery);
+    }, 400);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [searchQuery]);
 
   function createAuthHeaders(token: string) {
     return {
@@ -80,11 +94,10 @@ export default function AdminNotificationsPage() {
     };
   }
 
-  async function fetchNotifications(page = 1) {
+  async function fetchNotifications(page = 1, search = searchQuery) {
     const token = getAuthToken();
     const user = getUser();
 
-    // Double-check authentication
     if (!token || !isAdmin(user)) {
       console.warn("⚠️ Admin notifications: No token or not admin, redirecting to login");
       router.push("/admin/login");
@@ -96,7 +109,6 @@ export default function AdminNotificationsPage() {
     try {
       const currentOffset = (page - 1) * 50;
 
-      // Build URL with pagination parameters
       const params = new URLSearchParams({
         limit: '50',
         offset: currentOffset.toString()
@@ -104,6 +116,10 @@ export default function AdminNotificationsPage() {
 
       if (filter === "unread") {
         params.append("unreadOnly", "true");
+      }
+
+      if (search.trim()) {
+        params.append("search", search.trim());
       }
 
       const url = `${API_BASE}/api/notifications?${params.toString()}`;
@@ -384,7 +400,7 @@ export default function AdminNotificationsPage() {
               <button
                 onClick={() => {
                   setCurrentPage(1);
-                  fetchNotifications(1);
+                  fetchNotifications(1, searchQuery);
                 }}
                 className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center gap-2 transition-colors cursor-pointer"
                 title="Refresh notifications"
@@ -408,7 +424,26 @@ export default function AdminNotificationsPage() {
 
       {/* Filters */}
       <div className="max-w-7xl mx-auto px-6 py-6">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 space-y-3">
+          {/* Search bar */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search by plaintiff, defendant, or case number..."
+              className="w-full pl-9 pr-9 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               {displayedNotifications.length > 0 && (
@@ -482,10 +517,14 @@ export default function AdminNotificationsPage() {
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
             <BellOff className="h-16 w-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-700 mb-2">
-              {filter === "unread" ? "No unread notifications" : "No notifications"}
+              {searchQuery.trim()
+                ? `No notifications found for "${searchQuery}"`
+                : filter === "unread" ? "No unread notifications" : "No notifications"}
             </h3>
             <p className="text-gray-500">
-              {filter === "unread"
+              {searchQuery.trim()
+                ? "Try searching by a different name or case number"
+                : filter === "unread"
                 ? "You're all caught up!"
                 : "Notifications will appear here when actions occur"}
             </p>

@@ -25,20 +25,21 @@ async function getNotifications(req, res) {
 
     const userId = req.user.id;
     const userType = req.user.type;
-    const { unreadOnly, limit = 50, offset = 0 } = req.query;
+    const { unreadOnly, limit = 50, offset = 0, search = "" } = req.query;
 
     // Validate parameters
-    const limitNum = Math.min(parseInt(limit, 10) || 50, 100); // Max 100 notifications
+    const limitNum = Math.min(parseInt(limit, 10) || 50, 100);
     const offsetNum = Math.max(parseInt(offset, 10) || 0, 0);
+    const searchTerm = typeof search === "string" ? search.trim().slice(0, 100) : "";
 
-    // ✅ FIX: Pass options object with unreadOnly property instead of just the boolean
     const result = await Notification.getNotificationsForUser(
       userId,
       userType,
       {
         unreadOnly: unreadOnly === "true",
         limit: limitNum,
-        offset: offsetNum
+        offset: offsetNum,
+        search: searchTerm,
       }
     );
 

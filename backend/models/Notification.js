@@ -155,6 +155,7 @@ async function getNotificationsForUser(userId, userType, options = {}) {
     const limit = Math.min(100, Math.max(1, parseInt(options.limit) || 50));
     const offset = Math.max(0, parseInt(options.offset) || 0);
     const unreadOnly = options.unreadOnly || false;
+    const search = options.search ? options.search.trim() : "";
 
     const pool = await poolPromise;
 
@@ -165,12 +166,17 @@ async function getNotificationsForUser(userId, userType, options = {}) {
     if (unreadOnly) {
       whereClause += ` AND n.IsRead = 0`;
     }
+    if (search) {
+      whereClause += ` AND (CAST(n.CaseId AS NVARCHAR(20)) LIKE @search OR c.CaseTitle LIKE @search OR n.Message LIKE @search)`;
+    }
 
     // Get total count and notifications in a single query
+    // Both queries use LEFT JOIN so the search condition on c.CaseTitle works in both
     let query = `
       -- Get total count
       SELECT COUNT(*) as TotalCount
       FROM dbo.Notifications n
+      LEFT JOIN dbo.Cases c ON n.CaseId = c.CaseId
       ${whereClause};
 
       -- Get paginated notifications
@@ -202,6 +208,10 @@ async function getNotificationsForUser(userId, userType, options = {}) {
       .input("userType", sql.NVarChar, userType)
       .input("limit", sql.Int, limit)
       .input("offset", sql.Int, offset);
+
+    if (search) {
+      request.input("search", sql.NVarChar, `%${search}%`);
+    }
 
     const result = await request.query(query);
 
