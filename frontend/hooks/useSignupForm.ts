@@ -41,6 +41,8 @@ const initialJurorData: JurorFormData = {
     ageRange: '',
     gender: '',
     education: '',
+    registeredToVote: '',
+    hasTexasDriversLicense: '',
   },
   personalDetails2: {
     name: '',

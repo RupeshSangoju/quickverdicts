@@ -69,6 +69,8 @@ export interface PersonalDetails1 {
   ageRange: string;
   gender: string;
   education: string;
+  registeredToVote: string;
+  hasTexasDriversLicense: string;
 }
 
 export interface PersonalDetails2 {

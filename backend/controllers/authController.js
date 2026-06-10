@@ -673,6 +673,10 @@ async function jurorSignup(req, res) {
 
       // Criteria (from Step 1 - sent as JSON string)
       criteriaResponses,
+
+      // Qualification questions (from Step 2)
+      registeredToVote,
+      hasTexasDriversLicense,
     } = req.body;
 
     // ✅ VALIDATE REQUIRED FIELDS
@@ -766,8 +770,10 @@ async function jurorSignup(req, res) {
       state: state.trim().toUpperCase(),
       zipCode: zipCode?.trim() || null,
       paymentMethod: paymentMethod.toLowerCase(),
-      criteriaResponses: criteriaResponses || null, // Already a JSON string from frontend
+      criteriaResponses: criteriaResponses || null,
       userAgreementAccepted: true,
+      registeredToVote: registeredToVote || null,
+      hasTexasDriversLicense: hasTexasDriversLicense || null,
     });
 
     console.log(`✅ Juror created successfully with ID: ${jurorId}`);

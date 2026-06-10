@@ -457,6 +457,8 @@ function JurorSignupInner() {
             county: formData.personalDetails2.county,
             paymentMethod: formData.paymentMethod,
             agreedToTerms: formData.agreedToTerms,
+            registeredToVote: formData.personalDetails1.registeredToVote || null,
+            hasTexasDriversLicense: formData.personalDetails1.hasTexasDriversLicense || null,
           };
 
           const response = await post("/api/auth/juror/signup", payload);

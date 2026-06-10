@@ -232,6 +232,10 @@ export function Step2PersonalDetails({
     if (!ageRange) errors.ageRange = "Please select your age range";
     if (!gender) errors.gender = "Please select your gender";
     if (!education) errors.education = "Please select your education level";
+    if (!formData.personalDetails1.registeredToVote)
+      errors.registeredToVote = "Please answer this question";
+    if (!formData.personalDetails1.hasTexasDriversLicense)
+      errors.hasTexasDriversLicense = "Please answer this question";
 
     return errors;
   }, [formData.personalDetails1, isMarried]);
@@ -708,6 +712,81 @@ export function Step2PersonalDetails({
                 >
                   <ErrorIcon />
                   {fieldErrors.education}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Voter Registration & Driver's License */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div
+              className={`bg-white rounded-xl border-2 p-6 shadow-sm transition-colors ${
+                fieldErrors.registeredToVote ? "border-red-300" : "border-gray-200"
+              }`}
+            >
+              <FormField
+                label="Are you currently registered to vote in your county of residence?"
+                required
+              >
+                <Select
+                  value={formData.personalDetails1.registeredToVote}
+                  onChange={(val) => {
+                    onUpdate({
+                      personalDetails1: {
+                        ...formData.personalDetails1,
+                        registeredToVote: val,
+                      },
+                    });
+                    clearFieldError("registeredToVote");
+                  }}
+                  className="cursor-pointer"
+                  options={["Yes", "No", "I'm not sure"]}
+                  placeholder="Select an answer"
+                />
+              </FormField>
+              {fieldErrors.registeredToVote && (
+                <p
+                  className="text-red-500 text-sm mt-2 flex items-center gap-1"
+                  role="alert"
+                >
+                  <ErrorIcon />
+                  {fieldErrors.registeredToVote}
+                </p>
+              )}
+            </div>
+
+            <div
+              className={`bg-white rounded-xl border-2 p-6 shadow-sm transition-colors ${
+                fieldErrors.hasTexasDriversLicense ? "border-red-300" : "border-gray-200"
+              }`}
+            >
+              <FormField
+                label="Do you have a current Texas driver's license?"
+                required
+              >
+                <Select
+                  value={formData.personalDetails1.hasTexasDriversLicense}
+                  onChange={(val) => {
+                    onUpdate({
+                      personalDetails1: {
+                        ...formData.personalDetails1,
+                        hasTexasDriversLicense: val,
+                      },
+                    });
+                    clearFieldError("hasTexasDriversLicense");
+                  }}
+                  className="cursor-pointer"
+                  options={["Yes", "No", "I'm not sure"]}
+                  placeholder="Select an answer"
+                />
+              </FormField>
+              {fieldErrors.hasTexasDriversLicense && (
+                <p
+                  className="text-red-500 text-sm mt-2 flex items-center gap-1"
+                  role="alert"
+                >
+                  <ErrorIcon />
+                  {fieldErrors.hasTexasDriversLicense}
                 </p>
               )}
             </div>

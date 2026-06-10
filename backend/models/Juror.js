@@ -174,6 +174,8 @@ async function createJuror(data) {
         .input("ageRange", sql.NVarChar, data.ageRange?.trim() || null)
         .input("gender", sql.NVarChar, data.gender?.trim() || null)
         .input("education", sql.NVarChar, data.education?.trim() || null)
+        .input("registeredToVote", sql.NVarChar, data.registeredToVote?.trim() || null)
+        .input("hasTexasDriversLicense", sql.NVarChar, data.hasTexasDriversLicense?.trim() || null)
         .input(
           "paymentMethod",
           sql.NVarChar,
@@ -196,7 +198,8 @@ async function createJuror(data) {
           INSERT INTO dbo.Jurors (
             Name, PhoneNumber, Address1, Address2, City, State, ZipCode, County,
             MaritalStatus, SpouseEmployer, EmployerName, EmployerAddress, YearsInCounty,
-            AgeRange, Gender, Education, PaymentMethod, Email, PasswordHash,
+            AgeRange, Gender, Education, RegisteredToVote, HasTexasDriversLicense,
+            PaymentMethod, Email, PasswordHash,
             CriteriaResponses, UserAgreementAccepted, AgreementAcceptedAt, 
             IsVerified, VerificationStatus, IsActive, IsDeleted,
             IntroVideoCompleted, JurorQuizCompleted, OnboardingCompleted, ProfileComplete,
@@ -204,7 +207,8 @@ async function createJuror(data) {
           ) VALUES (
             @name, @phoneNumber, @address1, @address2, @city, @state, @zipCode, @county,
             @maritalStatus, @spouseEmployer, @employerName, @employerAddress, @yearsInCounty,
-            @ageRange, @gender, @education, @paymentMethod, @email, @passwordHash,
+            @ageRange, @gender, @education, @registeredToVote, @hasTexasDriversLicense,
+            @paymentMethod, @email, @passwordHash,
             @criteriaResponses, @userAgreementAccepted,
             CASE WHEN @userAgreementAccepted = 1 THEN GETUTCDATE() ELSE NULL END,
             0, 'pending', 1, 0, 0, 0, 0, 0, GETUTCDATE(), GETUTCDATE()
