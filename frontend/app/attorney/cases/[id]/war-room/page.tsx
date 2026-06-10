@@ -2439,11 +2439,11 @@ useEffect(() => {
                           disabled={submittingReschedule}
                         >
                           <option value="">MM</option>
-                          {Array.from({ length: 60 }, (_, i) => (
-                            <option key={i} value={String(i).padStart(2, '0')}>
-                              {String(i).padStart(2, '0')}
-                            </option>
-                          ))}
+                            {['00', '15', '30', '45'].map((minute) => (
+                              <option key={minute} value={minute}>
+                                {minute}
+                              </option>
+                            ))}
                         </select>
                       </div>
                     </div>

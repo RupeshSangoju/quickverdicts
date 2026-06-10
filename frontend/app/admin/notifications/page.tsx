@@ -432,7 +432,7 @@ export default function AdminNotificationsPage() {
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Search by plaintiff, defendant, or case number..."
+              placeholder="Search by plaintiff or defendant name"
               className="w-full pl-9 pr-9 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
             {searchQuery && (
