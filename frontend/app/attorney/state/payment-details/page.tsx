@@ -7,10 +7,6 @@ import Image from "next/image";
 import { useProtectedRoute } from "@/hooks/useProtectedRoute";
 import Stepper from "../../components/Stepper";
 import FormContainer from "../../components/FormContainer";
-import { loadStripe } from "@stripe/stripe-js";
-import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
-
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "");
 
 const tierAmounts: Record<string, number> = {
   "Early Adopter": 2000,
@@ -19,17 +15,37 @@ const tierAmounts: Record<string, number> = {
   "Tier 3": 5500,
 };
 
+function detectCardBrand(number: string): string {
+  const n = number.replace(/\s/g, "");
+  if (/^4/.test(n)) return "visa";
+  if (/^(5[1-5]|2[2-7])/.test(n)) return "mastercard";
+  if (/^3[47]/.test(n)) return "amex";
+  if (/^(6011|65)/.test(n)) return "discover";
+  return "unknown";
+}
+
+function formatCardNumber(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 16);
+  return digits.replace(/(.{4})/g, "$1 ").trim();
+}
+
+function formatExpiry(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 4);
+  if (digits.length <= 2) return digits;
+  return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+}
+
 function PaymentForm() {
   useProtectedRoute({ requiredUserType: "attorney" });
-  const stripe = useStripe();
-  const elements = useElements();
   const router = useRouter();
 
   const [paymentMethod, setPaymentMethod] = useState("");
   const [paymentAmount, setPaymentAmount] = useState("");
   const [caseTier, setCaseTier] = useState("");
   const [cardholderName, setCardholderName] = useState("");
-  const [cardError, setCardError] = useState("");
+  const [cardNumber, setCardNumber] = useState("");
+  const [cardExpiry, setCardExpiry] = useState("");
+  const [cardCvv, setCardCvv] = useState("");
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -60,10 +76,28 @@ function PaymentForm() {
     if (!paymentAmount || paymentAmount === "0") {
       errors.paymentAmount = "Payment amount missing. Please go back and select a tier.";
     }
-    if (isCardPayment && !cardholderName.trim()) {
-      errors.cardholderName = "Cardholder name is required";
-    } else if (isCardPayment && !/^[a-zA-Z\s]+$/.test(cardholderName.trim())) {
-      errors.cardholderName = "Cardholder name must contain only letters and spaces";
+    if (isCardPayment) {
+      if (!cardholderName.trim()) errors.cardholderName = "Cardholder name is required";
+      else if (!/^[a-zA-Z\s]+$/.test(cardholderName.trim()))
+        errors.cardholderName = "Cardholder name must contain only letters and spaces";
+
+      const rawNumber = cardNumber.replace(/\s/g, "");
+      if (!rawNumber) errors.cardNumber = "Card number is required";
+      else if (rawNumber.length < 13) errors.cardNumber = "Enter a valid card number";
+
+      if (!cardExpiry) errors.cardExpiry = "Expiry date is required";
+      else {
+        const [mm, yy] = cardExpiry.split("/");
+        const month = parseInt(mm, 10);
+        const year = parseInt(`20${yy}`, 10);
+        const now = new Date();
+        if (month < 1 || month > 12) errors.cardExpiry = "Invalid month";
+        else if (year < now.getFullYear() || (year === now.getFullYear() && month < now.getMonth() + 1))
+          errors.cardExpiry = "Card is expired";
+      }
+
+      if (!cardCvv) errors.cardCvv = "CVV is required";
+      else if (cardCvv.length < 3) errors.cardCvv = "CVV must be 3–4 digits";
     }
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
@@ -75,36 +109,11 @@ function PaymentForm() {
     setIsSubmitting(true);
 
     if (isCardPayment) {
-      if (!stripe || !elements) {
-        setValidationErrors({ card: "Payment system not loaded. Please refresh and try again." });
-        setIsSubmitting(false);
-        return;
-      }
-
-      const cardElement = elements.getElement(CardElement);
-      if (!cardElement) {
-        setValidationErrors({ card: "Card element not found. Please refresh and try again." });
-        setIsSubmitting(false);
-        return;
-      }
-
-      const { error, paymentMethod: pm } = await stripe.createPaymentMethod({
-        type: "card",
-        card: cardElement,
-        billing_details: { name: cardholderName.trim() },
-      });
-
-      if (error) {
-        setCardError(error.message || "Invalid card details. Please check and try again.");
-        setIsSubmitting(false);
-        return;
-      }
-
-      // PaymentMethod ID is safe to store — it's a tokenized reference, not card data
-      localStorage.setItem("stripePaymentMethodId", pm.id);
-      localStorage.setItem("cardLastFour", pm.card?.last4 || "");
-      localStorage.setItem("cardBrand", pm.card?.brand || "");
+      const rawNumber = cardNumber.replace(/\s/g, "");
+      localStorage.setItem("cardLastFour", rawNumber.slice(-4));
+      localStorage.setItem("cardBrand", detectCardBrand(rawNumber));
       localStorage.setItem("cardholderName", cardholderName.trim());
+      localStorage.setItem("cardExpiry", cardExpiry);
     }
 
     router.push("/attorney/state/review-details");
@@ -145,10 +154,7 @@ function PaymentForm() {
               </label>
               <select
                 value={paymentMethod}
-                onChange={e => {
-                  setPaymentMethod(e.target.value);
-                  setCardError("");
-                }}
+                onChange={e => setPaymentMethod(e.target.value)}
                 className="w-full px-4 py-2 border border-[#bfc6d1] rounded-md bg-white text-[#16305B] focus:outline-[#16305B]"
               >
                 <option value="">Select Method</option>
@@ -180,33 +186,62 @@ function PaymentForm() {
 
                 <div>
                   <label className="block mb-1 text-[#16305B] font-medium">
-                    Card Details <span className="text-red-500">*</span>
+                    Card Number <span className="text-red-500">*</span>
                   </label>
-                  <div className="w-full px-4 py-[13px] border border-[#bfc6d1] rounded-md bg-white">
-                    <CardElement
-                      options={{
-                        style: {
-                          base: {
-                            fontSize: "16px",
-                            color: "#16305B",
-                            fontFamily: "Arial, sans-serif",
-                            "::placeholder": { color: "#9ca3af" },
-                          },
-                          invalid: { color: "#ef4444" },
-                        },
-                        hidePostalCode: true,
-                      }}
-                      onChange={e => setCardError(e.error?.message || "")}
-                    />
-                  </div>
-                  {cardError && <p className="text-red-500 text-sm mt-1">{cardError}</p>}
-                  {validationErrors.card && (
-                    <p className="text-red-500 text-sm mt-1">{validationErrors.card}</p>
+                  <input
+                    type="text"
+                    placeholder="1234 5678 9012 3456"
+                    value={cardNumber}
+                    onChange={e => setCardNumber(formatCardNumber(e.target.value))}
+                    maxLength={19}
+                    inputMode="numeric"
+                    className="w-full px-4 py-2 border border-[#bfc6d1] rounded-md bg-white text-[#16305B] focus:outline-[#16305B] tracking-widest"
+                  />
+                  {validationErrors.cardNumber && (
+                    <p className="text-red-500 text-sm mt-1">{validationErrors.cardNumber}</p>
                   )}
-                  <p className="text-xs text-gray-500 mt-2">
-                    Your card details are securely handled by Stripe and never stored on our servers.
-                  </p>
                 </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block mb-1 text-[#16305B] font-medium">
+                      Expiry Date <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="MM/YY"
+                      value={cardExpiry}
+                      onChange={e => setCardExpiry(formatExpiry(e.target.value))}
+                      maxLength={5}
+                      inputMode="numeric"
+                      className="w-full px-4 py-2 border border-[#bfc6d1] rounded-md bg-white text-[#16305B] focus:outline-[#16305B]"
+                    />
+                    {validationErrors.cardExpiry && (
+                      <p className="text-red-500 text-sm mt-1">{validationErrors.cardExpiry}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block mb-1 text-[#16305B] font-medium">
+                      CVV <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="password"
+                      placeholder="•••"
+                      value={cardCvv}
+                      onChange={e => setCardCvv(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                      maxLength={4}
+                      inputMode="numeric"
+                      className="w-full px-4 py-2 border border-[#bfc6d1] rounded-md bg-white text-[#16305B] focus:outline-[#16305B]"
+                    />
+                    {validationErrors.cardCvv && (
+                      <p className="text-red-500 text-sm mt-1">{validationErrors.cardCvv}</p>
+                    )}
+                  </div>
+                </div>
+
+                <p className="text-xs text-gray-500">
+                  Your card details are securely handled and never stored on our servers.
+                </p>
               </>
             )}
 
@@ -231,7 +266,7 @@ function PaymentForm() {
             <div className="pt-2">
               <button
                 type="submit"
-                disabled={isSubmitting || (isCardPayment && !stripe)}
+                disabled={isSubmitting}
                 className="w-full bg-[#16305B] text-white font-semibold px-8 py-2 rounded-md hover:bg-[#0A2342] transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
               >
                 {isSubmitting ? (
@@ -252,9 +287,5 @@ function PaymentForm() {
 }
 
 export default function PaymentDetailsPage() {
-  return (
-    <Elements stripe={stripePromise}>
-      <PaymentForm />
-    </Elements>
-  );
+  return <PaymentForm />;
 }
