@@ -686,7 +686,7 @@ export default function ProfileSection() {
                   { label: "Spouse's Employer", value: juror?.spouseEmployer },
                   { label: "Education", value: juror?.education },
                   { label: "Registered to Vote", value: juror?.registeredToVote },
-                  { label: "TX Driver's License", value: juror?.hasTexasDriversLicense },
+                  { label: "Current Driver's License", value: juror?.hasTexasDriversLicense },
                 ].map(({ label, value }) => (
                   <div key={label}>
                     <p className="text-[11px] font-semibold text-[#455A7C] uppercase mb-0.5">{label}</p>
@@ -953,7 +953,7 @@ export default function ProfileSection() {
                     </select>
                   </div>
                   <div className="col-span-2">
-                    <label className="block text-sm text-gray-800 font-medium mb-1">TX Driver&apos;s License</label>
+                    <label className="block text-sm text-gray-800 font-medium mb-1">Current Driver&apos;s License</label>
                     <select value={demographicsData.hasTexasDriversLicense} onChange={e => setDemographicsData(d => ({ ...d, hasTexasDriversLicense: e.target.value }))} className="w-full border rounded px-3 py-2 text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                       <option value="">Select</option>
                       {["Yes","No","I'm not sure"].map(o => <option key={o} value={o}>{o}</option>)}
