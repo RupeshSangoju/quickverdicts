@@ -415,6 +415,8 @@ async function getAvailableSlots(startDate, endDate) {
       "16:00:00",
       "16:30:00",
       "17:00:00",
+      "17:30:00",
+      "18:00:00",
     ];
 
     // Generate all dates in range

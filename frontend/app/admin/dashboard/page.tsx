@@ -239,7 +239,6 @@ type PendingCase = {
   ScheduledTime: string;
   County: string;
   CaseType: string;
-  CaseDescription?: string;
 };
 
 type TimeSlot = {
@@ -2254,12 +2253,6 @@ export default function AdminDashboard() {
                           <span><strong>Type:</strong> {caseItem.CaseType}</span>
                         </div>
                       </div>
-                      {caseItem.CaseDescription && (
-                        <div className="text-sm text-gray-600 mt-2 mb-2 bg-gray-50 rounded-lg px-3 py-2 border border-gray-200">
-                          <span className="font-semibold text-gray-700">Description: </span>
-                          {caseItem.CaseDescription}
-                        </div>
-                      )}
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <Calendar className="h-4 w-4" />
                         <span><strong>Scheduled:</strong> {formatDateString(caseItem.ScheduledDate)} at {formatTime(caseItem.ScheduledTime)}</span>
@@ -4443,6 +4436,8 @@ export default function AdminDashboard() {
                         <option value="16:00">4:00 PM</option>
                         <option value="16:30">4:30 PM</option>
                         <option value="17:00">5:00 PM</option>
+                        <option value="17:30">5:30 PM</option>
+                        <option value="18:00">6:00 PM</option>
                       </select>
                       </div>
                     </div>
