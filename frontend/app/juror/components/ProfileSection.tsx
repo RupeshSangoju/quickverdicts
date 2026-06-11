@@ -655,26 +655,28 @@ export default function ProfileSection() {
             <div className="bg-white rounded shadow p-8 w-full" style={{ maxWidth: 420, color: "black" }}>
               <div className="flex items-center justify-between mb-5">
                 <h2 className="font-semibold text-lg" style={{ color: "black" }}>My Demographics</h2>
-                <button
-                  type="button"
-                  className="px-4 py-1.5 bg-[#0C2D57] text-white rounded-md hover:bg-[#0a2342] text-[14px] font-medium shadow-sm transition"
-                  onClick={() => {
-                    setDemographicsData({
-                      ageRange: juror?.ageRange || "",
-                      gender: juror?.gender || "",
-                      maritalStatus: juror?.maritalStatus || "",
-                      yearsInCounty: juror?.yearsInCounty || "",
-                      employerName: juror?.employerName || "",
-                      spouseEmployer: juror?.spouseEmployer || "",
-                      education: juror?.education || "",
-                      registeredToVote: juror?.registeredToVote || "",
-                      hasTexasDriversLicense: juror?.hasTexasDriversLicense || "",
-                    });
-                    setShowEditDemographics(true);
-                  }}
-                >
-                  Edit
-                </button>
+                {!juror?.ageRange && (
+                  <button
+                    type="button"
+                    className="px-4 py-1.5 bg-[#0C2D57] text-white rounded-md hover:bg-[#0a2342] text-[14px] font-medium shadow-sm transition"
+                    onClick={() => {
+                      setDemographicsData({
+                        ageRange: "",
+                        gender: "",
+                        maritalStatus: "",
+                        yearsInCounty: "",
+                        employerName: "",
+                        spouseEmployer: "",
+                        education: "",
+                        registeredToVote: "",
+                        hasTexasDriversLicense: "",
+                      });
+                      setShowEditDemographics(true);
+                    }}
+                  >
+                    Fill In
+                  </button>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-3">
                 {[
