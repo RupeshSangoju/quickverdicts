@@ -409,28 +409,51 @@ async function updateJurorProfile(jurorId, data) {
       hasTexasDriversLicense: sql.NVarChar,
     };
 
-    const updates = [];
-    const request = (await getPool()).request().input("id", sql.Int, id);
+    // Columns that may not exist in older DB schemas
+    const optionalColumns = new Set(["registeredToVote", "hasTexasDriversLicense"]);
 
-    for (const [key, value] of Object.entries(data)) {
-      if (allowedFields[key] !== undefined) {
-        const fieldName = key.charAt(0).toUpperCase() + key.slice(1);
-        updates.push(`${fieldName} = @${key}`);
-        request.input(key, allowedFields[key], value?.toString().trim() || null);
+    function buildRequest(pool, fields) {
+      const updates = [];
+      const request = pool.request().input("id", sql.Int, id);
+      for (const [key, value] of Object.entries(data)) {
+        if (fields[key] !== undefined) {
+          const fieldName = key.charAt(0).toUpperCase() + key.slice(1);
+          updates.push(`${fieldName} = @${key}`);
+          request.input(key, fields[key], value?.toString().trim() || null);
+        }
       }
+      return { request, updates };
     }
 
-    if (updates.length === 0) {
+    const pool = await getPool();
+    const { request: fullRequest, updates: fullUpdates } = buildRequest(pool, allowedFields);
+
+    if (fullUpdates.length === 0) {
       throw new Error("No valid fields to update");
     }
 
-    updates.push("UpdatedAt = GETUTCDATE()");
+    fullUpdates.push("UpdatedAt = GETUTCDATE()");
 
-    await request.query(`
-      UPDATE dbo.Jurors 
-      SET ${updates.join(", ")} 
-      WHERE JurorId = @id AND IsDeleted = 0
-    `);
+    try {
+      await fullRequest.query(`
+        UPDATE dbo.Jurors
+        SET ${fullUpdates.join(", ")}
+        WHERE JurorId = @id AND IsDeleted = 0
+      `);
+    } catch (sqlErr) {
+      // Fall back without optional columns if they don't exist in this DB
+      const baseFields = Object.fromEntries(
+        Object.entries(allowedFields).filter(([k]) => !optionalColumns.has(k))
+      );
+      const { request: baseRequest, updates: baseUpdates } = buildRequest(pool, baseFields);
+      if (baseUpdates.length === 0) throw sqlErr;
+      baseUpdates.push("UpdatedAt = GETUTCDATE()");
+      await baseRequest.query(`
+        UPDATE dbo.Jurors
+        SET ${baseUpdates.join(", ")}
+        WHERE JurorId = @id AND IsDeleted = 0
+      `);
+    }
 
     return true;
   } catch (error) {
