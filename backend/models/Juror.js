@@ -401,10 +401,12 @@ async function updateJurorProfile(jurorId, data) {
       spouseEmployer: sql.NVarChar,
       employerName: sql.NVarChar,
       employerAddress: sql.NVarChar,
-      yearsInCounty: sql.Int,
+      yearsInCounty: sql.NVarChar,
       ageRange: sql.NVarChar,
       gender: sql.NVarChar,
       education: sql.NVarChar,
+      registeredToVote: sql.NVarChar,
+      hasTexasDriversLicense: sql.NVarChar,
     };
 
     const updates = [];
@@ -414,12 +416,7 @@ async function updateJurorProfile(jurorId, data) {
       if (allowedFields[key] !== undefined) {
         const fieldName = key.charAt(0).toUpperCase() + key.slice(1);
         updates.push(`${fieldName} = @${key}`);
-
-        if (allowedFields[key] === sql.Int) {
-          request.input(key, allowedFields[key], parseInt(value) || null);
-        } else {
-          request.input(key, allowedFields[key], value?.trim() || null);
-        }
+        request.input(key, allowedFields[key], value?.toString().trim() || null);
       }
     }
 

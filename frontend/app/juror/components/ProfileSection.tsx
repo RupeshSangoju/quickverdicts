@@ -22,6 +22,15 @@ type Juror = {
   onboardingCompleted?: boolean;
   phone?: string;
   paymentMethod?: string;
+  ageRange?: string;
+  gender?: string;
+  maritalStatus?: string;
+  yearsInCounty?: string;
+  employerName?: string;
+  spouseEmployer?: string;
+  education?: string;
+  registeredToVote?: string;
+  hasTexasDriversLicense?: string;
 };
 
 export default function ProfileSection() {
@@ -29,6 +38,13 @@ export default function ProfileSection() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showEdit, setShowEdit] = useState(false);
+  const [showEditDemographics, setShowEditDemographics] = useState(false);
+  const [demographicsData, setDemographicsData] = useState({
+    ageRange: "", gender: "", maritalStatus: "", yearsInCounty: "",
+    employerName: "", spouseEmployer: "", education: "",
+    registeredToVote: "", hasTexasDriversLicense: "",
+  });
+  const [savingDemographics, setSavingDemographics] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [deletePassword, setDeletePassword] = useState("");
   const [editData, setEditData] = useState({ name: "", email: "", password: "", phone: "", state: "", county: "" });
@@ -91,7 +107,16 @@ export default function ProfileSection() {
             verified: jurorData.isVerified || jurorData.IsVerified || false,
             verificationStatus: jurorData.verificationStatus || jurorData.VerificationStatus || "pending",
             onboardingCompleted: jurorData.onboardingCompleted || jurorData.OnboardingCompleted || false,
-            paymentMethod: jurorData.paymentMethod || jurorData.PaymentMethod || null
+            paymentMethod: jurorData.paymentMethod || jurorData.PaymentMethod || null,
+            ageRange: jurorData.ageRange || "",
+            gender: jurorData.gender || "",
+            maritalStatus: jurorData.maritalStatus || "",
+            yearsInCounty: jurorData.yearsInCounty || "",
+            employerName: jurorData.employerName || "",
+            spouseEmployer: jurorData.spouseEmployer || "",
+            education: jurorData.education || "",
+            registeredToVote: jurorData.registeredToVote || "",
+            hasTexasDriversLicense: jurorData.hasTexasDriversLicense || "",
           });
         } else {
           setError("Failed to fetch juror details");
@@ -394,6 +419,54 @@ export default function ProfileSection() {
     }
   }
 
+  async function handleSaveDemographics(e: React.FormEvent) {
+    e.preventDefault();
+    setSavingDemographics(true);
+    try {
+      const token = getToken();
+      if (!token) { alert("Authentication token not found."); setSavingDemographics(false); return; }
+      const res = await fetch(`${API_BASE}/api/juror/profile`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({
+          ageRange: demographicsData.ageRange || null,
+          gender: demographicsData.gender || null,
+          maritalStatus: demographicsData.maritalStatus || null,
+          yearsInCounty: demographicsData.yearsInCounty || null,
+          employerName: demographicsData.employerName || null,
+          spouseEmployer: demographicsData.spouseEmployer || null,
+          education: demographicsData.education || null,
+          registeredToVote: demographicsData.registeredToVote || null,
+          hasTexasDriversLicense: demographicsData.hasTexasDriversLicense || null,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setJuror(j => j ? {
+          ...j,
+          ageRange: demographicsData.ageRange,
+          gender: demographicsData.gender,
+          maritalStatus: demographicsData.maritalStatus,
+          yearsInCounty: demographicsData.yearsInCounty,
+          employerName: demographicsData.employerName,
+          spouseEmployer: demographicsData.spouseEmployer,
+          education: demographicsData.education,
+          registeredToVote: demographicsData.registeredToVote,
+          hasTexasDriversLicense: demographicsData.hasTexasDriversLicense,
+        } : j);
+        setShowEditDemographics(false);
+        setSuccessMessage("Demographics updated successfully!");
+        setTimeout(() => setSuccessMessage(""), 5000);
+      } else {
+        alert(data.error || data.message || "Failed to update demographics");
+      }
+    } catch {
+      alert("Failed to update demographics");
+    } finally {
+      setSavingDemographics(false);
+    }
+  }
+
   if (loading) {
     return (
       <main className="flex-1 min-h-screen flex items-center justify-center bg-[#FAF9F6]">
@@ -565,7 +638,7 @@ export default function ProfileSection() {
             </div>
           </div>
 
-          {/* Manage Account */}
+          {/* Manage Account + Demographics */}
           <div className="flex flex-col gap-6 md:w-[45%] w-full">
             <div className="bg-white rounded shadow p-8 w-full" style={{ minHeight: 120, maxWidth: 420, color: "black" }}>
               <h2 className="font-semibold text-lg mb-4" style={{ color: "black" }}>Manage Account</h2>
@@ -576,6 +649,53 @@ export default function ProfileSection() {
                 <AlertCircle className="w-5 h-5 group-hover:scale-110 transition-transform" />
                 Delete Account
               </button>
+            </div>
+
+            {/* Demographics */}
+            <div className="bg-white rounded shadow p-8 w-full" style={{ maxWidth: 420, color: "black" }}>
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="font-semibold text-lg" style={{ color: "black" }}>My Demographics</h2>
+                <button
+                  type="button"
+                  className="px-4 py-1.5 bg-[#0C2D57] text-white rounded-md hover:bg-[#0a2342] text-[14px] font-medium shadow-sm transition"
+                  onClick={() => {
+                    setDemographicsData({
+                      ageRange: juror?.ageRange || "",
+                      gender: juror?.gender || "",
+                      maritalStatus: juror?.maritalStatus || "",
+                      yearsInCounty: juror?.yearsInCounty || "",
+                      employerName: juror?.employerName || "",
+                      spouseEmployer: juror?.spouseEmployer || "",
+                      education: juror?.education || "",
+                      registeredToVote: juror?.registeredToVote || "",
+                      hasTexasDriversLicense: juror?.hasTexasDriversLicense || "",
+                    });
+                    setShowEditDemographics(true);
+                  }}
+                >
+                  Edit
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { label: "Age Range", value: juror?.ageRange },
+                  { label: "Gender", value: juror?.gender },
+                  { label: "Marital Status", value: juror?.maritalStatus },
+                  { label: "Years in County", value: juror?.yearsInCounty },
+                  { label: "Occupation", value: juror?.employerName },
+                  { label: "Spouse's Employer", value: juror?.spouseEmployer },
+                  { label: "Education", value: juror?.education },
+                  { label: "Registered to Vote", value: juror?.registeredToVote },
+                  { label: "TX Driver's License", value: juror?.hasTexasDriversLicense },
+                ].map(({ label, value }) => (
+                  <div key={label}>
+                    <p className="text-[11px] font-semibold text-[#455A7C] uppercase mb-0.5">{label}</p>
+                    <p className="text-[14px] font-medium text-[#0A2342]">
+                      {value || <span className="text-gray-400 italic text-[13px]">Not set</span>}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -770,6 +890,95 @@ export default function ProfileSection() {
                   Go Back
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Demographics Modal */}
+        {showEditDemographics && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-auto">
+            <div
+              className="absolute inset-0 bg-black/10"
+              onClick={() => { if (!savingDemographics) setShowEditDemographics(false); }}
+            />
+            <div className="relative bg-white rounded-lg shadow-2xl p-8 w-full max-w-lg border-4 overflow-y-auto" style={{ borderColor: '#0C2D57', maxHeight: '90vh' }}>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold" style={{ color: '#0C2D57' }}>Edit Demographics</h2>
+                <button onClick={() => { if (!savingDemographics) setShowEditDemographics(false); }} className="text-gray-400 hover:text-gray-600" disabled={savingDemographics}>
+                  <X size={20} />
+                </button>
+              </div>
+              <form onSubmit={handleSaveDemographics} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm text-gray-800 font-medium mb-1">Age Range</label>
+                    <select value={demographicsData.ageRange} onChange={e => setDemographicsData(d => ({ ...d, ageRange: e.target.value }))} className="w-full border rounded px-3 py-2 text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      <option value="">Select</option>
+                      {["18-24","25-29","30-39","40-49","50-59","60-69","70+"].map(o => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-800 font-medium mb-1">Gender</label>
+                    <select value={demographicsData.gender} onChange={e => setDemographicsData(d => ({ ...d, gender: e.target.value }))} className="w-full border rounded px-3 py-2 text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      <option value="">Select</option>
+                      {["Male","Female","Other","Prefer not to say"].map(o => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-800 font-medium mb-1">Marital Status</label>
+                    <select value={demographicsData.maritalStatus} onChange={e => setDemographicsData(d => ({ ...d, maritalStatus: e.target.value }))} className="w-full border rounded px-3 py-2 text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      <option value="">Select</option>
+                      {["Single","Married","Divorced","Widowed","Prefer not to say"].map(o => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-800 font-medium mb-1">Years in County</label>
+                    <select value={demographicsData.yearsInCounty} onChange={e => setDemographicsData(d => ({ ...d, yearsInCounty: e.target.value }))} className="w-full border rounded px-3 py-2 text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      <option value="">Select</option>
+                      {["1 - 10","11 - 20","21 - 30","30+"].map(o => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-800 font-medium mb-1">Education Level</label>
+                    <select value={demographicsData.education} onChange={e => setDemographicsData(d => ({ ...d, education: e.target.value }))} className="w-full border rounded px-3 py-2 text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      <option value="">Select</option>
+                      {["High School","Associate's Degree","Bachelor's Degree","Master's Degree","Doctorate"].map(o => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-800 font-medium mb-1">Registered to Vote</label>
+                    <select value={demographicsData.registeredToVote} onChange={e => setDemographicsData(d => ({ ...d, registeredToVote: e.target.value }))} className="w-full border rounded px-3 py-2 text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      <option value="">Select</option>
+                      {["Yes","No","I'm not sure"].map(o => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-sm text-gray-800 font-medium mb-1">TX Driver&apos;s License</label>
+                    <select value={demographicsData.hasTexasDriversLicense} onChange={e => setDemographicsData(d => ({ ...d, hasTexasDriversLicense: e.target.value }))} className="w-full border rounded px-3 py-2 text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      <option value="">Select</option>
+                      {["Yes","No","I'm not sure"].map(o => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-800 font-medium mb-1">Occupation / Employer Name</label>
+                  <input type="text" value={demographicsData.employerName} onChange={e => setDemographicsData(d => ({ ...d, employerName: e.target.value }))} className="w-full border rounded px-3 py-2 text-black focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., Lone Star Innovations LLC" />
+                </div>
+                {demographicsData.maritalStatus === "Married" && (
+                  <div>
+                    <label className="block text-sm text-gray-800 font-medium mb-1">Spouse&apos;s Employer</label>
+                    <input type="text" value={demographicsData.spouseEmployer} onChange={e => setDemographicsData(d => ({ ...d, spouseEmployer: e.target.value }))} className="w-full border rounded px-3 py-2 text-black focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., Dallas Marketing Services" />
+                  </div>
+                )}
+                <div className="flex gap-2 mt-6">
+                  <button type="submit" disabled={savingDemographics} className="px-4 py-2 bg-[#0C2D57] text-white rounded hover:bg-[#0a2342] min-w-[100px] disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer">
+                    {savingDemographics ? "Saving..." : "Save"}
+                  </button>
+                  <button type="button" onClick={() => setShowEditDemographics(false)} disabled={savingDemographics} className="px-4 py-2 text-gray-800 bg-gray-200 rounded hover:bg-gray-300 transition-colors cursor-pointer">
+                    Cancel
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}

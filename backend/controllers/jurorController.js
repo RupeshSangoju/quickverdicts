@@ -119,6 +119,8 @@ async function updateProfileHandler(req, res) {
       "ageRange",
       "gender",
       "education",
+      "registeredToVote",
+      "hasTexasDriversLicense",
     ];
 
     // Filter only allowed fields
@@ -185,18 +187,6 @@ async function updateProfileHandler(req, res) {
         return res.status(400).json({
           success: false,
           error: "County cannot be empty",
-          code: "INVALID_INPUT",
-        });
-      }
-    }
-
-    // Validate years in county if provided
-    if (updates.yearsInCounty !== undefined) {
-      const years = parseInt(updates.yearsInCounty);
-      if (isNaN(years) || years < 0 || years > 100) {
-        return res.status(400).json({
-          success: false,
-          error: "Years in county must be between 0 and 100",
           code: "INVALID_INPUT",
         });
       }
