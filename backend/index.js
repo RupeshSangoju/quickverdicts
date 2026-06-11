@@ -536,6 +536,28 @@ async function startServer() {
     }
     // ── End auto-migration ──
 
+    // ── Auto-migration: add RegisteredToVote / HasTexasDriversLicense to Jurors ──
+    try {
+      await pool.request().query(`
+        IF NOT EXISTS (
+          SELECT 1 FROM sys.columns
+          WHERE object_id = OBJECT_ID('dbo.Jurors') AND name = 'RegisteredToVote'
+        )
+          ALTER TABLE dbo.Jurors ADD RegisteredToVote NVARCHAR(50) NULL;
+      `);
+      await pool.request().query(`
+        IF NOT EXISTS (
+          SELECT 1 FROM sys.columns
+          WHERE object_id = OBJECT_ID('dbo.Jurors') AND name = 'HasTexasDriversLicense'
+        )
+          ALTER TABLE dbo.Jurors ADD HasTexasDriversLicense NVARCHAR(50) NULL;
+      `);
+      console.log("✅ Migration: RegisteredToVote / HasTexasDriversLicense columns ensured\n");
+    } catch (migrationErr) {
+      console.warn("⚠️  RegisteredToVote/HasTexasDriversLicense migration skipped:", migrationErr.message);
+    }
+    // ── End auto-migration ──
+
     const PORT = process.env.PORT || 4000;
     const HOST = process.env.HOST || "0.0.0.0";
 
