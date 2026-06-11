@@ -4381,7 +4381,7 @@ export default function AdminDashboard() {
             {rejectionReason === "scheduling_conflict" && (
               <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
                 <h4 className="text-sm font-semibold text-blue-900 mb-3">Suggest Alternative Time Slots (All 3 required) <span className="text-red-600">*</span></h4>
-                <p className="text-xs text-blue-700 mb-3">📅 Weekdays only • 🕐 Business hours: 9:00 AM - 5:00 PM</p>
+                <p className="text-xs text-blue-700 mb-3">📅 Weekdays only • 🕐 Business hours: 9:00 AM - 6:00 PM</p>
                 <div className="space-y-3">
                   {suggestedSlots.map((slot, idx) => (
                     <div key={idx}>
