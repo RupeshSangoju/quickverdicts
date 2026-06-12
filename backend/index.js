@@ -558,6 +558,21 @@ async function startServer() {
     }
     // ── End auto-migration ──
 
+    // ── Auto-migration: add NotificationsSent to Cases ──
+    try {
+      await pool.request().query(`
+        IF NOT EXISTS (
+          SELECT 1 FROM sys.columns
+          WHERE object_id = OBJECT_ID('dbo.Cases') AND name = 'NotificationsSent'
+        )
+          ALTER TABLE dbo.Cases ADD NotificationsSent BIT NULL DEFAULT 0;
+      `);
+      console.log("✅ Migration: NotificationsSent column ensured\n");
+    } catch (migrationErr) {
+      console.warn("⚠️  NotificationsSent migration skipped:", migrationErr.message);
+    }
+    // ── End auto-migration ──
+
     const PORT = process.env.PORT || 4000;
     const HOST = process.env.HOST || "0.0.0.0";
 
