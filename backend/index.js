@@ -270,9 +270,22 @@ app.use(cookieParser());
 // ============================================
 // BODY PARSERS
 // ============================================
-// Increased limits to 4GB to support large file uploads (videos, document bundles)
-app.use(express.json({ limit: "4gb" }));
-app.use(express.urlencoded({ extended: true, limit: "4gb" }));
+// /api/payments/webhook must receive a raw Buffer so Stripe can verify the
+// HMAC signature. Every other route gets the normal JSON parser.
+app.use((req, res, next) => {
+  if (req.originalUrl === "/api/payments/webhook") {
+    express.raw({ type: "*/*" })(req, res, next);
+  } else {
+    express.json({ limit: "4gb" })(req, res, next);
+  }
+});
+app.use((req, res, next) => {
+  if (req.originalUrl !== "/api/payments/webhook") {
+    express.urlencoded({ extended: true, limit: "4gb" })(req, res, next);
+  } else {
+    next();
+  }
+});
 
 // ============================================
 // REQUEST ID MIDDLEWARE
@@ -570,6 +583,34 @@ async function startServer() {
       console.log("✅ Migration: NotificationsSent column ensured\n");
     } catch (migrationErr) {
       console.warn("⚠️  NotificationsSent migration skipped:", migrationErr.message);
+    }
+    // ── End auto-migration ──
+
+    // ── Auto-migration: Stripe payment columns ──
+    try {
+      await pool.request().query(`
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Payments') AND name = 'StripePaymentIntentId')
+          ALTER TABLE dbo.Payments ADD StripePaymentIntentId NVARCHAR(255) NULL;
+      `);
+      await pool.request().query(`
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Payments') AND name = 'CompletedAt')
+          ALTER TABLE dbo.Payments ADD CompletedAt DATETIME NULL;
+      `);
+      await pool.request().query(`
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Payments') AND name = 'ErrorMessage')
+          ALTER TABLE dbo.Payments ADD ErrorMessage NVARCHAR(1000) NULL;
+      `);
+      await pool.request().query(`
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Payments') AND name = 'OriginalPaymentId')
+          ALTER TABLE dbo.Payments ADD OriginalPaymentId INT NULL;
+      `);
+      await pool.request().query(`
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Attorneys') AND name = 'StripeCustomerId')
+          ALTER TABLE dbo.Attorneys ADD StripeCustomerId NVARCHAR(255) NULL;
+      `);
+      console.log("✅ Migration: Stripe columns ensured (Payments + Attorneys)\n");
+    } catch (migrationErr) {
+      console.warn("⚠️  Stripe columns migration skipped:", migrationErr.message);
     }
     // ── End auto-migration ──
 

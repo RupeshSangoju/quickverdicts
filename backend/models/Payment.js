@@ -385,6 +385,149 @@ async function processRefund(paymentId, refundAmount, reason) {
 }
 
 // ============================================
+// STRIPE-SPECIFIC OPERATIONS
+// ============================================
+
+/**
+ * Create a payment record tied to a Stripe PaymentIntent
+ */
+async function createPaymentIntent(data) {
+  try {
+    const pool = await poolPromise;
+    const result = await pool
+      .request()
+      .input("caseId", sql.Int, parseInt(data.caseId))
+      .input("userId", sql.Int, parseInt(data.attorneyId))
+      .input("userType", sql.NVarChar, "attorney")
+      .input("amount", sql.Decimal(10, 2), parseFloat(data.amount))
+      .input("paymentMethod", sql.NVarChar, data.paymentMethod || "card")
+      .input("paymentType", sql.NVarChar, PAYMENT_TYPES.CASE_FILING)
+      .input("status", sql.NVarChar, data.status || PAYMENT_STATUSES.PENDING)
+      .input("stripePaymentIntentId", sql.NVarChar, data.stripePaymentIntentId)
+      .query(`
+        INSERT INTO dbo.Payments (
+          CaseId, UserId, UserType, Amount, PaymentMethod, PaymentType,
+          Status, StripePaymentIntentId, CreatedAt, UpdatedAt
+        ) VALUES (
+          @caseId, @userId, @userType, @amount, @paymentMethod, @paymentType,
+          @status, @stripePaymentIntentId, GETUTCDATE(), GETUTCDATE()
+        );
+        SELECT SCOPE_IDENTITY() AS PaymentId;
+      `);
+    return result.recordset[0].PaymentId;
+  } catch (error) {
+    console.error("Error creating payment intent record:", error);
+    throw error;
+  }
+}
+
+/**
+ * Find a payment record by Stripe PaymentIntent ID
+ * Returns UserId aliased as AttorneyId for route-level ownership checks
+ */
+async function findByStripeIntentId(stripePaymentIntentId) {
+  try {
+    const pool = await poolPromise;
+    const result = await pool
+      .request()
+      .input("stripeId", sql.NVarChar, stripePaymentIntentId)
+      .query(`
+        SELECT p.*, p.UserId AS AttorneyId, c.CaseTitle
+        FROM dbo.Payments p
+        LEFT JOIN dbo.Cases c ON p.CaseId = c.CaseId
+        WHERE p.StripePaymentIntentId = @stripeId
+      `);
+    return result.recordset[0] || null;
+  } catch (error) {
+    console.error("Error finding payment by Stripe intent ID:", error);
+    throw error;
+  }
+}
+
+/**
+ * Update payment status using Stripe PaymentIntent ID (used by webhook)
+ */
+async function updatePaymentStatusByStripeId(stripePaymentIntentId, status) {
+  try {
+    const validStatuses = Object.values(PAYMENT_STATUSES);
+    if (!validStatuses.includes(status)) {
+      throw new Error(`Invalid status: ${status}`);
+    }
+    const pool = await poolPromise;
+    const request = pool
+      .request()
+      .input("stripeId", sql.NVarChar, stripePaymentIntentId)
+      .input("status", sql.NVarChar, status);
+
+    let query = `
+      UPDATE dbo.Payments
+      SET Status = @status, UpdatedAt = GETUTCDATE()
+    `;
+    if (status === PAYMENT_STATUSES.COMPLETED) {
+      query += ", CompletedAt = GETUTCDATE()";
+    }
+    query += " WHERE StripePaymentIntentId = @stripeId";
+
+    await request.query(query);
+  } catch (error) {
+    console.error("Error updating payment status by Stripe ID:", error);
+    throw error;
+  }
+}
+
+/**
+ * Get all payments made by an attorney with pagination
+ */
+async function getPaymentsByAttorney(attorneyId, page = 1, limit = 20) {
+  try {
+    const id = parseInt(attorneyId, 10);
+    if (isNaN(id) || id <= 0) throw new Error("Valid attorney ID is required");
+
+    const safeLimit = Math.min(100, Math.max(1, parseInt(limit) || 20));
+    const safePage = Math.max(1, parseInt(page) || 1);
+    const offset = (safePage - 1) * safeLimit;
+
+    const pool = await poolPromise;
+
+    const countResult = await pool
+      .request()
+      .input("userId", sql.Int, id)
+      .query(`
+        SELECT COUNT(*) AS total FROM dbo.Payments
+        WHERE UserId = @userId AND UserType = 'attorney'
+      `);
+    const total = countResult.recordset[0].total;
+
+    const dataResult = await pool
+      .request()
+      .input("userId", sql.Int, id)
+      .input("limit", sql.Int, safeLimit)
+      .input("offset", sql.Int, offset)
+      .query(`
+        SELECT p.*, c.CaseTitle
+        FROM dbo.Payments p
+        LEFT JOIN dbo.Cases c ON p.CaseId = c.CaseId
+        WHERE p.UserId = @userId AND p.UserType = 'attorney'
+        ORDER BY p.CreatedAt DESC
+        OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
+      `);
+
+    return {
+      data: dataResult.recordset,
+      pagination: {
+        page: safePage,
+        limit: safeLimit,
+        total,
+        totalPages: Math.ceil(total / safeLimit),
+      },
+    };
+  } catch (error) {
+    console.error("Error getting payments by attorney:", error);
+    throw error;
+  }
+}
+
+// ============================================
 // EXPORTS
 // ============================================
 
@@ -399,13 +542,19 @@ module.exports = {
   updatePaymentStatus,
   findById,
 
+  // Stripe-specific
+  createPaymentIntent,
+  findByStripeIntentId,
+  updatePaymentStatusByStripeId,
+  getPaymentsByAttorney,
+
   // Query operations
   getPaymentsByCase,
   getPaymentsByUser,
 
   // Refunds
-  processRefund, // NEW
+  processRefund,
 
   // Statistics
-  getPaymentStatistics, // NEW
+  getPaymentStatistics,
 };

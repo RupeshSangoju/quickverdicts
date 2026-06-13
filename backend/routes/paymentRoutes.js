@@ -69,6 +69,45 @@ const generalPaymentLimiter = rateLimit({
 });
 
 // ============================================
+// WEBHOOK ROUTE (MUST be before authMiddleware — Stripe sends no JWT)
+// Body is already a raw Buffer because index.js skips express.json() for this path
+// ============================================
+
+router.post("/webhook", async (req, res) => {
+  try {
+    if (!stripe || !stripeWebhookSecret) {
+      return res.status(503).send("Webhook not configured");
+    }
+
+    const sig = req.headers["stripe-signature"];
+    let event;
+
+    try {
+      event = stripe.webhooks.constructEvent(req.body, sig, stripeWebhookSecret);
+    } catch (err) {
+      console.error("Webhook signature verification failed:", err.message);
+      return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+
+    switch (event.type) {
+      case "payment_intent.succeeded":
+        await handlePaymentSuccess(event.data.object);
+        break;
+      case "payment_intent.payment_failed":
+        await handlePaymentFailure(event.data.object);
+        break;
+      default:
+        console.log(`Unhandled Stripe event: ${event.type}`);
+    }
+
+    res.json({ received: true });
+  } catch (error) {
+    console.error("Webhook handler error:", error);
+    res.status(500).send("Webhook handler error");
+  }
+});
+
+// ============================================
 // MIDDLEWARE
 // ============================================
 
@@ -154,17 +193,21 @@ async function getOrCreateCustomer(user) {
   // Create new customer
   const customer = await createStripeCustomer(user, user.email);
   
-  // Save customer ID to database
-  const pool = await poolPromise;
-  await pool
-    .request()
-    .input("userId", sql.Int, user.id)
-    .input("customerId", sql.NVarChar(255), customer.id)
-    .query(`
-      UPDATE dbo.Attorneys
-      SET StripeCustomerId = @customerId
-      WHERE AttorneyId = @userId
-    `);
+  // Save customer ID to database (non-fatal if column not yet migrated)
+  try {
+    const pool = await poolPromise;
+    await pool
+      .request()
+      .input("userId", sql.Int, user.id)
+      .input("customerId", sql.NVarChar(255), customer.id)
+      .query(`
+        UPDATE dbo.Attorneys
+        SET StripeCustomerId = @customerId
+        WHERE AttorneyId = @userId
+      `);
+  } catch (dbErr) {
+    console.warn("Could not persist StripeCustomerId (column may not exist yet):", dbErr.message);
+  }
   
   return customer;
 }
@@ -487,61 +530,7 @@ router.get(
   }
 );
 
-// ============================================
-// WEBHOOK ROUTE
-// ============================================
-
-/**
- * POST /api/payments/webhook
- * Stripe webhook handler
- * NOTE: This route should NOT use authMiddleware
- */
-router.post(
-  "/webhook",
-  express.raw({ type: 'application/json' }),
-  async (req, res) => {
-    try {
-      if (!stripe || !stripeWebhookSecret) {
-        return res.status(503).send("Webhook not configured");
-      }
-
-      const sig = req.headers['stripe-signature'];
-      let event;
-
-      try {
-        event = stripe.webhooks.constructEvent(
-          req.body,
-          sig,
-          stripeWebhookSecret
-        );
-      } catch (err) {
-        console.error("Webhook signature verification failed:", err.message);
-        return res.status(400).send(`Webhook Error: ${err.message}`);
-      }
-
-      // Handle the event
-      switch (event.type) {
-        case 'payment_intent.succeeded':
-          const paymentIntent = event.data.object;
-          await handlePaymentSuccess(paymentIntent);
-          break;
-
-        case 'payment_intent.payment_failed':
-          const failedPayment = event.data.object;
-          await handlePaymentFailure(failedPayment);
-          break;
-
-        default:
-          console.log(`Unhandled event type: ${event.type}`);
-      }
-
-      res.json({ received: true });
-    } catch (error) {
-      console.error("Webhook handler error:", error);
-      res.status(500).send("Webhook handler error");
-    }
-  }
-);
+// (webhook is registered before authMiddleware above)
 
 /**
  * Handle successful payment
