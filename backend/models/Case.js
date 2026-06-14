@@ -1382,6 +1382,28 @@ async function getCaseStatistics() {
 // EXPORTS
 // ============================================
 
+async function updateCasePaymentStatus(caseId, status) {
+  try {
+    const id = parseInt(caseId, 10);
+    if (isNaN(id) || id <= 0) throw new Error("Valid case ID is required");
+
+    return await executeQuery(async (pool) => {
+      await pool
+        .request()
+        .input("id", sql.Int, id)
+        .input("status", sql.NVarChar, status)
+        .query(`
+          UPDATE dbo.Cases
+          SET PaymentStatus = @status, UpdatedAt = GETUTCDATE()
+          WHERE CaseId = @id
+        `);
+    });
+  } catch (error) {
+    console.error("❌ [Case.updateCasePaymentStatus] Error:", error.message);
+    throw error;
+  }
+}
+
 module.exports = {
   // Create
   createCase,
@@ -1395,6 +1417,7 @@ module.exports = {
 
   // Update
   updateCaseStatus,
+  updateCasePaymentStatus,
   updateCaseDetails,
   softDeleteCase,
   hardDeleteCase,

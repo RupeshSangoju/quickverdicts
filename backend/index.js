@@ -586,6 +586,18 @@ async function startServer() {
     }
     // ── End auto-migration ──
 
+    // ── Auto-migration: PaymentStatus on Cases ──
+    try {
+      await pool.request().query(`
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Cases') AND name = 'PaymentStatus')
+          ALTER TABLE dbo.Cases ADD PaymentStatus NVARCHAR(50) NULL DEFAULT 'pending';
+      `);
+      console.log("✅ Migration: PaymentStatus column ensured on dbo.Cases\n");
+    } catch (migrationErr) {
+      console.warn("⚠️  PaymentStatus migration skipped:", migrationErr.message);
+    }
+    // ── End auto-migration ──
+
     // ── Auto-migration: Stripe payment columns ──
     try {
       await pool.request().query(`
