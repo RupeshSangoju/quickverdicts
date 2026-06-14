@@ -479,57 +479,6 @@ router.get(
   }
 );
 
-/**
- * GET /api/payments/:paymentId
- * Get specific payment details
- */
-router.get(
-  "/:paymentId",
-  generalPaymentLimiter,
-  requireAttorney,
-  async (req, res) => {
-    try {
-      const paymentId = parseInt(req.params.paymentId, 10);
-      const attorneyId = req.user.id;
-
-      if (isNaN(paymentId) || paymentId <= 0) {
-        return res.status(400).json({
-          success: false,
-          message: "Valid payment ID is required",
-        });
-      }
-
-      const payment = await Payment.findById(paymentId);
-
-      if (!payment) {
-        return res.status(404).json({
-          success: false,
-          message: "Payment not found",
-        });
-      }
-
-      // Verify attorney owns this payment
-      if (payment.AttorneyId !== attorneyId) {
-        return res.status(403).json({
-          success: false,
-          message: "Access denied",
-        });
-      }
-
-      res.json({
-        success: true,
-        payment,
-      });
-    } catch (error) {
-      console.error("Get payment details error:", error);
-      res.status(500).json({
-        success: false,
-        message: "Failed to fetch payment details",
-      });
-    }
-  }
-);
-
 // (webhook is registered before authMiddleware above)
 
 /**
@@ -651,6 +600,57 @@ router.get("/health", (req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+// ============================================
+// PAYMENT BY ID — must be last GET route so named paths above are not swallowed
+// ============================================
+
+/**
+ * GET /api/payments/:paymentId
+ * Get specific payment details
+ */
+router.get(
+  "/:paymentId",
+  generalPaymentLimiter,
+  requireAttorney,
+  async (req, res) => {
+    try {
+      const paymentId = parseInt(req.params.paymentId, 10);
+      const attorneyId = req.user.id;
+
+      if (isNaN(paymentId) || paymentId <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Valid payment ID is required",
+        });
+      }
+
+      const payment = await Payment.findById(paymentId);
+
+      if (!payment) {
+        return res.status(404).json({
+          success: false,
+          message: "Payment not found",
+        });
+      }
+
+      if (payment.AttorneyId !== attorneyId) {
+        return res.status(403).json({
+          success: false,
+          message: "Access denied",
+        });
+      }
+
+      res.json({ success: true, payment });
+    } catch (error) {
+      console.error("Get payment details error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch payment details",
+      });
+    }
+  }
+);
 
 // ============================================
 // ERROR HANDLER
