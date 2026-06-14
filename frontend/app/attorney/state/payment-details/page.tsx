@@ -20,6 +20,7 @@ const tierAmounts: Record<string, number> = {
 };
 
 const CARD_ELEMENT_OPTIONS = {
+  hidePostalCode: true,
   style: {
     base: {
       color: "#16305B",
