@@ -45,7 +45,7 @@ async function checkAndTransitionTrials() {
 
     // War room opening is now handled immediately when the attorney submits the war room.
     // Scheduler will no longer auto-toggle `AttorneyStatus` based on time.
-    console.log("🚪 Scheduler: war room auto-open disabled; handled on submit.");
+    //console.log("🚪 Scheduler: war room auto-open disabled; handled on submit.");
 
     // ============================================
     // STEP 2: Send Notifications (NOTIFICATION_MINUTES before trial)
