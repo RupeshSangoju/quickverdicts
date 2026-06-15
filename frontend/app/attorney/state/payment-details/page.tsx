@@ -10,7 +10,10 @@ import { useProtectedRoute } from "@/hooks/useProtectedRoute";
 import Stepper from "../../components/Stepper";
 import FormContainer from "../../components/FormContainer";
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "");
+const stripePromise = loadStripe(
+  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ||
+  "pk_test_51TU6lBCxJ6zxZKQSKejb6OtlMKNEQUFFr1jrJqhNRD5bdrH2MxMN52T1IVubfTKU3i210IuRRhi5GyeAWMrZ2giY00X6r75QVT"
+);
 
 const tierAmounts: Record<string, number> = {
   "Early Adopter": 2000,
