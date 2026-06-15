@@ -10,12 +10,14 @@
 .env.local
 .env.*.local
 .env.development
-
 .env.test
 
 # Keep .env.example files for documentation
 !.env.example
 !**/.env.example
+# .env.production is intentionally NOT ignored so frontend NEXT_PUBLIC_
+# vars (publishable/public keys) can be baked into the Next.js build
+!frontend/.env.production
 
 # Azure/AWS credentials
 *.pem

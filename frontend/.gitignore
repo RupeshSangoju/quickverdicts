@@ -33,6 +33,7 @@ yarn-error.log*
 # env files (CRITICAL - contains sensitive data!)
 .env*
 !.env.example
+!.env.production
 
 # vercel
 .vercel
