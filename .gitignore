@@ -10,7 +10,7 @@
 .env.local
 .env.*.local
 .env.development
-.env.production
+
 .env.test
 
 # Keep .env.example files for documentation
