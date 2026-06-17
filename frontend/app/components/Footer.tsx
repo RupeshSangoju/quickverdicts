@@ -14,12 +14,12 @@ const Footer: FC = () => {
               <p className="text-gray-300">Hours:</p>
               <p className="text-gray-300">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;8:00 a.m. to 5:00 p.m. M-F </p>
               <p className='text-gray-300'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;9:00 a.m. to 2:00 p.m. Sat.</p>
-              <p className="text-gray-300">QVTrial@quickverdicts.com</p>
+              <p className="text-gray-300">QVTrials@quickverdicts.com</p>
             </div>
 
           {/* Bottom Links */}
           <div className="flex flex-wrap gap-6 mt-8 text-sm">
-              <Link href="/" className="hover:text-white">Quick Verdicts<sup className="text-[12px]">™</sup></Link>
+              <Link href="/" className="hover:text-white">© Adaki, LLC d/b/a Quick Verdicts TM 2026 All rights reserved<sup className="text-[12px]">™</sup></Link>
               <span className="hover:text-white">Privacy</span>
                 <a
     href="https://documents83y89129y.blob.core.windows.net/new/QV%20Privacy%20Policy.pdf"

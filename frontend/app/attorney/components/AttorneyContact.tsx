@@ -148,10 +148,10 @@ export default function AttorneyContact({ onBack }: { onBack: () => void }) {
                     Get a response within 24 hours
                   </p>
                   <a
-                    href="mailto:QVTrial@quickverdicts.com"
+                    href="mailto:QVTrials@quickverdicts.com"
                     className="text-lg font-semibold text-[#16305B] hover:text-[#1e417a] transition-colors underline"
                   >
-                    QVTrial@quickverdicts.com
+                    QVTrials@quickverdicts.com
                   </a>
                 </div>
               </div>
