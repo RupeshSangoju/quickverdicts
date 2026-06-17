@@ -170,7 +170,7 @@ export default function JobBoardSection() {
     const data = await response.json();
     if (data.success) {
       // 🔍 DEBUGGING LOGS
-      console.log("=== JOB BOARD - FRONTEND RECEIVED DATA ===");
+      console.log("=== Open Cases - FRONTEND RECEIVED DATA ===");
       console.log("Full response:", data);
       console.log("Cases from data.data.cases:", data.data?.cases);
 
@@ -212,7 +212,7 @@ export default function JobBoardSection() {
           <div className="flex items-start justify-between mb-8">
             <div>
               <h1 className="text-3xl md:text-4xl font-extrabold text-[#0C2D57] leading-tight">
-                Job Board
+                Open Cases
               </h1>
               <p className="mt-2 text-sm text-gray-600">
                 Apply to available trial postings
@@ -228,7 +228,7 @@ export default function JobBoardSection() {
               </div>
               <h2 className="text-2xl font-bold text-gray-900 mb-3">Access Restricted</h2>
               <p className="text-gray-600 mb-4">
-                Your account is pending verification by an administrator. You will be able to access the Job Board section once your account is verified.
+                Your account is pending verification by an administrator. You will be able to access the Open Cases section once your account is verified.
               </p>
               <p className="text-sm text-gray-500">
                 This usually takes 24-48 hours. You'll receive a notification once your account is verified.
@@ -254,7 +254,7 @@ export default function JobBoardSection() {
                 Onboarding Required
               </h2>
               <p className="text-gray-600 mb-2">
-                To access the Job Board and apply for cases, you must
+                To access the Open Cases and apply for cases, you must
                 first complete the onboarding process.
               </p>
               <p className="text-gray-600 mb-6">
@@ -327,7 +327,7 @@ export default function JobBoardSection() {
         <div className="flex items-start justify-between mb-8">
           <div>
             <h1 className="text-3xl md:text-4xl font-extrabold text-[#0C2D57] leading-tight">
-              Job Board
+              Open Cases
             </h1>
             <p className="mt-2 text-sm text-gray-600">
               Apply to available trial postings
@@ -371,7 +371,7 @@ export default function JobBoardSection() {
           </div>
         </div>
 
-        {/* Job Board */}
+        {/* Open Cases */}
         <section>
           {loading ? (
             <div className="flex justify-center items-center py-12">
