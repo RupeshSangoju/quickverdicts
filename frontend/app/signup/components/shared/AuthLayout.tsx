@@ -380,10 +380,17 @@ export function AuthLayout({
         >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-500">
-              <p>© 2026 Quick Verdicts™. All rights reserved.</p>
+              <p className="text-black-300">© Adaki, LLC d/b/a Quick Verdicts <sup className="text-[12px]">™</sup> 2026 All rights reserved.</p>
               <div className="flex items-center gap-4">
-              <Link href="/" className="hover:text-white">Privacy</Link>
-                <a
+                              <a
+    href="https://documents83y89129y.blob.core.windows.net/new/QV Privacy Policy new.pdf"
+    target="_blank"
+    rel="noopener noreferrer"
+    className="hover:underline"
+  >
+    Privacy Policy
+  </a>                
+  <a
     href="https://quickverdictsvideo.blob.core.windows.net/videos/QV%20Terms%20and%20Conditions.pdf"
     target="_blank"
     rel="noopener noreferrer"

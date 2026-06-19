@@ -30,10 +30,10 @@ type CaseData = {
 
 function getJurorCompensation(caseTier: string): number {
   switch (caseTier?.toLowerCase().trim()) {
-    case 'early adopter': return 50;
+    case 'early adopter': return 75;
     case 'tier 1': return 75;
-    case 'tier 2': return 100;
-    case 'tier 3': return 125;
+    case 'tier 2': return 105;
+    case 'tier 3': return 135;
     default: return 50;
   }
 }

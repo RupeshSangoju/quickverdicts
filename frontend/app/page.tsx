@@ -65,7 +65,7 @@ export default function QuickVerdictsLanding() {
             <p className="text-[18px] leading-[1.6] font-medium text-gray-600 max-w-3xl mx-auto mb-10">
 Quick Verdicts is legal tech for mock jury trials.  QV’s platform offers an easy mock trial journey including preparation for attorneys, juror screening, and a virtual jury trial with 6-8 jurors.  Selected jurors get paid for their service.  Flexible hours are available for the convenience of jurors.  Mock trials are scheduled for 2.5 hours, 3.5 hours or 4.5 hours. If 
 you are interested in a Texas county not currently served, email us at 
-QVTrial@quickverdicts.com for possible accommodation.    
+QVTrials@quickverdicts.com for possible accommodation.    
  <br></br>
 Currently serving 
 cases in:            </p>
@@ -103,6 +103,12 @@ cases in:            </p>
         )}
         {selectedState === "texas" && (
           <option value="ravis">Travis</option>
+        )}
+        {selectedState === "texas" && (
+          <option value="collin">Collin</option>
+        )}
+        {selectedState === "texas" && (
+          <option value="denton">Denton</option>
         )}
 
       </select>
@@ -239,7 +245,7 @@ cases in:            </p>
                 <ul className="space-y-2 text-gray-700 ml-4">
                   <li>• Get paid for your time</li>
                   <li>• After-hours slots available</li>
-                  <li>• Apply for cases on Job Board</li>
+                  <li>• Apply for cases on Open Cases</li>
                   <li>• Complete a vetting process</li>
                   <li>• If chosen, Join Trial & deliberate remotely</li>
                   <li>• Your opinion helps the attorneys</li>
@@ -289,7 +295,7 @@ cases in:            </p>
             <div>
               <h3 className="font-bold text-gray-900 mb-2">What does a juror do on Quick Verdicts?</h3>
               <p className="text-gray-600">
-                Jurors sign up and can access a Job Board for cases in their county of residence. If selected, jurors are paid by the case immediately following the case presentation. First time jurors will participate in an onboarding process with a short (and easy!) quiz.Jurors may be asked to decide what caused an accident or an incident and how much money should be awarded to a plaintiff.  
+                Jurors sign up and can access an Open Case in their county of residence. If selected, jurors are paid by the case immediately following the case presentation. First time jurors will participate in an onboarding process with a short (and easy!) quiz. Jurors may be asked to decide what caused an accident or an incident and how much money should be awarded to a plaintiff.  
               </p>
             </div>
           </div>
@@ -326,7 +332,7 @@ cases in:            </p>
               <p className="text-gray-300">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Mon., Wed., Fri.&nbsp;&nbsp;8:00 a.m. to 5:00 p.m. CST </p>
               <p className='text-gray-300'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Tues. & Thurs.&nbsp;&nbsp;&nbsp;&nbsp;9:00 a.m. to 8:30 p.m. CST</p>
               <p className='text-gray-300'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Sat.&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;9:00 a.m. to 2:00 p.m. CST</p>
-              <p className="text-gray-300">QVTrial@quickverdicts.com</p>
+              <p className="text-gray-300">QVTrials@quickverdicts.com</p>
             </div>
             <div>
               <h3 className="font-bold mb-4">Navigation</h3>
@@ -340,7 +346,7 @@ cases in:            </p>
 
           <div className="border-t border-gray-700 pt-8 flex flex-wrap justify-between items-center">
             <div className="flex space-x-6 text-sm text-gray-300">
-              <Link href="/" className="hover:text-white">&copy; 2026 Quick Verdicts<sup className="text-[12px]">™</sup></Link>
+              <p className="text-gray-300">© Adaki, LLC d/b/a Quick Verdicts <sup className="text-[12px]">™</sup> 2026 All rights reserved.</p>
 
                 <a
     href="https://documents83y89129y.blob.core.windows.net/new/QV%20Privacy%20Policy.pdf"

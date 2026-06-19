@@ -238,7 +238,7 @@ export default function JurorSidebar({ selectedSection, onSectionChange, onColla
 
   const mainNav = [
     { id: "home", label: "Home", icon: <Home className="w-6 h-6" />, requiresVerification: false },
-    { id: "jobs", label: "Job Board", icon: <ClipboardType className="w-6 h-6" />, requiresVerification: true },
+    { id: "jobs", label: "Open Cases", icon: <ClipboardType className="w-6 h-6" />, requiresVerification: true },
   ];
 
   const handleSectionChange = (sectionId: string, requiresVerification: boolean) => {

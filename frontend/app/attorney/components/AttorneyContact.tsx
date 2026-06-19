@@ -100,7 +100,7 @@ export default function AttorneyContact({ onBack }: { onBack: () => void }) {
                   <div className="space-y-3">
                     <div className="flex justify-between items-center pb-2 border-b border-gray-100">
                       <span className="font-medium text-gray-700">Mon, Wed, Fri </span>
-                      <span className="text-gray-600">9:00 am – 5:00 pm CST</span>
+                      <span className="text-gray-600">8:00 am – 5:00 pm CST</span>
                     </div>
                     <div className="flex justify-between items-center pb-2 border-b border-gray-100">
                       <span className="font-medium text-gray-700">Tues. & Thurs </span>
@@ -145,10 +145,10 @@ export default function AttorneyContact({ onBack }: { onBack: () => void }) {
                 <div className="flex-1">
                   <h3 className="text-xl font-bold text-[#16305B] mb-2">Email Support</h3>
                   <a
-                    href="mailto:QVTrial@quickverdicts.com"
+                    href="mailto:QVTrials@quickverdicts.com"
                     className="text-lg font-semibold text-[#16305B] hover:text-[#1e417a] transition-colors underline"
                   >
-                    QVTrial@quickverdicts.com
+                    QVTrials@quickverdicts.com
                   </a>
                 </div>
               </div>
