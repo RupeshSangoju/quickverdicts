@@ -19,7 +19,7 @@ const quizQuestions = [
       "All of the above"
     ],
     answer: "All of the above",
-    explanation: "All of these are required for participation in a Quick Verdict trial."
+    explanation: "All of these are required for participation in a Quick Verdicts trial."
   },
   {
     question: "What is the main purpose of Quick Verdicts?",
@@ -276,7 +276,7 @@ export default function JurorQuizOverlay({ open, onClose, onFinish, sidebarColla
                   className="px-8 py-3 rounded-xl font-semibold text-base bg-gradient-to-r from-green-500 to-green-600 text-white hover:shadow-lg transform hover:scale-105 transition-all flex items-center gap-2 cursor-pointer"
                   onClick={onFinish}
                 >
-                  <span>Go to Job Board</span>
+                  <span>Go to Open Cases</span>
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                   </svg>

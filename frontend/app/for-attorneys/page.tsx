@@ -221,19 +221,27 @@ period with the jurors.
           </p>
 
           {/* Video Player - user will replace with YouTube embed */}
-          <div className="relative rounded-lg overflow-hidden aspect-video shadow-lg bg-black">
-            { 
-              /* YouTube iframe */
-              <iframe
-                className="w-full h-full"
-                src={`https://sway.cloud.microsoft/s/a4IsVExPsi6KOpj5/embed`}
-                frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowFullScreen
-              />
-            }
-          </div>
+        <div className="relative rounded-lg overflow-hidden aspect-video shadow-lg bg-black">
+          <iframe
+            className="w-full h-full"
+            src="https://sway.cloud.microsoft/s/a4IsVExPsi6KOpj5/embed"
+            frameBorder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowFullScreen
+          />
+          {/* Blocks clicks on Sway's top-right share/open button */}
+          <div
+            className="absolute top-0 right-5 w-40 h-12 z-10"
+            aria-hidden="true"
+          />
+            {/* Center area */}
+          <div
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
+                    w-3/4 h-3/4 z-10"
+            aria-hidden="true"
+          />
         </div>
+                </div>
       </section>
 
       {/* CTA Section */}

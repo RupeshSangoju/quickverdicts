@@ -500,7 +500,7 @@ export function Step2PersonalDetails({
 
               <div className="space-y-4">
                 <div>
-                  <FormField label="Spouse Employer Name" required>
+                  <FormField label="Spouse’s Name" required>
                     <TextInput
                       placeholder="e.g., Dallas Marketing Services"
                       value={formData.personalDetails1.spouseEmployer}
@@ -529,7 +529,7 @@ export function Step2PersonalDetails({
                 </div>
 
                 <div>
-                  <FormField label="Spouse Employer Address" required>
+                  <FormField label="Spouse Employer Name" required>
                     <TextInput
                       placeholder="e.g., 1425 Mockingbird Plaza, Suite 320, Dallas, TX 75247"
                       value={formData.personalDetails1.employerAddress}

@@ -217,7 +217,7 @@ export function Step5Success({
                 {[
                   "Log in to your dashboard using the credentials you just created",
                   "Complete onboarding by watching the introduction video and taking the juror quiz",
-                  "Browse available cases on the Job Board and start applying",
+                  "Browse available cases on the Open Cases list and start applying",
                 ].map((text, i) => (
                   <li key={i} className="flex items-start gap-3">
                     <span

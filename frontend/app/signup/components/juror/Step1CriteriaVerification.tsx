@@ -175,11 +175,11 @@ const QUESTIONS = [
   {
     name: "felony" as const,
     label:
-      "Have you been convicted of a felony within the past ten (10) years for which your rights have not been restored?",
+      "Have you been convicted of a felony or any level of theft offense, including theft by check, within the past ten (10) years for which your rights have not been restored?",
   },
   {
     name: "indictment" as const,
-    label: "Are you currently under indictment for or charged with a felony?",
+    label: "Are you currently under indictment for or charged with a felony,or any level of theft, including theft by check?",
   },
   {
     name: "age" as const,
@@ -192,7 +192,7 @@ const QUESTIONS = [
   {
     name: "work1" as const,
     label:
-      "Do you or your spouse, parents, or children work for a law firm, an insurance company a claims adjusting company, or a litigation funding company?",
+      "Do you or your spouse, parents, or children work for a law firm, an insurance company, a claims adjusting company, or a litigation funding company?",
   },
   {
     name: "work2" as const,

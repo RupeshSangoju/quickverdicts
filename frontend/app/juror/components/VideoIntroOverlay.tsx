@@ -118,7 +118,7 @@ export default function VideoIntroOverlay({
         </div>
 
         {/* Sway embed */}
-        <div className="flex-1 overflow-hidden min-h-0">
+        <div className="flex-1 overflow-hidden min-h-0 relative">
           <iframe
             src="https://sway.cloud.microsoft/s/M7ZlONwhbNHR9ohq/embed"
             width="100%"
@@ -137,6 +137,15 @@ export default function VideoIntroOverlay({
               minHeight: "420px",
             }}
           />
+          <div
+    className="absolute top-0 right-7 w-48 h-16 z-10"
+    aria-hidden="true"
+  />
+<div
+  className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
+             w-[95%] h-[95%] z-10"
+  aria-hidden="true"
+/>
         </div>
 
         {/* Footer — progress + continue */}

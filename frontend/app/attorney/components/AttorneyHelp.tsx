@@ -166,11 +166,19 @@ export default function AttorneyHelp({ onContact, onBack }: { onContact: () => v
                   >
 <div className="relative w-full h-52 bg-gradient-to-br from-blue-50 to-gray-100 overflow-hidden">
   {v.iframe ? (
-    <iframe
-      src={v.iframe}
-      className="w-full h-full border-0"
-      allowFullScreen
-    />
+    <>
+      <iframe
+        src={v.iframe}
+        className="w-full h-full border-0"
+        allowFullScreen
+      />
+
+      {/* Block Sway top-right Share/Open button */}
+      <div
+        className="absolute top-0 right-10 w-48 h-16 z-10"
+        aria-hidden="true"
+      />
+    </>
   ) : (
     <>
       <Image
@@ -192,6 +200,7 @@ export default function AttorneyHelp({ onContact, onBack }: { onContact: () => v
     {v.length}
   </div>
 </div>
+
                     <div className="p-4">
                       <h3 className="font-semibold text-[#16305B] mb-1 line-clamp-2 min-h-[48px]">
                         {v.title}
