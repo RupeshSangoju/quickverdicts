@@ -9,6 +9,7 @@ import { Lock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { getToken } from "@/lib/apiClient";
 import { formatDateString } from "@/lib/dateUtils";
+import { getJurorCompensation, getJurorCompensationHours } from "@/lib/jurorCompensation";
 
 function isCaseDayOver(scheduledDate: string): boolean {
   if (!scheduledDate) return false;
@@ -27,16 +28,6 @@ function isTrialDay(scheduledDate: string): boolean {
 const API_BASE = process.env.NEXT_PUBLIC_API_URL
   ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api$/, '')
   : "http://localhost:4000";
-
-function getJurorCompensation(caseTier: string): number {
-  switch (caseTier?.toLowerCase().trim()) {
-    case 'early adopter': return 50;
-    case 'tier 1': return 75;
-    case 'tier 2': return 100;
-    case 'tier 3': return 125;
-    default: return 50;
-  }
-}
 
 type ApprovedCase = {
   ApplicationId: number;
@@ -292,7 +283,9 @@ export default function AssignedCasesSection() {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Compensation:</span>
-                        <span className="font-semibold text-green-600">${getJurorCompensation(caseItem.CaseTier)}</span>
+                        <span className="font-semibold text-green-600">
+                          {getJurorCompensationHours(caseItem.CaseTier)} hours = ${getJurorCompensation(caseItem.CaseTier)}
+                        </span>
                       </div>
                     </div>
 

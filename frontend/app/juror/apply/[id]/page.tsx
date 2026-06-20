@@ -14,6 +14,7 @@ import {
 import { useProtectedRoute } from "@/hooks/useProtectedRoute";
 import { getToken } from "@/lib/apiClient";
 import { formatDateString } from "@/lib/dateUtils";
+import { getJurorCompensation, getJurorCompensationHours } from "@/lib/jurorCompensation";
 import toast from "react-hot-toast";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL 
@@ -35,16 +36,6 @@ type CaseDetails = {
   LawFirmName: string;
   AttorneyName: string;
 };
-
-function getJurorCompensation(caseTier: string): number {
-  switch (caseTier?.toLowerCase().trim()) {
-    case 'early adopter': return 50;
-    case 'tier 1': return 75;
-    case 'tier 2': return 100;
-    case 'tier 3': return 125;
-    default: return 50;
-  }
-}
 
 type VoirDirePart2 = {
   Id: number;
@@ -337,6 +328,7 @@ export default function JurorApplyPage() {
               <div className="text-center">
                 <p className="text-xs text-blue-200 mb-1">Compensation</p>
                 <p className="text-2xl font-bold text-green-300">${getJurorCompensation(caseData.CaseTier)}</p>
+                <p className="text-xs text-blue-200 mt-1">{getJurorCompensationHours(caseData.CaseTier)} hours</p>
               </div>
             </div>
           </div>

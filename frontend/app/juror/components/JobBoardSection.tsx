@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getToken } from "@/lib/apiClient";
 import { formatDateString } from "@/lib/dateUtils";
+import { getJurorCompensation, getJurorCompensationHours } from "@/lib/jurorCompensation";
 
 // Format time to clean format (remove milliseconds)
 function formatTimeClean(timeStr: string): string {
@@ -18,16 +19,6 @@ function formatTimeClean(timeStr: string): string {
   const cleanTime = timeStr.split('.')[0];
   const [hours, minutes] = cleanTime.split(':');
   return `${hours}:${minutes}`;
-}
-
-function getJurorCompensation(caseTier: string): number {
-  switch (caseTier?.toLowerCase().trim()) {
-    case 'early adopter': return 50;
-    case 'tier 1': return 75;
-    case 'tier 2': return 100;
-    case 'tier 3': return 125;
-    default: return 50;
-  }
 }
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL
@@ -446,7 +437,9 @@ export default function JobBoardSection() {
                         </div>
                         <div className="flex items-center justify-between">
                           <span className="text-gray-600">Compensation:</span>
-                          <span className="font-semibold text-green-700">${getJurorCompensation(caseItem.CaseTier)}</span>
+                          <span className="font-semibold text-green-700">
+                            {getJurorCompensationHours(caseItem.CaseTier)} hours = ${getJurorCompensation(caseItem.CaseTier)}
+                          </span>
                         </div>
                       </div>
 
