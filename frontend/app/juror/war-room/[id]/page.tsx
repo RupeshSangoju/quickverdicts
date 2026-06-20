@@ -629,7 +629,7 @@ export default function JurorWarRoomPage() {
             <div>
               <span className="font-semibold text-[#0A2342]">Your Compensation:</span>
               <p className="text-green-700 font-semibold">
-                {getJurorCompensationHours(caseData.CaseTier)} hours = ${getJurorCompensation(caseData.CaseTier)}
+                ${getJurorCompensation(caseData.CaseTier)} for {getJurorCompensationHours(caseData.CaseTier)} hours  
               </p>
             </div>
           </div>
