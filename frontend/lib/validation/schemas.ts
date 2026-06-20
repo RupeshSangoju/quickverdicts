@@ -60,8 +60,8 @@ export const jurorStep1Schema = z.object({
     indictment: z.enum(['yes', 'no'], 'This question is required'),
   })
 }).refine(data => {
-  const { age, citizen, indictment } = data.criteriaAnswers;
-  return age === 'yes' && citizen === 'yes' && indictment === 'no';
+  const { age, citizen, indictment, work1, work2 } = data.criteriaAnswers;
+  return age === 'yes' && citizen === 'yes' && indictment === 'no' && work1 === 'no' && work2 === 'no';
 }, {
   message: 'You do not meet the eligibility requirements for jury service',
   path: ['criteriaAnswers', 'eligibility'],

@@ -19,6 +19,7 @@ const {
   sendEmailVerification,
   sendNotificationEmail,
 } = require("../utils/email");
+const { validateJurorCriteriaResponses } = require("../utils/validator");
 
 /* ===========================================================
    OTP MANAGEMENT (IN-MEMORY STORE)
@@ -733,6 +734,19 @@ async function jurorSignup(req, res) {
         error: "You must accept the user agreement to continue",
         code: "AGREEMENT_REQUIRED",
       });
+    }
+
+    // ✅ VALIDATE ELIGIBILITY CRITERIA (felony, indictment, age, citizen, work1, work2)
+    if (criteriaResponses) {
+      const criteriaCheck = validateJurorCriteriaResponses(criteriaResponses);
+      if (!criteriaCheck.isValid) {
+        console.warn("⚠️ Juror eligibility criteria failed:", criteriaCheck.error);
+        return res.status(400).json({
+          success: false,
+          error: criteriaCheck.error,
+          code: "ELIGIBILITY_CRITERIA_FAILED",
+        });
+      }
     }
 
     const normalizedEmail = email.toLowerCase().trim();
