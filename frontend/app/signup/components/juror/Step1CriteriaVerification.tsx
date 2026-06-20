@@ -283,10 +283,10 @@ export function Step1CriteriaVerification({
      =========================================================== */
 
   const eligibilityStatus = useMemo(() => {
-    const { felony, indictment, age, citizen } = formData.criteriaAnswers;
+    const { felony, indictment, age, citizen, work1, work2 } = formData.criteriaAnswers;
 
-    // Need at least the first 4 questions answered
-    if (!felony || !indictment || !age || !citizen) {
+    // Need all questions answered
+    if (!felony || !indictment || !age || !citizen || !work1 || !work2) {
       return null;
     }
 
@@ -294,7 +294,9 @@ export function Step1CriteriaVerification({
       felony === "no" &&
       indictment === "no" &&
       age === "yes" &&
-      citizen === "yes";
+      citizen === "yes" &&
+      work1 === "no" &&
+      work2 === "no";
 
     return {
       isEligible,

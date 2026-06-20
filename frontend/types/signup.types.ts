@@ -74,7 +74,9 @@ export interface PersonalDetails1 {
 }
 
 export interface PersonalDetails2 {
-  name: string;
+  firstName: string;
+  middleName?: string;
+  lastName: string;
   phone: string;
   address1: string;
   address2: string;

@@ -445,7 +445,11 @@ function JurorSignupInner() {
 
           const payload = {
             criteriaResponses: JSON.stringify(formData.criteriaAnswers),
-            name: formData.personalDetails2.name,
+            name: [
+              formData.personalDetails2.firstName,
+              formData.personalDetails2.middleName,
+              formData.personalDetails2.lastName,
+            ].filter(Boolean).join(" ").trim(),
             email: formData.email,
             password: formData.password,
             phoneNumber: formData.personalDetails2.phone,

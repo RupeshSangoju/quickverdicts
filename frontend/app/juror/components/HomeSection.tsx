@@ -14,6 +14,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getToken } from "@/lib/apiClient";
 import { formatDateString } from "@/lib/dateUtils";
+import { getJurorCompensation, getJurorCompensationHours } from "@/lib/jurorCompensation";
 import VideoIntroOverlay from "./VideoIntroOverlay";
 import JurorQuizOverlay from "./JurorQuizOverlay";
 
@@ -68,15 +69,6 @@ type PaymentStats = {
   totalTransactions: number;
 };
 
-function getJurorCompensation(caseTier: string): number {
-  switch (caseTier?.toLowerCase().trim()) {
-    case 'early adopter': return 50;
-    case 'tier 1': return 75;
-    case 'tier 2': return 100;
-    case 'tier 3': return 125;
-    default: return 50;
-  }
-}
 
 export default function HomeSection({ sidebarCollapsed }: { sidebarCollapsed: boolean }) {
   const [juror, setJuror] = useState<any>(null);
@@ -1058,7 +1050,9 @@ if (isCaseDayOver(app.ScheduledDate)) {
                             </svg>
                             Pay:
                           </span>
-                          <span className="font-bold text-green-600 text-xs">${getJurorCompensation(app.CaseTier)}</span>
+                          <span className="font-bold text-green-600 text-xs">
+                            {getJurorCompensationHours(app.CaseTier)}h = ${getJurorCompensation(app.CaseTier)}
+                          </span>
                         </div>
                       </div>
                       

@@ -6,6 +6,7 @@ import { ArrowLeftIcon, EyeIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useProtectedRoute } from "@/hooks/useProtectedRoute";
 import { getToken, getUser } from "@/lib/apiClient";
 import { formatDateString } from "@/lib/dateUtils";
+import { getJurorCompensation, getJurorCompensationHours } from "@/lib/jurorCompensation";
 import JurorVerdictForm from "../../cases/[id]/components/JurorVerdictForm";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import toast from "react-hot-toast";
@@ -27,16 +28,6 @@ type CaseData = {
   CaseTier: string;
   State: string;
 };
-
-function getJurorCompensation(caseTier: string): number {
-  switch (caseTier?.toLowerCase().trim()) {
-    case 'early adopter': return 75;
-    case 'tier 1': return 75;
-    case 'tier 2': return 105;
-    case 'tier 3': return 135;
-    default: return 50;
-  }
-}
 
 type Document = {
   Id: number;
@@ -637,7 +628,9 @@ export default function JurorWarRoomPage() {
             </div>
             <div>
               <span className="font-semibold text-[#0A2342]">Your Compensation:</span>
-              <p className="text-green-700 font-semibold">${getJurorCompensation(caseData.CaseTier)}</p>
+              <p className="text-green-700 font-semibold">
+                {getJurorCompensationHours(caseData.CaseTier)} hours = ${getJurorCompensation(caseData.CaseTier)}
+              </p>
             </div>
           </div>
 

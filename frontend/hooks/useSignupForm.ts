@@ -45,7 +45,9 @@ const initialJurorData: JurorFormData = {
     hasTexasDriversLicense: '',
   },
   personalDetails2: {
-    name: '',
+    firstName: '',
+    middleName: '',
+    lastName: '',
     phone: '',
     address1: '',
     address2: '',

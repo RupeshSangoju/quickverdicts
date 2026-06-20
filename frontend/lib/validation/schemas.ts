@@ -60,8 +60,8 @@ export const jurorStep1Schema = z.object({
     indictment: z.enum(['yes', 'no'], 'This question is required'),
   })
 }).refine(data => {
-  const { age, citizen, indictment } = data.criteriaAnswers;
-  return age === 'yes' && citizen === 'yes' && indictment === 'no';
+  const { age, citizen, indictment, work1, work2 } = data.criteriaAnswers;
+  return age === 'yes' && citizen === 'yes' && indictment === 'no' && work1 === 'no' && work2 === 'no';
 }, {
   message: 'You do not meet the eligibility requirements for jury service',
   path: ['criteriaAnswers', 'eligibility'],
@@ -70,10 +70,15 @@ export const jurorStep1Schema = z.object({
 
 export const jurorStep2SubStep2Schema = z.object({
   personalDetails2: z.object({
-    name: z.string()
-      .min(1, 'Name is required')
-      .regex(/^[a-zA-Z\s'\-]+$/, 'Name can only contain letters, spaces, hyphens, and apostrophes')
-      .min(2, 'Name must be at least 2 characters'),
+    firstName: z.string()
+      .min(1, 'First name is required')
+      .regex(/^[a-zA-Z\s'\-]+$/, 'First name can only contain letters, spaces, hyphens, and apostrophes'),
+    middleName: z.string()
+      .regex(/^[a-zA-Z\s'\-]*$/, 'Middle name can only contain letters, spaces, hyphens, and apostrophes')
+      .optional(),
+    lastName: z.string()
+      .min(1, 'Last name is required')
+      .regex(/^[a-zA-Z\s'\-]+$/, 'Last name can only contain letters, spaces, hyphens, and apostrophes'),
     phone: phoneSchema,
     address1: z.string().min(1, 'Address is required'),
     state: z.string().min(1, 'State is required'),

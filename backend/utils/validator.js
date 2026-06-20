@@ -858,35 +858,69 @@ function validateJurorData(data) {
 
   // Validate criteria responses if provided
   if (data.criteriaResponses) {
-    try {
-      const criteria =
-        typeof data.criteriaResponses === "string"
-          ? JSON.parse(data.criteriaResponses)
-          : data.criteriaResponses;
-
-      // Check for disqualifying responses
-      if (criteria.age === "no" || criteria.age === false) {
-        errors.push("You must be at least 18 years old to serve as a juror");
-      }
-
-      if (criteria.citizen === "no" || criteria.citizen === false) {
-        errors.push("You must be a US citizen to serve as a juror");
-      }
-
-      if (criteria.indictment === "yes" || criteria.indictment === true) {
-        errors.push(
-          "Individuals currently under indictment are not eligible to serve"
-        );
-      }
-
-      if (criteria.felony === "yes" || criteria.felony === true) {
-        errors.push(
-          "Individuals with felony convictions may not be eligible to serve"
-        );
-      }
-    } catch (error) {
-      errors.push("Invalid criteria responses format");
+    const criteriaCheck = validateJurorCriteriaResponses(data.criteriaResponses);
+    if (!criteriaCheck.isValid) {
+      errors.push(...criteriaCheck.errors);
     }
+  }
+
+  return {
+    isValid: errors.length === 0,
+    error: errors.length > 0 ? errors.join("; ") : null,
+    errors,
+  };
+}
+
+/**
+ * Validate juror eligibility criteria responses in isolation
+ * (felony, indictment, age, citizen, work1, work2)
+ *
+ * @param {Object|string} criteriaResponses - Criteria answers, JSON string or object
+ * @returns {Object} Validation result with isValid boolean and error message
+ */
+function validateJurorCriteriaResponses(criteriaResponses) {
+  const errors = [];
+
+  try {
+    const criteria =
+      typeof criteriaResponses === "string"
+        ? JSON.parse(criteriaResponses)
+        : criteriaResponses;
+
+    // Check for disqualifying responses
+    if (criteria.age === "no" || criteria.age === false) {
+      errors.push("You must be at least 18 years old to serve as a juror");
+    }
+
+    if (criteria.citizen === "no" || criteria.citizen === false) {
+      errors.push("You must be a US citizen to serve as a juror");
+    }
+
+    if (criteria.indictment === "yes" || criteria.indictment === true) {
+      errors.push(
+        "Individuals currently under indictment are not eligible to serve"
+      );
+    }
+
+    if (criteria.felony === "yes" || criteria.felony === true) {
+      errors.push(
+        "Individuals with felony convictions may not be eligible to serve"
+      );
+    }
+
+    if (criteria.work1 === "yes" || criteria.work1 === true) {
+      errors.push(
+        "Individuals (or their spouse, parents, or children) who work for a law firm, insurance company, claims adjusting company, or litigation funding company are not eligible to serve"
+      );
+    }
+
+    if (criteria.work2 === "yes" || criteria.work2 === true) {
+      errors.push(
+        "Individuals (or their spouse, parents, or children) who have worked for a law firm, insurance company, claims adjusting company, or litigation funding company within the past two years are not eligible to serve"
+      );
+    }
+  } catch (error) {
+    errors.push("Invalid criteria responses format");
   }
 
   return {
@@ -1022,6 +1056,7 @@ module.exports = {
   // Role-specific
   validateAttorneyData,
   validateJurorData,
+  validateJurorCriteriaResponses,
 
   // Constants
   COMMON_PASSWORDS,

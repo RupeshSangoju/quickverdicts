@@ -169,7 +169,11 @@ export function Step4Agreement({
      =========================================================== */
 
   const handlePrint = useCallback(() => {
-    const jurorName = formData.personalDetails2?.name?.trim() || "Juror";
+    const jurorName = [
+      formData.personalDetails2?.firstName,
+      formData.personalDetails2?.middleName,
+      formData.personalDetails2?.lastName,
+    ].filter(Boolean).join(" ").trim() || "Juror";
     const printWindow = window.open("", "_blank");
     if (printWindow) {
       printWindow.document.write(generateAgreementHTML(jurorName));
@@ -183,7 +187,11 @@ export function Step4Agreement({
   }, [formData.personalDetails2]);
 
   const handleDownload = useCallback(() => {
-    const jurorName = formData.personalDetails2?.name?.trim() || "Juror";
+    const jurorName = [
+      formData.personalDetails2?.firstName,
+      formData.personalDetails2?.middleName,
+      formData.personalDetails2?.lastName,
+    ].filter(Boolean).join(" ").trim() || "Juror";
     const date = getFormattedDate();
 
     import("jspdf").then(({ jsPDF }) => {
