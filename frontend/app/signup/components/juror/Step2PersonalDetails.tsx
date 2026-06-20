@@ -830,18 +830,49 @@ export function Step2PersonalDetails({
       <form className="space-y-6" onSubmit={handleSubmit} noValidate>
         {/* Name & Phone */}
         <div className="bg-white rounded-xl border-2 border-gray-200 p-6 shadow-sm space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+              label="First Name"
+              required
+              validationErrors={validationErrors}
+              fieldName="personalDetails2.firstName"
+            >
+              <TextInput
+                placeholder="John"
+                value={formData.personalDetails2.firstName}
+                onChange={(val) => handleTextChange("firstName", val.replace(/[^a-zA-Z\s'\-]/g, ""))}
+                hasError={!!validationErrors["personalDetails2.firstName"]}
+                autoComplete="given-name"
+              />
+            </FormField>
+
+            <FormField
+              label="Middle Name"
+              validationErrors={validationErrors}
+              fieldName="personalDetails2.middleName"
+            >
+              <TextInput
+                placeholder="Michael"
+                value={formData.personalDetails2.middleName || ""}
+                onChange={(val) => handleTextChange("middleName", val.replace(/[^a-zA-Z\s'\-]/g, ""))}
+                hasError={!!validationErrors["personalDetails2.middleName"]}
+                autoComplete="additional-name"
+              />
+            </FormField>
+          </div>
+
           <FormField
-            label="Full Name"
+            label="Last Name"
             required
             validationErrors={validationErrors}
-            fieldName="personalDetails2.name"
+            fieldName="personalDetails2.lastName"
           >
             <TextInput
-              placeholder="John Doe"
-              value={formData.personalDetails2.name}
-              onChange={(val) => handleTextChange("name", val.replace(/[^a-zA-Z\s'\-]/g, ""))}
-              hasError={!!validationErrors["personalDetails2.name"]}
-              autoComplete="name"
+              placeholder="Doe"
+              value={formData.personalDetails2.lastName}
+              onChange={(val) => handleTextChange("lastName", val.replace(/[^a-zA-Z\s'\-]/g, ""))}
+              hasError={!!validationErrors["personalDetails2.lastName"]}
+              autoComplete="family-name"
             />
           </FormField>
 

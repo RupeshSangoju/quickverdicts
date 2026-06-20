@@ -100,7 +100,11 @@ export function Step3EmailPassword({
 
   const passwordValidation = validatePasswordRequirements(
     formData.password || "",
-    formData.personalDetails2?.name || ""
+    [
+      formData.personalDetails2?.firstName,
+      formData.personalDetails2?.middleName,
+      formData.personalDetails2?.lastName,
+    ].filter(Boolean).join(" ").trim()
   );
 
   /* ===========================================================
