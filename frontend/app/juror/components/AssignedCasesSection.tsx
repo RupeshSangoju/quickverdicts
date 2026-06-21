@@ -284,7 +284,7 @@ export default function AssignedCasesSection() {
                       <div className="flex justify-between">
                         <span className="text-gray-600">Compensation:</span>
                         <span className="font-semibold text-green-600">
-                          {getJurorCompensationHours(caseItem.CaseTier)} hours = ${getJurorCompensation(caseItem.CaseTier)}
+                          ${getJurorCompensation(caseItem.CaseTier)} for {getJurorCompensationHours(caseItem.CaseTier)} hours
                         </span>
                       </div>
                     </div>

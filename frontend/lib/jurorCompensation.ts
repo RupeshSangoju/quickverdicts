@@ -21,5 +21,5 @@ export function getJurorCompensationHours(caseTier: string): number {
 }
 
 export function formatJurorCompensation(caseTier: string): string {
-  return `${getJurorCompensationHours(caseTier)} hours = $${getJurorCompensation(caseTier)}`;
+  return `$${getJurorCompensation(caseTier)} for ${getJurorCompensationHours(caseTier)} hours`;
 }

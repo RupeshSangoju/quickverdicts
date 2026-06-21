@@ -1051,7 +1051,7 @@ if (isCaseDayOver(app.ScheduledDate)) {
                             Pay:
                           </span>
                           <span className="font-bold text-green-600 text-xs">
-                            {getJurorCompensationHours(app.CaseTier)}h = ${getJurorCompensation(app.CaseTier)}
+                            ${getJurorCompensation(app.CaseTier)} for {getJurorCompensationHours(app.CaseTier)} hours
                           </span>
                         </div>
                       </div>

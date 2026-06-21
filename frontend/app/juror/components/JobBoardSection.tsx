@@ -438,7 +438,7 @@ export default function JobBoardSection() {
                         <div className="flex items-center justify-between">
                           <span className="text-gray-600">Compensation:</span>
                           <span className="font-semibold text-green-700">
-                            {getJurorCompensationHours(caseItem.CaseTier)} hours = ${getJurorCompensation(caseItem.CaseTier)}
+                            ${getJurorCompensation(caseItem.CaseTier)} for {getJurorCompensationHours(caseItem.CaseTier)} hours
                           </span>
                         </div>
                       </div>
