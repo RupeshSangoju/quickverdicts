@@ -2764,6 +2764,20 @@ export default function AdminDashboard() {
                               </button>
                             </>
                           )}
+                          {attorney.VerificationStatus === "declined" && (
+                            <button
+                              onClick={() => handleVerifyAttorney(attorney.AttorneyId)}
+                              disabled={actionLoading === attorney.AttorneyId}
+                              title="Reverse the decline and verify this attorney"
+                              className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold text-white bg-green-600 hover:bg-green-700 hover:shadow-lg disabled:opacity-50 transition-all cursor-pointer"
+                            >
+                              {actionLoading === attorney.AttorneyId ? (
+                                <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
+                              ) : (
+                                <><CheckCircle2 className="h-4 w-4 mr-1" />Re-verify</>
+                              )}
+                            </button>
+                          )}
                           <button
                             onClick={() => handleDeleteAttorney(attorney.AttorneyId, `${attorney.FirstName} ${attorney.LastName}`)}
                             disabled={actionLoading === attorney.AttorneyId}
@@ -3137,6 +3151,20 @@ export default function AdminDashboard() {
                                 <XCircle className="h-4 w-4 mr-1" />Decline
                               </button>
                             </>
+                          )}
+                          {juror.VerificationStatus === "declined" && (
+                            <button
+                              onClick={() => handleVerifyJuror(juror.JurorId)}
+                              disabled={actionLoading === juror.JurorId}
+                              title="Reverse the decline and verify this juror"
+                              className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold text-white bg-green-600 hover:bg-green-700 hover:shadow-lg disabled:opacity-50 transition-all cursor-pointer"
+                            >
+                              {actionLoading === juror.JurorId ? (
+                                <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
+                              ) : (
+                                <><CheckCircle2 className="h-4 w-4 mr-1" />Re-verify</>
+                              )}
+                            </button>
                           )}
                           <button
                             onClick={() => handleDeleteJurorAccount(juror.JurorId, juror.Name)}

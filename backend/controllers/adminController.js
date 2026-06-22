@@ -606,7 +606,8 @@ async function verifyAttorney(req, res) {
         message: "Attorney declined and notified successfully",
       });
     } else {
-      // Verify the attorney
+      // Verify (or re-verify) the attorney — reactivate in case this is reversing an earlier decline
+      await Attorney.reactivateAccount(attorneyId);
       await Attorney.updateVerificationStatus(attorneyId, status);
 
       // Send verification success email - with error handling
@@ -722,7 +723,8 @@ async function verifyJuror(req, res) {
         message: "Juror declined and notified successfully",
       });
     } else {
-      // Verify the juror
+      // Verify (or re-verify) the juror — reactivate in case this is reversing an earlier decline
+      await Juror.reactivateJuror(jurorId);
       await Juror.updateVerificationStatus(jurorId, status);
 
       // Send verification success email - with error handling
