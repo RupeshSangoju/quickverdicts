@@ -385,6 +385,20 @@ async function attorneyLogin(req, res) {
 
     // Check if account is active
     if (!attorney.IsActive) {
+      if (attorney.IsDeleted) {
+        return res.status(403).json({
+          success: false,
+          error: "Your account has been removed. Please contact support at QVTrial@quickverdicts.com.",
+          code: "ACCOUNT_DELETED",
+        });
+      }
+      if (attorney.VerificationStatus === "declined") {
+        return res.status(403).json({
+          success: false,
+          error: "Your application was not approved. Please contact support at QVTrial@quickverdicts.com if you believe this is an error.",
+          code: "ACCOUNT_DECLINED",
+        });
+      }
       return res.status(403).json({
         success: false,
         error: "Your account has been deactivated. Please contact support.",
@@ -941,6 +955,20 @@ async function jurorLogin(req, res) {
 
     // Check if account is active
     if (!juror.IsActive) {
+      if (juror.IsDeleted) {
+        return res.status(403).json({
+          success: false,
+          error: "Your account has been removed. Please contact support at QVTrial@quickverdicts.com.",
+          code: "ACCOUNT_DELETED",
+        });
+      }
+      if (juror.VerificationStatus === "declined") {
+        return res.status(403).json({
+          success: false,
+          error: "Your application was not approved. Please contact support at QVTrial@quickverdicts.com if you believe this is an error.",
+          code: "ACCOUNT_DECLINED",
+        });
+      }
       return res.status(403).json({
         success: false,
         error: "Your account has been deactivated. Please contact support at QVTrial@quickverdicts.com",
