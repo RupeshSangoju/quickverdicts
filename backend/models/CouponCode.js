@@ -110,7 +110,7 @@ async function validateCoupon(code, caseTier) {
     }
 
     if (!coupon.IsActive) {
-      return { isValid: false, message: "Coupon code is inactive" };
+      return { isValid: false, message: "Coupon code is no longer active (redemption limit reached)" };
     }
 
     if (coupon.ExpiresAt && new Date(coupon.ExpiresAt) < new Date()) {
@@ -135,23 +135,53 @@ async function validateCoupon(code, caseTier) {
 /**
  * Atomically increment redemption counter if under cap
  * Called ONLY on confirmed successful payment
+ * Automatically deactivates the coupon when max redemptions is reached
  * @param {string} code - Coupon code
- * @returns {Promise<boolean>} true if successfully incremented, false if cap already reached
+ * @returns {Promise<Object>} { success: boolean, reachedCap: boolean, redemptionsUsed?: number, maxRedemptions?: number }
  */
 async function incrementRedemptionCounter(code) {
   try {
     const pool = await poolPromise;
-    const result = await pool
+
+    // First, increment if under cap and get current state
+    const updateResult = await pool
       .request()
       .input("code", sql.NVarChar(255), code.trim().toUpperCase())
       .query(`
         UPDATE dbo.CouponCodes
         SET RedemptionsUsed = RedemptionsUsed + 1, UpdatedAt = GETUTCDATE()
-        WHERE Code = @code AND RedemptionsUsed < MaxRedemptions
+        WHERE Code = @code AND RedemptionsUsed < MaxRedemptions;
+
+        SELECT Code, RedemptionsUsed, MaxRedemptions, IsActive FROM dbo.CouponCodes WHERE Code = @code
       `);
 
-    // If no rows affected, the cap was already reached
-    return result.rowsAffected[0] > 0;
+    // If no rows affected by the update, cap was already reached
+    if (updateResult.rowsAffected[0] === 0) {
+      return { success: false, reachedCap: true };
+    }
+
+    const coupon = updateResult.recordset[0];
+    const reachedCap = coupon.RedemptionsUsed >= coupon.MaxRedemptions;
+
+    // If we just reached the cap, auto-deactivate so coupon stops showing on frontend
+    if (reachedCap && coupon.IsActive) {
+      await pool
+        .request()
+        .input("code", sql.NVarChar(255), code.trim().toUpperCase())
+        .query(`
+          UPDATE dbo.CouponCodes
+          SET IsActive = 0, UpdatedAt = GETUTCDATE()
+          WHERE Code = @code
+        `);
+      console.log(`✅ Coupon "${code}" reached cap (${coupon.RedemptionsUsed}/${coupon.MaxRedemptions}) and auto-deactivated`);
+    }
+
+    return {
+      success: true,
+      reachedCap,
+      redemptionsUsed: coupon.RedemptionsUsed,
+      maxRedemptions: coupon.MaxRedemptions,
+    };
   } catch (error) {
     console.error("Error incrementing redemption counter:", error);
     throw error;
