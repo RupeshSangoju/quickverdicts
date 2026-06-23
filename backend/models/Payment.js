@@ -404,13 +404,14 @@ async function createPaymentIntent(data) {
       .input("paymentType", sql.NVarChar, PAYMENT_TYPES.CASE_FILING)
       .input("status", sql.NVarChar, data.status || PAYMENT_STATUSES.PENDING)
       .input("stripePaymentIntentId", sql.NVarChar, data.stripePaymentIntentId)
+      .input("couponCode", sql.NVarChar, data.couponCode || null)
       .query(`
         INSERT INTO dbo.Payments (
           CaseId, UserId, UserType, Amount, PaymentMethod, PaymentType,
-          Status, StripePaymentIntentId, CreatedAt, UpdatedAt
+          Status, StripePaymentIntentId, CouponCode, CreatedAt, UpdatedAt
         ) VALUES (
           @caseId, @userId, @userType, @amount, @paymentMethod, @paymentType,
-          @status, @stripePaymentIntentId, GETUTCDATE(), GETUTCDATE()
+          @status, @stripePaymentIntentId, @couponCode, GETUTCDATE(), GETUTCDATE()
         );
         SELECT SCOPE_IDENTITY() AS PaymentId;
       `);

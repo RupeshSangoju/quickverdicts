@@ -19,6 +19,7 @@ const Case = require("../models/Case");
 const Payment = require("../models/Payment");
 const Event = require("../models/Event");
 const Notification = require("../models/Notification");
+const CouponCode = require("../models/CouponCode");
 
 // Import controllers
 const paymentController = require("../controllers/paymentController");
@@ -235,7 +236,7 @@ router.post(
       }
 
       const caseId = req.validatedCaseId;
-      const { paymentMethod } = req.body; // 'card' or 'google_pay'
+      const { paymentMethod, couponCode } = req.body; // 'card' or 'google_pay', optional couponCode
       const user = req.user;
 
       // Validate payment method
@@ -249,7 +250,7 @@ router.post(
 
       // Get case details
       const caseData = await Case.findById(caseId);
-      
+
       if (!caseData) {
         return res.status(404).json({
           success: false,
@@ -275,8 +276,26 @@ router.post(
 
       // Validate and convert amount
       let amountInCents;
+      let finalAmount = caseData.PaymentAmount;
+      let appliedCoupon = null;
+
       try {
-        amountInCents = validateAmount(caseData.PaymentAmount);
+        // Check if coupon code is provided and valid
+        if (couponCode && couponCode.trim()) {
+          const couponValidation = await CouponCode.validateCoupon(couponCode.trim(), caseData.CaseTier);
+
+          if (couponValidation.isValid) {
+            // Apply discount
+            finalAmount = caseData.PaymentAmount - couponValidation.discountAmount;
+            if (finalAmount < 0) finalAmount = 0;
+            appliedCoupon = couponCode.trim();
+          } else {
+            // Coupon is invalid but we don't reject the payment — fall back to full price
+            console.warn(`Coupon validation failed for ${couponCode}: ${couponValidation.message}`);
+          }
+        }
+
+        amountInCents = validateAmount(finalAmount);
       } catch (error) {
         return res.status(400).json({
           success: false,
@@ -292,7 +311,7 @@ router.post(
         amount: amountInCents,
         currency: 'usd',
         customer: customer.id,
-        payment_method_types: paymentMethod === 'google_pay' 
+        payment_method_types: paymentMethod === 'google_pay'
           ? ['card'] // Google Pay uses card under the hood
           : ['card'],
         metadata: {
@@ -300,6 +319,7 @@ router.post(
           attorneyId: user.id.toString(),
           caseTitle: caseData.CaseTitle,
           paymentMethod: paymentMethod,
+          couponCode: appliedCoupon || "",
         },
         description: `Payment for case: ${caseData.CaseTitle}`,
       });
@@ -309,18 +329,20 @@ router.post(
         caseId,
         attorneyId: user.id,
         stripePaymentIntentId: paymentIntent.id,
-        amount: caseData.PaymentAmount,
+        amount: finalAmount,
         currency: 'USD',
         paymentMethod: paymentMethod,
         status: 'pending',
+        couponCode: appliedCoupon,
       });
 
       res.json({
         success: true,
         clientSecret: paymentIntent.client_secret,
         paymentIntentId: paymentIntent.id,
-        amount: caseData.PaymentAmount,
+        amount: finalAmount,
         currency: 'usd',
+        couponApplied: !!appliedCoupon,
       });
     } catch (error) {
       console.error("Create payment intent error:", error);
@@ -394,6 +416,16 @@ router.post(
 
       // Update case payment status
       await Case.updateCasePaymentStatus(payment.CaseId, 'completed');
+
+      // Increment coupon redemption counter if a coupon was applied
+      if (payment.CouponCode && payment.CouponCode.trim()) {
+        const success = await CouponCode.incrementRedemptionCounter(payment.CouponCode);
+        if (success) {
+          console.log(`Coupon "${payment.CouponCode}" redeemed for case ${payment.CaseId}`);
+        } else {
+          console.warn(`Coupon "${payment.CouponCode}" cap already reached but payment confirmed`);
+        }
+      }
 
       // Create event
       await Event.createEvent({
@@ -487,7 +519,8 @@ router.get(
 async function handlePaymentSuccess(paymentIntent) {
   try {
     const caseId = parseInt(paymentIntent.metadata.caseId);
-    
+    const couponCode = paymentIntent.metadata.couponCode;
+
     // Update payment status
     await Payment.updatePaymentStatusByStripeId(
       paymentIntent.id,
@@ -496,6 +529,16 @@ async function handlePaymentSuccess(paymentIntent) {
 
     // Update case payment status
     await Case.updateCasePaymentStatus(caseId, 'completed');
+
+    // Increment coupon redemption counter if a coupon was applied
+    if (couponCode && couponCode.trim()) {
+      const success = await CouponCode.incrementRedemptionCounter(couponCode);
+      if (success) {
+        console.log(`Coupon "${couponCode}" redeemed for case ${caseId}`);
+      } else {
+        console.warn(`Coupon "${couponCode}" cap already reached but payment succeeded`);
+      }
+    }
 
     console.log(`Payment succeeded for case ${caseId}`);
   } catch (error) {

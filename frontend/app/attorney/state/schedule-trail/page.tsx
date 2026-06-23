@@ -515,14 +515,19 @@ export default function ScheduleTrialPage() {
           const stripe = await loadStripe("pk_test_51TU6lBCxJ6zxZKQSKejb6OtlMKNEQUFFr1jrJqhNRD5bdrH2MxMN52T1IVubfTKU3i210IuRRhi5GyeAWMrZ2giY00X6r75QVT");
           if (!stripe) throw new Error("Stripe failed to load");
 
-          // Create payment intent on backend
+          // Create payment intent on backend (include coupon code if applied)
+          const couponCode = localStorage.getItem("appliedCoupon");
           const piRes = await fetch(`${API_BASE}/api/payments/create-payment-intent`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
               "Authorization": `Bearer ${token}`,
             },
-            body: JSON.stringify({ caseId: createdCaseId, paymentMethod: "card" }),
+            body: JSON.stringify({
+              caseId: createdCaseId,
+              paymentMethod: "card",
+              couponCode: couponCode || undefined,
+            }),
           });
 
           if (!piRes.ok) {
@@ -586,7 +591,8 @@ export default function ScheduleTrialPage() {
       const itemsToClear = [
         "state", "county", "caseJurisdiction", "caseTier", "caseType",
         "caseDescription", "paymentMethod", "paymentAmount",
-        "plaintiffGroups", "defendantGroups", "voirDire2Questions"
+        "plaintiffGroups", "defendantGroups", "voirDire2Questions",
+        "appliedCoupon"
       ];
       itemsToClear.forEach(item => localStorage.removeItem(item));
 

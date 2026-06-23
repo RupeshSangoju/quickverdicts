@@ -51,8 +51,12 @@ function PaymentForm() {
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [couponCode, setCouponCode] = useState("");
+  const [couponDiscount, setCouponDiscount] = useState(0);
+  const [couponValidating, setCouponValidating] = useState(false);
 
   const isCardPayment = paymentMethod === "Credit Card" || paymentMethod === "Debit Card";
+  const displayAmount = parseInt(paymentAmount) - couponDiscount;
 
   useEffect(() => {
     const savedMethod = localStorage.getItem("paymentMethod") || "";
@@ -64,6 +68,42 @@ function PaymentForm() {
     }
     setLoaded(true);
   }, []);
+
+  const handleValidateCoupon = async () => {
+    if (!couponCode.trim()) {
+      setValidationErrors(prev => ({ ...prev, coupon: "Please enter a coupon code" }));
+      return;
+    }
+
+    setCouponValidating(true);
+    try {
+      const response = await fetch("/api/coupons/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: couponCode, caseTier }),
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        setCouponDiscount(data.discountAmount || 0);
+        setValidationErrors(prev => {
+          const { coupon, ...rest } = prev;
+          return rest;
+        });
+        localStorage.setItem("appliedCoupon", couponCode.trim());
+      } else {
+        setValidationErrors(prev => ({ ...prev, coupon: data.message || "Coupon validation failed" }));
+        setCouponDiscount(0);
+        localStorage.removeItem("appliedCoupon");
+      }
+    } catch (error) {
+      console.error("Coupon validation error:", error);
+      setValidationErrors(prev => ({ ...prev, coupon: "Failed to validate coupon" }));
+      setCouponDiscount(0);
+    } finally {
+      setCouponValidating(false);
+    }
+  };
 
   useEffect(() => {
     if (loaded) {
@@ -222,17 +262,55 @@ function PaymentForm() {
               </>
             )}
 
+            {/* Coupon Code Section */}
+            {caseTier === "Tier 1" && (
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
+                <p className="text-sm font-medium text-blue-900 mb-3">
+                  💰 Special Promotion: Use code <strong>TIER1LAUNCH</strong> for $1,000 off Tier 1 (first 50 cases only)
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Enter coupon code"
+                    value={couponCode}
+                    onChange={e => setCouponCode(e.target.value.toUpperCase())}
+                    disabled={couponDiscount > 0}
+                    className="flex-1 px-4 py-2 border border-[#bfc6d1] rounded-md bg-white text-[#16305B] focus:outline-[#16305B] disabled:opacity-50"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleValidateCoupon}
+                    disabled={couponValidating || couponDiscount > 0}
+                    className="px-4 py-2 bg-[#16305B] text-white rounded-md hover:bg-[#0A2342] disabled:opacity-50 transition font-medium"
+                  >
+                    {couponValidating ? "Checking..." : couponDiscount > 0 ? "Applied ✓" : "Apply"}
+                  </button>
+                </div>
+                {validationErrors.coupon && (
+                  <p className="text-red-500 text-sm mt-2">{validationErrors.coupon}</p>
+                )}
+              </div>
+            )}
+
             {/* Payment Amount (read-only, set by tier selection) */}
             <div>
               <label className="block mb-1 text-[#16305B] font-medium">
                 Payment Amount <span className="text-red-500">*</span>
               </label>
-              <input
-                type="text"
-                value={paymentAmount ? `$${parseInt(paymentAmount).toLocaleString()}` : "$0"}
-                disabled
-                className="w-full px-4 py-2 border border-[#bfc6d1] rounded-md bg-gray-100 text-[#16305B] font-semibold text-lg cursor-not-allowed"
-              />
+              <div className="space-y-1">
+                <input
+                  type="text"
+                  value={paymentAmount ? `$${parseInt(paymentAmount).toLocaleString()}` : "$0"}
+                  disabled
+                  className="w-full px-4 py-2 border border-[#bfc6d1] rounded-md bg-gray-100 text-[#16305B] font-semibold text-lg cursor-not-allowed"
+                />
+                {couponDiscount > 0 && (
+                  <div className="flex justify-between text-sm text-green-600 font-medium px-1">
+                    <span>After discount:</span>
+                    <span>${displayAmount.toLocaleString()}</span>
+                  </div>
+                )}
+              </div>
               {caseTier && (
                 <p className="text-sm text-gray-600 mt-2">Fixed amount for {caseTier} cases</p>
               )}

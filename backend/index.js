@@ -143,6 +143,7 @@ const tierUpgradeRoutes = safeRequireRoute(
 );
 const caseRoutes = safeRequireRoute("./routes/caseRoutes", "Cases");
 const paymentRoutes = safeRequireRoute("./routes/paymentRoutes", "Payment");
+const couponRoutes = safeRequireRoute("./routes/couponRoutes", "Coupons");
 const diagnosticRoutes = safeRequireRoute("./routes/diagnosticRoutes", "Diagnostic");
 const juryChargeRoutes = safeRequireRoute("./routes/juryChargeRoutes", "Jury Charge");
 const verdictRoutes = safeRequireRoute("./routes/verdictRoutes", "Verdicts");
@@ -432,6 +433,7 @@ app.use("/api/war-room", warRoomVoirDireRoutes);
 app.use("/api/war-room", warRoomInfoRoutes);
 app.use("/api/war-room", warRoomApplicationRoutes);
 app.use("/api/payments", paymentRoutes);
+app.use("/api/coupons", couponRoutes);
 app.use("/api/files", fileRoutes);
 app.use("/api/diagnostic", diagnosticRoutes);
 app.use("/api/jury-charge", juryChargeRoutes);
@@ -624,7 +626,15 @@ async function startServer() {
     } catch (migrationErr) {
       console.warn("⚠️  Stripe columns migration skipped:", migrationErr.message);
     }
-    // ── End auto-migration ──
+
+    // ── Coupon codes table initialization ──
+    try {
+      const { initializeCouponCodesTable } = require("./utils/initializeDatabase");
+      await initializeCouponCodesTable();
+    } catch (couponErr) {
+      console.warn("⚠️  Coupon codes table initialization skipped:", couponErr.message);
+    }
+    // ── End auto-initialization ──
 
     const PORT = process.env.PORT || 4000;
     const HOST = process.env.HOST || "0.0.0.0";
