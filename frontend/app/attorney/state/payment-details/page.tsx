@@ -12,6 +12,10 @@ import FormContainer from "../../components/FormContainer";
 
 const stripePromise = loadStripe("pk_test_51TU6lBCxJ6zxZKQSKejb6OtlMKNEQUFFr1jrJqhNRD5bdrH2MxMN52T1IVubfTKU3i210IuRRhi5GyeAWMrZ2giY00X6r75QVT");
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL
+  ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api$/, '')
+  : "http://localhost:4000";
+
 const tierAmounts: Record<string, number> = {
   "Early Adopter": 2000,
   "Tier 1": 3500,
@@ -77,7 +81,7 @@ function PaymentForm() {
 
     setCouponValidating(true);
     try {
-      const response = await fetch("/api/coupons/validate", {
+      const response = await fetch(`${API_BASE}/api/coupons/validate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: couponCode, caseTier }),
