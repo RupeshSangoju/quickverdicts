@@ -95,10 +95,12 @@ function PaymentForm() {
           return rest;
         });
         localStorage.setItem("appliedCoupon", couponCode.trim());
+        localStorage.setItem("couponDiscount", String(data.discountAmount || 0));
       } else {
         setValidationErrors(prev => ({ ...prev, coupon: data.message || "Coupon validation failed" }));
         setCouponDiscount(0);
         localStorage.removeItem("appliedCoupon");
+        localStorage.removeItem("couponDiscount");
       }
     } catch (error) {
       console.error("Coupon validation error:", error);

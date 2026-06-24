@@ -22,6 +22,8 @@ export default function ReviewPage() {
     paymentAmount: "",
     cardLastFour: "",
     cardBrand: "",
+    appliedCoupon: "",
+    couponDiscount: "",
   });
   const [plaintiffGroups, setPlaintiffGroups] = useState<any[]>([]);
   const [defendantGroups, setDefendantGroups] = useState<any[]>([]);
@@ -40,6 +42,8 @@ export default function ReviewPage() {
       paymentAmount: localStorage.getItem("paymentAmount") || "",
       cardLastFour: localStorage.getItem("cardLastFour") || "",
       cardBrand: localStorage.getItem("cardBrand") || "",
+      appliedCoupon: localStorage.getItem("appliedCoupon") || "",
+      couponDiscount: localStorage.getItem("couponDiscount") || "",
     });
     setPlaintiffGroups(JSON.parse(localStorage.getItem("plaintiffGroups") || "[]"));
     setDefendantGroups(JSON.parse(localStorage.getItem("defendantGroups") || "[]"));
@@ -147,6 +151,16 @@ export default function ReviewPage() {
               <div className="mb-4">
                 <strong>Payment Amount:</strong>{" "}
                 {form.paymentAmount ? `$${parseInt(form.paymentAmount).toLocaleString()}` : form.paymentAmount}
+                {form.appliedCoupon && parseInt(form.couponDiscount || "0") > 0 && (
+                  <>
+                    <div className="text-sm text-green-600 font-medium mt-1">
+                      Coupon "{form.appliedCoupon}" applied: -${parseInt(form.couponDiscount).toLocaleString()}
+                    </div>
+                    <div className="text-base font-semibold mt-1">
+                      Total Due: ${(parseInt(form.paymentAmount || "0") - parseInt(form.couponDiscount || "0")).toLocaleString()}
+                    </div>
+                  </>
+                )}
               </div>
               <div className="mb-4" style={{ color: "#b33a3a" }}>
                 <strong>Payment is placed on hold until conflicts check is completed.</strong>

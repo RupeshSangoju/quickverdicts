@@ -592,7 +592,7 @@ export default function ScheduleTrialPage() {
         "state", "county", "caseJurisdiction", "caseTier", "caseType",
         "caseDescription", "paymentMethod", "paymentAmount",
         "plaintiffGroups", "defendantGroups", "voirDire2Questions",
-        "appliedCoupon"
+        "appliedCoupon", "couponDiscount"
       ];
       itemsToClear.forEach(item => localStorage.removeItem(item));
 
