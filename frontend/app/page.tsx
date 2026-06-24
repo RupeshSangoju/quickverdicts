@@ -224,7 +224,7 @@ cases in:            </p>
                 <ul className="space-y-2 text-gray-700 ml-4">
                   <li>• Get paid for your time</li>
                   <li>• After-hours slots available</li>
-                  <li>• Apply for cases on Job Board</li>
+                  <li>• Apply for cases on Open Cases</li>
                   <li>• Complete a vetting process</li>
                   <li>• If chosen, Join Trial & deliberate remotely</li>
                   <li>• Your opinion helps the attorneys</li>
@@ -274,7 +274,7 @@ cases in:            </p>
             <div>
               <h3 className="font-bold text-gray-900 mb-2">What does a juror do on Quick Verdicts?</h3>
               <p className="text-gray-600">
-                Jurors sign up and can access a Job Board for cases in their county of residence. If selected, jurors are paid by the case immediately following the case presentation. Jurors are paid by the case immediately following the case presentation.  Jurors may be asked to decide what caused an accident or an incident and how much money should be awarded to a plaintiff.  
+                Jurors sign up and can access a Open Cases for cases in their county of residence. If selected, jurors are paid by the case immediately following the case presentation. Jurors are paid by the case immediately following the case presentation.  Jurors may be asked to decide what caused an accident or an incident and how much money should be awarded to a plaintiff.  
               </p>
             </div>
           </div>
@@ -310,7 +310,7 @@ cases in:            </p>
               <p className="text-gray-300">Hours:</p>
               <p className="text-gray-300">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;8:00 a.m. to 5:00 p.m. M-F </p>
               <p className='text-gray-300'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;9:00 a.m. to 2:00 p.m. Sat.</p>
-              <p className="text-gray-300">QVTrial@quickverdicts.com</p>
+              <p className="text-gray-300">QVTrials@quickverdicts.com</p>
             </div>
             <div>
               <h3 className="font-bold mb-4">Navigation</h3>
@@ -324,7 +324,7 @@ cases in:            </p>
 
           <div className="border-t border-gray-700 pt-8 flex flex-wrap justify-between items-center">
             <div className="flex space-x-6 text-sm text-gray-300">
-              <Link href="/" className="hover:text-white">Quick Verdicts<sup className="text-[12px]">™</sup></Link>
+              <Link href="/" className="hover:text-white">© Adaki, LLC d/b/a Quick Verdicts TM 2026 All rights reserved<sup className="text-[12px]">™</sup></Link>
 
                 <a
     href="https://documents83y89129y.blob.core.windows.net/new/QV%20Privacy%20Policy.pdf"

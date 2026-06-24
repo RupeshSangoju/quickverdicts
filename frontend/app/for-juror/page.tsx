@@ -75,9 +75,9 @@ export default function ForAttorneys() {
             <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center mb-4">
               <span className="text-blue-600 text-xl">💼</span>
             </div>
-            <h3 className="font-semibold text-gray-900">Access the Juror Job Board</h3>
+            <h3 className="font-semibold text-gray-900">Access the Juror Open Cases</h3>
             <p className="text-sm text-gray-600 mt-2 leading-relaxed">
-Browse available cases in your area and choose the ones that fit your schedule. Our dedicated job board makes it easy to find and apply for paid jury opportunities with just a few clicks.
+Browse available cases in your area and choose the ones that fit your schedule. Our dedicated Open Cases makes it easy to find and apply for paid jury opportunities with just a few clicks.
             </p>
           </div>
 
@@ -138,7 +138,7 @@ Browse available cases in your area and choose the ones that fit your schedule. 
                 <div className="flex items-start">
                   <div>
                     <h3 className="font-bold text-gray-900 mb-1">Get Matched</h3>
-                    <p className="text-gray-600">We'll notify you when a case opens in your county. You can also browse active cases on the Juror Job Board.</p>
+                    <p className="text-gray-600">We'll notify you when a case opens in your county. You can also browse active cases on the Juror Open Cases.</p>
                   </div>
                 </div>
                 <div className="flex items-start">
@@ -200,7 +200,7 @@ Browse available cases in your area and choose the ones that fit your schedule. 
             Ready to Get Started?
           </h2>
           <p className="text-gray-600 mb-8">
-            Sign up today or email QVTrial@quickverdicts.com with your name,  state and county and we will notify you when a case in your locale is posted.
+            Sign up today or email QVTrials@quickverdicts.com with your name,  state and county and we will notify you when a case in your locale is posted.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/signup/juror" className="bg-blue-900 text-white px-12 py-3 rounded hover:bg-blue-800 font-medium">
@@ -222,7 +222,7 @@ Browse available cases in your area and choose the ones that fit your schedule. 
               <p className="text-gray-300">Hours:</p>
               <p className="text-gray-300">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;8:00 a.m. to 5:00 p.m. M-F </p>
               <p className='text-gray-300'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;9:00 a.m. to 2:00 p.m. Sat.</p>
-              <p className="text-gray-300">QVTrial@quickverdicts.com</p>
+              <p className="text-gray-300">QVTrials@quickverdicts.com</p>
             </div>
             <div>
               <h3 className="font-bold mb-4">Navigation</h3>
@@ -236,7 +236,7 @@ Browse available cases in your area and choose the ones that fit your schedule. 
 
           <div className="border-t border-gray-700 pt-8 flex flex-wrap justify-between items-center">
             <div className="flex space-x-6 text-sm text-gray-300">
-              <Link href="/" className="hover:text-white">Quick Verdicts<sup className="text-[12px]">™</sup></Link>
+              <Link href="/" className="hover:text-white">© Adaki, LLC d/b/a Quick Verdicts TM 2026 All rights reserved<sup className="text-[12px]">™</sup></Link>
                               <a
     href="https://documents83y89129y.blob.core.windows.net/new/QV%20Privacy%20Policy.pdf"
     target="_blank"
