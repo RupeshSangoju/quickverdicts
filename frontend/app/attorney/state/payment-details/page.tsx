@@ -52,6 +52,7 @@ function PaymentForm() {
   const [caseTier, setCaseTier] = useState("");
   const [cardholderName, setCardholderName] = useState("");
   const [stripeCardError, setStripeCardError] = useState("");
+  const [cardComplete, setCardComplete] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -61,6 +62,7 @@ function PaymentForm() {
 
   const isCardPayment = paymentMethod === "Credit Card" || paymentMethod === "Debit Card";
   const displayAmount = parseInt(paymentAmount) - couponDiscount;
+  const canApplyCoupon = isCardPayment && !!cardholderName.trim() && cardComplete && !stripeCardError;
 
   useEffect(() => {
     const savedMethod = localStorage.getItem("paymentMethod") || "";
@@ -74,7 +76,11 @@ function PaymentForm() {
   }, []);
 
   const handleValidateCoupon = async () => {
-    if (!couponCode.trim()) {
+    if (!canApplyCoupon) {
+      setValidationErrors(prev => ({ ...prev, coupon: "Please enter your cardholder name and complete card details before applying a coupon" }));
+      return;
+    }
+    if (!couponCode) {
       setValidationErrors(prev => ({ ...prev, coupon: "Please enter a coupon code" }));
       return;
     }
@@ -253,7 +259,10 @@ function PaymentForm() {
                   <div className="w-full px-4 py-3 border border-[#bfc6d1] rounded-md bg-white">
                     <CardElement
                       options={CARD_ELEMENT_OPTIONS}
-                      onChange={e => setStripeCardError(e.error?.message || "")}
+                      onChange={e => {
+                        setStripeCardError(e.error?.message || "");
+                        setCardComplete(e.complete);
+                      }}
                     />
                   </div>
                   {(validationErrors.card || stripeCardError) && (
@@ -274,19 +283,24 @@ function PaymentForm() {
                 <p className="text-sm font-medium text-blue-900 mb-3">
                   💰 Special Promotion: Use code <strong>TIER1LAUNCH</strong> for $1,000 off Tier 1 (first 50 cases only)
                 </p>
+                {!canApplyCoupon && couponDiscount === 0 && (
+                  <p className="text-xs text-blue-800 mb-2">
+                    Enter your cardholder name and complete card details above before applying a coupon.
+                  </p>
+                )}
                 <div className="flex gap-2">
                   <input
                     type="text"
                     placeholder="Enter coupon code"
                     value={couponCode}
                     onChange={e => setCouponCode(e.target.value.toUpperCase())}
-                    disabled={couponDiscount > 0}
+                    disabled={couponDiscount > 0 || !canApplyCoupon}
                     className="flex-1 px-4 py-2 border border-[#bfc6d1] rounded-md bg-white text-[#16305B] focus:outline-[#16305B] disabled:opacity-50"
                   />
                   <button
                     type="button"
                     onClick={handleValidateCoupon}
-                    disabled={couponValidating || couponDiscount > 0}
+                    disabled={couponValidating || couponDiscount > 0 || !canApplyCoupon}
                     className="px-4 py-2 bg-[#16305B] text-white rounded-md hover:bg-[#0A2342] disabled:opacity-50 transition font-medium"
                   >
                     {couponValidating ? "Checking..." : couponDiscount > 0 ? "Applied ✓" : "Apply"}

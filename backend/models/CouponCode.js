@@ -81,7 +81,7 @@ async function findByCode(code) {
     const pool = await poolPromise;
     const result = await pool
       .request()
-      .input("code", sql.NVarChar(255), code.trim().toUpperCase())
+      .input("code", sql.NVarChar(255), code.toUpperCase())
       .query(`
         SELECT * FROM dbo.CouponCodes
         WHERE Code = @code
@@ -146,7 +146,7 @@ async function incrementRedemptionCounter(code) {
     // First, increment if under cap and get current state
     const updateResult = await pool
       .request()
-      .input("code", sql.NVarChar(255), code.trim().toUpperCase())
+      .input("code", sql.NVarChar(255), code.toUpperCase())
       .query(`
         UPDATE dbo.CouponCodes
         SET RedemptionsUsed = RedemptionsUsed + 1, UpdatedAt = GETUTCDATE()
@@ -167,7 +167,7 @@ async function incrementRedemptionCounter(code) {
     if (reachedCap && coupon.IsActive) {
       await pool
         .request()
-        .input("code", sql.NVarChar(255), code.trim().toUpperCase())
+        .input("code", sql.NVarChar(255), code.toUpperCase())
         .query(`
           UPDATE dbo.CouponCodes
           SET IsActive = 0, UpdatedAt = GETUTCDATE()

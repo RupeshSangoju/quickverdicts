@@ -280,15 +280,15 @@ router.post(
       let appliedCoupon = null;
 
       try {
-        // Check if coupon code is provided and valid
-        if (couponCode && couponCode.trim()) {
-          const couponValidation = await CouponCode.validateCoupon(couponCode.trim(), caseData.CaseTier);
+        // Check if coupon code is provided and valid (exact match required — no trimming)
+        if (couponCode) {
+          const couponValidation = await CouponCode.validateCoupon(couponCode, caseData.CaseTier);
 
           if (couponValidation.isValid) {
             // Apply discount
             finalAmount = caseData.PaymentAmount - couponValidation.discountAmount;
             if (finalAmount < 0) finalAmount = 0;
-            appliedCoupon = couponCode.trim();
+            appliedCoupon = couponCode;
           } else {
             // Coupon is invalid but we don't reject the payment — fall back to full price
             console.warn(`Coupon validation failed for ${couponCode}: ${couponValidation.message}`);
@@ -418,7 +418,7 @@ router.post(
       await Case.updateCasePaymentStatus(payment.CaseId, 'completed');
 
       // Increment coupon redemption counter if a coupon was applied
-      if (payment.CouponCode && payment.CouponCode.trim()) {
+      if (payment.CouponCode) {
         const success = await CouponCode.incrementRedemptionCounter(payment.CouponCode);
         if (success) {
           console.log(`Coupon "${payment.CouponCode}" redeemed for case ${payment.CaseId}`);
@@ -531,7 +531,7 @@ async function handlePaymentSuccess(paymentIntent) {
     await Case.updateCasePaymentStatus(caseId, 'completed');
 
     // Increment coupon redemption counter if a coupon was applied
-    if (couponCode && couponCode.trim()) {
+    if (couponCode) {
       const success = await CouponCode.incrementRedemptionCounter(couponCode);
       if (success) {
         console.log(`Coupon "${couponCode}" redeemed for case ${caseId}`);
