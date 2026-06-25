@@ -28,8 +28,6 @@ jobs:
           node-version: '22.x'
 
       - name: npm install, build, and test
-        env:
-          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_51TU6lBCxJ6zxZKQSKejb6OtlMKNEQUFFr1jrJqhNRD5bdrH2MxMN52T1IVubfTKU3i210IuRRhi5GyeAWMrZ2giY00X6r75QVT
         run: |
           cd frontend
           npm install

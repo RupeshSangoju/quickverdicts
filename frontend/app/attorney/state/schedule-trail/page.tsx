@@ -512,7 +512,7 @@ export default function ScheduleTrialPage() {
         createdCaseId
       ) {
         try {
-          const stripe = await loadStripe("pk_test_51TU6lBCxJ6zxZKQSKejb6OtlMKNEQUFFr1jrJqhNRD5bdrH2MxMN52T1IVubfTKU3i210IuRRhi5GyeAWMrZ2giY00X6r75QVT");
+          const stripe = await loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY as string);
           if (!stripe) throw new Error("Stripe failed to load");
 
           // Create payment intent on backend (include coupon code if applied)
