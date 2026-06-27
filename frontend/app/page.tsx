@@ -5,14 +5,16 @@ import Link from 'next/link';
 import { Play, Facebook, Twitter, Linkedin, Youtube, Space } from 'lucide-react';
 import Image from "next/image";
 import CookieBanner from '@/components/CookieBanner';
+import CookieGate from '@/components/CookieGate';
 
 export default function QuickVerdictsLanding() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [selectedState, setSelectedState] = useState("");
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
+      <CookieGate>
+        {/* Header */}
+        <header className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <Link href="/" className="flex flex-col items-center">
             {/* Logo placeholder - will be replaced with your image */}
@@ -387,6 +389,7 @@ cases in:            </p>
           </div>
         </div>
       </footer>
+      </CookieGate>
       <CookieBanner />
     </div>
   );

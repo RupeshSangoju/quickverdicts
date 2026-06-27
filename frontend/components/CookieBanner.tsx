@@ -10,13 +10,26 @@ export default function CookieBanner() {
   useEffect(() => {
     // Check if user has already accepted cookies
     const cookieAccepted = localStorage.getItem("cookiePolicy");
-    if (!cookieAccepted) {
+
+    // Also check for cookie
+    const cookieExists = document.cookie.includes("cookiePolicy=accepted");
+
+    if (!cookieAccepted && !cookieExists) {
       setIsVisible(true);
+    } else {
+      setIsVisible(false);
     }
   }, []);
 
   const handleAccept = () => {
+    // Save to both localStorage and cookies
     localStorage.setItem("cookiePolicy", "accepted");
+
+    // Set cookie that expires in 1 year
+    const expirationDate = new Date();
+    expirationDate.setFullYear(expirationDate.getFullYear() + 1);
+    document.cookie = `cookiePolicy=accepted; expires=${expirationDate.toUTCString()}; path=/; SameSite=Lax`;
+
     setIsVisible(false);
   };
 
