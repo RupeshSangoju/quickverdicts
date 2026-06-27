@@ -152,6 +152,7 @@ type Juror = {
   Status?: string;
   IsActive?: boolean;
   OnboardingCompleted?: boolean;
+  EmployerName?: string | null;
   CreatedAt: string;
   VerificationStatus?: string;
   CriteriaResponses?: { question: string; answer: string }[];
@@ -323,7 +324,7 @@ export default function AdminDashboard() {
   const [jurorTotal, setJurorTotal] = useState(0);
   const [loadingJurors, setLoadingJurors] = useState(false);
   const [jurorSearchQuery, setJurorSearchQuery] = useState("");
-  const [jurorSortBy, setJurorSortBy] = useState<"name" | "email" | "county" | "state" | "status" | "jurorStatus" | "onboarding" | "date" | "caseId" | "default">("default");
+  const [jurorSortBy, setJurorSortBy] = useState<"name" | "email" | "county" | "state" | "status" | "employerName" | "onboarding" | "date" | "caseId" | "default">("default");
   const [jurorSortOrder, setJurorSortOrder] = useState<"asc" | "desc">("desc");
   const [expandedJurorCases, setExpandedJurorCases] = useState<Set<number>>(new Set());
   const [expandedAttorneyCases, setExpandedAttorneyCases] = useState<Set<number>>(new Set());
@@ -944,6 +945,7 @@ export default function AdminDashboard() {
         Status: j.Status ?? j.status,
         IsActive: j.IsActive ?? j.isActive,
         OnboardingCompleted: j.OnboardingCompleted ?? j.onboardingCompleted,
+        EmployerName: j.EmployerName ?? j.employerName ?? null,
         CreatedAt: j.CreatedAt ?? j.createdAt,
         VerificationStatus: j.VerificationStatus,
         CriteriaResponses: j.CriteriaResponses ?? j.criteriaResponses ?? [],
@@ -1027,6 +1029,7 @@ export default function AdminDashboard() {
           Status: j.Status ?? j.status,
           IsActive: j.IsActive ?? j.isActive,
           OnboardingCompleted: j.OnboardingCompleted ?? j.onboardingCompleted,
+          EmployerName: j.EmployerName ?? j.employerName ?? null,
           CreatedAt: j.CreatedAt ?? j.createdAt,
           VerificationStatus: j.VerificationStatus,
           CriteriaResponses: j.CriteriaResponses ?? j.criteriaResponses ?? [],
@@ -1473,7 +1476,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleJurorSortChange = (column: "name" | "email" | "county" | "state" | "status" | "jurorStatus" | "onboarding" | "date" | "caseId" | "default") => {
+  const handleJurorSortChange = (column: "name" | "email" | "county" | "state" | "status" | "employerName" | "onboarding" | "date" | "caseId" | "default") => {
     setJurorPage(1); // Reset to first page when sorting changes
     if (jurorSortBy === column) {
       // Cycle through: asc -> desc -> default
@@ -2960,11 +2963,11 @@ export default function AdminDashboard() {
                   </th>
                   <th
                     className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none"
-                    onClick={() => handleJurorSortChange("jurorStatus")}
+                    onClick={() => handleJurorSortChange("employerName")}
                   >
                     <div className="flex items-center gap-2">
-                      Status
-                      {jurorSortBy === "jurorStatus" ? (
+                      Employer Name
+                      {jurorSortBy === "employerName" ? (
                         <span className="text-green-600 font-bold">{jurorSortOrder === "asc" ? "↑" : "↓"}</span>
                       ) : (
                         <span className="text-gray-400">⇅</span>
@@ -3060,9 +3063,11 @@ export default function AdminDashboard() {
                         )}
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${getJurorDecisionClasses(juror.Status)}`}>
-                          {getJurorDecisionLabel(juror.Status)}
-                        </span>
+                        {juror.EmployerName ? (
+                          <span className="text-gray-900 font-medium">{juror.EmployerName}</span>
+                        ) : (
+                          <span className="text-gray-400 italic">—</span>
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center space-x-2">
