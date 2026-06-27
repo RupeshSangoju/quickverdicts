@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { Play, Facebook, Twitter, Linkedin, Youtube, Space } from 'lucide-react';
 import Image from "next/image";
+import CookieBanner from '@/components/CookieBanner';
 
 export default function QuickVerdictsLanding() {
   const [isPlaying, setIsPlaying] = useState(false);
@@ -386,6 +387,7 @@ cases in:            </p>
           </div>
         </div>
       </footer>
+      <CookieBanner />
     </div>
   );
 }
