@@ -6,6 +6,7 @@ import { CallClient, VideoStreamRenderer, LocalVideoStream } from "@azure/commun
 import { AzureCommunicationTokenCredential } from "@azure/communication-common";
 import { ChatClient } from "@azure/communication-chat";
 import { getToken } from "@/lib/apiClient";
+import { useProtectedRoute } from "@/hooks/useProtectedRoute";
 import toast from "react-hot-toast";
 import {
   Video,
@@ -36,6 +37,9 @@ export default function JurorConferenceClient() {
   const { id } = useParams();
   const router = useRouter();
   const caseId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";
+
+  // Protect this route and prevent inactivity logout during conference
+  useProtectedRoute({ requiredUserType: 'juror' });
 
   const [call, setCall] = useState<any>(null);
   const [callState, setCallState] = useState("Initializing...");

@@ -12,6 +12,7 @@ import { AzureCommunicationTokenCredential } from "@azure/communication-common";
 import { ChatClient } from "@azure/communication-chat";
 import RecordRTC, { RecordRTCPromisesHandler } from "recordrtc";
 import { getToken } from "@/lib/apiClient";
+import { useProtectedRoute } from "@/hooks/useProtectedRoute";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import {
   Video,
@@ -42,6 +43,9 @@ export default function AdminConferenceClient() {
   const { id } = useParams();
   const router = useRouter();
   const caseId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";
+
+  // Protect this route and prevent inactivity logout during conference
+  useProtectedRoute({ requiredUserType: 'admin' });
 
   // Call states
   const [call, setCall] = useState<any>(null);

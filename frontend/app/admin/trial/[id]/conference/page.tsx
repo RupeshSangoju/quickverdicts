@@ -1,7 +1,6 @@
 "use client";
 
 import dynamic from 'next/dynamic';
-import { useProtectedRoute } from "@/hooks/useProtectedRoute";
 
 const AdminConferenceClient = dynamic(
   () => import('./AdminConferenceClient'),
@@ -20,6 +19,5 @@ const AdminConferenceClient = dynamic(
 );
 
 export default function AdminConferencePage() {
-  useProtectedRoute({ requiredUserType: 'admin' });
   return <AdminConferenceClient />;
 }
