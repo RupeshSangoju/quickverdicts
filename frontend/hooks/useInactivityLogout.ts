@@ -17,11 +17,12 @@ const ACTIVITY_EVENTS = [
 
 // Routes where inactivity timeout should NOT apply (active trials/calls)
 const EXEMPTED_ROUTES = [
-  /\/juror\/trial\/.*\/conference/,    // Juror trial conference
-  /\/attorney\/trial\/.*\/conference/, // Attorney trial conference
-  /\/admin\/trial\/.*\/conference/,    // Admin trial conference
-  /\/juror\/war-room/,                 // Juror war room
-  /\/attorney\/war-room/,              // Attorney war room
+  /\/juror\/trial\/.*\/conference/,           // Juror trial conference
+  /\/attorney\/trial\/.*\/conference/,        // Attorney trial conference (old structure)
+  /\/attorney\/cases\/.*\/trial\/conference/, // Attorney trial conference (new structure)
+  /\/admin\/trial\/.*\/conference/,           // Admin trial conference
+  /\/juror\/war-room/,                        // Juror war room
+  /\/attorney\/war-room/,                     // Attorney war room
 ] as const;
 
 /**
