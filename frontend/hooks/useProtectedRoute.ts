@@ -3,19 +3,28 @@
 // =============================================
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import { 
-  isAuthenticated, 
-  getUserType, 
-  getUser, 
-  clearAuth 
+import { useRouter, usePathname } from "next/navigation";
+import {
+  isAuthenticated,
+  getUserType,
+  getUser,
+  clearAuth
 } from "@/lib/apiClient";
 
 /* ===========================================================
-   TYPES
+   TYPES & CONSTANTS
    =========================================================== */
 
 type UserType = "attorney" | "juror" | "admin";
+
+// Routes where inactivity timeout should NOT apply (active trials/calls)
+const EXEMPTED_ROUTES = [
+  /\/juror\/trial\/.*\/conference/,    // Juror trial conference
+  /\/attorney\/trial\/.*\/conference/, // Attorney trial conference
+  /\/admin\/trial\/.*\/conference/,    // Admin trial conference
+  /\/juror\/war-room/,                 // Juror war room
+  /\/attorney\/war-room/,              // Attorney war room
+] as const;
 
 interface UseProtectedRouteOptions {
   /**
@@ -93,6 +102,7 @@ export function useProtectedRoute(
   options: UseProtectedRouteOptions
 ): UseProtectedRouteReturn {
   const router = useRouter();
+  const pathname = usePathname();
   const hasChecked = useRef(false);
   const [state, setState] = useState<UseProtectedRouteReturn>({
     isLoading: true,
@@ -132,6 +142,7 @@ export function useProtectedRoute(
   // 20-minute inactivity timeout: reset on any user interaction;
   // check immediately on mount so an already-expired session is caught
   // before the page renders, then poll every 30 s while the tab is open.
+  // DISABLED during active trials/calls and war room sessions.
   useEffect(() => {
     const TIMEOUT_MS = 20 * 60 * 1000; // 20 minutes
     const POLL_MS = 30_000;            // check every 30 seconds
@@ -140,6 +151,14 @@ export function useProtectedRoute(
       requiredUserType === "admin"
         ? "/admin/login"
         : `/login/${requiredUserType}`;
+
+    // Check if current route is exempted from inactivity logout
+    const isExemptedRoute = EXEMPTED_ROUTES.some((route) => route.test(pathname));
+
+    // Skip timeout setup if in exempted route
+    if (isExemptedRoute) {
+      return;
+    }
 
     const updateActivity = () => {
       localStorage.setItem("lastActivity", Date.now().toString());
@@ -175,7 +194,7 @@ export function useProtectedRoute(
       activityEvents.forEach(ev => window.removeEventListener(ev, updateActivity));
       clearInterval(interval);
     };
-  }, [requiredUserType]);
+  }, [requiredUserType, pathname]);
 
   useEffect(() => {
     // Only check once per mount
