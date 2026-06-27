@@ -30,6 +30,9 @@ export default function CookieBanner() {
     expirationDate.setFullYear(expirationDate.getFullYear() + 1);
     document.cookie = `cookiePolicy=accepted; expires=${expirationDate.toUTCString()}; path=/; SameSite=Lax`;
 
+    // Trigger storage event for CookieGate to detect
+    window.dispatchEvent(new Event('storage'));
+
     setIsVisible(false);
   };
 
