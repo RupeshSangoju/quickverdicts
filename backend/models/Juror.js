@@ -714,7 +714,7 @@ async function getAllJurors(options = {}) {
       const query = `
         SELECT
           j.JurorId, j.Name, j.Email, j.County, j.State, j.PhoneNumber,
-          j.Address1, j.Address2, j.City, j.ZipCode,
+          j.Address1, j.City,
           j.VerificationStatus, j.IsVerified, j.IsActive,
           j.OnboardingCompleted, j.IntroVideoCompleted, j.JurorQuizCompleted, j.ProfileComplete,
           j.PaymentMethod,

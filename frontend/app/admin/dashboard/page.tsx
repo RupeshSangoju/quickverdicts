@@ -149,9 +149,7 @@ type Juror = {
   County: string;
   State: string;
   Address1?: string | null;
-  Address2?: string | null;
   City?: string | null;
-  ZipCode?: string | null;
   IsVerified: boolean;
   Status?: string;
   IsActive?: boolean;
@@ -945,9 +943,7 @@ export default function AdminDashboard() {
         County: j.County ?? j.county,
         State: j.State ?? j.state,
         Address1: j.Address1 ?? null,
-        Address2: j.Address2 ?? null,
         City: j.City ?? null,
-        ZipCode: j.ZipCode ?? null,
         IsVerified: j.IsVerified ?? j.verified,
         Status: j.Status ?? j.status,
         IsActive: j.IsActive ?? j.isActive,
@@ -1032,9 +1028,7 @@ export default function AdminDashboard() {
           County: j.County ?? j.county,
           State: j.State ?? j.state,
           Address1: j.Address1 ?? null,
-          Address2: j.Address2 ?? null,
           City: j.City ?? null,
-          ZipCode: j.ZipCode ?? null,
           IsVerified: j.IsVerified ?? j.verified,
           Status: j.Status ?? j.status,
           IsActive: j.IsActive ?? j.isActive,
@@ -3064,16 +3058,18 @@ export default function AdminDashboard() {
                         )}
                       </td>
                       <td className="px-6 py-4">
-                        <div className="text-sm space-y-1">
+                        <div className="text-sm space-y-0.5">
                           {juror.Address1 ? (
                             <div className="text-gray-900 font-medium">{juror.Address1}</div>
+                          ) : (
+                            <div className="text-gray-400 italic">—</div>
+                          )}
+                          {juror.City ? (
+                            <div className="text-gray-700">{juror.City}</div>
                           ) : null}
-                          {juror.Address2 ? (
-                            <div className="text-gray-700 text-xs">{juror.Address2}</div>
+                          {juror.County ? (
+                            <div className="text-gray-600 text-xs">{juror.County}</div>
                           ) : null}
-                          <div className="text-gray-700">
-                            {[juror.City, juror.State, juror.ZipCode].filter(Boolean).join(", ")}
-                          </div>
                         </div>
                       </td>
                       <td className="px-6 py-4">
