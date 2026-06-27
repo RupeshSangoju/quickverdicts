@@ -10,16 +10,40 @@ export default function CookieGate({ children }: CookieGateProps) {
   const [isAccepted, setIsAccepted] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
 
-  useEffect(() => {
-    // Check if user has accepted cookies
+  const checkCookieAcceptance = () => {
     const cookieAccepted = localStorage.getItem("cookiePolicy");
     const cookieExists = document.cookie.includes("cookiePolicy=accepted");
+    return cookieAccepted === "accepted" || cookieExists;
+  };
 
-    if (cookieAccepted || cookieExists) {
+  useEffect(() => {
+    // Initial check
+    if (checkCookieAcceptance()) {
       setIsAccepted(true);
     }
 
     setIsHydrated(true);
+
+    // Listen for storage changes (when Accept is clicked)
+    const handleStorageChange = () => {
+      if (checkCookieAcceptance()) {
+        setIsAccepted(true);
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+
+    // Also check periodically in case cookie was set without storage event
+    const interval = setInterval(() => {
+      if (checkCookieAcceptance()) {
+        setIsAccepted(true);
+      }
+    }, 500);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      clearInterval(interval);
+    };
   }, []);
 
   // Don't render children until we've checked cookie status
