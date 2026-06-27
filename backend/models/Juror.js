@@ -698,7 +698,6 @@ async function getAllJurors(options = {}) {
         county: "County",
         state: "State",
         verificationStatus: "VerificationStatus",
-        employerName: "EmployerName",
         createdAt: "CreatedAt",
         lastLoginAt: "LastLoginAt",
         caseId: "(SELECT MIN(ja.CaseId) FROM dbo.JurorApplications ja WHERE ja.JurorId = j.JurorId AND ja.Status = 'approved')",
@@ -715,9 +714,10 @@ async function getAllJurors(options = {}) {
       const query = `
         SELECT
           j.JurorId, j.Name, j.Email, j.County, j.State, j.PhoneNumber,
+          j.Address1, j.Address2, j.City, j.ZipCode,
           j.VerificationStatus, j.IsVerified, j.IsActive,
           j.OnboardingCompleted, j.IntroVideoCompleted, j.JurorQuizCompleted, j.ProfileComplete,
-          j.PaymentMethod, j.EmployerName,
+          j.PaymentMethod,
           j.CreatedAt, j.LastLoginAt, j.UpdatedAt,
           (
             SELECT STRING_AGG(CAST(ja.CaseId AS NVARCHAR(20)), ', ')

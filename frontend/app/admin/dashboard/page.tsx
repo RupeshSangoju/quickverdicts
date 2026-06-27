@@ -148,11 +148,14 @@ type Juror = {
   Email: string;
   County: string;
   State: string;
+  Address1?: string | null;
+  Address2?: string | null;
+  City?: string | null;
+  ZipCode?: string | null;
   IsVerified: boolean;
   Status?: string;
   IsActive?: boolean;
   OnboardingCompleted?: boolean;
-  EmployerName?: string | null;
   CreatedAt: string;
   VerificationStatus?: string;
   CriteriaResponses?: { question: string; answer: string }[];
@@ -324,7 +327,7 @@ export default function AdminDashboard() {
   const [jurorTotal, setJurorTotal] = useState(0);
   const [loadingJurors, setLoadingJurors] = useState(false);
   const [jurorSearchQuery, setJurorSearchQuery] = useState("");
-  const [jurorSortBy, setJurorSortBy] = useState<"name" | "email" | "county" | "state" | "status" | "employerName" | "onboarding" | "date" | "caseId" | "default">("default");
+  const [jurorSortBy, setJurorSortBy] = useState<"name" | "email" | "county" | "state" | "status" | "onboarding" | "date" | "caseId" | "default">("default");
   const [jurorSortOrder, setJurorSortOrder] = useState<"asc" | "desc">("desc");
   const [expandedJurorCases, setExpandedJurorCases] = useState<Set<number>>(new Set());
   const [expandedAttorneyCases, setExpandedAttorneyCases] = useState<Set<number>>(new Set());
@@ -941,11 +944,14 @@ export default function AdminDashboard() {
         Email: j.Email ?? j.email,
         County: j.County ?? j.county,
         State: j.State ?? j.state,
+        Address1: j.Address1 ?? null,
+        Address2: j.Address2 ?? null,
+        City: j.City ?? null,
+        ZipCode: j.ZipCode ?? null,
         IsVerified: j.IsVerified ?? j.verified,
         Status: j.Status ?? j.status,
         IsActive: j.IsActive ?? j.isActive,
         OnboardingCompleted: j.OnboardingCompleted ?? j.onboardingCompleted,
-        EmployerName: j.EmployerName ?? j.employerName ?? null,
         CreatedAt: j.CreatedAt ?? j.createdAt,
         VerificationStatus: j.VerificationStatus,
         CriteriaResponses: j.CriteriaResponses ?? j.criteriaResponses ?? [],
@@ -1025,11 +1031,14 @@ export default function AdminDashboard() {
           Email: j.Email ?? j.email,
           County: j.County ?? j.county,
           State: j.State ?? j.state,
+          Address1: j.Address1 ?? null,
+          Address2: j.Address2 ?? null,
+          City: j.City ?? null,
+          ZipCode: j.ZipCode ?? null,
           IsVerified: j.IsVerified ?? j.verified,
           Status: j.Status ?? j.status,
           IsActive: j.IsActive ?? j.isActive,
           OnboardingCompleted: j.OnboardingCompleted ?? j.onboardingCompleted,
-          EmployerName: j.EmployerName ?? j.employerName ?? null,
           CreatedAt: j.CreatedAt ?? j.createdAt,
           VerificationStatus: j.VerificationStatus,
           CriteriaResponses: j.CriteriaResponses ?? j.criteriaResponses ?? [],
@@ -1476,7 +1485,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleJurorSortChange = (column: "name" | "email" | "county" | "state" | "status" | "employerName" | "onboarding" | "date" | "caseId" | "default") => {
+  const handleJurorSortChange = (column: "name" | "email" | "county" | "state" | "status" | "onboarding" | "date" | "caseId" | "default") => {
     setJurorPage(1); // Reset to first page when sorting changes
     if (jurorSortBy === column) {
       // Cycle through: asc -> desc -> default
@@ -2962,17 +2971,9 @@ export default function AdminDashboard() {
                     </div>
                   </th>
                   <th
-                    className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none"
-                    onClick={() => handleJurorSortChange("employerName")}
+                    className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider"
                   >
-                    <div className="flex items-center gap-2">
-                      Employer Name
-                      {jurorSortBy === "employerName" ? (
-                        <span className="text-green-600 font-bold">{jurorSortOrder === "asc" ? "↑" : "↓"}</span>
-                      ) : (
-                        <span className="text-gray-400">⇅</span>
-                      )}
-                    </div>
+                    Address Details
                   </th>
                   <th
                     className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none"
@@ -3063,11 +3064,17 @@ export default function AdminDashboard() {
                         )}
                       </td>
                       <td className="px-6 py-4">
-                        {juror.EmployerName ? (
-                          <span className="text-gray-900 font-medium">{juror.EmployerName}</span>
-                        ) : (
-                          <span className="text-gray-400 italic">—</span>
-                        )}
+                        <div className="text-sm space-y-1">
+                          {juror.Address1 ? (
+                            <div className="text-gray-900 font-medium">{juror.Address1}</div>
+                          ) : null}
+                          {juror.Address2 ? (
+                            <div className="text-gray-700 text-xs">{juror.Address2}</div>
+                          ) : null}
+                          <div className="text-gray-700">
+                            {[juror.City, juror.State, juror.ZipCode].filter(Boolean).join(", ")}
+                          </div>
+                        </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center space-x-2">
