@@ -72,13 +72,7 @@ export default function CookieBanner() {
           >
             Accept
           </button>
-          <button
-            onClick={handleDismiss}
-            className="p-2 hover:bg-gray-800 rounded transition-colors cursor-pointer"
-            aria-label="Dismiss cookie banner"
-          >
-            <X size={20} />
-          </button>
+
         </div>
       </div>
     </div>

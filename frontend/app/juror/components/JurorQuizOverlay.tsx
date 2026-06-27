@@ -36,12 +36,12 @@ const quizQuestions = [
     question: "You weren't selected for a case. What should you do next?",
     options: [
       "Close the app and ignore future invites",
-      "Stay available and check back regularly for new cases",
+      "Check back regularly for new cases",
       "Contact support and demand to be selected",
       "Create a new account to increase your chances"
     ],
-    answer: "Stay available and check back regularly for new cases",
-    explanation: "Stay available and check back for new opportunities."
+    answer: "Check back regularly for new cases",
+    explanation: "Check back regularly for new opportunities."
   },
   {
     question: "What should you do after finishing a Quick Verdicts case?",
@@ -69,7 +69,7 @@ const quizQuestions = [
       "Shares legal advice learned from previous cases with the jury panel"
     ],
     answer: "Helps guide discussion and enters answers to the Jury Charge on behalf of the jury panel",
-    explanation: "The foreperson helps guide the group and keeps things on track."
+    explanation: "The foreperson helps guide the group discussion and keeps things on track."
   },
   {
     question: "Quick Verdicts keeps time of the case presentation, deliberations and debriefing period to finalize the mock trial within the time allotted. ",
