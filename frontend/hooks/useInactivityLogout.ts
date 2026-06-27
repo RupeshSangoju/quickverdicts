@@ -42,9 +42,16 @@ export function useInactivityLogout(
   // Check if current route is exempted from inactivity logout
   const isExemptedRoute = EXEMPTED_ROUTES.some((route) => route.test(pathname));
 
+  if (process.env.NODE_ENV === "development") {
+    console.log("🔍 useInactivityLogout - pathname:", pathname, "isExempted:", isExemptedRoute, "enabled:", enabled);
+  }
+
   useEffect(() => {
     // Disable timeout if hook is disabled, we're in an exempted route, or not in browser
     if (!enabled || isExemptedRoute || typeof window === "undefined") {
+      if (process.env.NODE_ENV === "development" && isExemptedRoute) {
+        console.log("✅ useInactivityLogout - Skipping timeout for exempted route:", pathname);
+      }
       if (timerRef.current) {
         clearTimeout(timerRef.current);
         timerRef.current = null;

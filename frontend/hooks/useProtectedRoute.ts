@@ -155,8 +155,15 @@ export function useProtectedRoute(
     // Check if current route is exempted from inactivity logout
     const isExemptedRoute = EXEMPTED_ROUTES.some((route) => route.test(pathname));
 
+    if (process.env.NODE_ENV === "development") {
+      console.log("🔍 useProtectedRoute inactivity check - pathname:", pathname, "isExempted:", isExemptedRoute);
+    }
+
     // Skip timeout setup if in exempted route
     if (isExemptedRoute) {
+      if (process.env.NODE_ENV === "development") {
+        console.log("✅ useProtectedRoute - Skipping inactivity timeout for exempted route:", pathname);
+      }
       return;
     }
 
