@@ -471,7 +471,7 @@ async function createChatThread(topic) {
     );
 
     const serviceToken = await retryOperation(
-      () => identityClient.getToken(serviceIdentity, ["chat"]),
+      () => identityClient.getToken(serviceIdentity, ["chat"], { expiresInMinutes: 1440 }), // 24 hours
       "Get service token"
     );
 
@@ -562,7 +562,7 @@ async function addParticipantToChat(
       () =>
         identityClient.getToken({ communicationUserId: chatServiceUserId }, [
           "chat",
-        ]),
+        ], { expiresInMinutes: 1440 }), // 24 hours
       "Get service token for chat"
     );
 
@@ -624,7 +624,7 @@ async function removeParticipantFromChat(
       () =>
         identityClient.getToken({ communicationUserId: chatServiceUserId }, [
           "chat",
-        ]),
+        ], { expiresInMinutes: 1440 }), // 24 hours
       "Get service token for chat"
     );
 

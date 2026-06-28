@@ -896,7 +896,7 @@ router.post(
 
       // Create identity and token
       const identity = await identityClient.createUser();
-      const token = await identityClient.getToken(identity, ["voip", "chat"]);
+      const token = await identityClient.getToken(identity, ["voip", "chat"], { expiresInMinutes: 1440 }); // 24 hours
 
       // Add to room (for video)
       // If another join is currently doing nuclear recovery for this case, wait for it to finish
@@ -1342,7 +1342,7 @@ router.post(
       }
 
       try {
-        tokenResponse = await identityClient.getToken(identityResponse, ["voip", "chat"]);
+        tokenResponse = await identityClient.getToken(identityResponse, ["voip", "chat"], { expiresInMinutes: 1440 }); // 24 hours
       } catch (tokenErr) {
         console.error("Error getting token for admin identity:", tokenErr && tokenErr.message ? tokenErr.message : tokenErr);
         throw tokenErr;
