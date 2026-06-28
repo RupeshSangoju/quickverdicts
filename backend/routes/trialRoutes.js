@@ -675,7 +675,7 @@ router.post(
       const tokenResponse = await identityClient.getToken(identityResponse, [
         "voip",
         "chat",
-      ]);
+      ], { expiresInMinutes: 1440 }); // 24 hours
 
       // Add user to chat thread using the stored service user ID
       if (meeting.ChatThreadId && meeting.ChatServiceUserId) {
