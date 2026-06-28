@@ -45,7 +45,7 @@ function initializeWebSocket(server) {
       socket.userType = decoded.type;
 
       console.log(
-        `✅ [WebSocket] Authenticated: ${socket.userType} #${socket.userId}`
+    //    `✅ [WebSocket] Authenticated: ${socket.userType} #${socket.userId}`
       );
       next();
     } catch (error) {
