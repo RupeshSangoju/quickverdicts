@@ -125,6 +125,25 @@ export function useProtectedRoute(
   useEffect(() => {
     const handleStorage = (e: StorageEvent) => {
       if (e.key !== "token" && e.key !== "user") return;
+
+      // 🛡️ NEVER tear down an active trial/call/war-room session because of a
+      // cross-tab auth change. Another tab logging out (or its inactivity timer
+      // firing) clears localStorage `token`/`user`, which fires this `storage`
+      // event in the conference tab and would otherwise redirect to login —
+      // unloading the page and ending the live call "by local participant".
+      const onExemptedRoute = EXEMPTED_ROUTES.some((route) =>
+        route.test(window.location.pathname)
+      );
+      if (onExemptedRoute) {
+        if (process.env.NODE_ENV === "development") {
+          console.log(
+            "🛡️ useProtectedRoute - Ignoring cross-tab auth change during active trial/war-room session:",
+            window.location.pathname
+          );
+        }
+        return;
+      }
+
       const authed = isAuthenticated();
       const user = getUser();
       if (!authed || !user || user.type !== requiredUserType) {

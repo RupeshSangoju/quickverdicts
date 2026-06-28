@@ -312,12 +312,27 @@ api.interceptors.response.use(
   (error: AxiosError<ApiErrorResponse>) => {
     // Handle 401 Unauthorized
     if (error.response?.status === 401) {
-      console.warn("⚠️ Unauthorized (401) - Clearing auth data");
-      clearAuth();
+      // 🛡️ During an active trial/call/war-room session, a single background
+      // poll returning 401 must NOT clear auth or redirect — doing so unloads
+      // the conference page and ends the live call "by local participant".
+      // The ACS call carries its own 24h token, so the session stays valid.
+      const path =
+        typeof window !== "undefined" ? window.location.pathname : "";
+      const onActiveSession =
+        path.includes("/conference") || path.includes("/war-room");
 
-      // Redirect to login if not already there
-      if (typeof window !== "undefined" && !window.location.pathname.includes("/login")) {
-        window.location.href = "/login";
+      if (onActiveSession) {
+        console.warn(
+          "🛡️ 401 received during active trial/war-room session — preserving session (not logging out)"
+        );
+      } else {
+        console.warn("⚠️ Unauthorized (401) - Clearing auth data");
+        clearAuth();
+
+        // Redirect to login if not already there
+        if (typeof window !== "undefined" && !path.includes("/login")) {
+          window.location.href = "/login";
+        }
       }
     }
 
