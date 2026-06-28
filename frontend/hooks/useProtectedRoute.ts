@@ -168,13 +168,21 @@ export function useProtectedRoute(
       return;
     }
 
+    let activityCount = 0;
     const updateActivity = () => {
+      activityCount++;
       localStorage.setItem("lastActivity", Date.now().toString());
+      if (process.env.NODE_ENV === "development" && activityCount % 10 === 0) {
+        console.log(`📊 useProtectedRoute activity detected (${activityCount}x) - updated lastActivity timestamp`);
+      }
     };
 
     // --- Immediate check on mount ---
     const last = parseInt(localStorage.getItem("lastActivity") || "0", 10);
-    if (last > 0 && Date.now() - last > TIMEOUT_MS) {
+    const inactiveFor = Date.now() - last;
+    if (last > 0 && inactiveFor > TIMEOUT_MS) {
+      const mins = Math.floor(inactiveFor / 60000);
+      console.log(`⏱️ ❌ IMMEDIATE CHECK - Session expired (inactive for ${mins}mins) - logging out`);
       clearAuth();
       localStorage.removeItem("lastActivity");
       window.location.href = loginPath;
@@ -184,6 +192,9 @@ export function useProtectedRoute(
     // Seed timestamp if this is a fresh session with no recorded activity
     if (!last) {
       updateActivity();
+      if (process.env.NODE_ENV === "development") {
+        console.log("⏰ useProtectedRoute - Seeding lastActivity timestamp for new session");
+      }
     }
 
     const activityEvents = ["mousemove", "keydown", "click", "scroll", "touchstart"] as const;
@@ -191,7 +202,10 @@ export function useProtectedRoute(
 
     const interval = setInterval(() => {
       const latest = parseInt(localStorage.getItem("lastActivity") || "0", 10);
-      if (Date.now() - latest > TIMEOUT_MS) {
+      const inactiveMs = Date.now() - latest;
+      if (inactiveMs > TIMEOUT_MS) {
+        const mins = Math.floor(inactiveMs / 60000);
+        console.log(`⏱️ ❌ INTERVAL CHECK - Session expired (inactive for ${mins}mins) - logging out`);
         clearAuth();
         localStorage.removeItem("lastActivity");
         window.location.href = loginPath;

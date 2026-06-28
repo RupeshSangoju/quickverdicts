@@ -60,16 +60,24 @@ export function useInactivityLogout(
       return;
     }
 
+    let activityCount = 0;
     const reset = () => {
+      activityCount++;
       if (timerRef.current) clearTimeout(timerRef.current);
+      if (process.env.NODE_ENV === "development" && activityCount % 10 === 0) {
+        console.log(`📊 Activity detected (${activityCount}x) - resetting 20min timeout`);
+      }
       timerRef.current = setTimeout(() => {
-        console.log("⏱️ Inactivity timeout — logging out");
+        console.log("⏱️ ❌ INACTIVITY TIMEOUT TRIGGERED - logging out (no activity for 20 mins)");
         clearAuth();
         window.location.href = redirectPath;
       }, INACTIVITY_TIMEOUT_MS);
     };
 
     // Start the timer immediately
+    if (process.env.NODE_ENV === "development") {
+      console.log("⏰ Starting 20-minute inactivity timer");
+    }
     reset();
 
     ACTIVITY_EVENTS.forEach((event) => window.addEventListener(event, reset));
