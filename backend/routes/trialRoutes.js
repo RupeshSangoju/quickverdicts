@@ -424,26 +424,9 @@ router.post(
       }
 
       // Block joining after the case day has ended
-      // ⚠️ Compare in the CASE'S timezone, not UTC. Using UTC rolls the date
-      // over early — e.g. 10:30 PM Eastern on the case day is already the next
-      // day in UTC, which wrongly reports "the case day has ended".
       if (caseData.ScheduledDate) {
         const scheduledDateStr = String(caseData.ScheduledDate).slice(0, 10);
-        const tzOffsetMin = parseInt(caseData.TimezoneOffset || 0, 10);
-        const serverNowUtc = new Date();
-        // TimezoneOffset is minutes EAST of UTC (Eastern = -300, India = +330),
-        // so local wall-clock = UTC + offset.
-        const nowLocal = new Date(serverNowUtc.getTime() + tzOffsetMin * 60 * 1000);
-        const todayStr = nowLocal.toISOString().slice(0, 10);
-
-        console.log("🕐 [ATTORNEY JOIN] Case-day check:");
-        console.log("   Raw ScheduledDate (DB):", caseData.ScheduledDate);
-        console.log("   scheduledDateStr:", scheduledDateStr);
-        console.log("   TimezoneOffset (min):", tzOffsetMin);
-        console.log("   Server now (UTC):", serverNowUtc.toISOString());
-        console.log("   Case-local now:", nowLocal.toISOString(), "→ todayStr:", todayStr);
-        console.log("   Would block (todayStr > scheduledDateStr)?", todayStr > scheduledDateStr);
-
+        const todayStr = new Date().toISOString().slice(0, 10);
         if (todayStr > scheduledDateStr) {
           if (rejectJoin) { rejectJoin(new Error("Case day ended")); setTimeout(() => participantJoinInFlight.delete(joinKey), 10000); }
           return res.status(403).json({
@@ -874,8 +857,7 @@ router.post(
             tm.ChatServiceUserId,
             tm.MeetingId,
             j.Name,
-            c.ScheduledDate,
-            c.TimezoneOffset
+            c.ScheduledDate
           FROM dbo.JurorApplications ja
           JOIN dbo.TrialMeetings tm ON ja.CaseId = tm.CaseId
           JOIN dbo.Jurors j ON ja.JurorId = j.JurorId
@@ -894,19 +876,10 @@ router.post(
 
       const data = verification.recordset[0];
 
-      // Block joining after the case day has ended (compare in the case's timezone, not UTC)
+      // Block joining after the case day has ended
       if (data.ScheduledDate) {
         const scheduledDateStr = String(data.ScheduledDate).slice(0, 10);
-        const tzOffsetMin = parseInt(data.TimezoneOffset || 0, 10);
-        const serverNowUtc = new Date();
-        const nowLocal = new Date(serverNowUtc.getTime() + tzOffsetMin * 60 * 1000);
-        const todayStr = nowLocal.toISOString().slice(0, 10);
-
-        console.log("🕐 [JUROR JOIN] Case-day check:");
-        console.log("   scheduledDateStr:", scheduledDateStr, "| TimezoneOffset (min):", tzOffsetMin);
-        console.log("   Server now (UTC):", serverNowUtc.toISOString(), "| Case-local todayStr:", todayStr);
-        console.log("   Would block?", todayStr > scheduledDateStr);
-
+        const todayStr = new Date().toISOString().slice(0, 10);
         if (todayStr > scheduledDateStr) {
           return res.status(403).json({
             success: false,
@@ -1171,7 +1144,6 @@ router.post(
             c.CaseTitle,
             c.ScheduledDate,
             c.ScheduledTime,
-            c.TimezoneOffset,
             tm.RoomId,
             tm.MeetingId,
             tm.ChatThreadId,
@@ -1193,19 +1165,10 @@ router.post(
 
       const trial = result.recordset[0];
 
-      // Block joining after the case day has ended (compare in the case's timezone, not UTC)
+      // Block joining after the case day has ended
       if (trial.ScheduledDate) {
         const scheduledDateStr = String(trial.ScheduledDate).slice(0, 10);
-        const tzOffsetMin = parseInt(trial.TimezoneOffset || 0, 10);
-        const serverNowUtc = new Date();
-        const nowLocal = new Date(serverNowUtc.getTime() + tzOffsetMin * 60 * 1000);
-        const todayStr = nowLocal.toISOString().slice(0, 10);
-
-        console.log("🕐 [ADMIN JOIN] Case-day check:");
-        console.log("   scheduledDateStr:", scheduledDateStr, "| TimezoneOffset (min):", tzOffsetMin);
-        console.log("   Server now (UTC):", serverNowUtc.toISOString(), "| Case-local todayStr:", todayStr);
-        console.log("   Would block?", todayStr > scheduledDateStr);
-
+        const todayStr = new Date().toISOString().slice(0, 10);
         if (todayStr > scheduledDateStr) {
           rejectInflight(new Error("Case day ended"));
           return res.status(403).json({
