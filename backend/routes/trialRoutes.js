@@ -426,7 +426,20 @@ router.post(
       // Block joining after the case day has ended
       if (caseData.ScheduledDate) {
         const scheduledDateStr = String(caseData.ScheduledDate).slice(0, 10);
-        const todayStr = new Date().toISOString().slice(0, 10);
+        const tzOffsetMin = parseInt(caseData.TimezoneOffset || 0, 10);
+        const serverNowUtc = new Date();
+        // TimezoneOffset is minutes EAST of UTC (Eastern = -300, India = +330),
+        // so local wall-clock = UTC + offset.
+        const nowLocal = new Date(serverNowUtc.getTime() + tzOffsetMin * 60 * 1000);
+        const todayStr = nowLocal.toISOString().slice(0, 10);
+
+        console.log("🕐 [ATTORNEY JOIN] Case-day check:");
+        console.log("   Raw ScheduledDate (DB):", caseData.ScheduledDate);
+        console.log("   scheduledDateStr:", scheduledDateStr);
+        console.log("   TimezoneOffset (min):", tzOffsetMin);
+        console.log("   Server now (UTC):", serverNowUtc.toISOString());
+        console.log("   Case-local now:", nowLocal.toISOString(), "→ todayStr:", todayStr);
+        console.log("   Would block (todayStr > scheduledDateStr)?", todayStr > scheduledDateStr);
         if (todayStr > scheduledDateStr) {
           if (rejectJoin) { rejectJoin(new Error("Case day ended")); setTimeout(() => participantJoinInFlight.delete(joinKey), 10000); }
           return res.status(403).json({
