@@ -1577,16 +1577,46 @@ router.post(
         });
       }
 
-      const meeting = await TrialMeeting.getMeetingByCaseId(caseId);
-      if (!meeting) {
-        return res.status(404).json({ success: false, message: "Meeting not found." });
-      }
+      const pool = await poolPromise;
 
-      // Resolve the ACS identity back to a juror participant record
-      const activeParticipants = await TrialMeeting.getActiveParticipants(meeting.MeetingId);
-      const target = activeParticipants.find((p) => p.AcsUserId === acsUserId);
+      // Resolve the ACS identity back to a juror participant record.
+      // Look across ALL of the case's meetings (a case can have more than one
+      // TrialMeetings row after room recovery) and ignore LeftAt, so we still
+      // find the juror even if getMeetingByCaseId would resolve a different
+      // meeting than the one they were recorded under.
+      const partResult = await pool
+        .request()
+        .input("caseId", sql.Int, caseId)
+        .input("acsUserId", sql.NVarChar, acsUserId)
+        .query(`
+          SELECT TOP 1
+            tp.ParticipantId, tp.UserId, tp.UserType, tp.MeetingId,
+            tm.RoomId, tm.ChatThreadId, tm.ChatServiceUserId
+          FROM dbo.TrialParticipants tp
+          JOIN dbo.TrialMeetings tm ON tp.MeetingId = tm.MeetingId
+          WHERE tm.CaseId = @caseId AND tp.AcsUserId = @acsUserId
+          ORDER BY tp.JoinedAt DESC
+        `);
+      const target = partResult.recordset[0];
 
       if (!target) {
+        // Diagnostic: log what IS recorded so any mismatch is debuggable
+        try {
+          const dbg = await pool
+            .request()
+            .input("caseId", sql.Int, caseId)
+            .query(`
+              SELECT tp.AcsUserId, tp.UserType, tp.UserId, tp.LeftAt
+              FROM dbo.TrialParticipants tp
+              JOIN dbo.TrialMeetings tm ON tp.MeetingId = tm.MeetingId
+              WHERE tm.CaseId = @caseId
+              ORDER BY tp.JoinedAt DESC
+            `);
+          console.warn(
+            `⚠️ [REMOVE JUROR] No participant matched acsUserId="${acsUserId}" for case ${caseId}. Recorded participants:`,
+            dbg.recordset.map((r) => ({ acs: r.AcsUserId, type: r.UserType, uid: r.UserId, left: r.LeftAt }))
+          );
+        } catch (_) {}
         return res.status(404).json({
           success: false,
           message: "Participant not found in this trial (they may have already left).",
@@ -1604,13 +1634,13 @@ router.post(
 
       // 1) Boot from the live ACS call + chat (best-effort — continue on failure)
       try {
-        await removeParticipantFromRoom(meeting.RoomId, acsUserId);
+        await removeParticipantFromRoom(target.RoomId, acsUserId);
       } catch (e) {
         console.error("⚠️ [REMOVE JUROR] Failed to remove from ACS room (continuing):", e.message);
       }
-      if (meeting.ChatThreadId && meeting.ChatServiceUserId) {
+      if (target.ChatThreadId && target.ChatServiceUserId) {
         try {
-          await removeParticipantFromChat(meeting.ChatThreadId, meeting.ChatServiceUserId, acsUserId);
+          await removeParticipantFromChat(target.ChatThreadId, target.ChatServiceUserId, acsUserId);
         } catch (e) {
           console.error("⚠️ [REMOVE JUROR] Failed to remove from chat (continuing):", e.message);
         }
@@ -1624,7 +1654,6 @@ router.post(
       }
 
       // 3) Permanently block rejoin for this case
-      const pool = await poolPromise;
       await pool
         .request()
         .input("caseId", sql.Int, caseId)
