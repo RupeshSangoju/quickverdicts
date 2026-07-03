@@ -65,14 +65,11 @@ export default function ForAttorneys() {
                 <span className="text-pink-500 text-xl">🖥️</span>
               </div>
               <h3 className="font-semibold text-gray-900">
-                Dashboard for Your Cases
+                Test Case Themes
               </h3>
               <p className="text-sm text-gray-600 mt-2 leading-relaxed">
-                Submit multiple cases
-                and access the status of
-                each on your dashboard.
-                Watch notifications for
-                updates on juror applications.
+Gauge local mock jurors’ opinions on the most compelling arguments, witness credibility, 
+liability exposure, and damages.   
 
               </p>
             </div>
@@ -82,13 +79,10 @@ export default function ForAttorneys() {
               <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center mb-4">
                 <span className="text-blue-600 text-xl">💼</span>
               </div>
-              <h3 className="font-semibold text-gray-900">Efficient Case Preparation</h3>
+              <h3 className="font-semibold text-gray-900">Analyze Settlement Value</h3>
               <p className="text-sm text-gray-600 mt-2 leading-relaxed">
-                Your case’s War Room has 
-                an easy-to-use jury charge
-                template and simple upload
-                system for demonstrative
-                aids.
+Local mock jurors’ deliberated verdicts are useful for settlement negotiations, Stowers 
+demands, and mediation.  
 
               </p>
             </div>
@@ -99,12 +93,11 @@ export default function ForAttorneys() {
     <span className="text-orange-500 text-xl">⚖️</span>
   </div>
 
-  <h3 className="font-semibold text-gray-900">Low Cost</h3>
+  <h3 className="font-semibold text-gray-900">Quick Turnaround </h3>
 
   <p className="text-sm text-gray-600 mt-2 leading-relaxed">
-    Tier One&nbsp;&nbsp;&nbsp;&nbsp;2.5 hrs<br />
-    Tier Two&nbsp;&nbsp;&nbsp;&nbsp;3.5 hrs<br />
-    Tier Three&nbsp;&nbsp;4.5 hrs
+Efficient case preparation with embedded Jury Charge Builder which appear in interactive 
+form during the mock trial.  Many mock trials scheduled within 2 -3 weeks. 
   </p>
 </div>
           </div>
@@ -235,11 +228,63 @@ period with the jurors.
             aria-hidden="true"
           />
             {/* Center area */}
-          <div
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
-                    w-3/4 h-3/4 z-10"
-            aria-hidden="true"
-          />
+<div
+    className="absolute z-20"
+    style={{
+      top: "50%",
+      left: 0,
+      width: "740px",
+      height: "50%",
+      background: "rgba(0,0,0,0.001)",
+    }}
+  />
+
+<div
+    className="absolute z-20"
+    style={{
+      top: "50%",
+      left: 0,
+      width: "740px",
+      height: "50%",
+      background: "rgba(0,0,0,0.001)",
+    }}
+  />
+
+{/* Above the nav button */}
+<div
+  className="absolute z-20"
+  style={{
+    top: "50%",
+    right: "20px",      // Leave scrollbar free
+    width: "200px",
+    height: "170px",
+    background: "rgba(0,0,0,0.001)",
+  }}
+/>
+
+{/* Right of the nav button */}
+<div
+  className="absolute z-20"
+  style={{
+    top: "443px",
+    left: "764px",
+    width: "176px",     // 196 - 20
+    height: "60px",
+    background: "rgba(0,0,0,0.001)",
+  }}
+/>
+
+{/* Below the nav button */}
+<div
+  className="absolute z-20"
+  style={{
+    top: "503px",
+    right: "20px",      // Leave scrollbar free
+    width: "200px",
+    height: "225px",
+    background: "rgba(0,0,0,0.001)",
+  }}
+/>
         </div>
                 </div>
       </section>
@@ -286,8 +331,11 @@ period with the jurors.
               </ul>
             </div>
           </div>
-
-          <div className="border-t border-gray-700 pt-8 flex flex-wrap justify-between items-center">
+                        <div className=" flex space-x-6 text-sm text-gray-300">
+<p className="text-gray-300">Only essential, functional, security, and limited analytics cookies are used.  We do not use 
+targeted advertising or marketing cookies.  </p>
+</div>
+          <div className=" pt-8 flex flex-wrap justify-between items-center">
             <div className="flex space-x-6 text-sm text-gray-300">
               <p className="text-gray-300">© Adaki, LLC d/b/a Quick Verdicts <sup className="text-[12px]">™</sup> 2026 All rights reserved.</p>
                               <a

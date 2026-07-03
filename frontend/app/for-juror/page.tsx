@@ -131,7 +131,9 @@ Browse available cases in your area and choose the ones that fit your schedule. 
                 <div className="flex items-start">
                   <div>
                     <h3 className="font-bold text-gray-900 mb-1">Sign Up</h3>
-                    <p className="text-gray-600">Create a free juror profile and verify your location.</p>
+                    <p className="text-gray-600">Create a free juror profile and verify your location. You must reside in the county of the 
+mock trial.  Qualified jurors may not work for an insurance company, a law firm, or a 
+litigation funding company.</p>
                   </div>
                 </div>
 
@@ -191,12 +193,64 @@ Browse available cases in your area and choose the ones that fit your schedule. 
               aria-hidden="true"
             />
               {/* Center area */}
-            <div
-              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
-                      w-3/4 h-3/4 z-10"
-              aria-hidden="true"
-            />
-          </div>
+<div
+    className="absolute z-20"
+    style={{
+      top: "50%",
+      left: 0,
+      width: "740px",
+      height: "50%",
+      background: "rgba(0,0,0,0.001)",
+    }}
+  />
+
+<div
+    className="absolute z-20"
+    style={{
+      top: "50%",
+      left: 0,
+      width: "740px",
+      height: "50%",
+      background: "rgba(0,0,0,0.001)",
+    }}
+  />
+
+{/* Above the nav button */}
+<div
+  className="absolute z-20"
+  style={{
+    top: "50%",
+    right: "20px",      // Leave scrollbar free
+    width: "200px",
+    height: "170px",
+    background: "rgba(0,0,0,0.001)",
+  }}
+/>
+
+{/* Right of the nav button */}
+<div
+  className="absolute z-20"
+  style={{
+    top: "443px",
+    left: "764px",
+    width: "176px",     // 196 - 20
+    height: "60px",
+    background: "rgba(0,0,0,0.001)",
+  }}
+/>
+
+{/* Below the nav button */}
+<div
+  className="absolute z-20"
+  style={{
+    top: "503px",
+    right: "20px",      // Leave scrollbar free
+    width: "200px",
+    height: "225px",
+    background: "rgba(0,0,0,0.001)",
+  }}
+/>
+</div>
         </div>
       </section>
 
@@ -242,8 +296,11 @@ Browse available cases in your area and choose the ones that fit your schedule. 
               </ul>
             </div>
           </div>
-
-          <div className="border-t border-gray-700 pt-8 flex flex-wrap justify-between items-center">
+                        <div className=" flex space-x-6 text-sm text-gray-300">
+<p className="text-gray-300">Only essential, functional, security, and limited analytics cookies are used.  We do not use 
+targeted advertising or marketing cookies.  </p>
+</div>
+          <div className=" pt-8 flex flex-wrap justify-between items-center">
             <div className="flex space-x-6 text-sm text-gray-300">
               <p className="text-gray-300">© Adaki, LLC d/b/a Quick Verdicts <sup className="text-[12px]">™</sup> 2026 All rights reserved.</p>
                               <a

@@ -301,7 +301,7 @@ export function Step1CriteriaVerification({
     return {
       isEligible,
       message: isEligible
-        ? "Based on your answers to the first 4 questions, you appear to meet the basic eligibility requirements."
+        ? "Based on your answers to the questions, you appear to meet the basic eligibility requirements."
         : "Based on your answers, you may not meet the basic eligibility requirements for jury service.",
     };
   }, [formData.criteriaAnswers]);

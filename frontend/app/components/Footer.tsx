@@ -17,7 +17,13 @@ const Footer: FC = () => {
               <br></br>
               <p className="text-gray-300">Contact:</p>
               <p className="text-gray-300">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;QVTrials@quickverdicts.com</p>
+              <br></br>
+              <p className="text-gray-300">Only essential, functional, security, and limited analytics cookies are used.  We do not use 
+targeted advertising or marketing cookies.  </p>
             </div>
+            
+
+
 
           {/* Bottom Links */}
           <div className="flex flex-wrap gap-6 mt-8 text-sm">

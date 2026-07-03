@@ -54,7 +54,7 @@ const faqs = [
   },
   {
     q: "What happens if fewer than 6 jurors appear for QV trial?",
-    a: "Attorneys may pick up to 8 jurors to allow for no-shows. Trials will proceed with six (6) jurors; otherwise the trial will be reset. Jurors who appear and are dismissed will be paid a stipend.",
+    a: "Attorneys may pick up to 8 jurors to allow for no-shows. Trials will proceed with six (6) jurors; otherwise the trial will be reset.",
   },
 ];
 
@@ -175,7 +175,7 @@ export default function AttorneyHelp({ onContact, onBack }: { onContact: () => v
 
       {/* Block Sway top-right Share/Open button */}
       <div
-        className="absolute top-0 right-10 w-48 h-16 z-10"
+        className="absolute top-0 right-2 w-48 h-16 z-10"
         aria-hidden="true"
       />
     </>
@@ -248,7 +248,6 @@ export default function AttorneyHelp({ onContact, onBack }: { onContact: () => v
             <HelpCircle className="text-[#16305B]" size={28} />
             <div>
               <h2 className="text-2xl font-bold text-[#16305B]">Frequently Asked Questions</h2>
-              <p className="text-sm text-gray-600">Quick answers to common questions</p>
             </div>
           </div>
           

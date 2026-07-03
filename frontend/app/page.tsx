@@ -197,10 +197,6 @@ cases in:            </p>
               </li>
               <li className="flex items-start">
                 <span className="mr-2">•</span>
-                <span>Demonstrative aids are deleted following the QV Trial</span>
-              </li>
-              <li className="flex items-start">
-                <span className="mr-2">•</span>
                 <span>Trial presentations are considered privileged under state and federal law</span>
               </li>
               <li className="flex items-start">
@@ -296,9 +292,11 @@ cases in:            </p>
             </div>
 
             <div>
-              <h3 className="font-bold text-gray-900 mb-2">What does a juror do on Quick Verdicts?</h3>
+              <h3 className="font-bold text-gray-900 mb-2">What does a mock juror do on Quick Verdicts?</h3>
               <p className="text-gray-600">
-                Jurors sign up and can access an Open Case in their county of residence. If selected, jurors are paid by the case immediately following the case presentation. First time jurors will participate in an onboarding process with a short (and easy!) quiz. Jurors may be asked to decide what caused an accident or an incident and how much money should be awarded to a plaintiff.  
+                Jurors sign up and can access an Open Case in their county of residence. If selected, jurors are paid by the case immediately following the case presentation. First time jurors will participate in an onboarding process with a short (and easy!) quiz. Jurors may be asked to decide what caused an accident or an incident and how much money should be awarded to a plaintiff. Qualified mock jurors will reside in the county of the mock trial and must not have worked 
+for an insurance company, a law firm or a litigation consulting company within the past two 
+(2) years, among other things. 
               </p>
             </div>
           </div>
@@ -347,8 +345,11 @@ cases in:            </p>
               </ul>
             </div>
           </div>
-
-          <div className="border-t border-gray-700 pt-8 flex flex-wrap justify-between items-center">
+                        <div className=" flex space-x-6 text-sm text-gray-300">
+<p className="text-gray-300">Only essential, functional, security, and limited analytics cookies are used.  We do not use 
+targeted advertising or marketing cookies.  </p>
+</div>
+          <div className=" pt-8 flex flex-wrap justify-between items-center">
             <div className="flex space-x-6 text-sm text-gray-300">
               <p className="text-gray-300">© Adaki, LLC d/b/a Quick Verdicts <sup className="text-[12px]">™</sup> 2026 All rights reserved.</p>
 
