@@ -158,6 +158,7 @@ export function Step2PersonalDetails({
   onNext,
 }: Step2PersonalDetailsProps) {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [affirmError, setAffirmError] = useState(false);
 
   /* ===========================================================
      COMPUTED VALUES
@@ -369,6 +370,14 @@ export function Step2PersonalDetails({
     (e: React.FormEvent) => {
       e.preventDefault();
 
+      // Require the county-residency affirmation before continuing.
+      if (!formData.personalDetails2.residesInCounty) {
+        setAffirmError(true);
+        window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+        return;
+      }
+      setAffirmError(false);
+
       if (typeof window !== "undefined" && (window as any).gtag) {
         (window as any).gtag("event", "step2_submit", {
           form_type: "juror_signup",
@@ -377,7 +386,7 @@ export function Step2PersonalDetails({
 
       onNext();
     },
-    [onNext]
+    [onNext, formData.personalDetails2.residesInCounty]
   );
 
   /* ===========================================================
@@ -985,6 +994,54 @@ export function Step2PersonalDetails({
               5-digit ZIP or ZIP+4 format
             </p>
           </FormField>
+        </section>
+
+        {/* County Residency Affirmation */}
+        <section
+          className={`rounded-xl border-2 p-6 shadow-sm transition-colors ${
+            affirmError
+              ? "border-red-400 bg-red-50"
+              : formData.personalDetails2.residesInCounty
+              ? "border-green-300 bg-green-50"
+              : "border-amber-300 bg-amber-50"
+          }`}
+          aria-labelledby="residency-affirmation-heading"
+        >
+          <h2 id="residency-affirmation-heading" className="sr-only">
+            County Residency Affirmation
+          </h2>
+          <label className="flex items-start gap-3 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={!!formData.personalDetails2.residesInCounty}
+              onChange={(e) => {
+                onUpdate({
+                  personalDetails2: {
+                    ...formData.personalDetails2,
+                    residesInCounty: e.target.checked,
+                  },
+                });
+                if (e.target.checked) setAffirmError(false);
+              }}
+              className="mt-1 h-5 w-5 flex-shrink-0 rounded border-gray-300 text-[#0A2342] focus:ring-2 focus:ring-[#0A2342] cursor-pointer"
+              aria-describedby={affirmError ? "residency-affirmation-error" : undefined}
+            />
+            <span className="text-sm text-[#0A2342]">
+              I affirm that I currently reside in the county stated above
+              {formData.personalDetails2.county ? (
+                <> (<strong>{formData.personalDetails2.county}</strong>)</>
+              ) : null}
+              . <span className="text-red-600">*</span>
+            </span>
+          </label>
+          {affirmError && (
+            <p
+              id="residency-affirmation-error"
+              className="mt-2 ml-8 text-sm text-red-600"
+            >
+              You must affirm that you reside in the county stated above to continue.
+            </p>
+          )}
         </section>
 
         {/* Payment Methods */}

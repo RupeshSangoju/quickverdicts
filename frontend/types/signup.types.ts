@@ -84,6 +84,7 @@ export interface PersonalDetails2 {
   state: string;
   zip: string;
   county: string;
+  residesInCounty?: boolean; // Juror affirms they currently reside in the county above
 }
 
 export interface JurorFormData {
