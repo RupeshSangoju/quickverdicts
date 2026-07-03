@@ -107,6 +107,7 @@ async function isJurorApprovedForCase(jurorId, caseId) {
         WHERE JurorId = @jurorId
           AND CaseId = @caseId
           AND Status = 'approved'
+          AND ISNULL(IsRemoved, 0) = 0
       `);
 
     return result.recordset[0].count > 0;

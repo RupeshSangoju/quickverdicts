@@ -264,12 +264,32 @@ export default function JurorConferenceClient() {
     wsOn("raise_hand", handleRaiseHand);
     wsOn("lower_hand", handleLowerHand);
 
+    const handleJurorRemoved = (data: any) => {
+      // Targeted event (only sent to this juror), but guard the case anyway.
+      if (data?.caseId != null && String(data.caseId) !== String(caseId)) return;
+      console.log("[JUROR] juror_removed received — leaving trial");
+      const reason = data?.reason ? `\n\nReason: ${data.reason}` : "";
+      toast.error("You have been removed from this trial by the administrator.", { duration: 6000 });
+      stopAllMediaTracks();
+      try {
+        if (callRef.current) callRef.current.hangUp({ forEveryone: false }).catch(() => {});
+        if (callAgentRef.current) callAgentRef.current.dispose().catch(() => {});
+      } catch (_) {}
+      // Give the toast a moment, then inform + redirect (they can't rejoin).
+      setTimeout(() => {
+        try { alert(`You have been removed from this trial and cannot rejoin.${reason}`); } catch (_) {}
+        router.push("/juror");
+      }, 1500);
+    };
+    wsOn("juror_removed", handleJurorRemoved);
+
     return () => {
       wsOff("jury_charge:released", handleJuryChargeReleased);
       wsOff("room_recreated", handleRoomRecreated);
       wsOff("trial_ended", handleTrialEnded);
       wsOff("raise_hand", handleRaiseHand);
       wsOff("lower_hand", handleLowerHand);
+      wsOff("juror_removed", handleJurorRemoved);
     };
   }, [wsConnected, caseId]);
 

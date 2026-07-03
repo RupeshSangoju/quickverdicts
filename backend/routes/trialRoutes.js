@@ -6,7 +6,8 @@
 const express = require("express");
 const router = express.Router();
 const rateLimit = require("express-rate-limit");
-const { notifyRoomRecreated, getIO } = require("../services/websocketService");
+const { notifyRoomRecreated, getIO, notifyUser } = require("../services/websocketService");
+const { sendNotificationEmail } = require("../utils/email");
 const {
   CommunicationIdentityClient,
 } = require("@azure/communication-identity");
@@ -20,6 +21,7 @@ const {
 // Import models
 const TrialMeeting = require("../models/TrialMeeting");
 const Case = require("../models/Case");
+const Juror = require("../models/Juror");
 const JurorApplication = require("../models/JurorApplication");
 const Notification = require("../models/Notification");
 const Event = require("../models/Event");
@@ -878,6 +880,7 @@ router.post(
           WHERE ja.CaseId = @caseId
             AND ja.JurorId = @jurorId
             AND ja.Status = 'approved'
+            AND ISNULL(ja.IsRemoved, 0) = 0
         `);
 
       if (verification.recordset.length === 0) {
@@ -1532,6 +1535,176 @@ router.post(
   }
 );
 
+
+// ============================================
+// REMOVE JUROR FROM TRIAL (admin only)
+// ============================================
+
+/**
+ * POST /api/trial/remove-juror/:caseId
+ * Admin removes a juror from an active trial for a stated reason.
+ *
+ * - Reason is REQUIRED.
+ * - Boots the juror from the ACS room + chat immediately.
+ * - Permanently blocks the juror from rejoining THIS case (IsRemoved = 1);
+ *   the juror-join query and isJurorApprovedForCase both exclude removed jurors.
+ * - Emails the juror + creates an in-app notification with the reason.
+ * - Emits a `juror_removed` socket event so their client leaves right away.
+ *
+ * Body: { acsUserId: string, reason: string }
+ */
+router.post(
+  "/remove-juror/:caseId",
+  validateCaseId,
+  requireAdminForTrial,
+  async (req, res) => {
+    try {
+      const caseId = req.validatedCaseId;
+      const adminId = req.user.id || 0;
+      const acsUserId = (req.body?.acsUserId || "").trim();
+      const reason = (req.body?.reason || "").trim();
+
+      if (!reason) {
+        return res.status(400).json({
+          success: false,
+          message: "A reason for removal is required.",
+        });
+      }
+      if (!acsUserId) {
+        return res.status(400).json({
+          success: false,
+          message: "Participant identifier (acsUserId) is required.",
+        });
+      }
+
+      const meeting = await TrialMeeting.getMeetingByCaseId(caseId);
+      if (!meeting) {
+        return res.status(404).json({ success: false, message: "Meeting not found." });
+      }
+
+      // Resolve the ACS identity back to a juror participant record
+      const activeParticipants = await TrialMeeting.getActiveParticipants(meeting.MeetingId);
+      const target = activeParticipants.find((p) => p.AcsUserId === acsUserId);
+
+      if (!target) {
+        return res.status(404).json({
+          success: false,
+          message: "Participant not found in this trial (they may have already left).",
+        });
+      }
+      if (target.UserType !== "juror") {
+        return res.status(400).json({
+          success: false,
+          message: "Only jurors can be removed.",
+        });
+      }
+
+      const jurorId = target.UserId;
+      console.log(`🚫 [REMOVE JUROR] Admin #${adminId} removing juror #${jurorId} (ACS ${acsUserId}) from case ${caseId}. Reason: ${reason}`);
+
+      // 1) Boot from the live ACS call + chat (best-effort — continue on failure)
+      try {
+        await removeParticipantFromRoom(meeting.RoomId, acsUserId);
+      } catch (e) {
+        console.error("⚠️ [REMOVE JUROR] Failed to remove from ACS room (continuing):", e.message);
+      }
+      if (meeting.ChatThreadId && meeting.ChatServiceUserId) {
+        try {
+          await removeParticipantFromChat(meeting.ChatThreadId, meeting.ChatServiceUserId, acsUserId);
+        } catch (e) {
+          console.error("⚠️ [REMOVE JUROR] Failed to remove from chat (continuing):", e.message);
+        }
+      }
+
+      // 2) Mark the participant as left in the DB
+      try {
+        await TrialMeeting.removeParticipant(target.ParticipantId);
+      } catch (e) {
+        console.error("⚠️ [REMOVE JUROR] Failed to mark participant left (continuing):", e.message);
+      }
+
+      // 3) Permanently block rejoin for this case
+      const pool = await poolPromise;
+      await pool
+        .request()
+        .input("caseId", sql.Int, caseId)
+        .input("jurorId", sql.Int, jurorId)
+        .input("reason", sql.NVarChar, reason)
+        .input("removedBy", sql.Int, adminId)
+        .query(`
+          UPDATE dbo.JurorApplications
+          SET IsRemoved = 1,
+              RemovalReason = @reason,
+              RemovedAt = GETUTCDATE(),
+              RemovedBy = @removedBy,
+              UpdatedAt = GETUTCDATE()
+          WHERE CaseId = @caseId AND JurorId = @jurorId
+        `);
+
+      // 4) In-app notification (best-effort)
+      try {
+        await Notification.createNotification({
+          userId: jurorId,
+          userType: "juror",
+          caseId,
+          type: "trial_removal",
+          title: "Removed from trial",
+          message: `You have been removed from this trial by the court administrator and cannot rejoin. Reason: ${reason}`,
+        });
+      } catch (e) {
+        console.error("⚠️ [REMOVE JUROR] Failed to create notification (continuing):", e.message);
+      }
+
+      // 5) Email the juror (best-effort)
+      try {
+        const juror = await Juror.findById(jurorId);
+        if (juror?.Email) {
+          const content = `
+            <p>Dear ${juror.Name || "Juror"},</p>
+            <p>You have been removed from the trial by the court administrator and will not be able to rejoin this case.</p>
+            <p><strong>Reason provided:</strong></p>
+            <blockquote style="border-left:4px solid #b91c1c;padding-left:12px;color:#374151;">${reason}</blockquote>
+            <p>If you believe this was made in error, please contact the court administrator.</p>
+            <p>— Quick Verdicts</p>
+          `;
+          await sendNotificationEmail(juror.Email, "You have been removed from a trial", content);
+        }
+      } catch (e) {
+        console.error("⚠️ [REMOVE JUROR] Failed to send email (continuing):", e.message);
+      }
+
+      // 6) Real-time nudge so their client leaves immediately
+      try {
+        notifyUser(jurorId, "juror", "juror_removed", { caseId, reason });
+      } catch (e) {
+        console.error("⚠️ [REMOVE JUROR] Failed to emit socket event (continuing):", e.message);
+      }
+
+      // Audit event (best-effort)
+      try {
+        await Event.createEvent({
+          caseId,
+          eventType: Event.EVENT_TYPES.CASE_UPDATED,
+          description: `Juror #${jurorId} removed from trial. Reason: ${reason}`,
+          triggeredBy: adminId,
+          userType: "admin",
+        });
+      } catch (_) {}
+
+      return res.json({
+        success: true,
+        message: "Juror removed from the trial and blocked from rejoining.",
+        jurorId,
+      });
+    } catch (error) {
+      console.error("❌ [REMOVE JUROR] Error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to remove juror from trial.",
+      });
+    }
+  }
+);
 
 // ============================================
 // HEALTH CHECK

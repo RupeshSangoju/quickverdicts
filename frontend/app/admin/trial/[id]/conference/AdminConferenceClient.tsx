@@ -76,6 +76,11 @@ export default function AdminConferenceClient() {
   const [hoveredParticipant, setHoveredParticipant] = useState<string | null>(null);
   const [showMenuFor, setShowMenuFor] = useState<string | null>(null);
 
+  // Remove-juror modal state
+  const [removeTarget, setRemoveTarget] = useState<{ id: string; name: string } | null>(null);
+  const [removeReason, setRemoveReason] = useState("");
+  const [removing, setRemoving] = useState(false);
+
   // Recording states
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
@@ -1851,10 +1856,45 @@ async function renderFeaturedVideo() {
     setShowMenuFor(null);
   };
 
-  const handleKickParticipant = async (participantId: string) => {
-    // Admin kick functionality (would need backend support)
-    console.log("Kick participant:", participantId);
+  const handleKickParticipant = (participantId: string) => {
+    // Open the reason modal — removal requires a stated reason.
+    const p = participants.find((pp: any) => getUserId(pp.identifier) === participantId);
+    const name = p?.displayName || "this juror";
+    setRemoveReason("");
+    setRemoveTarget({ id: participantId, name });
     setShowMenuFor(null);
+  };
+
+  const confirmRemoveJuror = async () => {
+    if (!removeTarget || !removeReason.trim() || removing) return;
+    setRemoving(true);
+    try {
+      const token = getToken();
+      const res = await fetch(`${API_BASE}/api/trial/remove-juror/${caseId}`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          acsUserId: removeTarget.id,
+          reason: removeReason.trim(),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        alert(data.message || "Failed to remove juror. Please try again.");
+        return;
+      }
+      // Success — ACS will drop them and they'll be blocked from rejoining.
+      setRemoveTarget(null);
+      setRemoveReason("");
+    } catch (e) {
+      console.error("Remove juror error:", e);
+      alert("Failed to remove juror. Please try again.");
+    } finally {
+      setRemoving(false);
+    }
   };
 
   const formatTime = (date: Date) => {
@@ -1997,6 +2037,52 @@ async function renderFeaturedVideo() {
 
   return (
     <div className="h-screen flex flex-col overflow-hidden" style={{ backgroundColor: "#f0ebe0" }}>
+      {/* Remove-juror reason modal */}
+      {removeTarget && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
+            <h3 className="text-lg font-semibold text-gray-900">
+              Remove {removeTarget.name}?
+            </h3>
+            <p className="mt-1 text-sm text-gray-600">
+              This juror will be removed from the trial immediately and
+              <strong> cannot rejoin this case</strong>. They will be emailed and
+              notified with the reason below.
+            </p>
+            <label className="block mt-4 text-sm font-medium text-gray-700">
+              Reason for removal <span className="text-red-600">*</span>
+            </label>
+            <textarea
+              autoFocus
+              value={removeReason}
+              onChange={(e) => setRemoveReason(e.target.value)}
+              rows={4}
+              maxLength={1000}
+              placeholder="e.g. Repeated inappropriate behavior after warnings"
+              className="mt-1 w-full rounded-lg border border-gray-300 p-3 text-sm text-gray-900 focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none resize-none"
+            />
+            <div className="mt-5 flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setRemoveTarget(null);
+                  setRemoveReason("");
+                }}
+                disabled={removing}
+                className="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmRemoveJuror}
+                disabled={!removeReason.trim() || removing}
+                className="px-4 py-2 rounded-lg text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {removing ? "Removing…" : "Remove juror"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Container with chat support */}
       <div className="flex-1 flex overflow-hidden relative">
         {/* Main Content Area - More space for video when panels open */}
@@ -2208,13 +2294,15 @@ async function renderFeaturedVideo() {
                             <MicOff className="w-4 h-4" />
                             Mute
                           </button>
-                          <button
-                            onClick={() => handleKickParticipant(participant.id)}
-                            className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-700 rounded text-red-400 text-sm"
-                          >
-                            <UserX className="w-4 h-4" />
-                            Remove
-                          </button>
+                          {participant.role === "Juror" && (
+                            <button
+                              onClick={() => handleKickParticipant(participant.id)}
+                              className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-700 rounded text-red-400 text-sm"
+                            >
+                              <UserX className="w-4 h-4" />
+                              Remove
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>
