@@ -1878,6 +1878,7 @@ async function renderFeaturedVideo() {
         },
         body: JSON.stringify({
           acsUserId: removeTarget.id,
+          displayName: removeTarget.name,
           reason: removeReason.trim(),
         }),
       });

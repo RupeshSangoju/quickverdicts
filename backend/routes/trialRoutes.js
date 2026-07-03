@@ -1578,12 +1578,21 @@ router.post(
       }
 
       const pool = await poolPromise;
+      const displayName = (req.body?.displayName || "").trim();
 
-      // Resolve the ACS identity back to a juror participant record.
-      // Look across ALL of the case's meetings (a case can have more than one
-      // TrialMeetings row after room recovery) and ignore LeftAt, so we still
-      // find the juror even if getMeetingByCaseId would resolve a different
-      // meeting than the one they were recorded under.
+      // --- Resolve which juror this ACS identity belongs to ---
+      // A juror mints a FRESH ACS identity on every join and the participant
+      // recording can be stale or missing, so the ACS id alone is not reliable.
+      //   Primary:  match the ACS id in TrialParticipants across all of the
+      //             case's meetings (ignore LeftAt).
+      //   Fallback: match the display name ("Name (Juror)") against the case's
+      //             approved-juror roster.
+      let jurorId = null;
+      let participantId = null;
+      let roomId = null;
+      let chatThreadId = null;
+      let chatServiceUserId = null;
+
       const partResult = await pool
         .request()
         .input("caseId", sql.Int, caseId)
@@ -1599,58 +1608,84 @@ router.post(
         `);
       const target = partResult.recordset[0];
 
-      if (!target) {
-        // Diagnostic: log what IS recorded so any mismatch is debuggable
-        try {
-          const dbg = await pool
-            .request()
-            .input("caseId", sql.Int, caseId)
-            .query(`
-              SELECT tp.AcsUserId, tp.UserType, tp.UserId, tp.LeftAt
-              FROM dbo.TrialParticipants tp
-              JOIN dbo.TrialMeetings tm ON tp.MeetingId = tm.MeetingId
-              WHERE tm.CaseId = @caseId
-              ORDER BY tp.JoinedAt DESC
-            `);
-          console.warn(
-            `⚠️ [REMOVE JUROR] No participant matched acsUserId="${acsUserId}" for case ${caseId}. Recorded participants:`,
-            dbg.recordset.map((r) => ({ acs: r.AcsUserId, type: r.UserType, uid: r.UserId, left: r.LeftAt }))
-          );
-        } catch (_) {}
+      if (target) {
+        if (target.UserType !== "juror") {
+          return res.status(400).json({ success: false, message: "Only jurors can be removed." });
+        }
+        jurorId = target.UserId;
+        participantId = target.ParticipantId;
+        roomId = target.RoomId;
+        chatThreadId = target.ChatThreadId;
+        chatServiceUserId = target.ChatServiceUserId;
+      } else if (displayName) {
+        // Fallback: resolve by display name against approved jurors for this case
+        const nameOnly = displayName.replace(/\s*\(juror\)\s*$/i, "").trim();
+        const byName = await pool
+          .request()
+          .input("caseId", sql.Int, caseId)
+          .input("name", sql.NVarChar, nameOnly)
+          .query(`
+            SELECT j.JurorId
+            FROM dbo.JurorApplications ja
+            JOIN dbo.Jurors j ON ja.JurorId = j.JurorId
+            WHERE ja.CaseId = @caseId
+              AND ja.Status = 'approved'
+              AND ISNULL(ja.IsRemoved, 0) = 0
+              AND LTRIM(RTRIM(j.Name)) = @name
+          `);
+        if (byName.recordset.length === 1) {
+          jurorId = byName.recordset[0].JurorId;
+          console.log(`ℹ️ [REMOVE JUROR] Resolved juror #${jurorId} by display name "${nameOnly}" (no live ACS participant record).`);
+        } else if (byName.recordset.length > 1) {
+          console.warn(`⚠️ [REMOVE JUROR] Ambiguous name "${nameOnly}" — ${byName.recordset.length} approved jurors match; cannot safely remove.`);
+        } else {
+          console.warn(`⚠️ [REMOVE JUROR] No approved juror named "${nameOnly}" for case ${caseId}.`);
+        }
+      }
+
+      if (!jurorId) {
         return res.status(404).json({
           success: false,
-          message: "Participant not found in this trial (they may have already left).",
-        });
-      }
-      if (target.UserType !== "juror") {
-        return res.status(400).json({
-          success: false,
-          message: "Only jurors can be removed.",
+          message: "Could not identify this juror. Please refresh the participant list and try again.",
         });
       }
 
-      const jurorId = target.UserId;
+      // Room/chat for the ACS boot — fall back to the current meeting if we
+      // didn't resolve them from a participant record. The juror's live ACS
+      // identity is in the current room (that's how the admin sees them), so
+      // removing by acsUserId there disconnects them regardless of recording.
+      if (!roomId) {
+        const meeting = await TrialMeeting.getMeetingByCaseId(caseId);
+        roomId = meeting?.RoomId || null;
+        chatThreadId = chatThreadId || meeting?.ChatThreadId || null;
+        chatServiceUserId = chatServiceUserId || meeting?.ChatServiceUserId || null;
+      }
+
       console.log(`🚫 [REMOVE JUROR] Admin #${adminId} removing juror #${jurorId} (ACS ${acsUserId}) from case ${caseId}. Reason: ${reason}`);
 
       // 1) Boot from the live ACS call + chat (best-effort — continue on failure)
-      try {
-        await removeParticipantFromRoom(target.RoomId, acsUserId);
-      } catch (e) {
-        console.error("⚠️ [REMOVE JUROR] Failed to remove from ACS room (continuing):", e.message);
-      }
-      if (target.ChatThreadId && target.ChatServiceUserId) {
+      if (roomId) {
         try {
-          await removeParticipantFromChat(target.ChatThreadId, target.ChatServiceUserId, acsUserId);
+          await removeParticipantFromRoom(roomId, acsUserId);
+        } catch (e) {
+          console.error("⚠️ [REMOVE JUROR] Failed to remove from ACS room (continuing):", e.message);
+        }
+      }
+      if (chatThreadId && chatServiceUserId) {
+        try {
+          await removeParticipantFromChat(chatThreadId, chatServiceUserId, acsUserId);
         } catch (e) {
           console.error("⚠️ [REMOVE JUROR] Failed to remove from chat (continuing):", e.message);
         }
       }
 
-      // 2) Mark the participant as left in the DB
-      try {
-        await TrialMeeting.removeParticipant(target.ParticipantId);
-      } catch (e) {
-        console.error("⚠️ [REMOVE JUROR] Failed to mark participant left (continuing):", e.message);
+      // 2) Mark the participant as left in the DB (only if we found the record)
+      if (participantId) {
+        try {
+          await TrialMeeting.removeParticipant(participantId);
+        } catch (e) {
+          console.error("⚠️ [REMOVE JUROR] Failed to mark participant left (continuing):", e.message);
+        }
       }
 
       // 3) Permanently block rejoin for this case
