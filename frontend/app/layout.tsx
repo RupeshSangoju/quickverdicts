@@ -11,14 +11,16 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "Quick Verdicts - Virtual Courtroom for Small Claims",
+    default: "Quick Verdicts - Virtual Courtroom for Mock Jury Trials",
     template: "%s | Quick Verdicts",
   },
   description:
-    "Quick Verdicts is a virtual courtroom where small claims trials happen quickly, securely, and virtually. Start your case online or get paid to serve as a remote juror.",
+    "Quick Verdicts is a virtual courtroom where mock jury trials happen quickly, securely, and virtually. Start your case online or get paid to serve as a remote juror.",
   keywords: [
     "virtual courtroom",
-    "small claims",
+    "mock jury trials",
+    "mock trial",
+    "mock jury",
     "online jury",
     "quick verdicts",
     "legal platform",
@@ -36,7 +38,7 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:4000",
     siteName: "Quick Verdicts",
-    title: "Quick Verdicts - Virtual Courtroom for Small Claims",
+    title: "Quick Verdicts - Virtual Courtroom for Mock Jury Trials",
     description:
       "A virtual courtroom where justice moves fast—and jurors get paid. Start your case online or get paid to serve as a remote juror.",
     images: [
@@ -236,7 +238,7 @@ export default function RootLayout({
               url: process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:4000",
               logo: `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:4000"}/logo.png`,
               description:
-                "A virtual courtroom where small claims trials happen quickly, securely, and virtually.",
+                "A virtual courtroom where mock jury trials happen quickly, securely, and virtually.",
               contactPoint: {
                 "@type": "ContactPoint",
                 contactType: "Customer Service",
