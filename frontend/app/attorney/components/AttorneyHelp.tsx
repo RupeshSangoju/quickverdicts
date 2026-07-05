@@ -306,8 +306,8 @@ export default function AttorneyHelp({ onContact, onBack }: { onContact: () => v
             onClick={onContact}
             className="bg-[#16305B] text-white px-8 py-3 rounded-lg font-semibold hover:bg-[#1e417a] transition-all shadow-sm hover:shadow-md inline-flex items-center gap-2 cursor-pointer"
           >
-
-            Get Support
+            <Mail className="w-5 h-5" />
+            Contact Support
           </button>
         </div>
       </div>
