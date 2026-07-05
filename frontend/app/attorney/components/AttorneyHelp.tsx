@@ -214,7 +214,7 @@ export default function AttorneyHelp({ onContact, onBack }: { onContact: () => v
 
             {/* Navigation Buttons */}
             {filteredVideos.length > 3 && (
-              <div className="flex justify-end gap-3 mt-8">
+              <div className="flex justify-center gap-3 mt-8">
                 <button
                   className={`p-3 transition-all ${
                     canSlideLeft 
