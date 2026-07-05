@@ -366,7 +366,7 @@ export default function AttorneySidebar({ selectedSection, onSectionChange }: At
           onClick={() => setShowLogout(true)}
           className={`flex items-center cursor-pointer ${
             collapsed ? "justify-center py-3" : "px-4 py-3 w-full gap-3"
-          } rounded hover:bg-white/10 transition-colors duration-300`}
+          } rounded-lg bg-red-600 hover:bg-red-700 shadow-md ring-1 ring-red-400/60 hover:ring-red-300 transition-all duration-300`}
         >
           <div className="flex items-center justify-center w-10 h-10 flex-shrink-0" style={{ color: TEXT_COLOR }}>
             <LogOut className="w-6 h-6" />
