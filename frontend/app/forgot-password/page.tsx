@@ -90,6 +90,9 @@ export default function ForgotPassword() {
         } else {
           setError("Too many attempts. Please try again in 1 hour.");
         }
+      } else if (axios.isAxiosError(err) && err.response?.data?.message) {
+        // e.g. unregistered email -> "No account is registered with this email address."
+        setError(err.response.data.message);
       } else {
         setError(err.message || "Network error. Please try again.");
       }

@@ -1406,12 +1406,15 @@ async function requestPasswordReset(req, res) {
       user = await Juror.findByEmail(normalizedEmail);
     }
 
-    // Always return success to prevent email enumeration
+    // No account with this email — tell the user explicitly.
+    // NOTE: this intentionally reveals whether an email is registered
+    // (email enumeration). Product decision: show a clear message instead
+    // of a generic "if an account exists…" response.
     if (!user) {
-      return res.json({
-        success: true,
-        message:
-          "If an account exists with this email, a verification code has been sent",
+      return res.status(404).json({
+        success: false,
+        message: "No account is registered with this email address.",
+        code: "USER_NOT_FOUND",
       });
     }
 
@@ -1435,8 +1438,7 @@ async function requestPasswordReset(req, res) {
 
     return res.json({
       success: true,
-      message:
-        "If an account exists with this email, a verification code has been sent",
+      message: "A verification code has been sent to your email",
     });
   } catch (error) {
     console.error("❌ [Auth.requestPasswordReset] Error:", error);
