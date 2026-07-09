@@ -1,0 +1,872 @@
+// =============================================
+// caseRoutes.js - Case Management Routes
+// FIXED: Removed duplicate route, proper order
+// =============================================
+
+const express = require("express");
+const router = express.Router();
+const rateLimit = require("express-rate-limit");
+const {
+  authMiddleware,
+  requireAttorney,
+  requireAdmin,
+} = require("../middleware/authMiddleware");
+const {
+  createCase,
+  getAttorneyCases,
+  getCaseDetails,
+} = require("../controllers/caseController");
+
+// Import database connection
+const { poolPromise, sql } = require("../config/db");
+
+// Import models
+const Case = require("../models/Case");
+const JurorApplication = require("../models/JurorApplication");
+const CaseDocument = require("../models/CaseDocument");
+const Notification = require("../models/Notification");
+const { generateSasUrl } = require("../utils/azureBlob");
+
+// ============================================
+// RATE LIMITERS (MUST BE DEFINED FIRST!)
+// ============================================
+
+/**
+ * Rate limiter for case creation
+ * Prevents abuse of case creation endpoint
+ */
+const caseCreationLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10, // 10 cases per hour
+  message: {
+    success: false,
+    message: "Too many cases created. Please try again in 1 hour.",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+/**
+ * General case operations rate limiter
+ */
+const caseOperationsLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 500, // Increased from 100 to 500 for testing
+  message: {
+    success: false,
+    message: "Too many requests. Please try again later.",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// ============================================
+// VALIDATION MIDDLEWARE
+// ============================================
+
+/**
+ * Validate case ID parameter
+ */
+const validateCaseId = (req, res, next) => {
+  const caseId = parseInt(req.params.caseId, 10);
+
+  if (isNaN(caseId) || caseId <= 0) {
+    return res.status(400).json({
+      success: false,
+      message: "Valid case ID is required",
+    });
+  }
+
+  req.validatedCaseId = caseId;
+  next();
+};
+
+/**
+ * Validate case tier
+ */
+const validateCaseTier = (req, res, next) => {
+  const { newTier } = req.body;
+
+  const validTiers = ["tier_1", "tier_2", "tier_3"];
+
+  if (!newTier || !validTiers.includes(newTier)) {
+    return res.status(400).json({
+      success: false,
+      message: `Invalid tier. Must be one of: ${validTiers.join(", ")}`,
+    });
+  }
+
+  req.validatedTier = newTier;
+  next();
+};
+
+/**
+ * Load case and attach to request
+ */
+const loadCase = async (req, res, next) => {
+  try {
+    const caseId = req.validatedCaseId;
+
+    const caseData = await Case.findById(caseId);
+
+    if (!caseData) {
+      return res.status(404).json({
+        success: false,
+        message: "Case not found",
+      });
+    }
+
+    req.caseData = caseData;
+    next();
+  } catch (error) {
+    console.error("Load case error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to load case",
+    });
+  }
+};
+
+// ============================================
+// AUTHORIZATION MIDDLEWARE
+// ============================================
+
+/**
+ * Verify attorney owns the case
+ */
+const verifyAttorneyCaseOwnership = (req, res, next) => {
+  if (req.user.type !== "attorney") {
+    return res.status(403).json({
+      success: false,
+      message: "Only attorneys can access this resource",
+    });
+  }
+
+  if (req.caseData.AttorneyId !== req.user.id) {
+    return res.status(403).json({
+      success: false,
+      message: "Access denied: You do not own this case",
+    });
+  }
+
+  next();
+};
+
+/**
+ * Verify case access for any user type
+ * Handles different authorization logic for attorneys vs jurors
+ */
+const verifyCaseAccess = async (req, res, next) => {
+  try {
+    const caseData = req.caseData;
+    const user = req.user;
+
+    // Attorney access
+    if (user.type === "attorney") {
+      if (caseData.AttorneyId !== user.id) {
+        return res.status(403).json({
+          success: false,
+          message: "Access denied: You do not own this case",
+        });
+      }
+      return next();
+    }
+
+    // Juror access
+    if (user.type === "juror") {
+      // Check if juror has an application for this case
+      const application = await JurorApplication.findByJurorAndCase(
+        user.id,
+        caseData.CaseId
+      );
+
+      // If no application exists
+      if (!application) {
+        // Only allow access to cases in war_room state (for applying)
+        if (
+          caseData.AdminApprovalStatus !== "approved" ||
+          caseData.AttorneyStatus !== "war_room"
+        ) {
+          return res.status(403).json({
+            success: false,
+            message: "This case is not available for applications",
+          });
+        }
+        // Allow access for applying
+        return next();
+      }
+
+      // If application exists but not approved
+      if (application.Status !== "approved") {
+        return res.status(403).json({
+          success: false,
+          message: "You are not approved for this case",
+        });
+      }
+
+      // Application is approved - allow full access
+      req.jurorApplication = application;
+      return next();
+    }
+
+    // Admin access
+    if (user.type === "admin") {
+      return next();
+    }
+
+    // Unknown user type
+    return res.status(403).json({
+      success: false,
+      message: "Access denied",
+    });
+  } catch (error) {
+    console.error("Case access verification error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to verify case access",
+    });
+  }
+};
+
+// ============================================
+// CASE ROUTES (AFTER ALL DEPENDENCIES ARE DEFINED!)
+// ============================================
+
+/**
+ * POST /api/case/cases
+ * Create new case (Attorney only)
+ */
+router.post(
+  "/cases",
+  caseCreationLimiter,
+  authMiddleware,
+  requireAttorney,
+  createCase
+);
+
+/**
+ * GET /api/case/cases
+ * Get attorney's cases
+ * FIXED: Only one definition, after limiters are defined
+ */
+router.get(
+  "/cases",
+  caseOperationsLimiter,
+  authMiddleware,
+  requireAttorney,
+  (req, res, next) => {
+    console.log("📍 GET /api/case/cases endpoint hit");
+    console.log("   User:", req.user?.email, "| Type:", req.user?.type);
+    next();
+  },
+  getAttorneyCases
+);
+
+/**
+ * GET /api/case/cases/:caseId
+ * Get specific case details
+ * Accessible to attorneys (own cases), jurors (approved/war_room), and admins
+ */
+router.get(
+  "/cases/:caseId",
+  caseOperationsLimiter,
+  authMiddleware,
+  validateCaseId,
+  loadCase,
+  verifyCaseAccess,
+  async (req, res) => {
+    try {
+      const caseData = req.caseData;
+
+      // Include application status if user is a juror
+      let applicationStatus = null;
+      if (req.user.type === "juror" && req.jurorApplication) {
+        applicationStatus = {
+          status: req.jurorApplication.Status,
+          appliedAt: req.jurorApplication.AppliedAt,
+          reviewedAt: req.jurorApplication.ReviewedAt,
+        };
+      }
+
+      res.json({
+        success: true,
+        case: caseData,
+        applicationStatus,
+      });
+    } catch (error) {
+      console.error("Get case details error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch case details",
+      });
+    }
+  }
+);
+
+/**
+ * PUT /api/case/cases/:caseId
+ * Update case details (Attorney only)
+ */
+router.put(
+  "/cases/:caseId",
+  caseOperationsLimiter,
+  authMiddleware,
+  requireAttorney,
+  validateCaseId,
+  loadCase,
+  verifyAttorneyCaseOwnership,
+  async (req, res) => {
+    try {
+      const caseId = req.validatedCaseId;
+      const updates = req.body;
+
+      // Allowed fields for update
+      const allowedFields = [
+        "caseTitle",
+        "caseDescription",
+        "caseType",
+        "plaintiffGroups",
+        "defendantGroups",
+      ];
+
+      // Filter to only allowed fields
+      const filteredUpdates = {};
+      Object.keys(updates).forEach((key) => {
+        if (allowedFields.includes(key)) {
+          filteredUpdates[key] = updates[key];
+        }
+      });
+
+      if (Object.keys(filteredUpdates).length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "No valid fields to update",
+        });
+      }
+
+      await Case.updateCase(caseId, filteredUpdates);
+
+      res.json({
+        success: true,
+        message: "Case updated successfully",
+      });
+    } catch (error) {
+      console.error("Update case error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to update case",
+      });
+    }
+  }
+);
+
+/**
+ * PATCH /api/case/cases/:caseId/venue
+ * Update case venue (State/County) — Admin only
+ */
+router.patch(
+  "/cases/:caseId/venue",
+  caseOperationsLimiter,
+  authMiddleware,
+  requireAdmin,
+  validateCaseId,
+  async (req, res) => {
+    try {
+      const caseId = req.validatedCaseId;
+      const { state, county } = req.body;
+
+      if (!state?.trim() || !county?.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: "State and county are required",
+        });
+      }
+
+      const newState = state.trim();
+      const newCounty = county.trim();
+
+      // Update venue in DB
+      const pool = await poolPromise;
+      await pool.request()
+        .input("caseId", sql.Int, caseId)
+        .input("state", sql.NVarChar, newState)
+        .input("county", sql.NVarChar, newCounty)
+        .query(`
+          UPDATE dbo.Cases
+          SET State = @state, County = @county, UpdatedAt = GETUTCDATE()
+          WHERE CaseId = @caseId AND IsDeleted = 0
+        `);
+
+      // Send notifications to attorney and approved jurors
+      try {
+        const caseData = await Case.findById(caseId);
+        const approvedJurors = await JurorApplication.getApprovedJurorsForCase(caseId);
+        const venueStr = `${newCounty}, ${newState}`;
+        const notifications = [];
+
+        if (caseData?.AttorneyId) {
+          notifications.push({
+            userId: caseData.AttorneyId,
+            userType: "attorney",
+            caseId,
+            type: "case_venue_changed",
+            title: "Case Venue Updated",
+            message: `The venue for your case "${caseData.CaseTitle}" has been changed to ${venueStr} by the administrator.`,
+          });
+        }
+
+        (approvedJurors || []).forEach((juror) => {
+          notifications.push({
+            userId: juror.JurorId,
+            userType: "juror",
+            caseId,
+            type: "case_venue_changed",
+            title: "Case Venue Updated",
+            message: `The venue for case "${caseData?.CaseTitle || `#${caseId}`}" has been changed to ${venueStr}.`,
+          });
+        });
+
+        if (notifications.length > 0) {
+          await Notification.createBulkNotifications(notifications);
+        }
+      } catch (notifErr) {
+        console.error("Venue notification error (non-fatal):", notifErr);
+      }
+
+      res.json({ success: true, message: "Venue updated successfully" });
+    } catch (error) {
+      console.error("Update venue error:", error);
+      res.status(500).json({ success: false, message: "Failed to update venue" });
+    }
+  }
+);
+
+/**
+ * POST /api/case/cases/:caseId/upgrade-tier
+ * Upgrade case tier (Attorney only)
+ */
+router.post(
+  "/cases/:caseId/upgrade-tier",
+  caseOperationsLimiter,
+  authMiddleware,
+  requireAttorney,
+  validateCaseId,
+  validateCaseTier,
+  loadCase,
+  verifyAttorneyCaseOwnership,
+  async (req, res) => {
+    try {
+      const caseId = req.validatedCaseId;
+      const newTier = req.validatedTier;
+      const currentTier = req.caseData.CaseTier;
+
+      // Validate tier upgrade (can only upgrade, not downgrade)
+      const tierLevels = { tier_1: 1, tier_2: 2, tier_3: 3 };
+
+      if (tierLevels[newTier] <= tierLevels[currentTier]) {
+        return res.status(400).json({
+          success: false,
+          message: "Can only upgrade to a higher tier",
+        });
+      }
+
+      // Update tier
+      await Case.updateCaseStatus(caseId, { caseTier: newTier });
+
+      res.json({
+        success: true,
+        message: "Case tier upgraded successfully",
+        previousTier: currentTier,
+        newTier,
+      });
+    } catch (error) {
+      console.error("Upgrade case tier error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to upgrade case tier",
+      });
+    }
+  }
+);
+
+/**
+ * DELETE /api/case/cases/:caseId
+ * Delete/cancel case (Attorney only)
+ */
+router.delete(
+  "/cases/:caseId",
+  caseOperationsLimiter,
+  authMiddleware,
+  requireAttorney,
+  validateCaseId,
+  loadCase,
+  verifyAttorneyCaseOwnership,
+  async (req, res) => {
+    try {
+      const caseId = req.validatedCaseId;
+      const caseData = req.caseData;
+
+      // Only allow deletion if case is not in advanced state
+      const undeletableStatuses = ["join_trial", "in_trial", "view_details"];
+
+      if (undeletableStatuses.includes(caseData.AttorneyStatus)) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Cannot delete case in current state. Please contact support.",
+        });
+      }
+
+      // Soft delete by updating status
+      await Case.updateCaseStatus(caseId, {
+        attorneyStatus: "cancelled",
+        adminApprovalStatus: "cancelled",
+      });
+
+      res.json({
+        success: true,
+        message: "Case cancelled successfully",
+      });
+    } catch (error) {
+      console.error("Delete case error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to delete case",
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/case/cases/:caseId/documents
+ * Get war room documents for a case
+ * Accessible to attorneys (own cases), jurors (approved), and admins
+ * NOTE: This endpoint fetches WarRoomDocuments (trial documents), not CaseDocuments (filing documents)
+ */
+router.get(
+  "/cases/:caseId/documents",
+  caseOperationsLimiter,
+  authMiddleware,
+  validateCaseId,
+  loadCase,
+  verifyCaseAccess,
+  async (req, res) => {
+    try {
+      const caseId = req.validatedCaseId;
+      const pool = await poolPromise;
+
+      const result = await pool
+        .request()
+        .input("caseId", sql.Int, caseId).query(`
+          SELECT
+            Id,
+            CaseId,
+            Type,
+            FileName,
+            FileUrl,
+            Description,
+            Size,
+            MimeType,
+            UploadedAt
+          FROM WarRoomDocuments
+          WHERE CaseId = @caseId
+          ORDER BY UploadedAt DESC
+        `);
+
+      // Generate fresh SAS URLs so jurors can view documents inline
+      const documents = await Promise.all(
+        (result.recordset || []).map(async (doc) => ({
+          ...doc,
+          FileUrl: await generateSasUrl(doc.FileUrl),
+        }))
+      );
+
+      res.json({
+        success: true,
+        documents,
+      });
+    } catch (error) {
+      console.error("Get case documents error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch case documents",
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/case/cases/:caseId/documents/:docId/view-url
+ * Generate a fresh SAS URL for a war room document so the client can
+ * embed it directly (e.g. Google Docs Viewer) without going through the proxy.
+ */
+router.get(
+  "/cases/:caseId/documents/:docId/view-url",
+  caseOperationsLimiter,
+  authMiddleware,
+  validateCaseId,
+  loadCase,
+  verifyCaseAccess,
+  async (req, res) => {
+    try {
+      const caseId = req.validatedCaseId;
+      const docId = parseInt(req.params.docId, 10);
+      if (isNaN(docId) || docId <= 0) {
+        return res.status(400).json({ success: false, message: "Invalid document ID" });
+      }
+      const pool = await poolPromise;
+      const result = await pool
+        .request()
+        .input("caseId", sql.Int, caseId)
+        .input("docId", sql.Int, docId)
+        .query(`SELECT FileUrl, FileName FROM WarRoomDocuments WHERE Id = @docId AND CaseId = @caseId`);
+      if (!result.recordset.length) {
+        return res.status(404).json({ success: false, message: "Document not found" });
+      }
+      const { FileUrl, FileName } = result.recordset[0];
+      const sasUrl = await generateSasUrl(FileUrl);
+      res.json({ success: true, url: sasUrl, fileName: FileName });
+    } catch (error) {
+      console.error("View URL error:", error);
+      res.status(500).json({ success: false, message: "Failed to generate view URL" });
+    }
+  }
+);
+
+/**
+ * GET /api/case/cases/:caseId/documents/:docId/raw
+ * Proxy a single war room document's content through the server.
+ * Used for file types (e.g. CSV) that Azure Blob Storage blocks via CORS.
+ */
+router.get(
+  "/cases/:caseId/documents/:docId/raw",
+  caseOperationsLimiter,
+  authMiddleware,
+  validateCaseId,
+  loadCase,
+  verifyCaseAccess,
+  async (req, res) => {
+    try {
+      const caseId = req.validatedCaseId;
+      const docId = parseInt(req.params.docId, 10);
+      if (isNaN(docId) || docId <= 0) {
+        return res.status(400).json({ success: false, message: "Invalid document ID" });
+      }
+
+      const pool = await poolPromise;
+      const result = await pool
+        .request()
+        .input("caseId", sql.Int, caseId)
+        .input("docId", sql.Int, docId)
+        .query(`SELECT FileUrl, FileName, MimeType FROM WarRoomDocuments WHERE Id = @docId AND CaseId = @caseId`);
+
+      if (!result.recordset.length) {
+        return res.status(404).json({ success: false, message: "Document not found" });
+      }
+
+      const { FileUrl, FileName, MimeType } = result.recordset[0];
+      const sasUrl = await generateSasUrl(FileUrl);
+      const upstream = await fetch(sasUrl);
+
+      if (!upstream.ok) {
+        return res.status(502).json({ success: false, message: "Failed to fetch document from storage" });
+      }
+
+      res.setHeader("Content-Type", MimeType || "application/octet-stream");
+      res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(FileName)}"`);
+      res.setHeader("Cache-Control", "private, max-age=300");
+
+      const buffer = await upstream.arrayBuffer();
+      res.send(Buffer.from(buffer));
+    } catch (error) {
+      console.error("Document raw proxy error:", error);
+      res.status(500).json({ success: false, message: "Failed to proxy document" });
+    }
+  }
+);
+
+/**
+ * GET /api/case/cases/:caseId/case-files
+ * Get original case filing documents (CaseDocuments table) for the attorney who owns the case.
+ * Attorneys see their own case's filing documents; admins have full access.
+ */
+router.get(
+  "/cases/:caseId/case-files",
+  caseOperationsLimiter,
+  authMiddleware,
+  validateCaseId,
+  loadCase,
+  verifyCaseAccess,
+  async (req, res) => {
+    try {
+      const caseId = req.validatedCaseId;
+      const docs = await CaseDocument.getDocumentsByCase(caseId);
+
+      // Generate fresh SAS URLs for inline viewing
+      const documents = await Promise.all(
+        docs.map(async (doc) => ({
+          ...doc,
+          FileUrl: doc.FileUrl ? await generateSasUrl(doc.FileUrl) : null,
+        }))
+      );
+
+      res.json({ success: true, documents });
+    } catch (error) {
+      console.error("Get case-files error:", error);
+      res.status(500).json({ success: false, message: "Failed to fetch case files" });
+    }
+  }
+);
+
+/**
+ * GET /api/case/cases/:caseId/case-files/:docId/raw
+ * Proxy a single CaseDocument's content to avoid CORS issues (e.g. CSV preview).
+ */
+router.get(
+  "/cases/:caseId/case-files/:docId/raw",
+  caseOperationsLimiter,
+  authMiddleware,
+  validateCaseId,
+  loadCase,
+  verifyCaseAccess,
+  async (req, res) => {
+    try {
+      const caseId = req.validatedCaseId;
+      const docId = parseInt(req.params.docId, 10);
+      if (isNaN(docId) || docId <= 0) {
+        return res.status(400).json({ success: false, message: "Invalid document ID" });
+      }
+
+      const doc = await CaseDocument.findById(docId);
+      if (!doc || doc.CaseId !== caseId) {
+        return res.status(404).json({ success: false, message: "Document not found" });
+      }
+
+      const sasUrl = await generateSasUrl(doc.FileUrl);
+      const upstream = await fetch(sasUrl);
+      if (!upstream.ok) {
+        return res.status(502).json({ success: false, message: "Failed to fetch document from storage" });
+      }
+
+      res.setHeader("Content-Type", doc.MimeType || "application/octet-stream");
+      res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(doc.FileName)}"`);
+      res.setHeader("Cache-Control", "private, max-age=300");
+
+      const buffer = await upstream.arrayBuffer();
+      res.send(Buffer.from(buffer));
+    } catch (error) {
+      console.error("Case-file raw proxy error:", error);
+      res.status(500).json({ success: false, message: "Failed to proxy document" });
+    }
+  }
+);
+
+/**
+ * GET /api/case/cases/:caseId/witnesses
+ * Get witnesses for a case
+ * Accessible to attorneys (own cases), jurors (approved), and admins
+ */
+router.get(
+  "/cases/:caseId/witnesses",
+  caseOperationsLimiter,
+  authMiddleware,
+  validateCaseId,
+  loadCase,
+  verifyCaseAccess,
+  async (req, res) => {
+    try {
+      const caseId = req.validatedCaseId;
+      const pool = await poolPromise;
+
+      const result = await pool
+        .request()
+        .input("caseId", sql.Int, caseId)
+        .query(`
+          SELECT *
+          FROM CaseWitnesses
+          WHERE CaseId = @caseId
+          ORDER BY OrderIndex ASC
+        `);
+
+      res.json({
+        success: true,
+        witnesses: result.recordset || [],
+      });
+    } catch (error) {
+      console.error("Get case witnesses error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch case witnesses",
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/case/cases/:caseId/team
+ * Get team members for a case
+ * Accessible to attorneys (own cases), jurors (approved), and admins
+ */
+router.get(
+  "/cases/:caseId/team",
+  caseOperationsLimiter,
+  authMiddleware,
+  validateCaseId,
+  loadCase,
+  verifyCaseAccess,
+  async (req, res) => {
+    try {
+      const caseId = req.validatedCaseId;
+      const pool = await poolPromise;
+
+      const result = await pool
+        .request()
+        .input("caseId", sql.Int, caseId).query(`
+          SELECT
+            Id,
+            CaseId,
+            Name,
+            Role,
+            Email,
+            AddedAt
+          FROM WarRoomTeamMembers
+          WHERE CaseId = @caseId
+          ORDER BY AddedAt DESC
+        `);
+
+      res.json({
+        success: true,
+        team: result.recordset || [],
+      });
+    } catch (error) {
+      console.error("Get case team error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch team members",
+      });
+    }
+  }
+);
+
+// ============================================
+// ERROR HANDLER
+// ============================================
+
+/**
+ * Route-specific error handler
+ */
+router.use((error, req, res, next) => {
+  console.error("Case Route Error:", error);
+
+  res.status(error.status || 500).json({
+    success: false,
+    message: error.message || "Internal server error",
+    error: process.env.NODE_ENV === "development" ? error.stack : undefined,
+  });
+});
+
+// ============================================
+// EXPORTS
+// ============================================
+
+module.exports = router;
