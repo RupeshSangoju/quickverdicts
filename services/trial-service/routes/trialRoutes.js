@@ -1,0 +1,1813 @@
+// =============================================
+// trialRoutes.js - Trial Meeting & Video Chat Routes
+// FIXED: Added SQL types, validation, rate limiting, better structure
+// =============================================
+
+const express = require("express");
+const router = express.Router();
+const rateLimit = require("express-rate-limit");
+const { notifyRoomRecreated, getIO, notifyUser } = require("../services/websocketService");
+const { sendNotificationEmail } = require("../utils/email");
+const {
+  CommunicationIdentityClient,
+} = require("@azure/communication-identity");
+const { poolPromise, sql } = require("../config/db");
+const { authMiddleware } = require("../middleware/authMiddleware");
+const {
+  requireTrialAccess,
+  requireAdminForTrial,
+} = require("../middleware/trialMiddleware");
+
+// Import models
+const TrialMeeting = require("../models/TrialMeeting");
+const Case = require("../models/Case");
+const Juror = require("../models/Juror");
+const JurorApplication = require("../models/JurorApplication");
+const Notification = require("../models/Notification");
+const Event = require("../models/Event");
+
+// Import ACS services
+const {
+  createRoom,
+  deleteRoom,
+  ensureRoomActive,
+  addParticipantToRoom,
+  removeParticipantFromRoom,
+  listRoomParticipants,
+  createChatThread,
+  addParticipantToChat,
+  removeParticipantFromChat,
+  ACS_ENDPOINT,
+} = require("../services/acsRoomsService");
+
+// ============================================
+// AZURE COMMUNICATION SERVICES CONFIGURATION
+// ============================================
+
+const connectionString = process.env.ACS_CONNECTION_STRING;
+
+if (!connectionString) {
+  console.error("CRITICAL: ACS_CONNECTION_STRING not configured");
+}
+
+const identityClient = connectionString
+  ? new CommunicationIdentityClient(connectionString)
+  : null;
+
+console.log("ACS_ENDPOINT:", ACS_ENDPOINT);
+console.log("ACS Identity Client initialized:", !!identityClient);
+
+// ============================================
+// RATE LIMITERS
+// ============================================
+
+/**
+ * Strict rate limiter for joining trials
+ */
+const joinTrialLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20, // 10 join attempts per 15 minutes
+  message: {
+    success: false,
+    message: "Too many join attempts. Please try again in 15 minutes.",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+/**
+ * General trial operations limiter
+ */
+const generalTrialLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // 100 requests
+  message: {
+    success: false,
+    message: "Too many requests. Please try again later.",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// ============================================
+// PER-CASE RECOVERY MUTEX
+// ============================================
+
+/**
+ * Tracks which caseIds are currently undergoing nuclear room recovery.
+ * Prevents two concurrent join requests from each creating a separate new room.
+ */
+const roomRecoveryInProgress = new Set();
+
+/**
+ * Deduplicates concurrent participant join requests for the same caseId+userId.
+ * Key: `${caseId}-${userId}`  Value: Promise<joinResult>
+ */
+const participantJoinInFlight = new Map();
+
+/**
+ * Deduplicates concurrent admin-join requests for the same caseId.
+ * Key: caseId string  Value: Promise<adminJoinResult>
+ * If a second admin-join arrives while the first is still processing,
+ * the second waits for and reuses the first's result — preventing two
+ * ACS identities being created and added to the room simultaneously.
+ */
+const adminJoinInFlight = new Map();
+
+/**
+ * Perform nuclear room recovery: delete the broken room, create a fresh one,
+ * update the DB (optimistic lock so only the first winner writes), and notify
+ * all connected clients via WebSocket.
+ *
+ * Must be called with roomRecoveryInProgress.add(caseId) already set by the caller,
+ * and roomRecoveryInProgress.delete(caseId) in a finally block.
+ *
+ * @returns {Promise<string>} The new room ID (or current DB room if another request won)
+ */
+async function executeNuclearRecovery(caseId, brokenRoomId, meetingId) {
+  console.log(`🔄 Nuclear recovery: recreating broken/expired room ${brokenRoomId}...`);
+  const newValidFrom = new Date(Date.now() - 60 * 60 * 1000);
+  const newValidUntil = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+  try { await deleteRoom(brokenRoomId); console.log(`   Deleted broken room ${brokenRoomId}`); }
+  catch (e) { console.warn(`   Could not delete old room (continuing): ${e.message}`); }
+
+  const newRoom = await createRoom(newValidFrom, newValidUntil);
+  console.log(`✅ Fresh room created: ${newRoom.id}`);
+
+  const pool = await poolPromise;
+  const updateResult = await pool.request()
+    .input("meetingId", sql.Int, meetingId)
+    .input("newRoomId", sql.NVarChar, newRoom.id)
+    .input("oldRoomId", sql.NVarChar, brokenRoomId)
+    .query("UPDATE dbo.TrialMeetings SET RoomId = @newRoomId WHERE MeetingId = @meetingId AND RoomId = @oldRoomId");
+
+  if (updateResult.rowsAffected[0] > 0) {
+    console.log(`✅ DB updated with recreated room: ${newRoom.id}`);
+    notifyRoomRecreated(caseId, newRoom.id);
+    return newRoom.id;
+  } else {
+    // Another concurrent request already updated the DB — use their room ID
+    console.log(`ℹ️ Another request already did nuclear recovery — re-fetching room ID`);
+    const freshPool = await poolPromise;
+    return await refetchRoomId(freshPool, meetingId);
+  }
+}
+
+/**
+ * Wait up to maxWaitMs for a case's room recovery to finish, then return.
+ */
+async function waitForRoomRecovery(caseId, maxWaitMs = 6000) {
+  const pollInterval = 500;
+  let elapsed = 0;
+  while (roomRecoveryInProgress.has(caseId) && elapsed < maxWaitMs) {
+    await new Promise((resolve) => setTimeout(resolve, pollInterval));
+    elapsed += pollInterval;
+  }
+}
+
+/**
+ * Re-fetch the current RoomId for a meeting from the database.
+ */
+async function refetchRoomId(pool, meetingId) {
+  const result = await pool
+    .request()
+    .input("meetingId", sql.Int, meetingId)
+    .query("SELECT RoomId FROM dbo.TrialMeetings WHERE MeetingId = @meetingId");
+  return result.recordset[0]?.RoomId || null;
+}
+
+// ============================================
+// MIDDLEWARE
+// ============================================
+
+// All routes require authentication
+router.use(authMiddleware);
+
+// ============================================
+// VALIDATION HELPERS
+// ============================================
+
+/**
+ * Validate case ID parameter
+ */
+const validateCaseId = (req, res, next) => {
+  const caseId = parseInt(req.params.caseId, 10);
+
+  if (isNaN(caseId) || caseId <= 0) {
+    return res.status(400).json({
+      success: false,
+      message: "Valid case ID is required",
+    });
+  }
+
+  req.validatedCaseId = caseId;
+  next();
+};
+
+/**
+ * Check if ACS is configured
+ */
+const checkACSConfiguration = (req, res, next) => {
+  if (!identityClient || !connectionString) {
+    return res.status(503).json({
+      success: false,
+      message: "Video communication service not available",
+    });
+  }
+  next();
+};
+
+// ============================================
+// TRIAL MEETING CREATION
+// ============================================
+
+/**
+ * Create meeting room AND chat thread when war room is submitted
+ * Called from attorneyRoutes.js submit-war-room endpoint
+ *
+ * ✅ FIXED: Creates chat thread immediately with service identity AND stores service user ID
+ */
+async function createTrialMeeting(caseId) {
+  try {
+    console.log("=== Creating trial meeting for case:", caseId);
+
+    // Check if meeting already exists
+    const existingMeeting = await TrialMeeting.getMeetingByCaseId(caseId);
+    if (existingMeeting) {
+      console.log("Meeting already exists:", existingMeeting.MeetingId);
+      return existingMeeting;
+    }
+
+    if (!identityClient) {
+      throw new Error("ACS not configured");
+    }
+
+    console.log("Creating new ACS room and chat...");
+    const caseData = await Case.findById(caseId);
+
+    if (!caseData) {
+      throw new Error("Case not found");
+    }
+
+    // 1. Create ACS Room for video
+    const validFrom = new Date();
+    const validUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+    const room = await createRoom(validFrom, validUntil);
+    console.log("✅ ACS Room created:", room.id);
+
+    // 2. Create Chat Thread immediately
+    const chatResult = await createChatThread(
+      `Trial: ${caseData.CaseTitle || "Case " + caseId}`
+    );
+    console.log("✅ Chat thread created:", chatResult.chatThreadId);
+    console.log("✅ Service user ID:", chatResult.serviceUserId);
+
+    // 3. Store in database with chat thread ID and service user ID
+    const threadId = `trial-case-${caseId}-${Date.now()}`;
+    const meetingId = await TrialMeeting.createMeeting(
+      caseId,
+      threadId,
+      room.id,
+      chatResult.chatThreadId,
+      chatResult.serviceUserId
+    );
+
+    // 4. Create event
+    await Event.createEvent({
+      caseId,
+      eventType: Event.EVENT_TYPES.TRIAL_STARTED,
+      description: "Trial meeting created with video and chat",
+      triggeredBy: caseData.AttorneyId,
+      userType: "attorney",
+    });
+
+    console.log(`✅ Trial meeting created successfully!`);
+    console.log(`   Meeting ID: ${meetingId}`);
+    console.log(`   Room ID: ${room.id}`);
+    console.log(`   Chat Thread ID: ${chatResult.chatThreadId}`);
+    console.log(`   Service User ID: ${chatResult.serviceUserId}`);
+
+    return {
+      MeetingId: meetingId,
+      CaseId: caseId,
+      ThreadId: threadId,
+      RoomId: room.id,
+      ChatThreadId: chatResult.chatThreadId,
+      ChatServiceUserId: chatResult.serviceUserId,
+      Status: "created",
+    };
+  } catch (error) {
+    console.error("❌ Error creating trial meeting:", error);
+    throw error;
+  }
+}
+
+// ============================================
+// TRIAL MEETING ROUTES
+// ============================================
+
+/**
+ * GET /api/trial/meeting/:caseId
+ * Get meeting details for a case
+ * FIXED: Added validation and better authorization
+ */
+router.get(
+  "/meeting/:caseId",
+  generalTrialLimiter,
+  validateCaseId,
+  requireTrialAccess,
+  async (req, res) => {
+    try {
+      const caseId = req.validatedCaseId;
+      const userId = req.user.id;
+      const userType = req.user.type;
+
+      const caseData = await Case.findById(caseId);
+      if (!caseData) {
+        return res.status(404).json({
+          success: false,
+          message: "Case not found",
+        });
+      }
+
+      // Check authorization
+      if (userType === "attorney" && caseData.AttorneyId !== userId) {
+        return res.status(403).json({
+          success: false,
+          message: "Access denied",
+        });
+      }
+
+      if (userType === "juror") {
+        const application = await JurorApplication.findByJurorAndCase(
+          userId,
+          caseId
+        );
+        if (!application || application.Status !== "approved") {
+          return res.status(403).json({
+            success: false,
+            message: "Access denied",
+          });
+        }
+      }
+
+      const meeting = await TrialMeeting.getMeetingByCaseId(caseId);
+      if (!meeting) {
+        return res.status(404).json({
+          success: false,
+          message: "Meeting not found",
+        });
+      }
+
+      res.json({
+        success: true,
+        meeting: {
+          meetingId: meeting.MeetingId,
+          threadId: meeting.ThreadId,
+          chatThreadId: meeting.ChatThreadId,
+          roomId: meeting.RoomId,
+          status: meeting.Status,
+          createdAt: meeting.CreatedAt,
+        },
+      });
+    } catch (error) {
+      console.error("Error getting meeting:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to get meeting details",
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/trial/join/:caseId
+ * Generate ACS token for user to join trial with chat support
+ *
+ * ✅ FIXED: Uses stored service user ID to add participants to chat
+ */
+router.post(
+  "/join/:caseId",
+  joinTrialLimiter,
+  validateCaseId,
+  checkACSConfiguration,
+  requireTrialAccess,
+  async (req, res) => {
+    try {
+      const caseId = req.validatedCaseId;
+      const userId = req.user.id;
+      const userType = req.user.type;
+
+      // Deduplicate concurrent join calls for the same user+case (StrictMode double-mount).
+      const joinKey = `${caseId}-${userId}`;
+      if (participantJoinInFlight.has(joinKey)) {
+        console.log(`⏳ join for case ${caseId} user ${userId} already in flight — reusing result`);
+        try {
+          const cachedResult = await participantJoinInFlight.get(joinKey);
+          return res.json(cachedResult);
+        } catch {
+          return res.status(500).json({ success: false, message: "Concurrent join failed" });
+        }
+      }
+      let resolveJoin, rejectJoin;
+      const joinPromise = new Promise((resolve, reject) => { resolveJoin = resolve; rejectJoin = reject; });
+      participantJoinInFlight.set(joinKey, joinPromise);
+
+      console.log(`🎯 Trial join request - User: ${userType} (ID: ${userId}), Case: ${caseId}`);
+
+      const caseData = await Case.findById(caseId);
+      if (!caseData) {
+        console.error(`❌ Case ${caseId} not found`);
+        return res.status(404).json({
+          success: false,
+          message: "Case not found",
+        });
+      }
+
+      // Block joining after the case day has ended
+      if (caseData.ScheduledDate) {
+        const scheduledDateStr = String(caseData.ScheduledDate).slice(0, 10);
+        const tzOffsetMin = parseInt(caseData.TimezoneOffset || 0, 10);
+        const serverNowUtc = new Date();
+        // TimezoneOffset is minutes EAST of UTC (Eastern = -300, India = +330),
+        // so local wall-clock = UTC + offset.
+        const nowLocal = new Date(serverNowUtc.getTime() + tzOffsetMin * 60 * 1000);
+        const todayStr = nowLocal.toISOString().slice(0, 10);
+
+        console.log("🕐 [ATTORNEY JOIN] Case-day check:");
+        console.log("   Raw ScheduledDate (DB):", caseData.ScheduledDate);
+        console.log("   scheduledDateStr:", scheduledDateStr);
+        console.log("   TimezoneOffset (min):", tzOffsetMin);
+        console.log("   Server now (UTC):", serverNowUtc.toISOString());
+        console.log("   Case-local now:", nowLocal.toISOString(), "→ todayStr:", todayStr);
+        console.log("   Would block (todayStr > scheduledDateStr)?", todayStr > scheduledDateStr);
+        if (todayStr > scheduledDateStr) {
+          if (rejectJoin) { rejectJoin(new Error("Case day ended")); setTimeout(() => participantJoinInFlight.delete(joinKey), 10000); }
+          return res.status(403).json({
+            success: false,
+            message: "The case day has ended. Joining is no longer available.",
+          });
+        }
+      }
+
+      console.log(`📋 Case ${caseId} status: ${caseData.AttorneyStatus}, AdminApproval: ${caseData.AdminApprovalStatus}`);
+
+      // ✅ FIX: Check if trial can be joined (15 minutes before scheduled time)
+      // Scheduled time is stored in attorney's LOCAL timezone
+      // Admins and attorneys (case owners) can join anytime
+      if (userType !== "admin" && userType !== "attorney" && caseData.ScheduledDate && caseData.ScheduledTime) {
+        // Parse the stored local date/time
+        const dateParts = caseData.ScheduledDate.split('T')[0].split('-');
+        const timeParts = caseData.ScheduledTime.split(':');
+
+        const year = parseInt(dateParts[0], 10);
+        const month = parseInt(dateParts[1], 10) - 1; // 0-indexed
+        const day = parseInt(dateParts[2], 10);
+        const hours = parseInt(timeParts[0], 10);
+        const minutes = parseInt(timeParts[1], 10);
+        const seconds = parseInt(timeParts[2] || 0, 10);
+
+        // Get the timezone offset that was stored when case was created
+        const timezoneOffsetMinutes = parseInt(caseData.TimezoneOffset || 0, 10);
+
+        // Create UTC timestamp for the scheduled time using the stored timezone offset
+        // Date.UTC creates timestamp, then subtract offset to convert from local to UTC
+        const scheduledLocalAsUTC = Date.UTC(year, month, day, hours, minutes, seconds);
+        const scheduledActualUTC = scheduledLocalAsUTC - (timezoneOffsetMinutes * 60 * 1000);
+
+        const now = Date.now();
+        const fifteenMinutesInMs = 15 * 60 * 1000;
+        const canJoinAfter = scheduledActualUTC - fifteenMinutesInMs;
+
+        console.log(`🕐 Trial join time check for case ${caseId}:`);
+        console.log(`   Scheduled (in attorney TZ): ${caseData.ScheduledDate} ${caseData.ScheduledTime}`);
+        console.log(`   Timezone offset: ${timezoneOffsetMinutes} minutes`);
+        console.log(`   Current time (UTC): ${new Date(now).toISOString()}`);
+        console.log(`   Can join after (UTC): ${new Date(canJoinAfter).toISOString()}`);
+
+        if (now < canJoinAfter) {
+          const minutesUntilJoin = Math.ceil((canJoinAfter - now) / (60 * 1000));
+          console.log(`⏰ Too early to join - ${minutesUntilJoin} minutes until join time`);
+          return res.status(403).json({
+            success: false,
+            message: `Trial cannot be joined yet. You can join ${minutesUntilJoin} minute${minutesUntilJoin !== 1 ? 's' : ''} before the scheduled time.`,
+            scheduledTime: new Date(scheduledActualUTC).toISOString(),
+            canJoinAt: new Date(canJoinAfter).toISOString()
+          });
+        }
+        console.log(`✅ Time check passed - can join now`);
+      }
+
+      // Verify authorization and set display name
+      let displayName = "";
+      let participantRole = "Attendee";
+
+      if (userType === "attorney") {
+        if (caseData.AttorneyId !== userId) {
+          console.error(`❌ Attorney ${userId} does not own case ${caseId} (owner: ${caseData.AttorneyId})`);
+          return res.status(403).json({
+            success: false,
+            message: "Access denied",
+          });
+        }
+        displayName = `${req.user.firstName} ${req.user.lastName} (Attorney)`;
+        participantRole = "Presenter";
+      } else if (userType === "juror") {
+        const application = await JurorApplication.findByJurorAndCase(
+          userId,
+          caseId
+        );
+        if (!application || application.Status !== "approved") {
+          console.error(`❌ Juror ${userId} not approved for case ${caseId}`);
+          return res.status(403).json({
+            success: false,
+            message: "Access denied - not approved for this case",
+          });
+        }
+        displayName = `${req.user.name} (Juror)`;
+      } else if (userType === "admin") {
+        displayName = "Court Administrator";
+        participantRole = "Presenter";
+      } else {
+        console.error(`❌ Invalid user type: ${userType}`);
+        return res.status(403).json({
+          success: false,
+          message: "Invalid user type",
+        });
+      }
+
+      const meeting = await TrialMeeting.getMeetingByCaseId(caseId);
+      if (!meeting) {
+        return res.status(404).json({
+          success: false,
+          message: "Meeting not found. Please contact administrator.",
+        });
+      }
+
+      if (!meeting.ChatThreadId) {
+        return res.status(500).json({
+          success: false,
+          message: "Chat not available for this meeting.",
+        });
+      }
+
+      // 🔧 FIX: Check for existing active participant and remove them from ACS room/chat
+      // This prevents duplicate participants when refreshing the page
+      const existingParticipants = await TrialMeeting.getActiveParticipants(meeting.MeetingId);
+      const existingParticipant = existingParticipants.find(
+        p => p.UserId === userId && p.UserType === userType
+      );
+
+      if (existingParticipant && existingParticipant.AcsUserId) {
+        console.log(`🧹 Found existing participant ${existingParticipant.DisplayName} (ACS: ${existingParticipant.AcsUserId})`);
+        console.log(`   Removing from ACS room/chat before creating new identity...`);
+
+        try {
+          // Remove from ACS room
+          await removeParticipantFromRoom(meeting.RoomId, existingParticipant.AcsUserId);
+
+          // Remove from chat thread
+          if (meeting.ChatThreadId && meeting.ChatServiceUserId) {
+            await removeParticipantFromChat(
+              meeting.ChatThreadId,
+              meeting.ChatServiceUserId,
+              existingParticipant.AcsUserId
+            );
+          }
+
+          // Mark as left in database
+          await TrialMeeting.removeParticipant(existingParticipant.ParticipantId);
+
+          console.log(`✅ Cleaned up old participant identity`);
+        } catch (cleanupError) {
+          console.error("⚠️ Error cleaning up old participant (continuing anyway):", cleanupError.message);
+          // Continue - we'll try to add the new identity anyway
+        }
+      }
+
+      // Create ACS user identity and token with VoIP and Chat scopes
+      const identityResponse = await identityClient.createUser();
+      const acsUserId = identityResponse.communicationUserId;
+
+      // Add participant to ACS Room (for video)
+      // If another join is currently doing nuclear recovery for this case, wait for it to finish
+      // so we don't both create separate new rooms.
+      if (roomRecoveryInProgress.has(caseId)) {
+        console.log(`⏳ Waiting for concurrent room recovery on case ${caseId}...`);
+        await waitForRoomRecovery(caseId);
+      }
+
+      let activeRoomId = meeting.RoomId;
+
+      // Re-fetch room ID in case it was updated by a just-completed concurrent recovery
+      const pool2 = await poolPromise;
+      const freshRoomResult = await pool2
+        .request()
+        .input("meetingId", sql.Int, meeting.MeetingId)
+        .query("SELECT RoomId FROM dbo.TrialMeetings WHERE MeetingId = @meetingId");
+      if (freshRoomResult.recordset[0]?.RoomId) {
+        activeRoomId = freshRoomResult.recordset[0].RoomId;
+      }
+
+      // 🔑 Ensure room is active — same coordination as admin-join so both
+      // routes converge to the same room ID regardless of join order.
+      try {
+        const ensureResult = await ensureRoomActive(activeRoomId);
+        if (ensureResult.needsRecovery) {
+          if (roomRecoveryInProgress.has(caseId)) {
+            console.log(`⏳ Nuclear recovery already in progress for case ${caseId} (participant) — waiting...`);
+            await waitForRoomRecovery(caseId);
+            const fresh = await refetchRoomId(await poolPromise, meeting.MeetingId);
+            if (fresh) activeRoomId = fresh;
+          } else {
+            roomRecoveryInProgress.add(caseId);
+            try {
+              const newRoomId = await executeNuclearRecovery(caseId, activeRoomId, meeting.MeetingId);
+              if (newRoomId) activeRoomId = newRoomId;
+            } finally {
+              roomRecoveryInProgress.delete(caseId);
+            }
+          }
+        }
+      } catch (ensureErr) {
+        console.error(`⚠️ ensureRoomActive failed for participant (continuing): ${ensureErr.message}`);
+      }
+
+      let roomResult = await addParticipantToRoom(activeRoomId, acsUserId, participantRole);
+
+      // If roomGone: concurrent recovery deleted the room before DB was updated.
+      // Poll until the other request commits its new RoomId (~3s max, 500ms intervals).
+      let roomGoneAttempts = 0;
+      while (roomResult?.roomGone && roomGoneAttempts < 6) {
+        console.log(`⏳ Room ${activeRoomId} gone (attempt ${roomGoneAttempts + 1}/6) — waiting for concurrent recovery to update DB...`);
+        await new Promise((r) => setTimeout(r, 500));
+        if (roomRecoveryInProgress.has(caseId)) await waitForRoomRecovery(caseId);
+        const poolGone = await poolPromise;
+        const freshId = await refetchRoomId(poolGone, meeting.MeetingId);
+        if (freshId && freshId !== activeRoomId) {
+          activeRoomId = freshId;
+          roomResult = await addParticipantToRoom(activeRoomId, acsUserId, participantRole);
+          break;
+        }
+        roomGoneAttempts++;
+      }
+
+      // If room was recreated due to corruption, use conditional update (optimistic lock)
+      if (roomResult && roomResult.newRoomId) {
+        console.log(`🔄 Room was recreated: ${activeRoomId} -> ${roomResult.newRoomId}`);
+        roomRecoveryInProgress.add(caseId);
+        try {
+          const oldRoomId = activeRoomId;
+          const pool4 = await poolPromise;
+          const updateResult = await pool4.request()
+            .input("meetingId", sql.Int, meeting.MeetingId)
+            .input("newRoomId", sql.NVarChar, roomResult.newRoomId)
+            .input("oldRoomId", sql.NVarChar, oldRoomId)
+            .query("UPDATE dbo.TrialMeetings SET RoomId = @newRoomId WHERE MeetingId = @meetingId AND RoomId = @oldRoomId");
+
+          if (updateResult.rowsAffected[0] > 0) {
+            // This request won the race — use the new room we created
+            activeRoomId = roomResult.newRoomId;
+            console.log(`✅ Database updated with new RoomId: ${activeRoomId}`);
+          } else {
+            // Another request already updated the room — use theirs and add participant to it
+            console.log(`ℹ️ Another request already did room recovery — joining their new room`);
+            const pool5 = await poolPromise;
+            const latestRoom = await refetchRoomId(pool5, meeting.MeetingId);
+            if (latestRoom) {
+              activeRoomId = latestRoom;
+              await addParticipantToRoom(activeRoomId, acsUserId, participantRole);
+              console.log(`✅ Joined concurrently-recovered room ${activeRoomId}`);
+            }
+          }
+        } finally {
+          roomRecoveryInProgress.delete(caseId);
+        }
+      }
+
+      // Generate token with VoIP and Chat scopes
+      const tokenResponse = await identityClient.getToken(identityResponse, [
+        "voip",
+        "chat",
+      ], { expiresInMinutes: 1440 }); // 24 hours
+
+      // Add user to chat thread using the stored service user ID
+      if (meeting.ChatThreadId && meeting.ChatServiceUserId) {
+        try {
+          await addParticipantToChat(
+            meeting.ChatThreadId,
+            meeting.ChatServiceUserId,
+            acsUserId,
+            displayName
+          );
+        } catch (chatAddError) {
+          console.error("Failed to add participant to chat:", chatAddError);
+          // Continue anyway - they can still join video
+        }
+      }
+
+      // Track participant in database
+      await TrialMeeting.addParticipant(
+        meeting.MeetingId,
+        userId,
+        userType,
+        displayName,
+        acsUserId
+      );
+
+      // Update meeting status to active if first join
+      if (meeting.Status === "created") {
+        await TrialMeeting.updateMeetingStatus(meeting.MeetingId, "active");
+      }
+
+      // Create event
+      await Event.createEvent({
+        caseId,
+        eventType: Event.EVENT_TYPES.CASE_UPDATED,
+        description: `${displayName} joined trial`,
+        triggeredBy: userId,
+        userType,
+      });
+
+      console.log(`✅ ${displayName} joined successfully`);
+      console.log(`   ACS User ID: ${acsUserId}`);
+      console.log(`   Chat Thread: ${meeting.ChatThreadId}`);
+
+      const joinResult = {
+        success: true,
+        token: tokenResponse.token,
+        expiresOn: tokenResponse.expiresOn,
+        userId: acsUserId,
+        displayName: displayName,
+        roomId: activeRoomId,
+        chatThreadId: meeting.ChatThreadId,
+        endpointUrl: ACS_ENDPOINT,
+      };
+      resolveJoin(joinResult);
+      setTimeout(() => participantJoinInFlight.delete(joinKey), 10000);
+      res.json(joinResult);
+    } catch (error) {
+      if (rejectJoin) { rejectJoin(error); setTimeout(() => participantJoinInFlight.delete(joinKey), 10000); }
+      console.error("❌ Error joining trial:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to join trial",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/trial/participants/:caseId
+ * Get list of participants in a trial
+ * FIXED: Added validation
+ */
+router.get(
+  "/participants/:caseId",
+  generalTrialLimiter,
+  validateCaseId,
+  requireTrialAccess,
+  async (req, res) => {
+    try {
+      const caseId = req.validatedCaseId;
+
+      const meeting = await TrialMeeting.getMeetingByCaseId(caseId);
+      if (!meeting) {
+        return res.status(404).json({
+          success: false,
+          message: "Meeting not found",
+        });
+      }
+
+      const participants = await TrialMeeting.getParticipants(
+        meeting.MeetingId
+      );
+
+      res.json({
+        success: true,
+        participants,
+        count: participants.length,
+      });
+    } catch (error) {
+      console.error("Error getting participants:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to get participants",
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/trial/case/:caseId/jurors
+ * Get approved jurors for a trial
+ * FIXED: Added SQL type safety
+ */
+router.get(
+  "/case/:caseId/jurors",
+  generalTrialLimiter,
+  validateCaseId,
+  requireTrialAccess,
+  async (req, res) => {
+    try {
+      const caseId = req.validatedCaseId;
+      const pool = await poolPromise;
+
+      const result = await pool.request().input("caseId", sql.Int, caseId)
+        .query(`
+          SELECT 
+            j.JurorId as id,
+            j.Name,
+            j.Email,
+            ja.Status
+          FROM dbo.JurorApplications ja
+          JOIN dbo.Jurors j ON ja.JurorId = j.JurorId
+          WHERE ja.CaseId = @caseId AND ja.Status = 'approved'
+        `);
+
+      res.json({
+        success: true,
+        jurors: result.recordset,
+        count: result.recordset.length,
+      });
+    } catch (error) {
+      console.error("Error fetching jurors:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch jurors",
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/trial/juror-join/:caseId
+ * Juror join endpoint
+ *
+ * ✅ FIXED: Uses stored service user ID to add juror to chat
+ */
+router.post(
+  "/juror-join/:caseId",
+  joinTrialLimiter,
+  validateCaseId,
+  checkACSConfiguration,
+  requireTrialAccess,
+  async (req, res) => {
+    try {
+      const caseId = req.validatedCaseId;
+      const jurorId = req.user.id;
+      const pool = await poolPromise;
+
+      const verification = await pool
+        .request()
+        .input("caseId", sql.Int, caseId)
+        .input("jurorId", sql.Int, jurorId).query(`
+          SELECT
+            ja.Status,
+            tm.RoomId,
+            tm.ChatThreadId,
+            tm.ChatServiceUserId,
+            tm.MeetingId,
+            j.Name,
+            c.ScheduledDate
+          FROM dbo.JurorApplications ja
+          JOIN dbo.TrialMeetings tm ON ja.CaseId = tm.CaseId
+          JOIN dbo.Jurors j ON ja.JurorId = j.JurorId
+          JOIN dbo.Cases c ON ja.CaseId = c.CaseId
+          WHERE ja.CaseId = @caseId
+            AND ja.JurorId = @jurorId
+            AND ja.Status = 'approved'
+            AND ISNULL(ja.IsRemoved, 0) = 0
+        `);
+
+      if (verification.recordset.length === 0) {
+        return res.status(403).json({
+          success: false,
+          message: "Not authorized to join this trial",
+        });
+      }
+
+      const data = verification.recordset[0];
+
+      // Block joining after the case day has ended
+      if (data.ScheduledDate) {
+        const scheduledDateStr = String(data.ScheduledDate).slice(0, 10);
+        const todayStr = new Date().toISOString().slice(0, 10);
+        if (todayStr > scheduledDateStr) {
+          return res.status(403).json({
+            success: false,
+            message: "The case day has ended. Joining is no longer available.",
+          });
+        }
+      }
+
+      let activeRoomId = data.RoomId;
+      const chatThreadId = data.ChatThreadId;
+      const chatServiceUserId = data.ChatServiceUserId;
+      const meetingId = data.MeetingId;
+      const jurorName = data.Name;
+
+      // Create identity and token
+      const identity = await identityClient.createUser();
+      const token = await identityClient.getToken(identity, ["voip", "chat"], { expiresInMinutes: 1440 }); // 24 hours
+
+      // Add to room (for video)
+      // If another join is currently doing nuclear recovery for this case, wait for it to finish
+      if (roomRecoveryInProgress.has(caseId)) {
+        console.log(`⏳ Waiting for concurrent room recovery on case ${caseId}...`);
+        await waitForRoomRecovery(caseId);
+      }
+
+      // Re-fetch room ID in case it was updated by a just-completed concurrent recovery
+      const freshPoolJ = await poolPromise;
+      const freshRoomJ = await freshPoolJ
+        .request()
+        .input("meetingId", sql.Int, meetingId)
+        .query("SELECT RoomId FROM dbo.TrialMeetings WHERE MeetingId = @meetingId");
+      if (freshRoomJ.recordset[0]?.RoomId) {
+        activeRoomId = freshRoomJ.recordset[0].RoomId;
+      }
+
+      try {
+        let roomResult = await addParticipantToRoom(
+          activeRoomId,
+          identity.communicationUserId,
+          "Attendee"
+        );
+
+        // If roomGone: concurrent recovery deleted the room before DB was updated.
+        // Poll until the other request commits its new RoomId (~3s max, 500ms intervals).
+        let roomGoneAttemptsJ = 0;
+        while (roomResult?.roomGone && roomGoneAttemptsJ < 6) {
+          console.log(`⏳ Room ${activeRoomId} gone for juror (attempt ${roomGoneAttemptsJ + 1}/6) — waiting for concurrent recovery to update DB...`);
+          await new Promise((r) => setTimeout(r, 500));
+          if (roomRecoveryInProgress.has(caseId)) await waitForRoomRecovery(caseId);
+          const poolGoneJ = await poolPromise;
+          const freshIdJ = await refetchRoomId(poolGoneJ, meetingId);
+          if (freshIdJ && freshIdJ !== activeRoomId) {
+            activeRoomId = freshIdJ;
+            roomResult = await addParticipantToRoom(activeRoomId, identity.communicationUserId, "Attendee");
+            break;
+          }
+          roomGoneAttemptsJ++;
+        }
+
+        // If room was recreated due to corruption, use conditional update (optimistic lock)
+        if (roomResult && roomResult.newRoomId) {
+          console.log(`🔄 Room was recreated for juror: ${activeRoomId} -> ${roomResult.newRoomId}`);
+          roomRecoveryInProgress.add(caseId);
+          try {
+            const oldRoomIdJ = activeRoomId;
+            const updatePoolJ = await poolPromise;
+            const updateResultJ = await updatePoolJ.request()
+              .input("meetingId", sql.Int, meetingId)
+              .input("newRoomId", sql.NVarChar, roomResult.newRoomId)
+              .input("oldRoomId", sql.NVarChar, oldRoomIdJ)
+              .query("UPDATE dbo.TrialMeetings SET RoomId = @newRoomId WHERE MeetingId = @meetingId AND RoomId = @oldRoomId");
+
+            if (updateResultJ.rowsAffected[0] > 0) {
+              activeRoomId = roomResult.newRoomId;
+              console.log(`✅ Database updated with new RoomId: ${activeRoomId}`);
+            } else {
+              console.log(`ℹ️ Another request already did room recovery for juror — joining their new room`);
+              const latestPoolJ = await poolPromise;
+              const latestRoomJ = await refetchRoomId(latestPoolJ, meetingId);
+              if (latestRoomJ) {
+                activeRoomId = latestRoomJ;
+                await addParticipantToRoom(activeRoomId, identity.communicationUserId, "Attendee");
+                console.log(`✅ Juror joined concurrently-recovered room ${activeRoomId}`);
+              }
+            }
+          } finally {
+            roomRecoveryInProgress.delete(caseId);
+          }
+        }
+      } catch (err) {
+        if (err.statusCode !== 409) throw err; // Ignore if already added
+      }
+
+      // Add juror to chat thread using the stored service user ID
+      if (chatThreadId && chatServiceUserId) {
+        try {
+          await addParticipantToChat(
+            chatThreadId,
+            chatServiceUserId,
+            identity.communicationUserId,
+            `${jurorName} (Juror)`
+          );
+        } catch (chatAddError) {
+          console.error("Failed to add juror to chat:", chatAddError);
+          // Continue anyway - they can still join video
+        }
+      }
+
+      // Track in database
+      await TrialMeeting.addParticipant(
+        meetingId,
+        jurorId,
+        "juror",
+        `${jurorName} (Juror)`,
+        identity.communicationUserId
+      );
+
+      // Create event
+      await Event.createEvent({
+        caseId,
+        eventType: Event.EVENT_TYPES.CASE_UPDATED,
+        description: `Juror ${jurorName} joined trial`,
+        triggeredBy: jurorId,
+        userType: "juror",
+      });
+
+      console.log(`✅ Juror ${jurorName} joined successfully with chat access`);
+
+      res.json({
+        success: true,
+        token: token.token,
+        expiresOn: token.expiresOn,
+        roomId: activeRoomId,
+        displayName: `${jurorName} (Juror)`,
+        userId: identity.communicationUserId,
+        chatThreadId: chatThreadId,
+        endpointUrl: ACS_ENDPOINT,
+      });
+    } catch (error) {
+      console.error("❌ Error in juror join:", error);
+
+      if (error.statusCode === 409) {
+        return res.status(200).json({
+          success: true,
+          message: "Already in room",
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        message: "Failed to join trial",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  }
+);
+
+// ============================================
+// ADMIN TRIAL ROUTES
+// ============================================
+
+/**
+ * GET /api/trial/admin/trials/today
+ * Get today's scheduled trials for admin
+ * FIXED: Added SQL type safety
+ */
+router.get(
+  "/admin/trials/today",
+  generalTrialLimiter,
+  requireAdminForTrial,
+  async (req, res) => {
+    try {
+      const pool = await poolPromise;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const result = await pool.request().input("today", sql.Date, today)
+        .query(`
+          SELECT 
+            c.CaseId,
+            c.CaseTitle,
+            c.CaseType,
+            c.County,
+            c.ScheduledDate,
+            c.ScheduledTime,
+            c.AttorneyStatus,
+            tm.RoomId,
+            tm.ChatThreadId,
+            CONCAT(a.FirstName, ' ', a.LastName) as AttorneyName,
+            a.LawFirmName
+          FROM dbo.Cases c
+          LEFT JOIN dbo.TrialMeetings tm ON c.CaseId = tm.CaseId
+          JOIN dbo.Attorneys a ON c.AttorneyId = a.AttorneyId
+          WHERE CAST(c.ScheduledDate AS DATE) = @today
+            AND c.AttorneyStatus IN ('approved', 'war_room', 'join_trial')
+            AND tm.RoomId IS NOT NULL
+          ORDER BY c.ScheduledTime
+        `);
+
+      console.log("Today's trials found:", result.recordset.length);
+
+      res.json({
+        success: true,
+        trials: result.recordset,
+        count: result.recordset.length,
+        date: today.toISOString().split("T")[0],
+      });
+    } catch (error) {
+      console.error("Error fetching today's trials:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch trials",
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/trial/admin-join/:caseId
+ * Admin join trial
+ *
+ * ✅ FIXED: Uses stored service user ID to add admin to chat
+ */
+router.post(
+  "/admin-join/:caseId",
+  joinTrialLimiter,
+  validateCaseId,
+  checkACSConfiguration,
+  requireAdminForTrial,
+  async (req, res) => {
+    try {
+      const caseId = req.validatedCaseId;
+
+      // Deduplicate concurrent admin-join calls for the same case.
+      // React StrictMode (dev) sends two near-simultaneous requests; without this
+      // both would create separate ACS identities causing one to get a 403 from cpconv.
+      if (adminJoinInFlight.has(caseId)) {
+        console.log(`⏳ admin-join for case ${caseId} already in flight — reusing result`);
+        try {
+          const cachedResult = await adminJoinInFlight.get(caseId);
+          return res.json(cachedResult);
+        } catch (err) {
+          return res.status(500).json({ success: false, message: "Concurrent admin-join failed" });
+        }
+      }
+
+      let resolveInflight, rejectInflight;
+      const inflightPromise = new Promise((resolve, reject) => {
+        resolveInflight = resolve;
+        rejectInflight = reject;
+      });
+      adminJoinInFlight.set(caseId, inflightPromise);
+
+      try {
+      const pool = await poolPromise;
+
+      const result = await pool.request().input("caseId", sql.Int, caseId)
+        .query(`
+          SELECT TOP 1
+            c.CaseId,
+            c.CaseTitle,
+            c.ScheduledDate,
+            c.ScheduledTime,
+            tm.RoomId,
+            tm.MeetingId,
+            tm.ChatThreadId,
+            tm.ChatServiceUserId,
+            c.AdminApprovalStatus
+          FROM dbo.Cases c
+          JOIN dbo.TrialMeetings tm ON c.CaseId = tm.CaseId
+          WHERE c.CaseId = @caseId
+            AND c.AdminApprovalStatus = 'approved'
+          ORDER BY tm.CreatedAt DESC
+        `);
+
+      if (result.recordset.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Trial not found or not approved",
+        });
+      }
+
+      const trial = result.recordset[0];
+
+      // Block joining after the case day has ended
+      if (trial.ScheduledDate) {
+        const scheduledDateStr = String(trial.ScheduledDate).slice(0, 10);
+        const todayStr = new Date().toISOString().slice(0, 10);
+        if (todayStr > scheduledDateStr) {
+          rejectInflight(new Error("Case day ended"));
+          return res.status(403).json({
+            success: false,
+            message: "The case day has ended. Joining is no longer available.",
+          });
+        }
+      }
+
+      console.log("Admin join - trial record:", {
+        CaseId: trial.CaseId,
+        RoomId: trial.RoomId,
+        MeetingId: trial.MeetingId,
+        ChatThreadId: trial.ChatThreadId,
+        ChatServiceUserId: trial.ChatServiceUserId,
+      });
+
+      console.log("ACS identity client configured:", !!identityClient);
+
+      // 🔧 FIX: Check for existing active admin and remove them from ACS room/chat
+      const existingParticipants = await TrialMeeting.getActiveParticipants(trial.MeetingId);
+      const existingAdmin = existingParticipants.find(
+        p => p.UserId === (req.user.id || 0) && p.UserType === "admin"
+      );
+
+      if (existingAdmin && existingAdmin.AcsUserId) {
+        console.log(`🧹 Found existing admin (ACS: ${existingAdmin.AcsUserId})`);
+        console.log(`   Removing from ACS room/chat before creating new identity...`);
+
+        try {
+          await removeParticipantFromRoom(trial.RoomId, existingAdmin.AcsUserId);
+
+          if (trial.ChatThreadId && trial.ChatServiceUserId) {
+            await removeParticipantFromChat(
+              trial.ChatThreadId,
+              trial.ChatServiceUserId,
+              existingAdmin.AcsUserId
+            );
+          }
+
+          await TrialMeeting.removeParticipant(existingAdmin.ParticipantId);
+
+          console.log(`✅ Cleaned up old admin identity`);
+        } catch (cleanupError) {
+          console.error("⚠️ Error cleaning up old admin (continuing anyway):", cleanupError.message);
+        }
+      }
+
+      let identityResponse;
+      let acsUserId;
+      let tokenResponse;
+
+      try {
+        identityResponse = await identityClient.createUser();
+        acsUserId = identityResponse.communicationUserId;
+        console.log("Created ACS identity for admin:", acsUserId);
+      } catch (idErr) {
+        console.error("Error creating ACS identity for admin:", idErr && idErr.message ? idErr.message : idErr);
+        throw idErr;
+      }
+
+      // If another join is currently doing nuclear recovery for this case, wait for it to finish
+      if (roomRecoveryInProgress.has(caseId)) {
+        console.log(`⏳ Waiting for concurrent room recovery on case ${caseId} (admin)...`);
+        await waitForRoomRecovery(caseId);
+      }
+
+      let activeRoomId = trial.RoomId;
+
+      // Re-fetch room ID in case it was updated by a just-completed concurrent recovery
+      const freshPoolA = await poolPromise;
+      const freshRoomA = await freshPoolA
+        .request()
+        .input("meetingId", sql.Int, trial.MeetingId)
+        .query("SELECT RoomId FROM dbo.TrialMeetings WHERE MeetingId = @meetingId");
+      if (freshRoomA.recordset[0]?.RoomId) {
+        activeRoomId = freshRoomA.recordset[0].RoomId;
+      }
+
+      // 🔑 Ensure room is active (expired → extend; broken → nuclear recovery).
+      // Coordinated via roomRecoveryInProgress so concurrent joins don't create
+      // separate new rooms — they wait and re-fetch the winner's new room ID.
+      try {
+        const ensureResult = await ensureRoomActive(activeRoomId);
+        if (ensureResult.needsRecovery) {
+          if (roomRecoveryInProgress.has(caseId)) {
+            console.log(`⏳ Nuclear recovery already in progress for case ${caseId} (admin) — waiting...`);
+            await waitForRoomRecovery(caseId);
+            const fresh = await refetchRoomId(await poolPromise, trial.MeetingId);
+            if (fresh) activeRoomId = fresh;
+          } else {
+            roomRecoveryInProgress.add(caseId);
+            try {
+              const newRoomId = await executeNuclearRecovery(caseId, activeRoomId, trial.MeetingId);
+              if (newRoomId) activeRoomId = newRoomId;
+            } finally {
+              roomRecoveryInProgress.delete(caseId);
+            }
+          }
+        }
+      } catch (ensureErr) {
+        console.error(`⚠️ ensureRoomActive failed (continuing): ${ensureErr.message}`);
+      }
+
+      try {
+        let roomResult = await addParticipantToRoom(activeRoomId, acsUserId, "Presenter");
+
+        // If roomGone: concurrent recovery deleted the room before DB was updated.
+        // Poll until the other request commits its new RoomId (~3s max, 500ms intervals).
+        let roomGoneAttemptsA = 0;
+        while (roomResult?.roomGone && roomGoneAttemptsA < 6) {
+          console.log(`⏳ Room ${activeRoomId} gone for admin (attempt ${roomGoneAttemptsA + 1}/6) — waiting for concurrent recovery to update DB...`);
+          await new Promise((r) => setTimeout(r, 500));
+          if (roomRecoveryInProgress.has(caseId)) await waitForRoomRecovery(caseId);
+          const poolGoneA = await poolPromise;
+          const freshIdA = await refetchRoomId(poolGoneA, trial.MeetingId);
+          if (freshIdA && freshIdA !== activeRoomId) {
+            activeRoomId = freshIdA;
+            roomResult = await addParticipantToRoom(activeRoomId, acsUserId, "Presenter");
+            break;
+          }
+          roomGoneAttemptsA++;
+        }
+
+        // If room was recreated due to corruption, use conditional update (optimistic lock)
+        if (roomResult && roomResult.newRoomId) {
+          console.log(`🔄 Room was recreated for admin: ${activeRoomId} -> ${roomResult.newRoomId}`);
+          roomRecoveryInProgress.add(caseId);
+          try {
+            const oldRoomIdA = activeRoomId;
+            const updatePoolA = await poolPromise;
+            const updateResultA = await updatePoolA.request()
+              .input("meetingId", sql.Int, trial.MeetingId)
+              .input("newRoomId", sql.NVarChar, roomResult.newRoomId)
+              .input("oldRoomId", sql.NVarChar, oldRoomIdA)
+              .query("UPDATE dbo.TrialMeetings SET RoomId = @newRoomId WHERE MeetingId = @meetingId AND RoomId = @oldRoomId");
+
+            if (updateResultA.rowsAffected[0] > 0) {
+              activeRoomId = roomResult.newRoomId;
+              console.log(`✅ Database updated with new RoomId (admin): ${activeRoomId}`);
+            } else {
+              console.log(`ℹ️ Another request already did room recovery for admin — joining their new room`);
+              const latestPoolA = await poolPromise;
+              const latestRoomA = await refetchRoomId(latestPoolA, trial.MeetingId);
+              if (latestRoomA) {
+                activeRoomId = latestRoomA;
+                await addParticipantToRoom(activeRoomId, acsUserId, "Presenter");
+                console.log(`✅ Admin joined concurrently-recovered room ${activeRoomId}`);
+              }
+            }
+          } finally {
+            roomRecoveryInProgress.delete(caseId);
+          }
+        }
+      } catch (roomErr) {
+        console.error("Error adding admin to room:", roomErr && roomErr.message ? roomErr.message : roomErr);
+        throw roomErr;
+      }
+
+      // 🔍 DIAGNOSTIC: verify admin is actually in the room before returning token
+      const roomParticipants = await listRoomParticipants(activeRoomId);
+      if (roomParticipants) {
+        const adminInRoom = roomParticipants.find(p => p.id === acsUserId);
+        console.log(`🔍 Room ${activeRoomId} has ${roomParticipants.length} participants`);
+        console.log(`🔍 Admin (${acsUserId}) in room: ${adminInRoom ? `YES (role=${adminInRoom.role})` : 'NO ⚠️'}`);
+        if (!adminInRoom) {
+          console.error(`❌ Admin identity NOT found in room after add — will retry add`);
+          await addParticipantToRoom(activeRoomId, acsUserId, "Presenter");
+          console.log(`✅ Admin re-added to room on retry`);
+        }
+      }
+
+      try {
+        tokenResponse = await identityClient.getToken(identityResponse, ["voip", "chat"], { expiresInMinutes: 1440 }); // 24 hours
+      } catch (tokenErr) {
+        console.error("Error getting token for admin identity:", tokenErr && tokenErr.message ? tokenErr.message : tokenErr);
+        throw tokenErr;
+      }
+
+      // Add admin to chat thread using the stored service user ID
+      if (trial.ChatThreadId && trial.ChatServiceUserId) {
+        try {
+          await addParticipantToChat(
+            trial.ChatThreadId,
+            trial.ChatServiceUserId,
+            acsUserId,
+            "Court Administrator"
+          );
+        } catch (chatAddError) {
+          console.error("Failed to add admin to chat:", chatAddError && chatAddError.message ? chatAddError.message : chatAddError);
+          // Continue - allow video-only join
+        }
+      }
+
+      await TrialMeeting.addParticipant(
+        trial.MeetingId,
+        req.user.id || 0,
+        "admin",
+        "Court Administrator",
+        acsUserId
+      );
+
+      // Create event
+      await Event.createEvent({
+        caseId,
+        eventType: Event.EVENT_TYPES.CASE_UPDATED,
+        description: "Court Administrator joined trial",
+        triggeredBy: req.user.id || 0,
+        userType: "admin",
+      });
+
+      console.log(`✅ Admin joined trial ${caseId} with chat access`);
+
+      const joinResult = {
+        success: true,
+        token: tokenResponse.token,
+        expiresOn: tokenResponse.expiresOn,
+        userId: acsUserId,
+        displayName: "Court Administrator",
+        roomId: activeRoomId,
+        chatThreadId: trial.ChatThreadId,
+        endpointUrl: ACS_ENDPOINT,
+      };
+
+      resolveInflight(joinResult);
+      res.json(joinResult);
+      } catch (innerError) {
+        rejectInflight(innerError);
+        throw innerError;
+      } finally {
+        // Clear after a short window so a genuine retry (page reload) goes through fresh
+        setTimeout(() => adminJoinInFlight.delete(caseId), 10000);
+      }
+    } catch (error) {
+      console.error("❌ Error joining trial as admin:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to join trial",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/trial/end/:caseId
+ * End a trial meeting
+ * FIXED: Now properly removes all participants from ACS room and chat thread
+ */
+router.post(
+  "/end/:caseId",
+  generalTrialLimiter,
+  validateCaseId,
+  requireAdminForTrial,
+  async (req, res) => {
+    try {
+      const caseId = req.validatedCaseId;
+
+      const meeting = await TrialMeeting.getMeetingByCaseId(caseId);
+      if (!meeting) {
+        return res.status(404).json({
+          success: false,
+          message: "Meeting not found",
+        });
+      }
+
+      // Get all active participants (excluding the admin who is ending the call)
+      // The admin will disconnect via frontend hangUp({ forEveryone: true })
+      const participants = await TrialMeeting.getParticipants(meeting.MeetingId);
+      const activeParticipants = participants.filter(p =>
+        (p.IsActive === 1 || p.LeftAt === null) &&
+        !(p.UserType === 'admin' && p.UserId === req.user?.id)
+      );
+
+      console.log(`Removing ${activeParticipants.length} active participants from meeting ${meeting.MeetingId}`);
+
+      // Remove each active participant from ACS room, chat thread, and database
+      for (const participant of activeParticipants) {
+        try {
+          // Remove from ACS room
+          if (meeting.RoomId && participant.AcsUserId) {
+            await removeParticipantFromRoom(meeting.RoomId, participant.AcsUserId);
+          }
+
+          // Remove from chat thread
+          if (meeting.ChatThreadId && meeting.ChatServiceUserId && participant.AcsUserId) {
+            try {
+              await removeParticipantFromChat(
+                meeting.ChatThreadId,
+                meeting.ChatServiceUserId,
+                participant.AcsUserId
+              );
+            } catch (chatError) {
+              // Chat errors are not critical
+              console.log(`Chat removal completed for ${participant.AcsUserId}:`, chatError.message);
+            }
+          }
+
+          // Mark participant as left in database
+          await TrialMeeting.removeParticipant(participant.ParticipantId);
+
+          console.log(`✅ Removed participant ${participant.DisplayName} (${participant.UserType})`);
+        } catch (participantError) {
+          console.error(`Error removing participant ${participant.ParticipantId}:`, participantError);
+          // Continue with other participants even if one fails
+        }
+      }
+
+      // Update meeting status to ended
+      await TrialMeeting.updateMeetingStatus(meeting.MeetingId, "ended");
+
+      // Mark case as trial_completed so Join Trial button disappears from dashboards
+      const pool = await poolPromise;
+      await pool.request()
+        .input("caseId", sql.Int, caseId)
+        .query(`UPDATE dbo.Cases SET AttorneyStatus = 'trial_completed' WHERE CaseId = @caseId`);
+
+      // Create event in audit trail
+      await Event.createEvent({
+        caseId,
+        eventType: Event.EVENT_TYPES.TRIAL_COMPLETED,
+        description: "Trial meeting ended by admin",
+        triggeredBy: req.user?.id || 0,
+        userType: "admin",
+      });
+
+      // Notify all participants in the case room to redirect home
+      try {
+        getIO().to(`case_${caseId}`).emit("trial_ended", { caseId });
+        console.log(`📡 trial_ended emitted to case_${caseId}`);
+      } catch (e) {
+        console.warn("WebSocket emit trial_ended failed:", e);
+      }
+
+      res.json({
+        success: true,
+        message: "Trial ended successfully",
+        participantsRemoved: activeParticipants.length,
+      });
+    } catch (error) {
+      console.error("Error ending trial:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to end trial",
+      });
+    }
+  }
+);
+
+
+// ============================================
+// REMOVE JUROR FROM TRIAL (admin only)
+// ============================================
+
+/**
+ * POST /api/trial/remove-juror/:caseId
+ * Admin removes a juror from an active trial for a stated reason.
+ *
+ * - Reason is REQUIRED.
+ * - Boots the juror from the ACS room + chat immediately.
+ * - Permanently blocks the juror from rejoining THIS case (IsRemoved = 1);
+ *   the juror-join query and isJurorApprovedForCase both exclude removed jurors.
+ * - Emails the juror + creates an in-app notification with the reason.
+ * - Emits a `juror_removed` socket event so their client leaves right away.
+ *
+ * Body: { acsUserId: string, reason: string }
+ */
+router.post(
+  "/remove-juror/:caseId",
+  validateCaseId,
+  requireAdminForTrial,
+  async (req, res) => {
+    try {
+      const caseId = req.validatedCaseId;
+      const adminId = req.user.id || 0;
+      const acsUserId = (req.body?.acsUserId || "").trim();
+      const reason = (req.body?.reason || "").trim();
+
+      if (!reason) {
+        return res.status(400).json({
+          success: false,
+          message: "A reason for removal is required.",
+        });
+      }
+      if (!acsUserId) {
+        return res.status(400).json({
+          success: false,
+          message: "Participant identifier (acsUserId) is required.",
+        });
+      }
+
+      const pool = await poolPromise;
+      const displayName = (req.body?.displayName || "").trim();
+
+      // --- Resolve which juror this ACS identity belongs to ---
+      // A juror mints a FRESH ACS identity on every join and the participant
+      // recording can be stale or missing, so the ACS id alone is not reliable.
+      //   Primary:  match the ACS id in TrialParticipants across all of the
+      //             case's meetings (ignore LeftAt).
+      //   Fallback: match the display name ("Name (Juror)") against the case's
+      //             approved-juror roster.
+      let jurorId = null;
+      let participantId = null;
+      let roomId = null;
+      let chatThreadId = null;
+      let chatServiceUserId = null;
+
+      const partResult = await pool
+        .request()
+        .input("caseId", sql.Int, caseId)
+        .input("acsUserId", sql.NVarChar, acsUserId)
+        .query(`
+          SELECT TOP 1
+            tp.ParticipantId, tp.UserId, tp.UserType, tp.MeetingId,
+            tm.RoomId, tm.ChatThreadId, tm.ChatServiceUserId
+          FROM dbo.TrialParticipants tp
+          JOIN dbo.TrialMeetings tm ON tp.MeetingId = tm.MeetingId
+          WHERE tm.CaseId = @caseId AND tp.AcsUserId = @acsUserId
+          ORDER BY tp.JoinedAt DESC
+        `);
+      const target = partResult.recordset[0];
+
+      if (target) {
+        if (target.UserType !== "juror") {
+          return res.status(400).json({ success: false, message: "Only jurors can be removed." });
+        }
+        jurorId = target.UserId;
+        participantId = target.ParticipantId;
+        roomId = target.RoomId;
+        chatThreadId = target.ChatThreadId;
+        chatServiceUserId = target.ChatServiceUserId;
+      } else if (displayName) {
+        // Fallback: resolve by display name against approved jurors for this case
+        const nameOnly = displayName.replace(/\s*\(juror\)\s*$/i, "").trim();
+        const byName = await pool
+          .request()
+          .input("caseId", sql.Int, caseId)
+          .input("name", sql.NVarChar, nameOnly)
+          .query(`
+            SELECT j.JurorId
+            FROM dbo.JurorApplications ja
+            JOIN dbo.Jurors j ON ja.JurorId = j.JurorId
+            WHERE ja.CaseId = @caseId
+              AND ja.Status = 'approved'
+              AND ISNULL(ja.IsRemoved, 0) = 0
+              AND LTRIM(RTRIM(j.Name)) = @name
+          `);
+        if (byName.recordset.length === 1) {
+          jurorId = byName.recordset[0].JurorId;
+          console.log(`ℹ️ [REMOVE JUROR] Resolved juror #${jurorId} by display name "${nameOnly}" (no live ACS participant record).`);
+        } else if (byName.recordset.length > 1) {
+          console.warn(`⚠️ [REMOVE JUROR] Ambiguous name "${nameOnly}" — ${byName.recordset.length} approved jurors match; cannot safely remove.`);
+        } else {
+          console.warn(`⚠️ [REMOVE JUROR] No approved juror named "${nameOnly}" for case ${caseId}.`);
+        }
+      }
+
+      if (!jurorId) {
+        return res.status(404).json({
+          success: false,
+          message: "Could not identify this juror. Please refresh the participant list and try again.",
+        });
+      }
+
+      // Room/chat for the ACS boot — fall back to the current meeting if we
+      // didn't resolve them from a participant record. The juror's live ACS
+      // identity is in the current room (that's how the admin sees them), so
+      // removing by acsUserId there disconnects them regardless of recording.
+      if (!roomId) {
+        const meeting = await TrialMeeting.getMeetingByCaseId(caseId);
+        roomId = meeting?.RoomId || null;
+        chatThreadId = chatThreadId || meeting?.ChatThreadId || null;
+        chatServiceUserId = chatServiceUserId || meeting?.ChatServiceUserId || null;
+      }
+
+      console.log(`🚫 [REMOVE JUROR] Admin #${adminId} removing juror #${jurorId} (ACS ${acsUserId}) from case ${caseId}. Reason: ${reason}`);
+
+      // 1) Boot from the live ACS call + chat (best-effort — continue on failure)
+      if (roomId) {
+        try {
+          await removeParticipantFromRoom(roomId, acsUserId);
+        } catch (e) {
+          console.error("⚠️ [REMOVE JUROR] Failed to remove from ACS room (continuing):", e.message);
+        }
+      }
+      if (chatThreadId && chatServiceUserId) {
+        try {
+          await removeParticipantFromChat(chatThreadId, chatServiceUserId, acsUserId);
+        } catch (e) {
+          console.error("⚠️ [REMOVE JUROR] Failed to remove from chat (continuing):", e.message);
+        }
+      }
+
+      // 2) Mark the participant as left in the DB (only if we found the record)
+      if (participantId) {
+        try {
+          await TrialMeeting.removeParticipant(participantId);
+        } catch (e) {
+          console.error("⚠️ [REMOVE JUROR] Failed to mark participant left (continuing):", e.message);
+        }
+      }
+
+      // 3) Permanently block rejoin for this case
+      await pool
+        .request()
+        .input("caseId", sql.Int, caseId)
+        .input("jurorId", sql.Int, jurorId)
+        .input("reason", sql.NVarChar, reason)
+        .input("removedBy", sql.Int, adminId)
+        .query(`
+          UPDATE dbo.JurorApplications
+          SET IsRemoved = 1,
+              RemovalReason = @reason,
+              RemovedAt = GETUTCDATE(),
+              RemovedBy = @removedBy,
+              UpdatedAt = GETUTCDATE()
+          WHERE CaseId = @caseId AND JurorId = @jurorId
+        `);
+
+      // 4) In-app notification (best-effort)
+      try {
+        await Notification.createNotification({
+          userId: jurorId,
+          userType: "juror",
+          caseId,
+          type: "trial_removal",
+          title: "Removed from trial",
+          message: `You have been removed from this trial by the court administrator and cannot rejoin. Reason: ${reason}`,
+        });
+      } catch (e) {
+        console.error("⚠️ [REMOVE JUROR] Failed to create notification (continuing):", e.message);
+      }
+
+      // 5) Email the juror (best-effort)
+      try {
+        const juror = await Juror.findById(jurorId);
+        if (juror?.Email) {
+          const content = `
+            <p>Dear ${juror.Name || "Juror"},</p>
+            <p>You have been removed from the trial by the court administrator and will not be able to rejoin this case.</p>
+            <p><strong>Reason provided:</strong></p>
+            <blockquote style="border-left:4px solid #b91c1c;padding-left:12px;color:#374151;">${reason}</blockquote>
+            <p>If you believe this was made in error, please contact the court administrator.</p>
+            <p>— Quick Verdicts</p>
+          `;
+          await sendNotificationEmail(juror.Email, "You have been removed from a trial", content);
+        }
+      } catch (e) {
+        console.error("⚠️ [REMOVE JUROR] Failed to send email (continuing):", e.message);
+      }
+
+      // 6) Real-time nudge so their client leaves immediately
+      try {
+        notifyUser(jurorId, "juror", "juror_removed", { caseId, reason });
+      } catch (e) {
+        console.error("⚠️ [REMOVE JUROR] Failed to emit socket event (continuing):", e.message);
+      }
+
+      // Audit event (best-effort)
+      try {
+        await Event.createEvent({
+          caseId,
+          eventType: Event.EVENT_TYPES.CASE_UPDATED,
+          description: `Juror #${jurorId} removed from trial. Reason: ${reason}`,
+          triggeredBy: adminId,
+          userType: "admin",
+        });
+      } catch (_) {}
+
+      return res.json({
+        success: true,
+        message: "Juror removed from the trial and blocked from rejoining.",
+        jurorId,
+      });
+    } catch (error) {
+      console.error("❌ [REMOVE JUROR] Error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to remove juror from trial.",
+      });
+    }
+  }
+);
+
+// ============================================
+// HEALTH CHECK
+// ============================================
+
+/**
+ * GET /api/trial/health
+ * Health check for trial service
+ */
+router.get("/health", (req, res) => {
+  const isConfigured = !!(identityClient && connectionString && ACS_ENDPOINT);
+
+  res.json({
+    success: true,
+    status: isConfigured ? "healthy" : "degraded",
+    service: "trial-meetings",
+    provider: "azure-communication-services",
+    configured: isConfigured,
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// ============================================
+// ERROR HANDLER
+// ============================================
+
+router.use((error, req, res, next) => {
+  console.error("Trial Route Error:", error);
+
+  res.status(error.status || 500).json({
+    success: false,
+    message: error.message || "Internal server error",
+    error: process.env.NODE_ENV === "development" ? error.stack : undefined,
+  });
+});
+
+// ============================================
+// EXPORTS
+// ============================================
+
+module.exports = router;
+module.exports.createTrialMeeting = createTrialMeeting;
