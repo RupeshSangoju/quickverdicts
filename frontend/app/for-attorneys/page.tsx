@@ -79,16 +79,15 @@ liability exposure, and damages.
               <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center mb-4">
                 <span className="text-blue-600 text-xl">💼</span>
               </div>
-              <h3 className="font-semibold text-gray-900">Analyze Settlement Value</h3>
+              <h3 className="font-semibold text-gray-900">Strategic Value</h3>
               <p className="text-sm text-gray-600 mt-2 leading-relaxed">
-Local mock jurors’ deliberated verdicts are useful for settlement negotiations, Stowers 
-demands, and mediation.  
+Local mock jurors’ deliberated verdicts are useful for settlement assessment, Stowers demands, mediation, witness credibility evaluations, venue intelligence and testing case themes.
 
               </p>
             </div>
 
             {/* Card 3 */}
-<div className="bg-white/95 rounded-xl shadow-lg p-6 border border-gray-200 text-center">
+<div className="bg-white/95 rounded-xl shadow-lg p-6 border border-gray-200">
   <div className="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center mb-4 mx-auto">
     <span className="text-orange-500 text-xl">⚖️</span>
   </div>
@@ -96,8 +95,7 @@ demands, and mediation.
   <h3 className="font-semibold text-gray-900">Quick Turnaround </h3>
 
   <p className="text-sm text-gray-600 mt-2 leading-relaxed">
-Efficient case preparation with embedded Jury Charge Builder which appear in interactive 
-form during the mock trial.  Many mock trials scheduled within 2 -3 weeks. 
+Efficient workflow saves attorney preparation time.  Many mock trials scheduled within 10 days – 2 weeks.
   </p>
 </div>
           </div>
