@@ -183,7 +183,7 @@ Select whether your case is:
 
 | Tier | Trial Duration | Attorney Cost | Juror Pay |
 |---|---|---|---|
-| Early Adopter | 2.5 hours | $2,000 | $50 |
+| Early Adopter | 2.5 hours | $2,500 | $50 |
 | Tier 1 | 2.5 hours | $3,500 | $75 |
 | Tier 2 | 3.5 hours | $4,500 | $100 |
 | Tier 3 | 4.5 hours | $5,500 | $125 |

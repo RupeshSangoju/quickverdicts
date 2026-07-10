@@ -17,7 +17,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL
   : "http://localhost:4000";
 
 const tierAmounts: Record<string, number> = {
-  "Early Adopter": 2000,
+  "Early Adopter": 2500,
   "Tier 1": 3500,
   "Tier 2": 4500,
   "Tier 3": 5500,
