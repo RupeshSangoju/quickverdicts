@@ -1,42 +1,42 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { X } from "lucide-react";
 import Link from "next/link";
+
+function todayString() {
+  return new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+}
+
+function hasAcceptedToday() {
+  try {
+    return localStorage.getItem("cookiePolicyDate") === todayString();
+  } catch {
+    return false;
+  }
+}
 
 export default function CookieBanner() {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    // Check if user has already accepted cookies
-    const cookieAccepted = localStorage.getItem("cookiePolicy");
-
-    // Also check for cookie
-    const cookieExists = document.cookie.includes("cookiePolicy=accepted");
-
-    if (!cookieAccepted && !cookieExists) {
+    if (!hasAcceptedToday()) {
       setIsVisible(true);
-    } else {
-      setIsVisible(false);
     }
   }, []);
 
   const handleAccept = () => {
-    // Save to both localStorage and cookies
-    localStorage.setItem("cookiePolicy", "accepted");
+    try {
+      localStorage.setItem("cookiePolicyDate", todayString());
+    } catch {
+      // storage unavailable — still dismiss
+    }
 
-    // Set cookie that expires in 1 year
-    const expirationDate = new Date();
-    expirationDate.setFullYear(expirationDate.getFullYear() + 1);
-    document.cookie = `cookiePolicy=accepted; expires=${expirationDate.toUTCString()}; path=/; SameSite=Lax`;
+    // Set a midnight-expiring cookie so middleware can also read acceptance
+    const midnight = new Date();
+    midnight.setHours(23, 59, 59, 999);
+    document.cookie = `cookiePolicy=accepted; expires=${midnight.toUTCString()}; path=/; SameSite=Lax`;
 
-    // Trigger storage event for CookieGate to detect
-    window.dispatchEvent(new Event('storage'));
-
-    setIsVisible(false);
-  };
-
-  const handleDismiss = () => {
+    window.dispatchEvent(new Event("storage"));
     setIsVisible(false);
   };
 
@@ -75,7 +75,6 @@ export default function CookieBanner() {
           >
             Accept
           </button>
-
         </div>
       </div>
     </div>

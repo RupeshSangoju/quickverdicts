@@ -11,9 +11,13 @@ export default function CookieGate({ children }: CookieGateProps) {
   const [isHydrated, setIsHydrated] = useState(false);
 
   const checkCookieAcceptance = () => {
-    const cookieAccepted = localStorage.getItem("cookiePolicy");
-    const cookieExists = document.cookie.includes("cookiePolicy=accepted");
-    return cookieAccepted === "accepted" || cookieExists;
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      if (localStorage.getItem("cookiePolicyDate") === today) return true;
+    } catch {
+      // ignore
+    }
+    return document.cookie.includes("cookiePolicy=accepted");
   };
 
   useEffect(() => {
