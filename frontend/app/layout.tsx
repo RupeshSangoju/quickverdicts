@@ -3,6 +3,7 @@ import { Toaster } from "react-hot-toast";
 import { ToastLimiter } from "@/components/ToastLimiter";
 import Script from "next/script";
 import { AppErrorBoundary } from "@/components/errors/AppErrorBoundary";
+import CookieBanner from "@/components/CookieBanner";
 import "./globals.css";
 
 // ============================================
@@ -224,6 +225,9 @@ export default function RootLayout({
 
           {/* Main Content */}
           {children}
+
+          {/* Cookie Banner - shown on every page until accepted */}
+          <CookieBanner />
         </AppErrorBoundary>
         
         {/* Structured Data */}

@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { Play, Facebook, Twitter, Linkedin, Youtube, Space } from 'lucide-react';
 import Image from "next/image";
-import CookieBanner from '@/components/CookieBanner';
 import CookieGate from '@/components/CookieGate';
 
 export default function QuickVerdictsLanding() {
@@ -391,7 +390,6 @@ targeted advertising or marketing cookies.  </p>
         </div>
       </footer>
       </CookieGate>
-      <CookieBanner />
     </div>
   );
 }
