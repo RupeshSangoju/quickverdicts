@@ -170,6 +170,7 @@ export default function AttorneyHelp({ onContact, onBack }: { onContact: () => v
       <iframe
         src={v.iframe}
         className="w-full h-full border-0"
+        sandbox="allow-forms allow-modals allow-orientation-lock allow-popups allow-scripts"
         allowFullScreen
       />
 

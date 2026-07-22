@@ -126,7 +126,7 @@ export default function VideoIntroOverlay({
             frameBorder="0"
             marginHeight={0}
             marginWidth={0}
-            sandbox="allow-forms allow-modals allow-orientation-lock allow-popups allow-same-origin allow-scripts"
+            sandbox="allow-forms allow-modals allow-orientation-lock allow-popups allow-scripts"
             scrolling="no"
             allowFullScreen
             style={{

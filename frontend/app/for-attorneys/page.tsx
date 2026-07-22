@@ -217,7 +217,7 @@ period with the jurors.
             className="w-full h-full"
             src="https://sway.cloud.microsoft/s/a4IsVExPsi6KOpj5/embed"
             frameBorder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture; web-share"
             allowFullScreen
           />
           {/* Blocks clicks on Sway's top-right share/open button */}
