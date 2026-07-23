@@ -295,6 +295,9 @@ function sanitizeError(error) {
  * Ensure container exists (called on startup)
  */
 async function ensureContainerExists() {
+  if (!containerClient) {
+    return; // Azure Blob not configured — skip silently
+  }
   try {
     const exists = await containerClient.exists();
 
@@ -322,9 +325,9 @@ async function ensureContainerExists() {
   }
 }
 
-// Ensure container exists on startup
+// Ensure container exists on startup (no-op when Azure Blob not configured)
 ensureContainerExists().catch((error) => {
-  console.error("CRITICAL: Container initialization failed:", error);
+  console.warn("⚠️  Container initialization failed:", error.message);
 });
 
 // ============================================
